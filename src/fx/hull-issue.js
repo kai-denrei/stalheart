@@ -11,13 +11,16 @@
 //   host.busy()        the roll-out is still on screen (its framing run or the deploy)
 //   host.now()         the game clock
 //   host.issue(quiet)  put the hull in the world: quiet sets it down outside the door, otherwise it rolls out on camera
+//   host.fighting()    the player is in a sentry's optic on the Rotor's first wave (the beats' 'piloting'): the roll-out waits for its
+//                      clear, at most `firstWave` s after the Stålheart stands (2026-10-14: the Pearl set's slow gait brings that wave
+//                      to the Rotor late, and the roll-out took the seat mid-wave; the dot clouds' wave is long cleared by then)
 // States: held (no hull) -> rolling (issued, still on screen) -> out.
 import { hasPerk as programmeHas } from '../domain/build-programme.js';
 import { berthIndexFor } from '../domain/berths.js';
 import { showOrder } from './order-callout.js';
 
-export function createHullIssue({ held = false, perk = 'stalheart', door = null, lead = 1.6 } = {}) {
-  let state = held ? 'held' : 'out', issuedAt = null, quiet = null;
+export function createHullIssue({ held = false, perk = 'stalheart', door = null, lead = 1.6, firstWave = 0 } = {}) {
+  let state = held ? 'held' : 'out', issuedAt = null, quiet = null, stoodAt = null, waited = 0;
   return {
     lead,
     held: () => state === 'held',
@@ -31,11 +34,13 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
       if (state === 'early') { if (host.stands(perk)) { state = 'out'; host.stood(); } }
       else if (state === 'held') {
         if (!host.stands(perk)) return;
+        stoodAt ??= host.now();
+        if (host.fighting?.() && host.now() - stoodAt < firstWave) { waited = host.now() - stoodAt; return; }
         state = 'rolling'; issuedAt = host.now(); quiet = !!host.seated();
         host.issue(quiet);
       } else if (state === 'rolling' && !host.busy()) state = 'out';
     },
-    state: () => ({ state, issuedAt, quiet, door: door ? door.ci : -1 }),
+    state: () => ({ state, issuedAt, quiet, door: door ? door.ci : -1, waited: +waited.toFixed(1) }),
   };
 }
 
@@ -52,6 +57,7 @@ export function createHullHost(c) {
   return {
     stands: (perk) => programmeHas(c.story().programme, perk),
     seated: () => !!(c.pilot()?.gunship || laserStation.seated()),
+    fighting: () => c.story()?.beats?.phase?.() === 'piloting' && !!c.pilot()?.state?.tower && !c.pilot()?.gunship,
     busy: () => !!c.deploy() || shotId() === 'rollout',
     now: () => c.t(),
     early: (berth) => {

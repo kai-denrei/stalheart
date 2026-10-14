@@ -186,7 +186,10 @@ export const STORY_CONSTRUCTION = Object.freeze({
 // gantry over a slab with its rails along the plot's Z; the hull starts `start` metres from the plot centre along `heading` (the side
 // the bays' doors face, toward the gate), under the gantry, and drives out to `end` metres, clear of the slab and short of the landing
 // pad. `lead` is the camera's run from wherever the player was to the roll-out's framing before the hull moves (src/fx/hull-issue.js).
-export const STORY_ROLLOUT = Object.freeze({ heading: Object.freeze([0, -1]), start: 4, end: 40, lead: 1.6 });
+// `firstWave` (2026-10-14, the Pearl set the story's default): the most seconds the roll-out waits, once the Stålheart stands, for the player
+// in a sentry's optic to clear the Rotor's first wave (the beats' 'piloting'): the Pearl bodies walk the opening's lane at their slow
+// gait and reach the Rotor some 35 s later than the dot clouds did, so the roll-out came mid-wave and took the seat (src/fx/hull-issue.js)
+export const STORY_ROLLOUT = Object.freeze({ heading: Object.freeze([0, -1]), start: 4, end: 40, lead: 1.6, firstWave: 60 });
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.
