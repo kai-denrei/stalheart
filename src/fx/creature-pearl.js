@@ -30,7 +30,7 @@
 // deflate channel, signed: below zero the body stands taller and narrower); recoil(handle, impact) does the same to a live cored body the tank touched,
 // harder and shorter, and lets it hunt again. The rules are untouched: the seam calls these from the game's own ram and touch.
 // add(type, { x, z, angle, lift, opacity, grow, members, speed, hub, cell }) -> handle | null    track(handle, { x, z, ax, az, lift, dt, opacity, grow, members, speed, hub })
-// rehub(handle, hub)   kill(handle, impact)   recoil(handle, impact)   free(handle)   step(dt, camera, height, cull)   setPlanet(R)   roots()   stats()   view(handle)   dispose()
+// rehub(handle, hub)   kill(handle, impact)   recoil(handle, impact)   free(handle)   step(dt, camera, height, cull)   setPlanet(R)   roots()   geometries()   stats()   view(handle)   dispose()
 import * as THREE from '../../vendor/three.module.js';
 import { CutisSwarm, REACH_MARGIN, BODY_RADII } from './cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from './cutis-maku/config.js';
@@ -409,6 +409,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // round four: the motion audit (./pearl-motion.js): watch(opts) starts it afresh, watch(null) stops it; motion() its report so far (null when off)
     watch(opts) { motion = opts ? createMotionAudit(opts) : null; }, motion: () => motion?.report() ?? null,
     roots: () => [group],
+    // the swarm lab's knobs (src/labs/swarm-pearl.js, owner 2026-10-14): each tier's swarm geometry (./cutis-maku/geometry.js: its levels' meshes and materials, its shadows)
+    geometries: () => [...pools.values()].map((p) => p.geo),
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
     // the pearls drawn and the bodies drawn at each level [high, low, lowest, culled] (src/fx/cutis-maku/geometry.js)
     stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, shoved: p.shoved, squashed: p.squashed, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
