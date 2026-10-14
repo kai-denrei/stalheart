@@ -1,4 +1,7 @@
 // Sequential real-browser acceptance. Own server + isolated Chrome + bounded calls.
+// THE STORY'S ENEMIES (2026-10-14): a story page with no ?creatures runs the Pearl set (src/platform/game-flags.js creaturesFlag); ?creatures=dots
+// (or =0) runs the old dot clouds, and the campaign board (?acceptance=1 / ?sim= without the story) keeps them. CREATURES=dots (or any form) in the
+// environment adds ?creatures=<it> to every game page a step opens that names none, for an A/B; --pacing and --backdoor's walk-in name dots themselves.
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync, cpSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -38,7 +41,11 @@ const evaluate=async expression=>{
 async function until(expression,timeout=25000){const start=Date.now();while(Date.now()-start<timeout){if(await evaluate(expression))return;await delay(150);}throw Error(`Timed out: ${expression}`);}
 /* dpr: the page LOADS at this device pixel ratio. The renderer reads devicePixelRatio once, when it is built, so a ratio
    applied after the load never reaches it — a step that needs a Retina surface has to ask for one here, not afterwards. */
+/* CREATURES=dots|pearl|...: every game page this run opens takes ?creatures=<it> unless its URL names one (the A/B against the story's default, the
+   Pearl set since 2026-10-14; src/platform/game-flags.js). Labs and pages without a query are left alone. */
+const withCreatures=p=>process.env.CREATURES&&/^index\.html\?/.test(p)&&!/[?&]creatures=/.test(p)?p.replace('?',`?creatures=${encodeURIComponent(process.env.CREATURES)}&`):p;
 async function go(name,path,width=1440,height=900,expectedPath=path,dpr=1){
+ path=withCreatures(path);expectedPath=withCreatures(expectedPath);
  current=name;consoleLines.length=0;errors.length=0;requests.length=0;
  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});
  if(await evaluate('location.href')===urlRoot+path){await send('Page.navigate',{url:'about:blank'});await until('location.href === "about:blank"');}
@@ -873,7 +880,10 @@ try{
  // ARRIVE, not how well anyone kills them. Every beat, pulse and omen is a PACE line; ARRIVE lines are arrivals per 5 s; the summary
  // gives, per sector, the seconds from its card to the first arrival and the arrival gaps (seconds with nothing reaching a door).
  const T='window.__stalheartTest';
- await go('pacing-bare','index.html?sw=0&acceptance=1&cine=0&world=story&intro=0#td');
+ // THE DOT CLOUDS' RHYTHM (2026-10-14): the 40 s first-contact contract below is the 2026-09-24 pacing design's, measured at the dot clouds'
+ // speeds; the Pearl set (the story's default since 2026-10-14) walks at the owner's own slow gait (PEARL_PACE, PEARL_WAVES: "not a balance yet",
+ // tuned by him), and headless its bodies drew the game clock to 118 s in the step's 900 s (sector 1 never reached). So this step runs ?creatures=dots
+ await go('pacing-bare','index.html?sw=0&acceptance=1&cine=0&world=story&intro=0&creatures=dots#td');
  await until(`!!${T}&&!!${T}.state().programme`,90000);
  await evaluate(`(()=>{const T=${T},P=window.__pace={t0:performance.now(),ev:[],arr:[],rows:[],last:{},aimAt:0,contAt:0,done:false,passive:${args.includes('--passive')}};
   /* GAME TIME, not the wall clock (2026-09-25): the game's clock advances at most 0.1 s a frame, so on a slow machine or beside a
@@ -1485,7 +1495,7 @@ try{
  // the Rotor to the Quiver: back out of the Rotor, the Quiver lit, into its optic (the QUIVER chapter's hand-over)
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
- await evaluate('window.__stalheartPilotTest.hold(false)');
+ await evaluate('window.__stalheartPilotTest?.hold(false)');   /* the roll-out may have taken the seat as the wave cleared (the Pearl set's first wave clears late: src/fx/hull-issue.js firstWave) */
  await until(`${T}.state().shot==='takeControl'`,120000).catch(async()=>assert.fail(`the hand-over to the Quiver (${(await st()).shot})`));
  await delay(1300);current='round6-quiver-handover-out';await finish();
  await delay(1700);current='round6-quiver-handover-in';await finish();
@@ -1539,11 +1549,14 @@ try{
  assert.equal(await evaluate('getComputedStyle(document.querySelector("#seat-vignette")).display!=="none"'),true,'the vignette once in the optic');
  await until('[...document.querySelectorAll("*")].some(e=>e.__contacts?.log?.length)',20000).catch(async()=>assert.fail('a first-contact card for the first kind up'));
  console.log(`  round7: contacts ${await evaluate('JSON.stringify([...document.querySelectorAll("*")].find(e=>e.__contacts).__contacts.log)')}`);
+ // THE PEARL SET IS THE DEFAULT (2026-10-14, src/platform/game-flags.js): no ?creatures here, so the first kind up is a Pearl body and its card is its tier's
+ {const looks=await evaluate('[...document.querySelectorAll("*")].find(e=>e.__contacts).__contacts.looks');console.log(`  round7: contact looks ${JSON.stringify(looks)}`);
+  assert.equal((await st()).creatureProbe?.pearl,true,'the story runs the Pearl set with no ?creatures');assert(looks?.[0]?.tier&&/^CUTIS-(SOFT|CORE) /.test(looks[0].name),`the first card is the Pearl tier's (${JSON.stringify(looks)})`);}
  current='round7-rotor-contact';await finish();
  // the Rotor to the Quiver, called out
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
- await evaluate('window.__stalheartPilotTest.hold(false)');
+ await evaluate('window.__stalheartPilotTest?.hold(false)');   /* the roll-out may have taken the seat as the wave cleared (the Pearl set's first wave clears late: src/fx/hull-issue.js firstWave) */
  await until(`${T}.state().shot==='takeControl' && /QUIVER MANUAL OVERRIDE!/.test(document.querySelector("#td-callouts")?.textContent??"")`,120000).catch(async()=>assert.fail(`the hand-over called out (${(await st()).shot}, ${await evaluate('document.querySelector("#td-callouts")?.textContent')})`));
  await delay(2500);assert.equal(await evaluate('document.body.classList.contains("seat-gliding")'),true,'mid-flight the Quiver\'s HUD stays hidden (2026-10-03)');assert.equal(await evaluate('(e=>!e||e.style.display==="none"||getComputedStyle(e).opacity==="0")(document.querySelector("#story-monitor"))'),true,'and its spotting monitor');current='round7-quiver-transfer';await finish();
  assert.ok(await evaluate('!!document.querySelector("#day-dial")'),'the day dial is in the HUD');
@@ -4470,7 +4483,9 @@ const killReal=(Date.now()-t0)/1000;
   assert(s.wallCount<45000,`the story is one sector: ${s.wallCount} rock cells (~68k means round 1 sealed the outer world)`);}
  await finish();
  // stage 8 past the handover: the collapse, its cost, the candidates, and a swarm walking in through the back
- await go('backdoor-load','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
+ // ?creatures=dots (2026-10-14): the step is the back door's routing, timed at the dot clouds' walk; the Pearl set's gait (the story's default)
+ // brings a back breach's fodder 60 hops in far past its 180 s (none inside, 213 up, on the first run under the default)
+ await go('backdoor-load','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition&creatures=dots#td');
  await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(2500);
  await evaluate('window.__stalheartTest.begin()');
  const mouth=await evaluate('window.__stalheartTest.backMouth()');assert.deepEqual(mouth.cells,[1086,34817],'the back mouth rides along with the story');
