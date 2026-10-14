@@ -2053,6 +2053,79 @@ try{
    const ci=await evaluate(`(()=>{const e=${pick}??${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);
    if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},${look[tier]?.[0]??3},${look[tier]?.[1]??4})`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,`${name}.png`),Buffer.from(shot.data,'base64'));}}
  }
+ } else if(args.includes('--bestiary')) {
+ // THE TERMINAL AND THE BESTIARY (owner, 2026-10-14; src/fx/terminal-screen.js, spec docs/superpowers/specs/2026-10-14-bestiary-terminal-design.md section 7):
+ // the game at stage 6 with the hull issued and the sector held quiet, no contact yet: B opens the terminal over the paused game, every entry
+ // unseen and the first entry's card says so, Escape closes and the pause is as before; the harness notes contacts amoeba and drifter (the
+ // contact card's own path) -> B again: white full with its pack of three on the stage at the high hull, Enter -> six, down -> orange full with
+ // its warning, the others unseen; the sightings record holds both. A reload with the log empty: the console prompt shows with the hull under
+ // the Stålheart's gantry (Isao's first line with it, the terminal never opened this run) and is gone away from it; B -> white a silhouette
+ // with the NO RECENT READING note. The lab: labs.html#units, the BESTIARY button -> the terminal with every entry full and a pack on the stage.
+ // 0 page errors throughout; the screenshots are the terminal open.
+ const T='window.__stalheartTest',B=`${T}.bestiary`,S=`${B}.state()`,hide='document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card,#sector-card{display:none!important}</style>")';
+ const press=async(key,code)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key,code,windowsVirtualKeyCode:key.length===1?key.toUpperCase().charCodeAt(0):undefined});await send('Input.dispatchKeyEvent',{type:'keyUp',key,code});await delay(250);};
+ const st=()=>evaluate(S),url='index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td';
+ const ready=async()=>{await until(`!!${T} && !!${T}.bestiary && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,120000);await evaluate(hide);await evaluate(`${T}.begin()`);await until(`!${T}.state().deploying`,30000);await evaluate(`${T}.sectorQuiet(true)`);await delay(800);};
+ // the Stålheart's cell (its standing landmark) and one well away from it, through the laser station's own structure list
+ const cells=async()=>evaluate(`(()=>{const s=${T}.laserStructures?.()??null;return s;})()`);
+ await go('bestiary-unseen',url);await ready();
+ {const s=await st();assert.equal(s.open,false);assert(s.entries.every(e=>e.state==='unseen'),`no contact yet: every entry unseen (${JSON.stringify(s.entries)})`);}
+ const pausedBefore=await evaluate(`${T}.paused?.()??null`);
+ await press('b','KeyB');await until(`${S}.open`,5000).catch(async()=>assert.fail(`B opens the terminal (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
+ {const s=await st();assert(s.entries.every(e=>e.state==='unseen'),'every entry unseen');assert.equal(s.selected,'white','the first entry');assert.equal(s.card.state,'unseen');
+  assert.equal(s.card.note,'NO READING · NOT YET MET','the first entry\'s card says so');assert.equal(s.card.name,'— — —');assert.equal(s.stage.mode,'none');assert.equal(s.pause,true,'the game paused under it');
+  assert(s.box&&s.box.w>200&&s.box.h>150&&s.box.target[0]>=Math.floor(s.box.w),`the stage's box and its target (${JSON.stringify(s.box)})`);}
+ await delay(400);await finish();
+ await press('Escape','Escape');await until(`!${S}.open`,5000);
+ assert.equal(await evaluate(`${S}.pause`),pausedBefore===null?false:pausedBefore,'Escape closes and the pause is as it was');
+ // two contacts through the contact card's own path: amoeba (white) and drifter (orange)
+ await evaluate(`${B}.note('amoeba')`);await evaluate(`${B}.note('drifter')`);
+ await press('b','KeyB');await until(`${S}.open`,5000);
+ await until(`${S}.stage.bodies===3`,20000).catch(async()=>assert.fail(`white's pack of three on the stage (${JSON.stringify(await st())})`));
+ {const s=await st();const by=Object.fromEntries(s.entries.map(e=>[e.id,e.state]));assert.equal(by.white,'full');assert.equal(by.orange,'full');
+  assert(Object.entries(by).filter(([k])=>!['white','orange'].includes(k)).every(([,v])=>v==='unseen'),`the others unseen (${JSON.stringify(by)})`);
+  assert.equal(s.selected,'white');assert.equal(s.card.state,'full');assert(s.card.lines>=3,'Isao\'s lines');assert.equal(s.card.warning,null,'white is soft: no warning');
+  assert.equal(s.stage.mode,'full');assert.equal(s.stage.force,0,'the high hull forced');assert.equal(s.stage.levels[0],3,`every body at the high hull (${s.stage.levels})`);assert(Array.isArray(s.stage.lure),'the lure runs');}
+ await delay(1500);current='bestiary-white';await finish();
+ await press('Enter','Enter');await until(`${S}.stage.bodies===6&&${S}.pack===6`,20000).catch(async()=>assert.fail(`Enter: a pack of six (${JSON.stringify(await st())})`));
+ await press('ArrowDown','ArrowDown');await until(`${S}.selected==='orange'`,5000);
+ await until(`${S}.stage.entry==='orange'&&${S}.stage.bodies===6`,20000);
+ {const s=await st();assert.equal(s.card.state,'full');assert(/^⚠ SOLID CORE · CANNOT BE RAMMED/.test(s.card.warning||''),`orange's warning (${s.card.warning})`);assert.equal(s.card.head,'ENTRY 04 / 11 · ORANGE TIER');assert.equal(s.stage.type,'drifter');}
+ await delay(1500);current='bestiary-orange';await finish();
+ {const rec=JSON.parse(await evaluate(`localStorage.getItem('stalheart:v1:td.bestiary')`)||'{}');assert(rec.white&&rec.orange&&rec.white.runs===1&&rec.orange.runs===1,`the sightings record holds both (${JSON.stringify(rec)})`);}
+ await press('Escape','Escape');await until(`!${S}.open`,5000);
+ // a reload: the log is empty, the record is not
+ await go('bestiary-console',url);await ready();
+ {const s=await st();assert(s.entries.every(e=>e.state!=='full'),'the log is empty after a reload');console.log(`  after the reload the hull is ${s.console.shown?'under the gantry (the bays are behind the Stålheart)':'away from the gantry'}`);}
+ // the console: away from the Stålheart's gantry no prompt; under it the prompt, and Isao's first line (the terminal never opened this run)
+ const spot=(await st()).console.cell,away=(await evaluate(`${T}.state().sector?.sockets??[]`))[0];assert(spot>=0&&away>=0,`the gantry's cell ${spot} and one away ${away}`);
+ await evaluate(`${T}.placeTank(${away})`);await until(`!${S}.console.shown`,5000).catch(async()=>assert.fail(`no prompt away from the gantry (${JSON.stringify((await st()).console)})`));
+ await evaluate(`${T}.placeTank(${spot})`);await until(`${S}.console.shown`,5000).catch(async()=>assert.fail(`the prompt under the gantry (${JSON.stringify((await st()).console)})`));
+ {const c=(await st()).console;assert(c.told,`Isao told of it (${JSON.stringify(c)})`);if(c.line)assert(/^ISAO · There is a terminal under the gantry\./.test(c.line),c.line);
+  assert.equal(await evaluate('document.querySelector("#terminal-prompt .t-key").textContent'),'TERMINAL · B');assert(await evaluate('!document.querySelector("#terminal-prompt").hidden'));}
+ await delay(300);await finish();
+ await evaluate(`${T}.placeTank(${away})`);await until(`!${S}.console.shown`,5000).catch(async()=>assert.fail(`the prompt gone away from the gantry (${JSON.stringify((await st()).console)})`));
+ assert(await evaluate('document.querySelector("#terminal-prompt").hidden'),'the prompt element hidden');
+ // B: white is a silhouette, with the note
+ await press('b','KeyB');await until(`${S}.open`,5000);
+ await until(`${S}.stage.bodies===3`,20000).catch(async()=>assert.fail(`white's pack as silhouettes (${JSON.stringify(await st())})`));
+ {const s=await st();const by=Object.fromEntries(s.entries.map(e=>[e.id,e.state]));assert.equal(by.white,'silhouette');assert.equal(by.orange,'silhouette');
+  assert.equal(s.selected,'white');assert.equal(s.card.state,'silhouette');assert(/^NO RECENT READING · last logged \d{4}-\d{2}-\d{2}$/.test(s.card.note||''),`the note (${s.card.note})`);
+  assert.equal(s.card.lines,0,'the text replaced by the note');assert(s.card.data>=2,'the data lines kept');assert.equal(s.stage.mode,'silhouette');assert(s.stage.dark>0,`the pack drawn dark (${s.stage.dark} materials)`);assert.equal(s.stage.lure,null,'the lure off');}
+ await delay(1200);current='bestiary-silhouette';await finish();
+ await press('Escape','Escape');await until(`!${S}.open`,5000);
+ // the lab: the BESTIARY button over the units tab, every entry full, a pack on the stage
+ await go('bestiary-lab','labs.html?sw=0&acceptance=1#units');
+ await until('!!document.querySelector("#units-bestiary")&&!!window.__stalheartUnits?.bestiary',60000);
+ await click('#units-bestiary');await until('window.__stalheartUnits.bestiary.state().open',5000);
+ await until('window.__stalheartUnits.bestiary.state().stage?.bodies===3',30000).catch(async()=>assert.fail(`the lab's pack (${JSON.stringify(await evaluate('window.__stalheartUnits.bestiary.state()'))})`));
+ {const s=await evaluate('window.__stalheartUnits.bestiary.state()');assert(s.entries.every(e=>e.state==='full'),`the lab: every entry full (${JSON.stringify(s.entries)})`);assert.equal(s.selected,'white');}
+ for(let k=0;k<8;k++)await press('ArrowDown','ArrowDown');
+ await until(`window.__stalheartUnits.bestiary.state().selected==='cutis'&&window.__stalheartUnits.bestiary.state().stage.bodies===3`,30000).catch(async()=>assert.fail(`the Cutis-Maku's pack (${JSON.stringify(await evaluate('window.__stalheartUnits.bestiary.state()'))})`));
+ await delay(1500);await finish();
+ await press('ArrowDown','ArrowDown');await until(`window.__stalheartUnits.bestiary.state().selected==='reed'`,5000);
+ {const s=await evaluate('window.__stalheartUnits.bestiary.state()');assert.equal(s.stage.mode,'none','the Reeds: a card without a stage');assert(s.card.lines>=2);}
+ await press('Escape','Escape');await until('!window.__stalheartUnits.bestiary.state().open',5000);
  } else if(args.includes('--pearl-story')) {
  // THE STORY WITH THE PEARL SET (owner, 2026-10-13; src/fx/creature-enemies.js ?creatures=pearl, spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md):
  // a story sector (SECTOR, default 2) boots with every mapped type drawn as its Pearl tier's body: the sector's own waves come up as Pearl bodies, and
