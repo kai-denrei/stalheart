@@ -19,11 +19,17 @@
 // td-tab.js updateProjectiles) and the game's landing, createShellBlast (src/fx/shell-blast.js: SHELL_BLAST's 4.5 over 3 cells, the 40 mm's burst
 // and flash) on the lane's records, its damage the game's damageEnemy in short: the hit points off, the body shrunk with them (0.7 + 0.3 x hp share),
 // at none the game's death (family.kill). The blast's scare (td-tab's explode: impact-scare) and its warning rings (they need the board's cells)
-// are not the lane's; every
-// record walks at the hull wherever it is; one that comes within the dot lane's TOUCH of the hull (its ratio to the dot hull, times the game's
-// hull) dies the game's death (family.kill: the deflate, then CREATURE_DEATH's fade), and only once its slot is free is a new body seated at
-// the far end of the file, so the crowd holds at the slider's count. The hull's shove (the game's hullContact) is not wired; the ram's rules
-// are not the lab's here. The lab pays what the game pays: the follow, the gait, the kit's step, the draw.
+// are not the lane's.
+// THE BUMP (round three: "the bump impact with the creatures should be the same as the game"): the game's hull against the bodies,
+// src/fx/hull-contact.js (the drawn hull's box, a soft body shoved clear and the speed share it takes as drag and run-up scrub, a cored body
+// stopping the hull and pushing it back out, the settle pass after the bodies step) on the lane's plane through the family's hullContact, with
+// the game's reactions: a light tier's brush is the ram, a cored contact recoils the body and jolts the hull (src/fx/ram-jolt.js). And the game's
+// ram (src/fx/enemy-step.js): a record within cellSide x max(0.4, its size x 0.8) of the hull, or brushed by it, if rammable is run over (the
+// stagger along the hull's heading and aside, the tinted splat under the treads, the jolt, the run-over drag unless a light tier: td-tab's
+// bumpLeft, the drive's pace x 1 - 0.65 x its share) and dies the game's death; a cored one touches the hull (every 1.2 s: it recoils, the hull
+// jolts). The combo, the bounty and the hull's damage are not the lane's. Every record walks at the hull wherever it is; a dead one's slot,
+// once its puddle has faded (CREATURE_DEATH), seats a new body at the far end of the file, so the crowd holds at the slider's count. The lab pays
+// what the game pays: the follow, the gait, the kit's step, the draw.
 //
 // THE PLANET AND THE CAMERA. The bodies bend onto the story planet (GAME_PLANET_R, the kit's uPlanetR) round the tank, which stands at the
 // bend's origin; the ground and the walls are bent with the same bendPoint (the shader's JS twin), so a far body is not sunk in a flat floor.
@@ -60,6 +66,10 @@ import { FEEL } from '../feelstore.js';
 import { createCannon } from './boss/cannon.js';
 import { createExplosions } from '../fx/explosions.js';
 import { createShellBlast } from '../fx/shell-blast.js';
+import { createHullContact } from '../fx/hull-contact.js';
+import { createRamJolt } from '../fx/ram-jolt.js';
+import { makeDotBurst } from '../units.js';
+import { CREATURE_TINTS } from '../enemyspec.js';
 import { TANK_LENS } from '../domain/seat-view.js';
 import { computeWavePlan } from '../enemyspec.js';
 
@@ -241,8 +251,22 @@ const PANEL = `
   <b>draw</b> the scene blocked on the GPU. Force 0 lifts the high cap. The core knob hides the soft tiers' inner core; a cored
   tier's pearl stays. Headless numbers are not the owner's machine's: compare two sweeps, one knob apart.</p>`;
 
-// the dot lane's hull ratios (./swarm-tab.js TOUCH and DRIVE_R over its TANK_R) when the host does not give its own
-const HULL_RATIOS = { touch: 4.6 / 3.4, drive: 4.2 / 3.4 };
+// THE LANE'S HULL: the game's hull contact (src/fx/hull-contact.js) on the lane's one plane in metres, through the family's hullContact (the box at
+// the hull, the pushes handed on as [dx, 0, dz], a touch handed to the record behind the body, h.record); a light tier's brush is the ram (the
+// game's: creature-enemies.js), `hit(record, cored)` the caller's reaction to a booked contact. -> createHullContact's object
+export function createLaneHull({ family, mesh, heading, now, hit = null }) {
+  const BOX = { x: 0, z: 0, ux: 0, uz: 1, hl: 0, hw: 0 };
+  let outer = null;
+  const sink = { push: (hub, dx, dz) => outer.push(dx, 0, dz), touch: (h, cored, r, tier) => { if (h.record) outer.touch(h.record, cored, r, tier); }, depth() {} };
+  return createHullContact({ tune: PEARL_IMPACT, mesh, heading, metres: () => 1, now, hit,
+    hull(tank, driving, s) {
+      BOX.x = tank.pos[0]; BOX.z = tank.pos[2]; BOX.ux = tank.dir[0]; BOX.uz = tank.dir[2]; BOX.hl = tank.hl; BOX.hw = tank.hw; outer = s;
+      return family.hullContact(() => BOX, driving, sink);
+    },
+    brush(r, tier) { if (PEARL_IMPACT.tiers?.[tier]?.ram && r.alive && r.spec?.rammable) r.bodyRam = true; } });
+}
+// the run-over drag: td-tab's BUMP_LEN (s) and its pace cut (hull-drive.js: x 1 - 0.65 x the bump's share left)
+const BUMP_LEN = 0.5, BUMP_CUT = 0.65;
 // host: { scene, renderer, camera, controls, panel (the element the Pearl controls go in), read and hud (the stage's readouts), tank() the hull,
 // canyon (the dot lane's flat ground, hidden here), lane() -> { count, dens, spread } (the tab's sliders), setCount(n), input() -> { throttle,
 // turn } the held keys, hull { touch, drive } the dot lane's touch and drive radii over its hull's }
@@ -301,7 +325,7 @@ export function mountSwarmPearl(host) {
   host.panel.querySelector('[data-psweep]').addEventListener('click', () => startSweep());
 
   // --- the hull: the yard drive on the held keys, in the lane's metres --------------------------------------------------------------------------
-  const ratios = { ...HULL_RATIOS, ...(host.hull ?? {}) }, touchM = UNIT_M * ratios.touch, blocker = laneBlocker(L, WALL_CLEAR);
+  const blocker = laneBlocker(L, WALL_CLEAR);
   const feel = makeTankFeel(), hullDrive = createPlaneDrive({ feel, slide: true }), drive = hullDrive.state, basis = new THREE.Matrix4(), V = [0, 1, 2].map(() => new THREE.Vector3());
   hullDrive.reset(0, 0, Math.PI);
   let cruiseTap = false, lastTap = -9, moving = false, blocked = false, ground = 0;
@@ -313,6 +337,38 @@ export function mountSwarmPearl(host) {
     if (k === 'w' || k === 'arrowup') { const t = performance.now() / 1000; if (t - lastTap < CRUISE_TAP) cruiseTap = true; lastTap = t; }   // a double tap of forward toggles cruise
   };
   addEventListener('keydown', onKey);
+  // --- the bump (see the header): the game's hull contact on the lane's plane, the jolt, the run-over drag ---------------------------------------
+  const ramJolt = createRamJolt(), HEAD = [0, 0, 1];
+  let bumpLeft = 0, rams = 0, contacts = 0, coredTouches = 0, pushMax = 0;
+  const radiusOf = (r) => (PEARL_BODIES[r.type]?.r0 ?? 2.5) * (0.7 + 0.3 * Math.max(0, r.hp) / r.spec.hp);
+  // where a record is from the hull: away (unit), the share across the heading (unit or null), the side (-1 left .. 1 right): creature-enemies' contact()
+  function contactOf(r) {
+    const hx = Math.sin(drive.yaw), hz = Math.cos(drive.yaw), ax = r.x - drive.x, az = r.z - drive.z, al = Math.hypot(ax, az);
+    if (!(al > 1e-9)) return { hx, hz, away: [hx, hz], across: null, side: 0 };
+    const along = ax * hx + az * hz, cx = ax - hx * along, cz = az - hz * along, cl = Math.hypot(cx, cz);
+    return { hx, hz, away: [ax / al, az / al], across: cl > 1e-9 ? [cx / cl, cz / cl] : null, side: Math.max(-1, Math.min(1, (hz * ax - hx * az) / al)) };
+  }
+  const hullContact = createLaneHull({ family, mesh: () => host.tank(), heading: () => { HEAD[0] = Math.sin(drive.yaw); HEAD[2] = Math.cos(drive.yaw); return HEAD; },
+    now: () => clock, hit(r, cored) { contacts++; if (cored && r.alive) { coredTouches++; recoil(r); } } });
+  function recoil(r) { const c = contactOf(r); family.recoil(r.h, { dx: c.away[0], dz: c.away[1] }); ramJolt.kick({ radius: radiusOf(r), solid: true, side: c.side }); }
+  const contactHook = (before, cand, dt, scrub) => hullContact.bodyContact(before, cand, dt, scrub), SETTLE = [0, 0, 0];
+  // the game's ram: the stagger, the splat under the treads, the jolt, the run-over drag, the death
+  function ram(r) {
+    const c = contactOf(r);
+    ramJolt.kick({ radius: radiusOf(r) * (PEARL_IMPACT.tiers?.[r.spec.pearl]?.jolt ?? 1), solid: false, side: c.side });
+    const at = surface(r.x, r.z), burst = makeDotBurst(CREATURE_TINTS[r.type] ?? 0xffffff, at.normal.toArray());
+    burst.scale.setScalar(CELL * 0.8); burst.position.copy(at.point).addScaledVector(at.normal, CELL * 0.12); world.add(burst); debris.push(burst);
+    if (!r.spec.lightRam) bumpLeft = BUMP_LEN;
+    die(r, { dx: c.hx, dz: c.hz, ax: c.across?.[0] ?? null, az: c.across?.[1] ?? null }); rams++;
+  }
+  // a cored record against the hull: the touch (every 1.2 s, src/fx/enemy-step.js), its recoil once in PEARL_IMPACT.contact.again (creature-enemies' touched)
+  function touchCored(r) {
+    if (clock <= (r.touchCd ?? -1)) return;
+    r.touchCd = clock + 1.2;
+    if (clock - (r.hullAt ?? -9) < PEARL_IMPACT.contact.again) return;
+    recoil(r);
+  }
+
   function driveInput() { const i = host.input?.() ?? { throttle: 0, turn: 0 }, tap = cruiseTap; cruiseTap = false; return { ...i, cruiseTap: tap }; }
   function placeHull(tank) {
     const f = hullFrame(drive.x, drive.z, drive.yaw);
@@ -341,7 +397,7 @@ export function mountSwarmPearl(host) {
   let recs = [], depth = L.depth, reseat = true, deaths = 0, reseated = 0;
   // a record as the game's enemy loop keeps one, as far as the lane needs: its spec (PEARL_SPECS: hit points, size, rammable), its hit points,
   // `size` the record's (ENEMY_SPEC size x 0.7, src/fx/enemy-step.js), `pos` [x, 0, z] and `alive` for the shell's blast
-  const add = (r) => { r.spec = pearlSpec(r.type); r.hp = r.spec.hp; r.size = r.spec.size * 0.7; r.alive = true; (r.pos ??= [0, 0, 0]); r.pos[0] = r.x; r.pos[2] = r.z; r.dead = false; r.h = family.add(r.type, { x: r.x, z: r.z, angle: Math.atan2(drive.z - r.z, drive.x - r.x), speed: r.speed }); return r; };
+  const add = (r) => { r.bodyRam = false; r.touchCd = -1; r.hullAt = -9; r.spec = pearlSpec(r.type); r.hp = r.spec.hp; r.size = r.spec.size * 0.7; r.alive = true; (r.pos ??= [0, 0, 0]); r.pos[0] = r.x; r.pos[2] = r.z; r.dead = false; r.h = family.add(r.type, { x: r.x, z: r.z, angle: Math.atan2(drive.z - r.z, drive.x - r.x), speed: r.speed }); if (r.h) r.h.record = r; return r; };
   function seat() {
     for (const r of recs) family.free(r.h);
     const { count, dens, spread } = host.lane();
@@ -402,12 +458,17 @@ export function mountSwarmPearl(host) {
     for (const r of recs) {
       if (!r.h || r.dead) continue;
       [r.x, r.z] = walkToward(r.x, r.z, tx, tz, r.speed * family.paceOf(r.h) * dt);
-      // at the hull: the game's death; the slot is the body's until its puddle has faded
       r.pos[0] = r.x; r.pos[2] = r.z;
-      if (touched(r.x, r.z, tx, tz, touchM)) { die(r); continue; }
+      // at the hull: the game's ram or touch (the record's distance, or a light tier's brush); the dead one's slot is its body's until its puddle has faded
+      if (touched(r.x, r.z, tx, tz, CELL * Math.max(0.4, r.size * 0.8)) || (r.bodyRam && r.spec.rammable)) {
+        if (r.spec.rammable) { ram(r); continue; }
+        touchCored(r);
+      }
       family.track(r.h, { x: r.x, z: r.z, ax: tx, az: tz, dt, speed: r.speed, grow: 0.7 + 0.3 * Math.max(0, r.hp) / r.spec.hp });
     }
     family.step(dt, cam, renderer.domElement.height);
+    // a body that walked into the hull where it stands is shoved out of it (the game's settle pass)
+    SETTLE[0] = drive.x; SETTLE[1] = 0; SETTLE[2] = drive.z; hullContact.settle(SETTLE); drive.x = SETTLE[0]; drive.z = SETTLE[2];
     // the dead whose slot the step freed (all of them first: a new body may take a slot another dead record still names), then their new bodies
     freed.length = 0;
     for (const r of recs) if (r.dead && !family.view(r.h).active) freed.push(r);
@@ -488,11 +549,13 @@ export function mountSwarmPearl(host) {
     if (Number.isFinite(gap) && gap > 0) { const t = performance.now() / 1000; rawGaps.push(t, gap); gaps.push(t, Math.max(1, gap - probeOwed)); }
     probeOwed = 0;
     if (reseat) seat();
-    const x0 = drive.x, z0 = drive.z, st = hullDrive.step(dt, driveInput(), blocker);
+    bumpLeft = Math.max(0, bumpLeft - dt); ramJolt.tick(dt);
+    const x0 = drive.x, z0 = drive.z, st = hullDrive.step(dt, driveInput(), blocker, { pace: 1 - BUMP_CUT * (bumpLeft / BUMP_LEN), contact: contactHook });
+    pushMax = Math.max(pushMax, hullContact.lastPush());
     moving = st.moving; blocked = st.blocked; ground = dt > 0 ? Math.hypot(drive.x - x0, drive.z - z0) / dt : 0;
     const tank = host.tank();
     // the hull where it stands, then the game's hover, idle vibration, touchdown rock and bank (tankfeel.js, the persisted tuning)
-    if (tank) { placeHull(tank); stepTankFeel(feel, dt, moving, FEEL); applyTankFeel(tank, feel, FEEL); }
+    if (tank) { placeHull(tank); stepTankFeel(feel, dt, moving, FEEL); applyTankFeel(tank, feel, FEEL); ramJolt.hull(tank); }
     if (view === 'free') controls.update(); else gameCam.step(dt);
     let stepMs = 0;
     if (frameNo % Math.max(1, knobs.every) === 0) {
@@ -535,7 +598,7 @@ export function mountSwarmPearl(host) {
         dead: recs.filter((r) => r.dead).length,   // records whose body is dying (none waits: a freed slot is seated the same step)
         levels: last.levels.slice(), tris: last.tris, calls: last.calls,
         step: steps.mean(), draw: draws.mean(), fps: fpsOf(gaps), fpsRaw: fpsOf(rawGaps),
-        tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, ground, cruise: drive.cruise, blocked, bank: feel.bank ?? 0 }, touch: touchM, knobs: { ...knobs }, lod: { ...lod }, tiers: Object.keys(family.stats()),
+        tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, ground, cruise: drive.cruise, blocked, bank: feel.bank ?? 0 }, rams, contacts, coredTouches, drag: hullContact.drag(), push: hullContact.lastPush(), pushMax, bump: bumpLeft, jolt: ramJolt.state(), knobs: { ...knobs }, lod: { ...lod }, tiers: Object.keys(family.stats()),
         shells: cannon.shells(), heat: cannon.heat(), fired: shellsFired, shellKills, blast: blast.last(), blastJolt: lastJolt,
         noise: mats.map((m) => m.uniforms.uNoise.value), breath: mats.map((m) => m.uniforms.uBreath.value), shadows: geos.map((g) => g.shadows.visible),
         sweeping: !!sweep, sweepAt: sweep ? sweep.n : null, rows: rows.map((r) => ({ ...r, levels: r.levels.slice() })), table: tableText,

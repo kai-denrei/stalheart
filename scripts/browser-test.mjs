@@ -4065,6 +4065,7 @@ const killReal=(Date.now()-t0)/1000;
   const b1=await evaluate(`${P}.state()`);console.log('SWARM PEARL SHELL '+JSON.stringify({fired:b1.fired-b0.fired,kills:b1.shellKills-b0.shellKills,blast:b1.blast,heat:+b1.heat.toFixed(2)}));
   assert(b1.blast&&b1.blast.killed>=1&&b1.blast.exploded,'the game\'s landing: a kill and its burst');
  }
+ assert(await evaluate(`${S}.set("count",3)`));await until(`${P}.state().records===3`,5000);   // a near-empty lane: the cruise is the drive's, not the crowd's
  // WASD with the game's feel (round three, owner 2026-10-14: "the feel of the tank, speed, etc. should be the same as the game"): held W runs the
  // hull up to the game's cruise (the boss-fight spec's 38 m/s at four seconds; past 35 here) down the lane, straight
  {
@@ -4077,9 +4078,25 @@ const killReal=(Date.now()-t0)/1000;
   assert(t.z<z0-20&&Math.abs(t.x)<1e-6,'straight down the lane');
   await until(`${P}.state().tank.speed<1`,20000);   // let go: it rolls to a stop
  }
+ // THE BUMP (round three: "the bump impact with the creatures should be the same as the game"): a white body seated ahead, held W runs it over
+ // (the game's ram: its stagger and splat, the jolt); a brown cored one stops the hull and pushes it back (the recoil, the hull's push)
+ {
+  const hold=async(cond,ms)=>{await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:"w"}))');try{await until(cond,ms);}finally{await evaluate('dispatchEvent(new KeyboardEvent("keyup",{key:"w"}))');}await until(`${P}.state().tank.speed<1`,20000);};
+  const s0=await evaluate(`${P}.state()`);
+  assert.equal(await evaluate(`${P}.place(1,30)`),1);
+  await hold(`${P}.state().rams>${s0.rams}`,15000);
+  const s1=await evaluate(`${P}.state()`);console.log('SWARM PEARL RAM '+JSON.stringify({rams:s1.rams-s0.rams,contacts:s1.contacts-s0.contacts,jolt:s1.jolt,dying:s1.dying}));
+  assert(s1.dying>=1,'the run-over body dies the game\'s death');
+  assert(await evaluate(`${P}.set("tier","brown")`));await until(`${P}.state().tiers.includes("brown") && ${P}.state().records===3`,5000);
+  const c0=await evaluate(`${P}.state()`);
+  assert.equal(await evaluate(`${P}.place(1,30)`),1);
+  await hold(`${P}.state().coredTouches>${c0.coredTouches} && ${P}.state().pushMax>0`,15000);
+  const c1=await evaluate(`${P}.state()`);console.log('SWARM PEARL CORED '+JSON.stringify({coredTouches:c1.coredTouches-c0.coredTouches,pushMax:+c1.pushMax.toFixed(3),rams:c1.rams-c0.rams,drag:c1.drag,jolt:c1.jolt}));
+  assert.equal(c1.rams,c0.rams,'a cored body is never run over');
+ }
  // back to dots: the Pearl lane goes, the dot crowd comes back
  assert(await evaluate(`${S}.set("bodies","dots")`));
- await until(`!${P} && ${S}.state().built===300`,10000);
+ await until(`!${P} && ${S}.state().built===3`,10000);   // at the count the bump's checks left
  await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,

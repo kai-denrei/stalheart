@@ -716,7 +716,7 @@ export function initSwarmTab(root) {
       running = false; sweepQueue = []; sweeping = false; clearBodies(); card.hidden = true; comboEl.hidden = true;
       pearl = mountSwarmPearl({ scene, renderer, camera: cam, controls, panel: pearlEl, read, hud, canyon, tank: () => tank,
         lane: () => ({ count: state.count, dens: state.dens, spread: state.spread }), setCount: (n) => api.set('count', n),
-        input: keyInput, hull: { touch: TOUCH / TANK_R, drive: DRIVE_R / TANK_R } });
+        input: keyInput });
     } else if (!on && pearl) {
       pearl.dispose(); pearl = null; tank.scale.setScalar(TANK_R); rebuild = true;
     }

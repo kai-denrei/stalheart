@@ -5,7 +5,7 @@
 // the lane as the lab drives it.
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { laneSeats, walkToward, touched, farSeat, laneBlocker, WALL_CLEAR, unbend, hullFrame, gamePose, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
+import { laneSeats, walkToward, touched, farSeat, laneBlocker, WALL_CLEAR, unbend, createLaneHull, hullFrame, gamePose, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
   GAME_PLANET_R, PEARL_LANE, TIERS, SWEEP_COUNTS } from '../src/labs/swarm-pearl.js';
 import { CUTIS_LOD } from '../src/fx/cutis-maku/config.js';
 import { createSwarmGeometry } from '../src/fx/cutis-maku/geometry.js';
@@ -248,3 +248,37 @@ console.log('PASS the sweep\'s table: fixed columns, the four rows, triangles in
   fam.dispose(); assert.equal(parent.children.length, 0);
 }
 console.log('PASS the family down the lane: the game\'s family on the planet, the records walking at the hull, the touched one dying the game\'s death, its slot reseated at the far end, the count held');
+
+// ---- the bump in the lane (round three, owner 2026-10-14: "the bump impact with the creatures should be the same as the game") ----
+// the game's hull contact (src/fx/hull-contact.js) on the lane's plane through the family: a white body ahead is brushed (the light tier's ram) and
+// shoved clear, the hull losing next to nothing; a brown cored body stops the hull and pushes it back
+{
+  const run = (type) => {
+    const parent = new THREE.Group(), hubs = { count: 1, quat: () => null, reach: (hub, x, z, dx, dz, max) => laneReach(x, dx, max, PEARL_LANE.half) };
+    const fam = createPearlFamily({ parent, tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, pace: PEARL_PACE, gait: PEARL_GAIT, impact: PEARL_IMPACT, hubs });
+    fam.setPlanet(GAME_PLANET_R);
+    const rec = { x: 0, z: -16, type, spec: pearlSpec(type), alive: true };
+    rec.h = fam.add(type, { x: 0, z: -16, angle: Math.PI / 2, speed: 0 }); rec.h.record = rec;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 2.6)); mesh.scale.setScalar(4);   // a stand-in hull, 8 x 10.4 m
+    let clock = 0, scrubbed = 0, pushMax = 0, dragMax = 0;
+    const hits = [], hc = createLaneHull({ family: fam, mesh: () => mesh, heading: () => [0, 0, -1], now: () => clock, hit: (r, cored) => hits.push(cored) });
+    const pos = [0, 0, 0], before = [0, 0, 0], dt = 1 / 60;
+    for (let f = 0; f < 120; f++) {
+      clock += dt; before[0] = pos[0]; before[2] = pos[2]; pos[2] -= 15 * dt;
+      hc.bodyContact(before, pos, dt, (k) => { scrubbed += k; });
+      pushMax = Math.max(pushMax, hc.lastPush()); dragMax = Math.max(dragMax, hc.drag());
+      fam.step(dt, null, 900); hc.settle(pos);
+    }
+    const st = Object.values(fam.stats())[0];
+    fam.dispose();
+    return { rec, hits, scrubbed, pushMax, dragMax, z: pos[2], st };
+  };
+  const soft = run('amoeba');
+  assert(soft.rec.bodyRam, 'the white body brushed: the light tier\'s ram'); assert(soft.hits.length >= 1 && soft.hits.every((c) => !c), 'booked soft');
+  assert(soft.st.shoved > 0, `shoved clear (${soft.st.shoved})`); assert(soft.dragMax < 0.05, `the hull loses next to nothing (${soft.dragMax})`);
+  const cored = run('rolling');
+  assert(cored.hits.includes(true), 'booked cored'); assert(cored.dragMax >= PEARL_IMPACT.contact.cored, `the cored body takes the hull's speed (${cored.dragMax})`);
+  assert(cored.pushMax > 0, `and pushes it back (${cored.pushMax} m)`); assert(cored.z > soft.z + 5, `the hull stopped short of where it ploughed through the soft one (${cored.z} vs ${soft.z})`);
+  assert(cored.scrubbed >= 1, 'its run-up scrubbed whole');
+}
+console.log('PASS the bump in the lane: the game\'s hull contact through the family, a white body brushed and shoved, a cored one stopping the hull and pushing it back');
