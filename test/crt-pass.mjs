@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import { createCrtPass, crtFragment, MONO_FEED } from '../src/fx/crt-pass.js';
 import { GROUND_FEED } from '../src/content/ground-feed.js';
+import { TERMINAL_CRT } from '../src/content/bestiary.js';
 
 // src/fx/ground-feed.js FRAG at 70ab8f86, verbatim
 const FEED_FRAG = `
@@ -45,5 +46,6 @@ assert.equal(MONO_FEED.gain, 1.1); assert.equal(GROUND_FEED.gain, 1.1, 'the feed
   assert(frag.includes('mix(l, vec3(sn * 0.85), stat)'), 'the static over each channel');
   assert(frag.includes('vec4(vec3(1.0, 0.9, 0.8) * l + vec3(0.01, 0.02, 0.03), 1.0)'), 'the tint and the floor as given');
   for (const step of ['(l - 0.04) * 1.35', '* 0.09', 'mod(px.y, 3.0)', 'smoothstep(0.38, 0.78, length(d))']) assert(frag.includes(step), `the feed's step ${step} kept`);
+  const p = createCrtPass(TERMINAL_CRT); assert.equal(p.fragment.includes('dot(c, vec3(0.2126'), !!TERMINAL_CRT.mono, 'the terminal\'s pass in its content\'s mode'); p.dispose();
 }
 console.log('crt pass: the feed\'s shader to the character, its numbers, colour mode keeps the chroma');
