@@ -564,10 +564,11 @@ export function makeAudio(opts = {}) {
       + ` loadStarted=${loadStarted}`);
   }
 
+  const played = {};
   function start(key, o, looping) {
     const spec = soundDefs[key];
     if (!spec) return null;
-    nRequested++;
+    nRequested++; played[key] = (played[key] ?? 0) + 1;   // every ask by key, refused or not (the harness reads it: which alarm rings)
     if (!ctx) { reportSilence('no AudioContext — the gesture never armed it', key); return null; }
     // REFUSE UNTIL THE CONTEXT RUNS. This used to be implicit: there was no
     // context at all before the first gesture, so start() returned null and
@@ -669,6 +670,7 @@ export function makeAudio(opts = {}) {
     // What the graph is actually carrying. Without this the only evidence
     // of an audio leak is "it sounds worse now", which is not evidence.
     get voices() { return live.size; },
+    get played(){return { ...played };},
     get activeVoices(){return [...live.values()].map(v=>({key:v.key,loop:v.looping,duration:v.src.buffer?.duration||0}));},
     get contextState() { return ctx ? `${ctx.state} @${ctx.sampleRate}Hz` : 'none'; },
     // THE LEAK LEDGER, reachable from the console. `audio.ledger` at the

@@ -223,6 +223,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     has, proxy, spawn, kill, recoil, step, hull,
     // a family's bodies made ready before the first record (its adapter, and what it makes ahead: the Pearl tiers' swarms)
     prepare: (family, ids) => adapter(family)?.prepare?.(ids),
+    room: (family, tier) => adapter(family)?.room?.(tier) ?? Infinity,   // slots a family's tier still has (Infinity when it does not count)
     // the record's body stands drawn (a family that makes its bodies later, the Reeds, says so; the others draw at add)
     drawn: (e) => { const b = live.get(e); if (!b) return false; const a = adapters.get(b.family); return a.drawn ? a.drawn(b.h) : true; },
     roots: () => [...adapters.values()].flatMap((a) => a.roots()),

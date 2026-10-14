@@ -91,6 +91,25 @@ Evidence:
 - src/platform/game-flags.js creaturesFlag; test/game-flags.mjs; src/fx/contact-card.js contactLook; src/fx/sector-run.js kill; src/fx/program-warm.js; src/fx/creature-enemies.js prepare at boot; src/fx/hull-issue.js fighting / firstWave; src/content/story-defaults.js STORY_ROLLOUT.firstWave; test/hull-issue.mjs
 - the two battery runs and the A/B probes (opening timeline dots vs Pearl, the Rotor wave's clear, the board) in the session scratchpad suites/; npm test, npm run check, npm run architecture green before each commit; td-tab unchanged at 6,124 of 6,400
 
+## 2026-10-14 — No room, no release: a queued entry whose Pearl tier's swarm has no slot waits at its source instead of being made as a dot cloud (the yellow and green dot clouds of a huge sector-9 wave)
+
+change · accepted · 2026-10-14-pearl-pool-full-holds-the-release
+
+Owner, 2026-10-14, playing the Pearl default: "sector 9, a huge wave of yellow and green old half-dotted enemies appeared." Each Pearl tier is one instanced swarm of PEARL_FOLLOW.capacity slots (white 3000, yellow 2000, blue 2000, orange 1000, green 1000, purple 800, brown 600, black 600; src/fx/creature-pearl.js take): past it the slot is refused (p.full), spawn returns false and src/fx/enemy-step.js spawnOne makes the record again as its own dot cloud (`undressed`, round two 2026-10-13, meant for a cage that failed to load). A late stampede wave of the yellow and green rungs exceeds those two capacities, so its tail came up as the old dot clouds. Measured headless to rule the rest out: sector 9 at wave 7, 1,757 records all dressed, every type mapped (PEARL_OF covers the fifteen), no undressed record; four cycles of 400 yellow bodies spawned and cleared leak no slot; the harness cannot spawn thousands fast enough (the crowd gate) to hit a capacity in a probe, so the capacity path is shown by reading, not reproduced.
+
+src/fx/creature-pearl.js room(tier): the free heap plus the never-used tail of the capacity; src/fx/creature-bodies.js room(family, tier) (Infinity for a family that does not count); src/fx/creature-enemies.js full(entry): under the Pearl set, an entry of a mapped type (not one already made again as dots) whose tier has fewer slots than it needs (a squad needs one a member); src/fx/enemy-step.js releaseSpawns holds the queue on it exactly as on the crowd gate and an unready source (the entry put back at the clock, the loop breaks). The dot-cloud fallback stays as the last resort for a body that cannot be made at all. test/enemy-step.mjs: with a family that has no room nothing releases over 400 frames and nothing throws; with room the three release as before; the pinned behaviour hash unchanged. The harness state now carries `sounds` (every sound asked by key, src/audio.js played) and `achievements` (the run's), both added for this diagnosis and kept.
+
+Alternatives: Raise every tier's capacity to the crowd cap's 3,500: eight swarms' instance buffers allocated for it, for a tail that waits a few seconds at its mouth otherwise; the capacities stay the owner's fps knobs.; Keep the dot-cloud fallback: the owner's "we are adapting to the new enemies" rules the old bodies out of the story.; Drop the record instead of holding it: the wave would lose bodies the ladder planned.
+
+Evidence:
+
+- src/fx/creature-pearl.js room
+- src/fx/creature-bodies.js room
+- src/fx/creature-enemies.js full
+- src/fx/enemy-step.js releaseSpawns
+- test/enemy-step.mjs (no room, no release)
+- the sector-9 probe (scratch): 1,757 dressed, 0 undressed at wave 7; the yellow cycle probe: 1,279 bodies through, 0 undressed
+
 ## 2026-10-14 — The Pearl set's bodies animate by their core: the soft bodies keep the Cutis-Maku pearl animation, the hard-cored bodies take the Cutis-gorogoro rolling animation (owner, 2026-10-14; to port)
 
 decision · accepted · 2026-10-14-pearl-animation-soft-pearl-hard-gorogoro

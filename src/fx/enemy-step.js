@@ -210,7 +210,8 @@ export function createEnemyStep(host) {
     while (host.spawnQueue.length && host.spawnQueue[0].at <= host.spawnClock()) {
       const entry = host.spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
       if (!sp.alive) continue;   // its gate died while it was queued
-      if(!host.gameBreaches.ready(sp.obj)||host.crowdGate.full(entry)){host.spawnQueue.unshift({...entry,at:host.spawnClock()});break;}
+      // the source not ready, the crowd gate full, or no Pearl slot for its tier (src/fx/creature-enemies.js full): the entry waits
+      if(!host.gameBreaches.ready(sp.obj)||host.crowdGate.full(entry)||host.creatures?.()?.full?.(entry)){host.spawnQueue.unshift({...entry,at:host.spawnClock()});break;}
       spawnOne(entry);
     }
   }

@@ -5791,7 +5791,7 @@ export function initTdTab(root) {
         automated: automated(),
         gunshipCall: { ...gunshipRig.call },
         storyHud: story?.hud.state() ?? null,
-        enemyRecords: enemies.length, loopVoices: sfx.activeVoices.filter((v) => v.loop).map((v) => v.key),
+        enemyRecords: enemies.length, loopVoices: sfx.activeVoices.filter((v) => v.loop).map((v) => v.key), sounds: sfx.played ?? null, achievements: [...runAchv],
         enemiesAlive: enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0),
         killsBySrc: { ...rs.bySrc },
         storyLod: storyBase?.lod() ?? null,

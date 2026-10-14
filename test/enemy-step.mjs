@@ -50,3 +50,14 @@ const newLog = run((w) => { const host = { ...w.fixed }; for (const k of getN) {
 // three spawns released on the queue's clock, 400 frames walking, a kill and the board cleared
 assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '3390876de0d3a026', 'the enemy loop behaves as the controller block did');
 print('Enemy step: the queue released on its clock, the walk, a kill and the board cleared, as the controller block did.');
+
+// NO ROOM, NO RELEASE (owner, 2026-10-14: a huge sector-9 wave came as yellow and green dot clouds once its tiers' Pearl swarms were full):
+// a queued entry whose creature family says `full` waits at its source, as for the crowd gate; with room it releases as before
+{
+  const held = run((w) => { const host = { ...w.fixed }; for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); } host.creatures = () => ({ full: () => true, dress: (q) => q, step() {}, kill() {} }); return createEnemyStep(host); });
+  const frames = held.filter((l) => l[0] === 'f');
+  assert.equal(frames.at(-1)[1].length, 0, 'nothing spawned while the family has no room'); assert.ok(!held.some((l) => l[0] === 'throw'), 'and nothing threw');
+  const roomy = run((w) => { const host = { ...w.fixed }; for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); } host.creatures = () => ({ full: () => false, dress: (q) => q, step() {}, kill() {} }); return createEnemyStep(host); });
+  assert.equal(createHash('sha256').update(JSON.stringify(roomy)).digest('hex').slice(0, 16), '3390876de0d3a026', 'with room the run is the controller block\'s, frame for frame');
+  print('Enemy step: a release with no room in its creature family waits; with room it goes.');
+}

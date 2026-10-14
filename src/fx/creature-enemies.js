@@ -238,6 +238,14 @@ export function createCreatureEnemies(host) {
     proxy: (entry) => make().proxy(entry?.squad ? SQUADS.reach : 1),   // a squad's stand-in keeps the dot squad's contact reach
     // ?creatures=pearl: a queue entry of a mapped type, as it is released, takes its Pearl body (its type and spec otherwise its own); an entry made
     // again for want of a body (`undressed`, src/fx/enemy-step.js) keeps its dot cloud
+    // NO ROOM, NO RELEASE (owner, 2026-10-14: "sector 9, a huge wave of yellow and green old half-dotted enemies appeared": past a tier's
+    // PEARL_FOLLOW.capacity the pool refused the slot and the record was made again as its dot cloud): a queued entry whose tier's swarm has no
+    // slot for it (a squad needs one a member) waits at its source, as it does for the crowd gate (src/fx/enemy-step.js releaseSpawns)
+    full(entry) {
+      if (!pearl || !entry || entry.undressed) return false;
+      const spec = entry.spec?.body ? entry.spec : PEARL_SPECS[entry.type]; if (spec?.body !== 'pearl') return false;
+      return make().room('pearl', spec.pearl) < Math.max(1, entry.squad || 1);
+    },
     dress(entry) {
       if (!pearl || !entry || entry.spec?.body || !PEARL_SPECS[entry.type]) return entry;
       if (entry.undressed) { pearled.undressed++; return entry; }

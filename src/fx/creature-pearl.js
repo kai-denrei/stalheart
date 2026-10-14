@@ -411,6 +411,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     roots: () => [group],
     // the tiers' swarms made ahead of their first body (src/fx/creature-enemies.js at boot: their materials are on the scene for src/fx/program-warm.js)
     prepare: (ids) => { for (const id of ids) if (byId[id]) poolOf(id); },
+    // slots a tier's swarm still has (the free heap and the never-used tail of its capacity): the enemy loop holds a release that would not fit
+    // instead of making the record as a dot cloud (owner, 2026-10-14: a huge sector-9 wave came as yellow and green dot clouds past PEARL_FOLLOW.capacity)
+    room: (id) => { const p = pools.get(id); return p ? p.free.length + (p.swarm.capacity - p.next) : Infinity; },
     // the swarm lab's knobs (src/labs/swarm-pearl.js, owner 2026-10-14): each tier's swarm geometry (./cutis-maku/geometry.js: its levels' meshes and materials, its shadows)
     geometries: () => [...pools.values()].map((p) => p.geo),
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
