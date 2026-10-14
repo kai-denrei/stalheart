@@ -19,6 +19,11 @@
 // display, not the renderer. The cost line renders in a tight loop and blocks
 // on gl.finish(), so it reads what the work is worth and can read far UNDER
 // one frame.
+//
+// THE BODIES SWITCH (owner, 2026-10-14: "we can adapt our current SWARM lab in dev to also display pearl-enemies, and play with variables in
+// how they are rendered to see where we could gain the most"; spec docs/superpowers/specs/2026-10-14-swarm-lab-pearl-design.md): dots (this
+// file, unchanged) or Pearl, the game's Pearl bodies in the canyon's lane, mounted from ./swarm-pearl.js as a sibling while the switch says so.
+// The count, density and file width sliders are shared; everything else on the dot side stands down while the Pearl lane is up.
 import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
 import { makeDotEnemy, makeDotBurst, buildUnit, preloadMork } from '../units.js';
@@ -33,6 +38,7 @@ import { makeTankFeel, stepTankFeel, applyTankFeel } from '../tankfeel.js';
 import { FEEL, loadFeel } from '../feelstore.js';
 import { applyFontPack, currentFontPack } from '../fonts.js';
 import { storage } from '../storage.js';
+import { mountSwarmPearl } from './swarm-pearl.js';
 
 const TYPES = Object.keys(CREATURE_TINTS).filter((t) => ENEMY_SPEC[t]);
 const DIE_CUES = ['enemy_die_a', 'enemy_die_b', 'enemy_die_c'];
@@ -62,11 +68,16 @@ export function initSwarmTab(root) {
   root.innerHTML = `<div id="swarm">
     <div class="sw-side">
       <h2>enemy study</h2>
+      <label>bodies <select data-k="bodies"><option value="dots">dots</option><option value="pearl">Pearl</option></select></label>
+      <div data-dots>
       <label>body <select data-k="type">${TYPES.map((t) => `<option>${t}</option>`).join('')}</select></label>
       <label>form <select data-k="form"><option value="dots">dot cloud</option><option value="jelly">jelly body</option></select></label>
+      </div>
       <label>alive at once <b data-v="count">100</b><input type="range" data-k="count" min="1" max="1200" step="1" value="100"></label>
       <label>density <b data-v="dens">1.0</b>&times;<input type="range" data-k="dens" min="0.2" max="4" step="0.1" value="1"></label>
       <label>file width <b data-v="spread">0.5</b>&times;<input type="range" data-k="spread" min="0.1" max="1.6" step="0.05" value="0.5"></label>
+      <div class="sw-pearl" data-pearl hidden></div>
+      <div data-dots>
       <label>tank <select data-k="drive"><option value="manual">you drive (WASD)</option><option value="charge">charging</option><option value="patrol">weaving</option><option value="static">parked</option></select></label>
       <label>view <select data-k="view"><option value="chase">chase</option><option value="side">side</option><option value="top">top</option><option value="free">free orbit</option></select></label>
       <label><input type="checkbox" data-k="merged"> one draw call (instanced)</label>
@@ -81,6 +92,7 @@ export function initSwarmTab(root) {
       <p class="sw-note">Rammable belts go under the treads for a premium;
       solid cores stop the hull dead and break the chain. Ram rules, bounties
       and the splat are the game's own, imported — nothing is re-typed here.</p>
+      </div>
     </div>
     <div class="sw-stage">
       <div class="sw-hud" data-hud>&nbsp;</div>
@@ -175,7 +187,7 @@ export function initSwarmTab(root) {
   let audio = null;
   const cue = (k, o) => { try { audio?.play(k, o); } catch { /* a lab is not worth a throw */ } };
 
-  const state = { type: TYPES[0], form: 'dots', count: 100, dens: 1,
+  const state = { bodies: 'dots', type: TYPES[0], form: 'dots', count: 100, dens: 1,
     drive: 'manual', view: 'chase', walls: true, sound: false, spread: 0.5, merged: false };
   const run = { kills: 0, combo: 0, comboT: 0, maxCombo: 0, earned: 0, blocked: 0, escaped: 0, speed: 1, hit: 0 };
 
@@ -485,13 +497,15 @@ export function initSwarmTab(root) {
     const dt = Math.min(0.05, gap / 1000); lastNow = now; t += dt;
     // the frame BEFORE this one is what the gap measures, so skip the first
     if (running && frames.length + 1) { frames.push(gap); if (gap > 20) late++; }
-    if (rebuild) build();
+    if (rebuild && !pearl) build();
     walls.visible = state.walls;
-    root.querySelector('[data-keys]').hidden = state.drive !== 'manual';
+    root.querySelector('[data-keys]').hidden = !!pearl || state.drive !== 'manual';
     const w = stage.clientWidth || 1, hh = stage.clientHeight || 1;
     if (renderer.domElement.width !== Math.round(w * renderer.getPixelRatio())) {
       renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix();
     }
+    // the Pearl lane steps, renders and reads its own line (./swarm-pearl.js)
+    if (pearl) { pearl.frame(dt); return; }
     step(dt); frameCamera();
     gpuBegin(); renderer.render(scene, cam); gpuEnd();
     // no timer extension: fall back to the stalling probe, slowly, so the
@@ -684,7 +698,25 @@ export function initSwarmTab(root) {
       if (k === 'sound' && state.sound && !audio) { audio = makeAudio({ base: '../' }); audio.resume?.(); }
       if (['type', 'form', 'count', 'dens', 'merged'].includes(k)) rebuild = true;
       if (k === 'spread') for (const b of bodies) seat(b);
+      if (k === 'bodies') setBodies(state.bodies);
+      if (pearl && ['count', 'dens', 'spread'].includes(k)) pearl.reseat();
     });
+  }
+
+  // THE BODIES SWITCH: the Pearl lane mounted on the tab's renderer, scene, camera and stage, the dot crowd cleared while it is up
+  const dotsEls = root.querySelectorAll('[data-dots]'), pearlEl = root.querySelector('[data-pearl]');
+  let pearl = null;
+  function setBodies(mode) {
+    const on = mode === 'pearl';
+    if (on && !pearl) {
+      running = false; sweepQueue = []; sweeping = false; clearBodies(); card.hidden = true; comboEl.hidden = true;
+      pearl = mountSwarmPearl({ scene, renderer, camera: cam, controls, panel: pearlEl, read, hud, canyon, tank: () => tank,
+        lane: () => ({ count: state.count, dens: state.dens, spread: state.spread }), setCount: (n) => api.set('count', n) });
+    } else if (!on && pearl) {
+      pearl.dispose(); pearl = null; tank.scale.setScalar(TANK_R); rebuild = true;
+    }
+    for (const el of dotsEls) el.hidden = on;
+    pearlEl.hidden = !on;
   }
 
   const api = {
@@ -718,6 +750,7 @@ export function initSwarmTab(root) {
     dispose() {
       disposed = true; cancelAnimationFrame(raf);
       removeEventListener('keydown', onDown); removeEventListener('keyup', onUp);
+      pearl?.dispose(); pearl = null;
       clearBodies(); controls.dispose(); renderer.dispose();
       renderer.domElement.remove(); audio?.dispose?.();
       if (window.__stalheartSwarm === api) delete window.__stalheartSwarm;
