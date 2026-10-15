@@ -2257,13 +2257,14 @@ try{
  // every frame the hull's overlap with any body (src/fx/creature-enemies.js test.hull, measured), the hull's place: the white one (owner, 2026-10-13:
  // "white and yellow, should feel very easy to run over") is rammed by the hull's own touch and costs it almost no speed, the cored one stops it and
  // jolts it; neither is ever inside the hull
- {const C=`${T}.creatures`;await evaluate(`${T}.showcase.ram(true)`);await delay(400);
+ // (2026-10-15, sector shapes: the sector's clock is quiet for the probe and the probe's body is its own, never a wave's: a pulse sector's trickle drips a body every 1.3 s now)
+ {const C=`${T}.creatures`;await evaluate(`${T}.sectorQuiet(true)`);await evaluate(`${T}.showcase.ram(true)`);await delay(400);
   const used=new Set();
   for(const [type,cored] of [['amoeba',false],['drifter',true]])for(let attempt=0;attempt<5;attempt++){   // five lanes since the full waves (2026-10-14): a body walks off its lane before the hull comes more often in a full crowd
    // a lane not used yet (a body that walked off its lane before the hull came is tried again elsewhere)
    let target=-1;for(const c of await evaluate(`${C}.ground().band.map(b=>b.cell)`)){if(used.has(c))continue;await evaluate(`${T}.placeTank(${c})`);await delay(80);for(const nb of await evaluate(`${C}.neighbours(${c})`)){await evaluate(`${C}.face(${nb})`);const a=await evaluate(`${C}.ahead(3)`);if(a>=0){target=a;break;}}if(target>=0){used.add(c);break;}}
    assert(target>=0,'an open lane three cells long beyond the gate');
-   await evaluate(`${C}.face(${target})`);assert.equal(await evaluate(`${C}.spawnAt(${JSON.stringify(type)},${target})`),1,`a ${type} ahead of the hull`);await delay(600);await evaluate(`(()=>{const p=${C}.pearls();window.__hp=p[p.length-1];})()`);await evaluate(`${C}.face(${target})`);
+   await evaluate(`${C}.face(${target})`);assert.equal(await evaluate(`${C}.spawnAt(${JSON.stringify(type)},${target})`),1,`a ${type} ahead of the hull`);await delay(600);await evaluate(`(()=>{const p=${C}.pearls().filter(e=>e.type===${JSON.stringify(type)}&&!e.breachSource);window.__hp=p[p.length-1];})()`);await evaluate(`${C}.face(${target})`);
    const j0=await evaluate(`${C}.jolt()`),c0=(await evaluate(`${C}.hull()`)).contacts;
    await evaluate(`(()=>{const R=window.__hr=[];const f=()=>{const s=${T}.state(),e=window.__hp,v=${C}.view(e);R.push({t:performance.now(),p:s.playerPosition,h:${C}.hull(),gap:v&&v.record?Math.hypot(v.centre[0]-v.record[0],v.centre[1]-v.record[1]):null,d:Math.hypot(e.pos[0]-s.playerPosition[0],e.pos[1]-s.playerPosition[1],e.pos[2]-s.playerPosition[2])});if(R.length<400&&window.__hr===R)requestAnimationFrame(f);};requestAnimationFrame(f);})()`);
    await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW',windowsVirtualKeyCode:87});await delay(2500);await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW',windowsVirtualKeyCode:87});await delay(300);
@@ -2279,7 +2280,7 @@ try{
    if(cored){assert(after<before*0.25,`a cored body stops the hull (${before} -> ${after})`);assert(j1.kicks>j0.kicks,'and jolts it');}
    else {assert(!alive,'the white body is run over (the game\'s ram)');assert(after>before*0.6,`and the hull hardly slows (${before} -> ${after})`);}
    break;}
-  await evaluate(`${T}.showcase.ram(false)`);}
+  await evaluate(`${T}.showcase.ram(false)`);await evaluate(`${T}.sectorQuiet(false)`);}
  const fin=await evaluate(P);console.log(`  books: ${JSON.stringify(fin.bodies.families.pearl)}`);
  // the kit's programs link (round two: the first cut of the hubs passed WebGL's sixteen vertex attributes; three logs a failed program to the console)
  const shaderBad=consoleLines.filter(l=>/Shader Error|Too many attributes|VALIDATE_STATUS|Program Info Log/i.test(l));assert.deepEqual(shaderBad,[],'no shader errors');
