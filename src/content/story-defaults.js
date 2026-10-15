@@ -109,6 +109,10 @@ export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harm
 // shares it). The whole planet has already been in frame since the tremor: a second and a half more of it before the camera moves
 // is the purest dead time in the opening. The 1.4 s dive itself is untouched.
 export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1.8, diveSeconds: 1.4, height: 5, back: 4 });
+// WHERE A BODY COMES UP (owner, 2026-10-15: "when they emerge out of a sinkhole, they should emerge from the periphery a bit, right now they emerge
+// straight from the center, and it looks like they hover in the air"): a body rises `rim` of the crater's radius out from its centre (the crater's lip,
+// where the ground is) plus the spawn's own scatter beyond it, never over the hole (src/fx/enemy-step.js spawnOne)
+export const EMERGENCE = Object.freeze({ rim: 0.95 });
 // THE SECOND FRONT (owner, 2026-09-16: "protect the other side of the base"): the sealed clearing mouth nearest +Z, at most
 // `maxCells` wide, collapses with up to `flank` rock cells beside it; back breaches open `hops` steps out from it on lanes at
 // least `margin` hops shorter through the back than through the gate. The collapse shot dives after `preRoll` and holds `hold` seconds at

@@ -195,14 +195,16 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(s.breaches[1].wavesPlanned, 1, 'the canyon sends its swarm once');
   w.step(2);
   const far = w.opened.find((sp) => sp.ci === 250);
-  assert.ok(far && far.quiet && far.keep, 'it opens quietly and nothing seals it');
+  assert.ok(far && far.quiet && !far.keep, 'it opens quietly and SOL-82 may seal it (2026-10-15: the hole stays open for the beam)');
   assert.equal(w.opened.length, 1, 'the base\'s breach waits: the player will be in SOL-82\'s seat');
   assert.ok(w.briefs.includes(CANYON.brief), 'Isao sees them rise');
   const pulse = w.run.release(w.t), swarm = pulse.filter((q) => q.sp === far);
   const one = (await import('../src/enemyspec.js')).computeWavePlan(SECTORS[2].ladderStart + CANYON.ladder, 1, 4, SECTORS[2].threat).entries.reduce((n, e) => n + e.count, 0);
   const bodies = swarm.reduce((n, q) => n + (q.squad || 1), 0);   // a big swarm comes partly in squads (src/domain/squads.js)
-  assert.equal(bodies, one * CANYON.swarm * 2, `five two-breach pulses at once (${bodies} bodies)`); assert.ok(swarm.some((q) => q.squad), 'the swarm packs squads');
+  assert.equal(bodies, CANYON.bodies.first, `the canyon's own count at once (${bodies} bodies, the ladder's mix of ${one})`); assert.ok(swarm.some((q) => q.squad), 'the swarm packs squads');
   assert.ok(swarm.every((q) => q.spread === CANYON.spread && q.dens === CANYON.dens), 'risen with the canyon\'s scatter, drawn light');
+  { const column = [250, 251].slice(0, Math.max(1, Math.round(2 * CANYON.fill)));   // the deepest `fill` of this world's two-cell floor
+    assert.ok(swarm.every((q) => column.includes(q.cell)) && column.every((c) => swarm.some((q) => q.cell === c)), `a column along the deep floor, every cell of it taken (2026-10-15; ${JSON.stringify(column)})`); }
   w.spawn(pulse);
   w.step(CANYON.seatAfter - 1);
   assert.equal(w.pass, undefined, 'the pass waits for the canyon to fill');
@@ -212,10 +214,12 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.ok(w.briefs.includes(CANYON.passBrief));
   assert.equal(w.run.state().canyon.phase, 'pass');
   assert.equal(w.run.state().secure, false, 'the swarm is still the sector\'s: it must be burned or fought');
+  assert.ok(w.run.state().breaches.find((b) => b.side === 'canyon').live, 'the hole stands open under the pass for the beam to seal (2026-10-15)');
   w.step(CANYON.pass.overhead + CANYON.gateAfter - 1);
   assert.equal(w.opened.length, 1, 'the gate side still waits while the pass is up');
   w.step(2);
   assert.equal(w.opened.length, 2, 'the pass over, the gate side opens');
+  assert.ok(!w.run.state().breaches.find((b) => b.side === 'canyon').live, 'the pass over and the beam never on it: the hole collapses on its own');
   assert.equal(w.run.canRelease(), true, 'the swarm on the far side does not hold the base\'s pulses');
 }
 {

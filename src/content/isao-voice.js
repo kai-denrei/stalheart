@@ -1532,9 +1532,9 @@ export const ISAO_TRIGGERS = {
   "lines": [
    {
     "id": "ending_next_01",
-    "text": "Ready for the next one? AH AH!",
+    "text": "Ready for the next one?",
     "kind": "spoken",
-    "duration": 2.549
+    "duration": 1.3
    }
   ]
  },

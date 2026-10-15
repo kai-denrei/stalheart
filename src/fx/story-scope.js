@@ -25,6 +25,7 @@ const DIM = 'rgba(223, 232, 238, 0.45)';
 const SOFT = 'rgba(95, 230, 214, 0.42)';
 const FAINT = 'rgba(223, 232, 238, 0.12)';
 const WARN = '#ffb020';
+const HOT = '#ff3b2f';   // an overheated mount (owner, 2026-10-15: "the Rotor overheating should display as red")
 const PLATE = 'rgba(5, 8, 11, 0.62)';
 const TAU = Math.PI * 2;
 const LH = 14;
@@ -86,7 +87,7 @@ export function createStoryScope(root) {
   return {
     // one call a frame. `on` hides everything. meter 0..1 and `locked` come straight off the launcher's own lock;
     // `sx`/`sy` are the held body's own point on the glass, so the inner box closes on THAT body and no other.
-    update({ on, w, h, meter = 0, locked = false, target = null, max = 0, zoom = 1, box = 0, cone = 0, lockTime = 0, flight = 0, ready = true, cooldown = 0, sx = null, sy = null }) {
+    update({ on, w, h, meter = 0, locked = false, target = null, max = 0, zoom = 1, box = 0, cone = 0, lockTime = 0, flight = 0, ready = true, overheated = false, cooldown = 0, sx = null, sy = null }) {
       layer.style.display = on ? '' : 'none';
       // A SEAT THAT IS LEFT FOR ANOTHER SEAT never says off (owner, 2026-10-04: the Quiver's panels stayed up in the gunship): the scope
       // is fed every frame while its mount is seated, so a feed that stops for `STALE` seconds takes the layer down by itself
@@ -180,7 +181,7 @@ export function createStoryScope(root) {
       const lockLine = locked ? { s: 'LOCKED', c: WHITE } : target ? { s: `T-LOCK ${(Math.max(0, 1 - fill) * lockTime).toFixed(2)} S`, c: CYAN } : { s: 'NO TARGET', c: DIM };
       const seeker = ['SEEKER · QUIVER', [`CONE ${cone.toFixed(1)}° HALF`, `MAG ${zoom.toFixed(1)}x`, `MAX ${Math.round(max)} M`, { s: still ? `STATE ${phase.toUpperCase()}` : 'BOX = WHAT IT TAKES', c: DIM }]];
       const launcher = ['LAUNCHER · TALON', [
-        flight > 0 ? { s: `HOLD · ${flight} IN FLIGHT`, c: WARN } : ready && cooldown <= 0 ? { s: 'READY', c: FG } : { s: 'LOADING', c: WARN },
+        overheated ? { s: 'OVERHEATED', c: HOT } : flight > 0 ? { s: `HOLD · ${flight} IN FLIGHT`, c: WARN } : ready && cooldown <= 0 ? { s: 'READY', c: FG } : { s: 'LOADING', c: WARN },
         cooldown > 0 ? `COOLING ${cooldown.toFixed(1)} S` : 'COOLING 0.0 S',
         { s: `TRIGGER ${locked && flight === 0 ? 'ARMED' : 'SAFE'}`, c: locked && flight === 0 ? WHITE : DIM },
       ]];
@@ -234,6 +235,7 @@ export function createScopeFeed(host) {
         lockTime: cfg?.lockTime ?? 0,
         flight: towerSeekers.reduce((n, m) => n + (m.by === tw ? 1 : 0), 0),
         ready: !tw.obj.userData.loading && !tw.overheated,
+        overheated: !!tw.overheated,
         cooldown: Math.max(0, tw.cooldown),
         sx: onGlass ? (sp.x + 1) / 2 * innerWidth : null,
         sy: onGlass ? (1 - sp.y) / 2 * innerHeight : null,

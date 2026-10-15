@@ -102,7 +102,11 @@ export const PEARL_FOLLOW = freeze({
 // record walking 4-11 radii a second (the saucer 23 m/s in a 2 m body) had its body's two-second cycle squeezed into 0.4 s, its transfer into five
 // frames (src/fx/pearl-motion.js measured it). The bursts and the saucer's jink are off for every tier (a burst is a lunge). `reach` is not used any
 // more: PEARL_GAIT.hop sets every tier's stride. Hit points, bounty and heart damage stay the game's (the owner raises the hit points later).
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1, radii: id === 'white' || id === 'yellow' ? 0.7 : 0.8, erratic: false, jink: false }])));
+// THE FIRST ONES REACH FOR THE BASE (owner, 2026-10-15, the opening's whites under the Rotor: "they should move faster, with more obvious/longer
+// appendage stretching towards the base, slow but menacing"): the white tier keeps its slow six-second cycle and takes a longer stride (`hop`, in
+// radii, over PEARL_GAIT.hop: the stalk reaches that much further each hop) and a higher walk cap (`radii`), so a white body covers more ground a
+// hop without hurrying its hops. A tier without `hop` strides PEARL_GAIT.hop
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1, radii: id === 'white' ? 1 : id === 'yellow' ? 0.7 : 0.8, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a

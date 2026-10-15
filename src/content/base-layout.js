@@ -36,7 +36,7 @@ export const ISLANDS = Object.freeze([
   { id: 'farm', w: 20, d: 22, x: 48, z: -30, stage: 9 },
   { id: 'chips', w: 14, d: 12, x: 60, z: 40, stage: 9 },
   { id: 'garage', w: 12, d: 18, x: 31, z: 62, stage: 9 },   // THE GARAGE (owner, 2026-10-03: "there is a new Garage to use"): the A6 open-roof paint bay east of the bays
-  { id: 'launcher', w: 16, d: 30, x: -62, z: 2, stage: 9 },
+  { id: 'launcher', w: 16, d: 30, x: -74, z: 2, stage: 9 },   // 22 m clear of the boards (owner, 2026-10-15, sector 6's launch: "the launcher is too close to the ScoreBoard. Separate them"; was 10 m)
 ]);
 
 // structures: asset, island they stand on, stage, model offset to centre the

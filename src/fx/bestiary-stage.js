@@ -88,8 +88,9 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   const B = S.body;
   const set = PEARL_TIERS.map((t) => ({ ...t, values: { ...t.values, cycleDuration: t.values.cycleDuration * B.cycle } }));
   const gait = { ...PEARL_GAIT, hop: PEARL_GAIT.hop * B.reach, config: { ...PEARL_GAIT.config, timing: B.timing ?? PEARL_GAIT.config.timing } };
+  const pace = Object.fromEntries(Object.entries(PEARL_PACE).map(([id, p]) => [id, p.hop ? { ...p, hop: p.hop * B.reach } : p]));   // a tier's own stride stretched too (the whites, 2026-10-15)
   const pearl = createPearlFamily({ parent: world, tiers: BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set,
-    tune: { ...PEARL_FOLLOW, lod, capacity, leadHops: PEARL_FOLLOW.leadHops * B.lead }, pace: PEARL_PACE, gait, impact: PEARL_IMPACT, hubs: { count: 1, quat: () => null } });
+    tune: { ...PEARL_FOLLOW, lod, capacity, leadHops: PEARL_FOLLOW.leadHops * B.lead }, pace, gait, impact: PEARL_IMPACT, hubs: { count: 1, quat: () => null } });
   pearl.setPlanet(PLANET_R);
   let cutis = null;
   const cutisFamily = () => {

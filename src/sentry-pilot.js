@@ -233,7 +233,7 @@ export function createSentryPilot(root, host) {
   let hitT=0;const cross=panel.querySelector('.pilot-cross');
   return {state,pose,target,attach,select,setView,release,isMap:()=>map,hit(){cross.classList.add('hit');clearTimeout(hitT);hitT=setTimeout(()=>cross.classList.remove('hit'),120);},mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
     aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
-    update(text){panel.querySelector('output').textContent=text;},
+    update(text){panel.querySelector('output').textContent=text;panel.classList.toggle('overheat',/OVERHEATED/.test(text));},   // an overheated mount reads red (owner, 2026-10-15)
     dispose(){vignette.remove();hintOff();dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
   };
 }

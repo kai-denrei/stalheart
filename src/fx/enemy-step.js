@@ -7,7 +7,7 @@ import { waveGap } from '../domain/wave-spread.js';
 import { emergence } from '../domain/breach-waves.js';
 import { stampScare, scarePace, isScared, towardScare, awayExits } from '../domain/impact-scare.js';
 import { SCARE_FREEZE_S } from '../content/explosions.js';
-import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
+import { STORY_EXPEDITIONS, EMERGENCE } from '../content/story-defaults.js';
 import { sinkholeGroundHeight } from '../core/sinkhole-shape.js';
 import { CONTENT } from '../content/runtime.js';
 import { record } from '../diagnostics.js';
@@ -231,7 +231,7 @@ export function createEnemyStep(host) {
       const exits = host.openNeighbors(ci);
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(host.graph().centers[ci])),a=host.whim()()*6.283,r=Math.sqrt(host.whim()())*entry.spread*host.cellSide();return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(host.graph().centers[ci])),a=host.whim()()*6.283,r=(CONTENT.breach.craterRadius*EMERGENCE.rim+Math.sqrt(host.whim()())*entry.spread)*host.cellSide();return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point; FROM ITS LIP (2026-10-15): the rim and the scatter beyond it, never over the hole
         cur: ci, prev: -1,
         next: exits.length ? exits[Math.floor(host.whim()() * exits.length)] : ci,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],

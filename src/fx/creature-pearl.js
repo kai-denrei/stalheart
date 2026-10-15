@@ -65,7 +65,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // the first waves' pace (src/content/pearl-enemies.js PEARL_PACE): a slowed tier hops shorter, so it creeps in frequent hops rather than lunging
     if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
     // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
-    if (gait) Object.assign(config, gait.config, { reach: gait.hop });
+    if (gait) Object.assign(config, gait.config, { reach: pace?.[id]?.hop ?? gait.hop });   // a tier's own stride over the gait's (the whites, 2026-10-15)
     if (IMPACT?.death) config.deathTone = IMPACT.death.tone;   // the dead's darkness (PEARL_IMPACT.death)
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 }), owner = new Array(swarm.capacity).fill(null);
     if (hubs?.reach) swarm.reachLimit = (i, x, z, dx, dz, max) => hubs.reach(swarm.hub[i], x, z, dx, dz, max, owner[i]?.cell ?? -1);

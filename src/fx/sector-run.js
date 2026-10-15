@@ -117,8 +117,9 @@ export function createSectorRun(h) {
   const feastFor = (b) => !!def?.feast && b.side === 'back' && b.wavesReleased === 0;
   function waveOf(b, wave) {
     if (feastFor(b)) return { entries: def.feast.entries, pace: def.feast.pace ?? SECTOR_TIMING.pace };
-    // THE CANYON'S SWARM: `swarm` sector pulses (two breaches' worth each) of the ladder wave `ladder` past the sector's start, at once
-    if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * swell()).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
+    // THE CANYON'S SWARM (2026-10-15): CANYON.bodies (the first time, or again) in the mix of the ladder wave `ladder` past the sector's start, at
+    // once, as a column along the deepest `fill` of the floor from the hole outward (queueOf hands each body its cell)
+    if (b.side === 'canyon') { const floor = canyon?.plan?.floor ?? [], column = floor.slice(0, Math.max(1, Math.round(floor.length * (CANYON.fill ?? 1)))); return { entries: sizeWave(computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * swell()).entries, ENEMY_SPEC, { bodies: Math.round((def.n <= SECTORS.length ? CANYON.bodies.first : CANYON.bodies.again) * swell()), coreShare: def.coreShare ?? 0 }), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens, column: column.length ? column : null }; }
     const flow = def.shape === 'flow', released = b.wavesReleased ?? 0;
     const plan = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * swell()).entries;
     const entries = sizeWave(plan, ENEMY_SPEC, { bodies: Math.round((flow ? def.flow.burst : pulseBodies(def.bodies, released)) * swell()), coreShare: def.coreShare ?? 0 });
@@ -131,12 +132,14 @@ export function createSectorRun(h) {
   // STREAMED over its pulse (`stream` seconds) so the lane fills and never piles
   // A BIG WAVE COMES PARTLY IN SQUADS (src/domain/squads.js): its soft bodies past the first sixty five to an entity; a flow sector whose target is
   // a squads' wave packs every burst
-  function queueOf({ entries: plan, pace, spread = 0.8, dens, gap: fixed = null, stream = 0 }, sp) {
+  // `column`: the cells a wave stands on as it rises (the canyon's floor, deep end first): the k-th entry comes up at the cell its share of the
+  // column falls in, carried as the spawn's `cell` (src/fx/enemy-step.js spawnOne, as the opening's head start is)
+  function queueOf({ entries: plan, pace, spread = 0.8, dens, gap: fixed = null, stream = 0, column = null }, sp) {
     const tune = stream > 0 && def?.flow?.alive >= SQUADS.over ? { ...SQUADS, over: 0 } : SQUADS;
     const entries = packSquads(plan, ENEMY_SPEC, tune), gap = fixed ?? waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);   // a trickle stampede keeps its own spacing
-    const offsets = stream > 0 ? streamOffsets(waveCount(entries), stream) : null;
+    const total = waveCount(entries), offsets = stream > 0 ? streamOffsets(total, stream) : null;
     const out = []; let n = 0;
-    for (const { type, count, squad } of entries) for (let k = 0; k < count; k++) { out.push({ type, sp, at: offsets ? offsets[n] : n * gap, spread, pace, ...(dens ? { dens } : {}), ...(squad ? { squad } : {}) }); n++; }
+    for (const { type, count, squad } of entries) for (let k = 0; k < count; k++) { out.push({ type, sp, at: offsets ? offsets[n] : n * gap, spread, pace, ...(dens ? { dens } : {}), ...(squad ? { squad } : {}), ...(column ? { cell: column[Math.min(column.length - 1, Math.floor((n / total) * column.length))] } : {}) }); n++; }
     return out;
   }
   // one breach sends its next wave: the books count it, a feast is noted, the last pulse is remembered for the breath, and its queue entries come back (null: nothing to send)
@@ -375,8 +378,8 @@ export function createSectorRun(h) {
       if (!(t >= b.openAt)) continue;
       // a breach that opens once the fight is on opens quietly: no establishing dive under a player who is driving or aiming
       pending.splice(pending.indexOf(id), 1);
-      const far = b.side === 'canyon';   // the canyon's breach opens without the establishing dive (the seat's glide is its reveal) and nothing seals it
-      progress(); sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined, keep: far })); b.openedAt = t;
+      const far = b.side === 'canyon';   // the canyon's breach opens without the establishing dive (the seat's glide is its reveal); SOL-82 may seal it (2026-10-15: it stands open until the pass is over)
+      progress(); sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined })); b.openedAt = t;
       if (far) h.brief(def.n <= SECTORS.length ? CANYON.brief : CANYON.briefAgain);   // the first time, or the canyon again
       // THE WALL CAN BE BREACHED (owner, 2026-10-01: "a chekov's gun of sorts"): the side breach cuts its lane and breaks the wall
       if (b.side === 'side' && api.breakSide?.(b.carve ?? [])) { b.broke = true; h.callout(SIDE_BREACH.callout, 'co-victory'); h.brief(SIDE_BREACH.brief); }
@@ -387,6 +390,7 @@ export function createSectorRun(h) {
     for (const b of sector.breaches) {
       const sp = sps.get(b.id);
       if (b.state !== 'open' || !sp || b.wavesReleased < b.wavesPlanned || (h.queued(sp) && !stalled())) continue;
+      if (b.side === 'canyon' && canyon && canyon.phase !== 'done') continue;   // THE HOLE STAYS OPEN for SOL-82's beam (owner, 2026-10-15: "an open sinkhole that we will close with the SOL"); it collapses on its own once the pass is over
       const bonus = spendBreach(sector, b.id, t);
       if (!bonus) continue;
       h.pay(bonus); note({ type: 'score', points: bonus.points, kind: 'bonus' });

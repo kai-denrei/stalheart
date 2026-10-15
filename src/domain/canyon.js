@@ -34,12 +34,13 @@ export function planCanyon({ centers, heart, dist, cellArc, tune, bearings = 16 
     if (!pick || dist[mouth] < pick.d) pick = { axis, mouth, d: dist[mouth] };
   }
   if (!pick) return null;
-  const across = cross(a, pick.axis), floor = [], rock = [];
+  const across = cross(a, pick.axis), floor = [], rock = [], depth = new Map();
   for (const ci of near) {
     const c = centers[ci], x = dot(c, pick.axis) / cellArc, y = Math.abs(dot(c, across)) / cellArc;
     if (x > L / 2) continue;   // past the mouth: the planet's own ground
-    if (x >= -L / 2 && y <= hw) floor.push(ci);
+    if (x >= -L / 2 && y <= hw) { floor.push(ci); depth.set(ci, x); }
     else if (x >= -L / 2 - wall && y <= hw + wall) rock.push(ci);   // the walls, and the cap across the deep end
   }
+  floor.sort((p, q) => depth.get(p) - depth.get(q) || p - q);   // deep end first (2026-10-15): the swarm stands as a column from the hole outward
   return { floor, rock, spawn: nearest(-L / 2 + 1.5, pick.axis), mouth: pick.mouth, axis: pick.axis, centre: a };
 }
