@@ -113,7 +113,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   const liftOf = (e, r0) => (e.breachSource && e.emergeAge < 1.2 ? -(1 - clamp01(e.emergeAge / 1.2)) * follow.emergeRadii * r0 : 0);
   // the point `follow.lead` seconds ahead along the record's walk (cells a second: its spec's speed x its own pace), into `out` (a body's own array)
   function aheadOf(e, out = [0, 0, 0]) {
-    const d = (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * follow.lead * side, p = e.pos, dir = e.dir;
+    const d = (e.walkPace ?? (e.spec?.speed ?? 0) * (e.paceJitter ?? 1)) * follow.lead * side, p = e.pos, dir = e.dir;   // the record's walk as it is this frame (the tune panel's and the knob's multipliers in it, src/fx/enemy-step.js walkPace)
     for (let k = 0; k < 3; k++) out[k] = p[k] + (dir ? dir[k] * d : 0);
     return out;
   }
@@ -121,8 +121,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   // what the record is and how it looks, written into `o` (round two, the fable review: track's options are one object the seam keeps, not three a
   // record a frame; a family reads them and keeps none). `tint` 1 while the slow tower's ice is on the record's stand-in (proxy setTint), else 0
   function lookInto(e, o) {
-    o.opacity = e.obj?.material?.opacity; o.grow = (e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1); o.members = e.members ?? 0;
-    o.speed = (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * metresPerCell; o.tint = e.obj?.userData?.tint != null ? 1 : 0;
+    o.opacity = e.obj?.material?.opacity; o.grow = (e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1) * (e.sizeMul ?? 1); o.members = e.members ?? 0;   // sizeMul: the tune panel's size, live (the body eases to it)
+    o.speed = (e.walkPace ?? (e.spec?.speed ?? 0) * (e.paceJitter ?? 1)) * metresPerCell; o.tint = e.obj?.userData?.tint != null ? 1 : 0;
     // THE HIT FLASH (owner, 2026-10-15: "the body lightly flashing white"): a hit's share left rides the tint channel at 2 and over (the kit's shader
     // reads it as the flash, not the ice), fading over CREATURE_FOLLOW.flash s
     if (e.hitFlash > 0) { o.tint = 2 + e.hitFlash; e.hitFlash = Math.max(0, e.hitFlash - (o.dt || 0) / (follow.flash || 0.18)); }

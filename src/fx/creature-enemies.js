@@ -97,7 +97,7 @@ export function createCreatureEnemies(host) {
     const right = [n[1] * h[2] - n[2] * h[1], n[2] * h[0] - n[0] * h[2], n[0] * h[1] - n[1] * h[0]], side = al > 1e-12 ? (right[0] * away[0] + right[1] * away[1] + right[2] * away[2]) / al : 0;
     return { heading: h, away: al > 1e-12 ? away.map((x) => x / al) : h, across: Math.hypot(...across) > 1e-12 ? across : null, side: Math.max(-1, Math.min(1, side)) };
   }
-  const radiusOf = (e) => (PEARL_BODIES[e.type]?.r0 ?? 2.5) * ((e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1)) * (e.members > 1 ? 1.5 : 1);   // a squad's bodies hit as one bigger
+  const radiusOf = (e) => (PEARL_BODIES[e.type]?.r0 ?? 2.5) * ((e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1)) * (e.sizeMul ?? 1) * (e.members > 1 ? 1.5 : 1);   // a squad's bodies hit as one bigger; the tune panel's size
 
   const ofTier = (e) => e.alive && e.tier === choice.tier && e.spec?.body === choice.family;
   // round two (the fable review: a record whose body was never made cost nothing and still counted, so "fits N" could be inflated): the probe's alive
@@ -288,6 +288,9 @@ export function createCreatureEnemies(host) {
     kill(e, fx) { bodies?.kill(e, fx); },
     // the game's ram (src/fx/enemy-step.js, just before the record's kill) and a cored body's touch on the tank (below)
     rammed, touched, bodyContact,
+    // THE TUNE PANEL'S RETUNE (owner, 2026-10-16: "all instances of it, even those already on screen, should be re-spawned with the new stats"): a live record takes
+    // the tier's size (its body eases to it, its reach and box with it) and hit points (its share kept) in place, no respawn
+    retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1; if (size !== os) { e.sizeMul = size; e.size = e.size * size / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
     step(dt) {
       standGarrison();

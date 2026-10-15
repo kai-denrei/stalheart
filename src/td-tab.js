@@ -5394,7 +5394,13 @@ export function initTdTab(root) {
     shots: () => pilot?.state?.shots ?? 0, station: () => !!gunshipRig.probe().station, arenaField: () => (story?.arena?.cell >= 0 ? (story.arenaField ??= bfsDist(graph.adj, [story.arena.cell], (ci) => dungeon.tags[ci] !== BLOCKED)) : null),
     dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; } });   /* THE ARENA (2026-10-16): the lure's field and its dangers */
   // THE DESCENT (src/fx/descent-host.js, 2026-10-16): the cave game in an iframe over the paused game after the final sector, its outcome back
-  const tunePanel = createTunePanel(root, { storage: globalThis.localStorage, apply: (values) => { const was = hullHits(); applyTune({ tune, params }, values); const now = hullHits(); if (now !== was) hullArmour = Math.max(1, Math.min(now, hullArmour + now - was)); },   /* hits a hull moves this hull's count with it */
+  // the panel's values applied: hits a hull moves this hull's count with it; a tier's size and hit points reach the ones on screen (owner, 2026-10-16)
+  function applyTunePanel(values) {
+    const was = hullHits(); applyTune({ tune, params }, values); const now = hullHits();
+    if (now !== was) hullArmour = Math.max(1, Math.min(now, hullArmour + now - was));
+    for (const e of enemies) if (e.alive && e.tierKey) { const t = tune.tier[e.tierKey]; creatureEnemies.retune(e, { size: t?.size ?? 1, hp: t?.hp ?? 1 }); }
+  }
+  const tunePanel = createTunePanel(root, { storage: globalThis.localStorage, apply: applyTunePanel,
     knobs: () => tuneKnobs({ tune, params, enemies, sector: sectorRun?.defNow() ?? null, seat: pilot?.gunship ? 'gunship' : pilot?.state?.tower?.key ?? null, arena: !!sectorRun?.defNow()?.boss }),
     context: () => ({ rev: document.querySelector('meta[name="rev"]')?.content ?? '', url: location.href, sector: sectorRun?.defNow() ? `${sectorRun.defNow().n} · ${sectorRun.defNow().name}` : '', screen: screenTiers(enemies, PEARL_OF) }),
     record: (name, text) => recordTune({ base: location.pathname.replace(/[^/]*$/, ''), name, text, download: (n, t) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/markdown' })); a.download = n; a.click(); } }) });   /* THE TUNE PANEL (X): what is on screen, tweaked and recorded (owner, 2026-10-16) */
