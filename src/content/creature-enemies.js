@@ -106,6 +106,15 @@ export const CREATURE_DEATH = freeze({ deflate: CUTIS_DEATH.deflate, fade: 6, si
 // field to hold them in the others' reach. THE HEART IS HELD while the probe runs (it takes no damage and the sector can neither be
 // lost nor secured: the probe kept stepping only while the sector did, and the unprotected sector fell at ~40 s).
 // `test`: a long run (the browser step checks the probe keeps stepping for a minute of wall time), a budget it never crosses.
+// THE HUNTERS (owner, 2026-10-15: "a handful of Reeds and small ni-dhaira once in a while during the waves, giving diversity. Non rammable, they
+// actively try to hunt the tank, not too big, smaller in height than the height of the walls"; src/domain/hunters.js): from sector `from`, every
+// `every`-th pulse of a breach adds `count` of the `family`'s `tier` to the wave, never over `alive` alive at once; a hunter walks the exits
+// nearer the tank's cell (src/fx/enemy-step.js, a walking-distance field from the tank once a second) and hurts it on touch as any hard core.
+// The small Reed (r0 2 m, 4 m wide) under a wall of 0.03 planet radii; the family's solver is held to its `budget` ms a frame past which the
+// bodies' clocks slow (CREATURE_FAMILY). Measured on this machine (2026-10-12): ~0.6 ms a solver step a Reed at 240 Hz, so two are ~5 ms a frame
+// at 60 fps before the budget bites: the owner measures on his (?creatures=reed:small&ramp=1&fps=1). ?hunters=0 turns them off; count 0 too.
+export const HUNTERS = freeze({ from: 5, every: 3, count: 1, alive: 2, family: 'reed', tier: 'small', pace: 1 });
+
 export const CREATURE_PROBE = freeze({
   hold: 4, settle: 1, span: 1, thresholdMs: 16.7, overSeconds: 3, hardCap: 2000, startDelay: 6, maxSeconds: 900, perFrame: 40, gapMs: 250,
   baseline: 8, relative: true, overRatio: 0.1, overMs: 1.5,

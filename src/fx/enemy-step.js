@@ -14,7 +14,8 @@ import { CONTENT } from '../content/runtime.js';
 import { record } from '../diagnostics.js';
 import { guardExits } from '../domain/guard-aggro.js';
 import * as THREE from '../../vendor/three.module.js';
-import { BLOCKED } from '../dungeon.js';
+import { BLOCKED, bfsDist } from '../dungeon.js';
+import { huntExits } from '../domain/hunters.js';
 import { sub3, add3, scale3, dot3, norm3, dist3, tangentBasis } from '../vec3.js';
 import { makeDebris, makeDotBurst, makeDotEnemy } from '../units.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from '../enemyspec.js';
@@ -247,7 +248,7 @@ export function createEnemyStep(host) {
         // clump that chose the same exit stay one silhouette all the way in
         paceJitter: (0.9 + host.whim()() * 0.22) * (entry.pace ?? 1),   /* a spawn may set its own march: the story swarm surges up the lane */
         hp: spec.hp * (entry.squad || 1), members: entry.squad || 0, behMult: 1, behUntil: -1, touchCd: -1,
-        slowFactor: 1, slowUntil: -1, guard: entry.guard ?? null,
+        slowFactor: 1, slowUntil: -1, guard: entry.guard ?? null, hunter: !!entry.hunter,   // a hunter walks at the tank (HUNTERS, src/domain/hunters.js)
       });
       const e = host.enemies[host.enemies.length - 1];
       // NO BODY FOR IT (round two, 2026-10-13: a full pool, a cage that failed to load): a record dressed in a Pearl body is made again as its own dot
@@ -262,7 +263,17 @@ export function createEnemyStep(host) {
 
 
   const ENEMY_SPEED = 1.0; // cells/s toward the Heart — FASTER still
+  // THE HUNTERS' FIELD (owner, 2026-10-15; src/domain/hunters.js): while a hunter lives, the walking distance from the tank's cell to every cell,
+  // refreshed once a second or when the tank changes cell; null without a hunter or a tank
+  let hunt = null, huntAt = -9, huntCur = -1;
+  function huntField(tNow) {
+    const cur = host.player?.cur;
+    if (!(cur >= 0) || host.playerDown() || !host.enemies.some((e) => e.alive && e.hunter)) { hunt = null; return; }
+    if (hunt && huntCur === cur && tNow - huntAt < 1) return;
+    hunt = bfsDist(host.graph().adj, [cur], (i) => host.dungeon().tags[i] !== BLOCKED); huntAt = tNow; huntCur = cur;
+  }
   function updateEnemies(dt, tNow) {
+    huntField(tNow);
     releaseSpawns(dt);
     for (const e of host.enemies) {
       if (!e.alive) continue;
@@ -358,6 +369,7 @@ export function createEnemyStep(host) {
         // wobble left so the streams braid but visibly converge
         const exits = host.openNeighbors(e.cur).filter((c) => !host.story()?.sealed(c));   // a closed story gate is a wall to them
         let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, host.graph().centers, e.cur, e.scareFrom); if (away.length) pool = away; }
+        if (!pool && e.hunter && hunt) { const h = huntExits(exits, hunt, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js)
         if (!pool) pool = seekExits(exits, host.dungeon().distToHeart, e.cur, host.whim()(), WALK_BIAS);   // the walk leans on the heart (WALK_BIAS; owner, 2026-10-15: "a much stronger bias to head towards the base")
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (e.guard) pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull: host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, aggro: STORY_EXPEDITIONS.aggro }); else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }

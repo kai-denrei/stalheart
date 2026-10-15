@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-15-hunters-first-version",
+  "date": "2026-10-15",
+  "type": "change",
+  "status": "accepted",
+  "title": "The hunters, a first version (owner's note 11, 2026-10-15): from sector 5 every third pulse of a breach adds one small Reed to its wave, at most two alive, walking the exits nearer the tank by a distance field from its cell; cored, so it hurts to touch and the ram does nothing; ?hunters=0 turns them off; the cost is the owner's to measure",
+  "context": "Owner, 2026-10-15: '11) if it is not too expensive for fps, let's introduce a handful of Reeds and small ni-dhaira once in a while during the waves, giving diversity. Non rammable, they actively try to hunt the tank, not too big, smaller in height than the height of the walls.' Filed first in 2026-10-15-notes-to-investigate-hunters-fps-gate-slopes with the plan this entry builds. What existed: the Reed family in the story through the same seam as the Pearl set (src/fx/creature-reed.js, ?creatures=reed:<tier>), ENEMY_SPEC.reed rammable false, a record steering by distToHeart at every cell (src/fx/enemy-step.js), nothing hunting the tank; the small tier r0 2 m (4 m wide) under a wall of 0.03 planet radii (~3.6 m); the family's solver held to CREATURE_FAMILY.budget (10 ms a frame) past which every body's clock slows; a Reed measured at ~0.6 ms a solver step at 240 Hz on this machine (2026-10-12-creature-enemies-pass-two-reeds).",
+  "outcome": "src/domain/hunters.js (pure): huntersDue({ n, pulse, alive }, HUNTERS) how many a breach's pulse adds (from sector `from`, every `every`-th pulse of that breach, `count` at a time, never over `alive` alive); huntExits(exits, hunt, cur) the exits nearer the tank, every exit at the tank's cell, when it cannot be reached or when none is nearer. HUNTERS (src/content/creature-enemies.js): from 5, every 3, count 1, alive 2, family reed, tier small, pace 1. src/fx/sector-run.js hands the wave hook the sector's n and the pulse (released + 1); src/fx/creature-enemies.js withHunters appends the due hunters to the wave's queue entries (the breach's own source, 0.6 s apart, marked `hunter`; not in the canyon, not under ?hunters=0) and reports { alive, sent } in its state. src/fx/enemy-step.js: a record keeps `hunter`; while one lives and the tank stands, a walking-distance field from the tank's cell (bfsDist from player.cur over the open cells) is refreshed once a second or when the tank changes cell, and a hunter's exit is drawn from huntExits before the walk's own rule. The Reed hurts the tank on touch as any hard core (its touch stays on the record's point) and the ram does nothing to it. The small Nih-Dairia is not sent: the huge tier runs at 240 Hz always and one would be the frame. --sector-probe prints 'hunt alive/sent'.",
+  "alternatives": [
+    "Hunters that chase the tank's position directly (a straight line): rejected; the records walk the cell graph, and the Reed kit's pursuit already hunts the record's aim point, so a walking-distance field is the whole steering.",
+    "Count hunters per pulse across both breaches: not done; every breach's third pulse adds one, the alive cap of two holds the total.",
+    "Ship them off by default until measured: rejected; the owner asked for them, the family's budget holds the frame, and ?hunters=0 (or HUNTERS.count 0) is the switch."
+  ],
+  "evidence": [
+    "node test/hunters.mjs, test/enemy-step.mjs, test/sector-run.mjs; npm test (258), npm run check, npm run build",
+    "browser, 2026-10-15: SECTOR=5 PLAY=1 --sector-probe (an ideal defender culling every 2 s): 'hunt 2/2' at the third pulse of both breaches (34 s), 2/4 at the sixth, 2/6 at the ninth, two alive at a time and dead within the probe's next cull; --sectors, --squads, --pearl-story green after it"
+  ],
+  "supersedes": []
+}

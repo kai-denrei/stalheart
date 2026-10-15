@@ -151,7 +151,7 @@ export function createSectorRun(h) {
     if (wave.stampede) { h.callout(wave.stampede === 'trickle' ? SECTOR_STAMPEDE.trickleCallout : SECTOR_STAMPEDE.callout, 'co-victory'); stampedes++; }
     const q = queueOf(wave, sp);
     if (b.side !== 'canyon') lastPulse = { sent: true, size: (lastPulse.sent && lastPulse.at === t ? lastPulse.size : 0) + q.reduce((n, e) => n + (e.squad || 1), 0), at: t };
-    return { r, entries: api.creatures?.(q, b.side, { released, planned }) ?? q };   // ?creatures=<family>:<tier> takes its share of the wave; the Pearl set paces its climb (src/fx/creature-enemies.js)
+    return { r, entries: api.creatures?.(q, b.side, { released, planned, n: def.n, pulse: released + 1 }) ?? q };   // n, pulse: the hunters' due (src/fx/creature-enemies.js)   // ?creatures=<family>:<tier> takes its share of the wave; the Pearl set paces its climb (src/fx/creature-enemies.js)
   }
   // how many of the sector's bodies the next pulse would send from the breaches that are open now
   function nextPulseSize() {

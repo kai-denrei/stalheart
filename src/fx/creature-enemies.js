@@ -24,7 +24,8 @@
 // reads null, nothing is built and every call is a no-op: the dot clouds as they were.
 import * as THREE from '../../vendor/three.module.js';
 import { ENEMY_SPEC } from '../enemyspec.js';
-import { CREATURE_TIERS, CREATURE_FOLLOW, CREATURE_DEATH, CREATURE_PROBE, tierSize } from '../content/creature-enemies.js';
+import { CREATURE_TIERS, CREATURE_FOLLOW, CREATURE_DEATH, CREATURE_PROBE, HUNTERS, tierSize } from '../content/creature-enemies.js';
+import { huntersDue } from '../domain/hunters.js';
 import { STORY_RECIPE } from '../content/story-defaults.js';
 import { parseCreatures, shareOf, spreadPicks } from '../domain/creature-ramp.js';
 import { createCreatureBodies } from './creature-bodies.js';
@@ -217,13 +218,40 @@ export function createCreatureEnemies(host) {
       const o = (byType[e.type] ??= { pearl: 0, dots: 0, tier: PEARL_OF[e.type] ?? null });
       if (e.spec?.body === 'pearl') o.pearl++; else o.dots++;
     }
-    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: climbing ? { last: lastWave } : 'full', bodies: bodies?.stats() ?? null };
+    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: climbing ? { last: lastWave } : 'full', bodies: bodies?.stats() ?? null, hunters: { alive: aliveHunters(), sent: hunters.sent } };
   }
 
   // THE PEARL SET AT BOOT (2026-10-14, the story's default): the first soft tier's swarm and the first cored one's made now, so their membrane, shadow
   // and pearl materials are on the scene for the program warm (src/fx/program-warm.js) before a body is drawn; the dot clouds' materials were
   // warmed at boot the same way, and --gunship's first seat linked six Pearl programs without it
   if (pearl) make().prepare('pearl', [PEARL_TIERS.find((t) => !t.cored)?.id, PEARL_TIERS.find((t) => t.cored)?.id].filter(Boolean));
+
+  // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
+  // canyon's swarm: it rises at the far side of the world, where the heart's plane is singular)
+  function replaceOf(entries, side, wave) {
+    if (pearl) return climb(entries, wave);
+    if (!choice || side === 'canyon' || !entries?.length) return entries;
+    const singles = [];
+    entries.forEach((q, i) => { if (!q.squad && !q.guard && !q.harmless) singles.push(i); });
+    const picks = spreadPicks(singles.length, shareOf(singles.length, CREATURE_TIERS[choice.family][choice.tier].count));
+    if (!picks.length) return entries;
+    const out = entries.slice(), spec = tierSpec(choice.family, choice.tier);
+    for (const p of picks) { const i = singles[p]; out[i] = { ...out[i], type: choice.family, spec, tier: choice.tier }; }
+    return out;
+  }
+  // THE HUNTERS (owner, 2026-10-15; HUNTERS, src/domain/hunters.js): a breach's due pulse adds a few of the family's tier to its wave, marked
+  // `hunter` (the enemy loop walks them at the tank, src/fx/enemy-step.js); not in the canyon, not under ?hunters=0
+  const hunters = { sent: 0 };
+  const aliveHunters = () => host.enemies.reduce((n, e) => n + (e.alive && e.hunter ? 1 : 0), 0);
+  function withHunters(out, side, wave) {
+    if (side === 'canyon' || host.flags.hunters === '0' || !out?.length || !wave) return out;
+    const n = huntersDue({ n: wave.n, pulse: wave.pulse, alive: aliveHunters() }, HUNTERS);
+    if (!n) return out;
+    const spec = tierSpec(HUNTERS.family, HUNTERS.tier), base = out[0];
+    const extra = Array.from({ length: n }, (_, k) => ({ sp: base.sp, at: (base.at ?? 0) + k * 0.6, spread: base.spread ?? 0.8, pace: HUNTERS.pace, type: HUNTERS.family, spec, tier: HUNTERS.tier, hunter: true }));
+    hunters.sent += n;
+    return [...out, ...extra];
+  }
   return {
     choice, pearl,
     // the enemy loop's factory: a creature type gets a proxy for e.obj, and its body once the record exists
@@ -267,19 +295,7 @@ export function createCreatureEnemies(host) {
       if (pearl && bodies && host.tank?.()?.pos) hullContact.settle(host.tank().pos);
       probe?.step(dt);
     },
-    // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
-    // canyon's swarm: it rises at the far side of the world, where the heart's plane is singular)
-    replace(entries, side, wave) {
-      if (pearl) return climb(entries, wave);
-      if (!choice || side === 'canyon' || !entries?.length) return entries;
-      const singles = [];
-      entries.forEach((q, i) => { if (!q.squad && !q.guard && !q.harmless) singles.push(i); });
-      const picks = spreadPicks(singles.length, shareOf(singles.length, CREATURE_TIERS[choice.family][choice.tier].count));
-      if (!picks.length) return entries;
-      const out = entries.slice(), spec = tierSpec(choice.family, choice.tier);
-      for (const p of picks) { const i = singles[p]; out[i] = { ...out[i], type: choice.family, spec, tier: choice.tier }; }
-      return out;
-    },
+    replace: (entries, side, wave) => withHunters(replaceOf(entries, side, wave), side, wave),   // then the hunters (HUNTERS, below)
     // damageEnemy's every hit, after the damage: a sentry's on a creature record is counted (and its kill, once)
     hit(e, src, dmg) {
       if (e.spec?.body && e.alive && dmg > 0) e.hitFlash = 1;   // the body lights for CREATURE_FOLLOW.flash s (owner, 2026-10-15; src/fx/creature-bodies.js lookInto)
