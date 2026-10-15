@@ -371,7 +371,19 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 64 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 66 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Twelve hundred Pearl bodies in the game, measured in a headed Chrome on the M4: a column marching down the lane holds the frame to the gate; a pile of them at the hull's feet is GPU-bound at 20-30 fps; the crowd cap sinks to 400 under it (owner, 2026-10-15: 'confirm that we can have up to 1200 enemies as in our dev lab tests')
+
+`2026-10-15-pearl-crowd-measured-headed` · experiment · **observed**
+
+Owner, 2026-10-15, unifying :8159 and :8162 on main 383006a6 (every serving worktree fast-forwarded to it): '3) confirm that we can have up to 1200 enemies as in our dev lab tests'. The lab's reading (2026-10-14-swarm-lab-pearl-mode, PEARL_WAVES's comment) was 1,200 bodies at ~58 fps in a 480 m file at the game's camera height, 60 draw calls. Headless frame times mean nothing, so three probes ran in a HEADED Chrome on this machine (scratch scripts crowd-view.mjs and crowd-lane.mjs beside the harness's --crowd-probe, the page index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&fps=1#td, the Pearl default, sectorQuiet, spawnFodder 70% amoeba / 20% ghost / 10% phage, the chase view). The window's frame sat at exactly 20.0 ms at rest in every run (the compositor's cadence here), so 20 ms is the floor, not a cost.
+
+### One branch for the Pearl game (main, every serving tree on it) and the rework ahead: the difficulty progression, the timing of waves, the count the frame holds, the progression and story line (owner, 2026-10-15); the first design question open
+
+`2026-10-15-one-branch-and-the-rework-ahead` · decision · **proposed**
+
+Owner, 2026-10-15: '8159 and 8162, let's unify everything to one branch, the one with the new enemies and no half-dot, and we will re-work 1) the difficult progression, 2) the timing of waves (since they are smaller), 3) confirm that we can have up to 1200 enemies as in our dev lab tests, 4) progression and story line.' Then: 'sync, then we will close all localhosts we are not using and re-open one with a fresh terminal'. main 383006a6 already held every side branch (pearl-default, bestiary-feel, bestiary, swarm-lab-pearl, pearl-enemies: 0 ahead); only refactor-round-2 (10 ahead, 42 behind, from pearl-enemies 8bf59188) carries unmerged work. Where the rework's knobs sit today: SECTORS (five fixed sectors: THE LANE, THE LONG LANE, THE CANYON, THE PRESS, THE SIDE WALL; threat 1.2 -> 2.2, pulse 16 -> 13 s, ladderStart 0 -> 5), SECTOR_HOLD until SECTOR_DOOR (7-8) with THE CANYON AGAIN before it, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR (ladderCap 11); SECTOR_TIMING (pace 1.5, soft x2 at sector 1 up to x8, aliveBudget 2500, stall 20); CROWD_CAP (start 1500, min 400, max 3500, slowMs 36); PEARL_WAVES (scale .15 -> 1, pace .6 -> 1 over a breach's planned waves); PEARL_PACE (0.7-0.8 radii/s, every tier), PEARL_GAIT; ENEMY_SPEC hit points (the game's old ones under the Pearl bodies; the owner said he would raise them, 2026-10-13 round four). The story line past the handover is the sector briefs (two Isao lines each) and the debrief; nothing yet narrates why the swarm grows.
 
 ### --defense's 'no unpiloted tower kill' bisects to d0a7e640 (ground events in SAT-3's feed instead of the camera cut): under the feed the breach's crowd wanders at its sinkhole and never walks to the Rotor; &cuts=dive on the same build walks and kills; the feed's render pass, the reveal pose and the handler's gates are not it. And --story was never a regression: its landmark counts were stale since 2026-09-14 (fixed)
 
