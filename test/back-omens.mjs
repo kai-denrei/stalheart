@@ -1,6 +1,7 @@
+import { sectorDef } from '../src/domain/sectors.js';
 import assert from 'node:assert/strict';
 import { omenDue } from '../src/domain/back-omens.js';
-import { BACK_OMENS, SECTORS } from '../src/content/sectors.js';
+import { BACK_OMENS, SECTORS, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_CANYON_AGAIN, SECTOR_DOOR, SECTOR_GENERATOR } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { createBackOmen } from '../src/fx/back-omen.js';
 import { BACK_SCRAMBLE } from '../src/content/sectors.js';
@@ -16,7 +17,10 @@ assert.equal(omenDue(BACK_OMENS, { sector: 'before', pulse: 4, last: true }, fir
 assert.equal(omenDue(BACK_OMENS, { sector: null, pulse: 2, last: false }, new Set()), null, 'a sector not before the door is quiet');
 assert.ok(BACK_OMENS.every((o) => o.sector === 'before'), 'every omen comes the sector before the door falls');
 assert.ok(BACK_OMENS.every((o) => BRIEFS[o.brief]?.lines.length === 2), 'each omen has Isao\'s two lines');
-assert.ok(BACK_OMENS.every((o) => o.pulse === 'last' || SECTORS.every((s) => o.pulse <= s.waves)), 'every omen falls inside any sector it can come in');
+// the sector before the door is a held one (a flow since 2026-10-15: its waves are its bursts, src/domain/sectors.js sectorDef)
+{ const arc = { hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, canyonAgain: SECTOR_CANYON_AGAIN };
+  const before = [SECTOR_DOOR.earliest, SECTOR_DOOR.latest].map((doorAt) => sectorDef(doorAt - 1, SECTORS, SECTOR_GENERATOR, { ...arc, doorAt }));
+  assert.ok(BACK_OMENS.every((o) => o.pulse === 'last' || before.every((s) => o.pulse <= s.waves)), 'every omen falls inside any sector it can come in'); }
 // the fx plays an omen over the controller's instruments, and the scramble rings the back sockets
 {
   const log = [];

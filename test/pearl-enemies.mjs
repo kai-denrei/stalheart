@@ -201,33 +201,32 @@ console.log('PASS the switch: ?creatures=pearl dresses a mapped entry in its bod
 // ---- the build-up (owner, 2026-10-14: slower and fewer at the beginning before becoming more intense) ----
 {
   const near = (a, b, m) => assert.ok(Math.abs(a - b) < 1e-9, `${m}: ${a} vs ${b}`);
-  const table = { scale: { first: 0.2, last: 0.8 }, pace: { first: 0.5, last: 1 } };
-  assert.deepEqual(pearlBuildUp({ released: 0, planned: 4 }, table), { f: 0, scale: 0.2, pace: 0.5 }, 'wave 0 at first');
-  assert.deepEqual(pearlBuildUp({ released: 3, planned: 4 }, table), { f: 1, scale: 0.8, pace: 1 }, 'the last planned at last');
-  { const r = pearlBuildUp({ released: 1, planned: 4 }, table); near(r.f, 1 / 3, 'a third of the climb'); near(r.scale, 0.4, 'the scale straight between'); near(r.pace, 0.5 + 0.5 / 3, 'the pace straight between'); }
+  const table = { pace: { first: 0.5, last: 1 } };   // 2026-10-15 (sector shapes): the pace is the one dial; the count is the sector's row
+  assert.deepEqual(pearlBuildUp({ released: 0, planned: 4 }, table), { f: 0, pace: 0.5 }, 'wave 0 at first');
+  assert.deepEqual(pearlBuildUp({ released: 3, planned: 4 }, table), { f: 1, pace: 1 }, 'the last planned at last');
+  { const r = pearlBuildUp({ released: 1, planned: 4 }, table); near(r.f, 1 / 3, 'a third of the climb'); near(r.pace, 0.5 + 0.5 / 3, 'the pace straight between'); }
   assert.equal(pearlBuildUp({ released: 9, planned: 4 }, table).f, 1, 'past the plan stays at last');
   assert.equal(pearlBuildUp({ released: 0, planned: 1 }, table).f, 1, 'one wave planned: no build-up to make');
   assert.equal(pearlBuildUp(undefined, table).f, 1, 'no wave said: at last');
-  assert.ok(PEARL_WAVES.scale.first < PEARL_WAVES.scale.last && PEARL_WAVES.pace.first < PEARL_WAVES.pace.last && PEARL_WAVES.pace.last <= 1, 'the table climbs');
-  // through the switch: a wave of twenty singles of a type and a squad; the first wave thin and slow, the last at the table's last
+  assert.ok(!PEARL_WAVES.scale && PEARL_WAVES.pace.first < PEARL_WAVES.pace.last && PEARL_WAVES.pace.last <= 1, 'the table climbs in pace alone');
+  // through the switch: a wave of twenty singles of a type and a squad; every body kept, the first wave slow, the last at the table's last
   const scene = new THREE.Scene(), enemies = [], heartPoint = [0, 0, 690], far = [0, 0, -690], nearP = [100, 0, 680];
   const host = { scene, root: null, flags: { creatures: 'pearl' }, camera: null, canvasHeight: () => 800, enemies, field: () => null, spawn: () => null,
     heart: () => [heartPoint, 0, 1], ground: () => ({ centers: [heartPoint, nearP, far] }), perf: () => null, perfOn() {}, damage() {}, build: () => null };
   const wave = () => [...Array(20)].map((_, i) => ({ type: 'phantom', sp: { ci: 1, alive: true }, at: i, pace: 1.5 })).concat([{ type: 'amoeba', squad: 5, sp: { ci: 1, alive: true }, at: 20, pace: 1.5 }]);
-  const keptOf = (scale) => Math.max(1, Math.round(20 * scale));
   const ce = createCreatureEnemies(host);
   const first = ce.replace(wave(), 'gate', { released: 0, planned: 4 });
-  assert.equal(first.length, keptOf(PEARL_WAVES.scale.first) + 1, 'wave 0 keeps the first share of the singles and the squad whole');
+  assert.equal(first.length, 21, 'wave 0 keeps every body: the count is the sector\'s');
   assert.ok(first.some((q) => q.squad === 5), 'the squad is kept'); first.forEach((q) => near(q.pace, 1.5 * PEARL_WAVES.pace.first, 'wave 0 marches at the first pace of the plan\'s'));
   const last = ce.replace(wave(), 'gate', { released: 3, planned: 4 });
-  assert.equal(last.length, keptOf(PEARL_WAVES.scale.last) + 1, 'the last wave keeps the last share'); last.forEach((q) => near(q.pace, 1.5 * PEARL_WAVES.pace.last, 'at the last pace'));
-  assert.equal(ce.replace(wave(), 'gate').length, keptOf(PEARL_WAVES.scale.last) + 1, 'no wave said: at last');
-  const st = ce.state(); assert.equal(st.waves.kept, first.length + 2 * last.length); assert.equal(st.waves.cut, 3 * 21 - st.waves.kept); assert.equal(st.waves.last.f, 1);
+  assert.equal(last.length, 21, 'the last wave keeps every body too'); last.forEach((q) => near(q.pace, 1.5 * PEARL_WAVES.pace.last, 'at the last pace'));
+  assert.equal(ce.replace(wave(), 'gate').length, 21, 'no wave said: at last');
+  const st = ce.state(); assert.equal(st.waves.last.f, 1); assert.equal(st.waves.last.pace, PEARL_WAVES.pace.last);
   const full = createCreatureEnemies({ ...host, flags: { creatures: 'pearl', waves: 'full' } });
   const whole = full.replace(wave(), 'gate', { released: 0, planned: 4 }); assert.equal(whole.length, 21, '&waves=full keeps the wave'); whole.forEach((q) => assert.equal(q.pace, 1.5, 'at its own pace')); assert.equal(full.state().waves, 'full');
   full.dispose(); ce.dispose();
 }
-console.log('PASS the build-up: a breach\'s waves climb from the table\'s first to its last in share and pace over the waves it has planned, the squad kept whole, &waves=full off');
+console.log('PASS the build-up: a breach\'s waves climb from the table\'s first pace to its last over the waves it has planned, every body kept (the count is the sector\'s), &waves=full off');
 
 // ---- round two: the fable review's fixes ----
 {

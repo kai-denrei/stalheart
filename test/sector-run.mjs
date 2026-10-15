@@ -48,11 +48,17 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(w.opened[1].quiet, true, 'a breach opening mid-fight opens quietly');
   assert.equal(w.run.pulseOver([{ guard: { site: 'x' } }]), true, 'guards are not the sector\'s');
   assert.equal(w.run.pulseOver([{ sp: w.opened[0] }]), false);
-  // the budget: a crowded field holds the next pulse, an empty one never does
-  for (let i = 0; i < SECTOR_TIMING.aliveBudget; i++) w.enemies.push({ alive: true, guard: null });
-  assert.equal(w.run.canRelease(), false, 'a full field holds the next pulse');
+  // THE BREATH (2026-10-15, sector shapes): the next pulse waits for the sector's pulse to pass AND the last one to be mostly dead, or its ceiling
+  w.spawn(first);
+  assert.equal(w.run.canRelease(), false, 'the pulse has not passed');
+  w.step(SECTORS[0].pulse + 1);
+  assert.equal(w.run.canRelease(), false, 'the wave is still up: the breath holds');
+  for (const e of w.enemies.slice(0, Math.ceil(w.enemies.length * (1 - SECTORS[0].breath.at)))) e.alive = false;
+  assert.equal(w.run.canRelease(), true, 'mostly dead and the pulse passed: due');
+  w.enemies.forEach((e) => { e.alive = true; });
+  w.step(SECTORS[0].breath.max);
+  assert.equal(w.run.canRelease(), true, 'the ceiling: a player who falls behind is stacked');
   w.enemies.length = 0;
-  assert.equal(w.run.canRelease(), true, 'an empty field takes it');
 }
 
 // THE BACK DOOR: the feast first, the clock held while it is fought, then the scramble and the gate side

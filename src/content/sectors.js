@@ -14,11 +14,22 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // sector's threat and its ladder window do the growing.
 //
 // THE CLIMB (owner, 2026-09-16: "slow start, then it should start getting hectic... hundreds of low levels, a few more hardcores").
-// The old table capped every programme at ladder 8, BELOW computeWavePlan's invasion surge — and the surge is the only thing in the
-// ladder that puts low-belt bodies on the ground in the hundreds (it re-floods amoeba and ghost on top of the wave). Capping under
-// it meant the late waves SHRANK: a sector-3 wave went 90 bodies, then 66, because the headline turned non-rammable and its density
-// rule halves instead of multiplying. So the windows now climb THROUGH the surge, and the hard cores are a small explicit count
-// (`hardcores`) rather than the twenty-odd solid bodies the surge throws in on its own.
+// THE SHAPES (owner, 2026-10-15, asked what a late sector should feel like under the Pearl set: "both by sector"; spec
+// docs/superpowers/specs/2026-10-15-sector-shapes-design.md, rules src/domain/sector-shape.js). Every row sizes its waves IN BODIES here;
+// the ladder (computeWavePlan at the breach's ladder wave) chooses only which types a wave brings. Before this the count was the ladder's
+// plan times the threat, times a soft factor (x8 by sector 7), times the invasion surge, times the stampede's flood: 4,000 to 5,600 a
+// wave and 30,000 a sector from sector 8, which the crowd cap dripped out (2026-10-15-pearl-crowd-measured-headed: a column of 1,200
+// holds the frame, a pile at the hull does not).
+// shape 'pulse' (S1-S3): `bodies` is the count per wave PER BREACH (the last entry repeats past the list); the next wave arms `pulse`
+//   seconds after the last release once the field is at or under breath.at of that pulse's size (a breath to build and repair), or
+//   breath.max seconds after it whatever is alive (a player who falls behind is stacked). The stampede marks wave 2 a trickle and
+//   wave 4 a flood (SECTOR_STAMPEDE) without multiplying.
+// shape 'flow' (THE PRESS and after: its brief already said "The lane is never empty now."): `flow` is for the WHOLE FIELD: every pulse
+//   sends `burst` bodies from every open breach, streamed over `pulse` seconds, and the next pulse arms as soon as the field is under
+//   `alive` (clamped by the crowd cap); the books count ceil(total / breaches / burst) waves a breach, so HELD, QUICK HANDS and the
+//   forfeit work as before. The lane sits between the target and the target plus a burst a mouth and never empties.
+// coreShare: the share of a sized wave that is hard cores (the plan's cored types in their proportions, one of each while it fits);
+//   the flood's cores and `hardcores` ride on top.
 // hardcores: how many solid cores ride every wave once hardcoresEveryWave is on.
 // THE RAMP, THEN THE SIDE WALL, THEN THE BACK DOOR (owner, 2026-10-01: "Backdoor wave too aggressive. Let's delay it. First we run
 // more regular waves. Ramp up the difficulty. Then after 4 waves there's a « side breach » ... The backdoor breach comes towards the
@@ -27,35 +38,35 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // arc: four regular sectors on the gate side, four pulses each, climbing; then sector 5. Past them the run holds on SECTOR_HOLD
 // sectors until the back door is due (SECTOR_DOOR), then THE BACK DOOR, BOTH WALLS, and SECTOR_GENERATOR's sectors from there.
 export const SECTORS = freeze([
-  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.2, pulse: 16, held: { kg: 40, points: 400 },
+  { n: 1, name: 'THE LANE', shape: 'pulse', bodies: [10, 20, 30, 50], breath: { at: 0.25, max: 60 }, coreShare: 0, breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.2, pulse: 12, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
     brief: ['Two mouths out on the lane. They come four times each.', 'Close one too early and we lose the biomass it would have paid.'] },
-  { n: 2, name: 'THE LONG LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 1, threat: 1.5, pulse: 15, held: { kg: 45, points: 450 },
+  { n: 2, name: 'THE LONG LANE', shape: 'pulse', bodies: [20, 35, 50, 90], breath: { at: 0.25, max: 55 }, coreShare: 0, breaches: { gate: 2 }, waves: 4, ladderStart: 1, threat: 1.5, pulse: 10, held: { kg: 45, points: 450 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: null,
     brief: ['More of them this time, and closer together.', 'Keep the lane clear and the gate whole.'] },
   // THE CANYON (owner, 2026-10-01: "let's have it used the first time at the antipode, far from all other sentries; a huge number of
   // ennemies, 5x the usual, in a long canyon, easy target for the SOL. a satisfying use of its immense power"; asked, he chose this
   // sector for it, survivors marching on the base, the player seated with a glide). One gate breach keeps the base busy; the swarm
   // comes up at the far end of a canyon cut at the antipode (CANYON) and SOL-82's first pass is laid over it
-  { n: 3, name: 'THE CANYON', breaches: { gate: 1 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 14, held: { kg: 50, points: 500 }, canyon: true,
+  { n: 3, name: 'THE CANYON', shape: 'pulse', bodies: [30, 50, 70, 120], breath: { at: 0.25, max: 50 }, coreShare: 0.03, breaches: { gate: 1 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 10, held: { kg: 50, points: 500 }, canyon: true,
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'SOL-82 online',
     brief: ['A tremor on the far side of the world. A swarm, massing in a canyon.', 'The gate waits for you. The far side does not.'] },
-  { n: 4, name: 'THE PRESS', breaches: { gate: 2 }, waves: 4, ladderStart: 4, threat: 2.1, pulse: 13, held: { kg: 55, points: 550 },
+  { n: 4, name: 'THE PRESS', shape: 'flow', flow: { alive: 450, total: 1800, burst: 150, pulse: 6 }, coreShare: 0.03, breaches: { gate: 2 }, ladderStart: 4, threat: 2.1, pulse: 6, held: { kg: 55, points: 550 },
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
     brief: ['They are pressing harder. The lane is never empty now.', 'Spend what you have. The colony can print more.'] },
   // THE SIDE WALL (owner, 2026-10-01: "after 4 waves there's a « side breach ». Problem, but still within range of some of the existing
   // towers so easier to manage. This is a chekov's gun of sorts, it reveals that the walls can be breached"). `side` is the first key,
   // so the side breach is picked and opened first: it comes up outside the gate's wall, inside the front sentries' reach, and cuts
   // its way to the wall (SIDE_BREACH). Isao prints the wall shut again once the lane is quiet.
-  { n: 5, name: 'THE SIDE WALL', breaches: { side: 1, gate: 1 }, waves: 4, ladderStart: 5, threat: 2.2, pulse: 13, held: { kg: 60, points: 600 },
+  { n: 5, name: 'THE SIDE WALL', shape: 'flow', flow: { alive: 550, total: 2400, burst: 180, pulse: 6 }, coreShare: 0.05, breaches: { side: 1, gate: 1 }, ladderStart: 5, threat: 2.2, pulse: 6, held: { kg: 60, points: 600 },
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a breach through the wall',
     brief: ['Something is digging beside the gate. Close to the sentries.', 'One mouth on the lane, and one where it comes up.'] },
 ]);
 
 // THE STAMPEDE (owner, 2026-10-02: the ramming is the fun, so more waves of weak bodies, bigger ones, a few hard cores to force the
-// shield): every `every`-th wave of a gate or back breach is its plan's rammable bodies `size` times over with `cores` x `core` in them
-// (src/domain/stampede.js); `callout` as it leaves the mouth
-// trickle / trickleGap / tierSize / tierCores / trickleCallout (2026-10-03): the soft trickle between floods and the automation's ramp (src/domain/stampede.js stampedeWave)
+// shield): in a PULSE sector every `every`-th wave of a gate or back breach is a stampede, alternating a TRICKLE (the wave's bodies one
+// every `trickleGap` seconds, so a steady rammer can keep the combo alive; `trickleCallout`) and a FLOOD (`cores` x `core` riding in it;
+// `callout`) (src/domain/stampede.js). THE SIZE IS THE ROW'S (2026-10-15): neither kind multiplies the wave any more
 // THE CROWD FITS THE MACHINE (src/domain/crowd-cap.js): bodies alive at once start at `start` and follow the frame between `min` and
 // `max` (the gunship's own aliveBudget, 3500); under 28 fps (36 ms) it comes down 15% a second, over 42 fps (24 ms) it goes up 6%
 // THE SQUADS (owner, 2026-10-05: "one unit 'representing' 5 or so, maybe elongated shape, and every n unit is one of those, visually
@@ -71,7 +82,7 @@ export const SECTORS = freeze([
 // apart, each with its own wobble phase
 export const SQUADS = freeze({ over: 300, single: 60, share: 0.2, runs: 3, size: 5, dens: 0.6, spacing: 0.55, stagger: 0.7, reach: 1.6, area: ['strike', 'laser'] });
 export const CROWD_CAP = freeze({ start: 1500, min: 400, max: 3500, slowMs: 36, fastMs: 24, down: 0.85, up: 1.06, every: 1 });
-export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barbed', fallback: 'amoeba', callout: 'STAMPEDE — RAM THEM', trickle: 2, trickleGap: 1.3, trickleMax: 24, tierSize: 1, tierCores: 2, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
+export const SECTOR_STAMPEDE = freeze({ every: 2, cores: 2, core: 'barbed', callout: 'STAMPEDE — RAM THEM', trickleGap: 1.3, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
 
 // THE CANYON, in cells: `length` long and open `halfWidth` either side of its centre line, `wall` cells of rock beyond that and
 // across its deep end (src/domain/canyon.js). The swarm is `swarm` times a sector pulse of the ladder wave `ladder` past the sector's
@@ -99,8 +110,9 @@ export const CANYON = freeze({ length: 48, halfWidth: 1.2, wall: 3, swarm: 5, la
 export const SIDE_BREACH = freeze({ minWall: 2.5, maxWall: 5, reach: 3.5, gateClear: 3.5, clearRadius: 0.6, gap: 2, brief: 'side_breach', callout: 'THE WALL IS BREACHED' });
 
 // BETWEEN THE RAMP AND THE BACK DOOR: while the door is not due, each sector past SECTORS is a held one on the gate side, its threat
-// climbing threatStep a sector from the last of SECTORS, its programme starting at ladderStart
-export const SECTOR_HOLD = freeze({ name: 'SECTOR', breaches: { gate: 2 }, waves: 5, ladderStart: 5, threatStep: 0.15, pulse: 13, held: { kg: 60, points: 600 },
+// climbing threatStep a sector from the last of SECTORS, its programme starting at ladderStart; its flow (the lane's target and the
+// sector's total) climbs aliveStep and totalStep a held sector from `flow`
+export const SECTOR_HOLD = freeze({ name: 'SECTOR', shape: 'flow', flow: { alive: 650, total: 3000, burst: 200, pulse: 6 }, aliveStep: 40, totalStep: 300, coreShare: 0.05, breaches: { gate: 2 }, ladderStart: 5, threatStep: 0.15, pulse: 6, held: { kg: 60, points: 600 },
   brief: ['They are still coming, and there are more of them each time.', 'Hold the gate. The colony is watching.'] });
 
 // THE BACK DOOR IS DUE once everything is unlocked (every landing site's part home, Isao's programme printed but for the back gate,
@@ -122,22 +134,22 @@ export const SECTOR_CANYON_AGAIN = freeze({ name: 'THE CANYON AGAIN', breaches: 
 // the clock holds while it is fought. The SCRAMBLE comes when no more than `scrambleShare` of it is left, or `timeout` seconds
 // after it rose: Isao asks for turrets behind the bays, the clock resumes, and the gate side opens `gateAfter` seconds later.
 // `n` is the sector it falls in, set by the schedule.
-export const BACK_DOOR_SECTOR = freeze({ name: 'THE BACK DOOR', breaches: { back: 1, gate: 1 }, waves: 6, ladderStart: 4, threat: 2.6, pulse: 14,
+export const BACK_DOOR_SECTOR = freeze({ name: 'THE BACK DOOR', shape: 'flow', flow: { alive: 700, total: 3600, burst: 220, pulse: 6 }, coreShare: 0.05, breaches: { back: 1, gate: 1 }, ladderStart: 4, threat: 2.6, pulse: 6,
   feast: { entries: [{ type: 'amoeba', count: 40 }, { type: 'phage', count: 20 }], pace: 1.7, scrambleShare: 0.35, timeout: 50, gateAfter: 10 }, held: { kg: 70, points: 700 },
   gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: false, new: 'the back mouth opens',
   brief: ['The rock behind the bays gave way. Something is walking in there.', 'Soft ones first. Then build behind the bays.'] });
 // the sector after the door: both sides, hard cores in every wave. THE COLONY HOLDS after it
-export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', breaches: { gate: 1, back: 1 }, waves: 8, ladderStart: 6, threat: 2.4, pulse: 12, held: { kg: 80, points: 800 },
+export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flow: { alive: 850, total: 4800, burst: 250, pulse: 5 }, coreShare: 0.08, breaches: { gate: 1, back: 1 }, ladderStart: 6, threat: 2.4, pulse: 5, held: { kg: 80, points: 800 },
   gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: true, hardcores: 2, new: 'hard cores in every wave',
   brief: ['Every wave brings hard cores now. Do not ram them.', 'One front each side. Split the tank and the sky between them.'] });
 
 // PAST BOTH WALLS the sectors are generated from it: its flags carry over, `new` is null. With `past` the sectors after BOTH WALLS
-// (1, 2, ...): waves = wavesBase + past, threat climbs threatStep a sector from BOTH WALLS', sides cycle by sector
-// ((past - 1) % sides.length: both on the gate, then both at the back), held grows heldStep a sector. Generated breaches start the
-// ladder at ladderStart; ladderCap is the highest ladder wave any sector's wave is sized at: 11 is where a generated sector's last
-// waves land in the mid-hundreds alive, which is the frame budget this machine holds, not past it.
+// (1, 2, ...): the flow's alive climbs aliveStep a sector from BOTH WALLS' up to aliveCap (the column the frame holds, 1,200 Pearl
+// bodies measured headed on 2026-10-15) and its total totalStep; threat climbs threatStep a sector from BOTH WALLS', sides cycle by
+// sector ((past - 1) % sides.length: both on the gate, then both at the back), held grows heldStep a sector. Generated breaches start
+// the ladder at ladderStart; ladderCap is the highest ladder wave any sector's wave takes its types from
 export const SECTOR_GENERATOR = freeze({
-  name: 'SECTOR', wavesBase: 8, threatStep: 0.15, ladderStart: 6, ladderCap: 11, held: { kg: 80, points: 800 }, heldStep: { kg: 10, points: 100 },
+  name: 'SECTOR', aliveStep: 75, aliveCap: 1200, totalStep: 600, threatStep: 0.15, ladderStart: 6, ladderCap: 11, held: { kg: 80, points: 800 }, heldStep: { kg: 10, points: 100 },
   sides: [{ gate: 2 }, { back: 2 }],
   brief: ['They are still coming, and there are more of them each time.', 'Hold both mouths. The colony is watching.'],
 });
@@ -182,12 +194,8 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // so 8 put sector 2's first arrival past the spec's 40 s (--pacing: 40.3 s)
 // firstGrace: the first sector's wait after the story is ready for it, unless a part comes home first (src/domain/sectors.js
 // firstSectorDue): the expedition Isao has just sent the tank on
-// `soft` (2026-10-03): every rammable entry of a sector's waves is multiplied by up to it, climbing `softStep` a sector from x1 at sector 1
-// (x2 from sector 5: the lane's first sectors held by sentries alone fell at x2); the alive budget rose with it (520 -> 900)
-// (2026-10-03, second pass: "still very comfortable 50fps constant ... not enough enemies. Canon fodder! more!") x4 at most, +0.5 a
-// sector (x2 at sector 3, x4 from sector 7), the alive budget 900 -> 1500
 // `stall`: seconds a fighting sector may go without a kill, a wave or a breach opening before it moves itself on (2026-10-05)
-export const SECTOR_TIMING = freeze({ stall: 20, briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90, soft: 8, softStep: 1, softBase: 2 });   // HUNDREDS (owner, 2026-10-05: "dozens of enemies, there should be hundreds"): x2 soft bodies from sector 1, +1 a sector, to x8; room for 2500
+export const SECTOR_TIMING = freeze({ stall: 20, briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90 });   // aliveBudget: the campaign board's clock guard (pulseFits); the story's sectors are sized by their shape (2026-10-15)
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

@@ -11,12 +11,14 @@ import { SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_S
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
-import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
+import { firstSectorDue, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { waveCount, waveGap } from '../domain/wave-spread.js';
 import { isStampede, stampedeWave } from '../domain/stampede.js';
+import { sizeWave, pulseBodies, pulseDue, flowDue, flowTarget, streamOffsets } from '../domain/sector-shape.js';
+import { crowdTrace } from './crowd-gate.js';
 import { packSquads } from '../domain/squads.js';
 import { STORY_CALM } from '../content/story-defaults.js';
 import { POINT_SCALE, waveScore } from '../score.js';
@@ -61,6 +63,15 @@ export function createSectorRun(h) {
   // with its queue stuck, and the bodies left no longer hold SECURE
   let progressAt = 0;
   const progress = () => { progressAt = clock; }, stalled = () => phase === 'fighting' && clock - progressAt > SECTOR_TIMING.stall;
+  // THE CLOCK BY SHAPE (2026-10-15, src/domain/sector-shape.js): a pulse sector breathes (the next wave `pulse` seconds after the last
+  // release and once the field is mostly dead, or `breath.max` after it whatever is alive); a flow sector sends while the lane is under
+  // its target (clamped by the crowd cap, src/fx/crowd-gate.js crowdTrace). `lastPulse`: when the last pulse left and how many bodies it
+  // was, every breach together. `swell`: the automations' envelope multiplies the counts
+  let lastPulse = { sent: false, size: 0, at: 0 };
+  const swell = () => api.swell?.() ?? 1;
+  const due = () => (def?.shape === 'flow'
+    ? flowDue({ alive: aliveSectorEnemies(true), target: flowTarget(def.flow.alive * swell(), crowdTrace.cap) })
+    : pulseDue({ sent: lastPulse.sent, alive: aliveSectorEnemies(true), lastSize: lastPulse.size, sinceRelease: clock - lastPulse.at, pulse: def?.pulse ?? 0, breath: def?.breath ?? { at: 0, max: 0 } }));
 
   // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
   // gate exists from the first frame of a sector; the BACK GATE (2026-09-18) only once Isao has printed it, so the map fills in as
@@ -100,30 +111,35 @@ export function createSectorRun(h) {
   const finalSector = () => doorAt !== null && def?.n === doorAt + 1;
   const loadBests = () => { try { const v = JSON.parse(h.store?.getItem(SECTOR_BESTS_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } };
 
-  // ONE BREACH'S NEXT WAVE, at ladder wave `wave`: THE FEAST (sector 2's back breach, first wave: the content's soft flood at its own
-  // pace), or the ladder wave's plan at the sector's threat with the sector's own few hard cores on top, at the sector pace
+  // ONE BREACH'S NEXT WAVE, at ladder wave `wave`: THE FEAST (the door's back breach, first wave: the content's soft flood at its own pace),
+  // or the ladder wave's plan SIZED OFF THE SECTOR'S ROW (2026-10-15, src/domain/sector-shape.js: a pulse sector's count for this wave, a flow
+  // sector's burst; the plan's types in their proportions, `coreShare` of them cored), the sector's own few hard cores on top, at the sector pace
   const feastFor = (b) => !!def?.feast && b.side === 'back' && b.wavesReleased === 0;
   function waveOf(b, wave) {
     if (feastFor(b)) return { entries: def.feast.entries, pace: def.feast.pace ?? SECTOR_TIMING.pace };
     // THE CANYON'S SWARM: `swarm` sector pulses (two breaches' worth each) of the ladder wave `ladder` past the sector's start, at once
-    if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
-    // MORE OF THE LOW ONES (owner, 2026-10-03: "increase the number of low-level enemies considerably. Testing the limits"; and "it feels
-    // a bit too easy"): every rammable entry of a sector's plan x SECTOR_TIMING.soft
-    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: ENEMY_SPEC[e.type]?.rammable ? Math.round(e.count * Math.min(SECTOR_TIMING.soft ?? 1, (SECTOR_TIMING.softBase ?? 1) + (SECTOR_TIMING.softStep ?? 0) * ((def.n ?? 1) - 1))) : e.count }));   // ramping by sector
-    // THE STAMPEDE (src/domain/stampede.js): every second wave a mouth sends is a flood of rammable bodies with a few hard cores in it
-    if ((b.side === 'gate' || b.side === 'back') && isStampede(b.wavesReleased ?? 0, SECTOR_STAMPEDE)) { const w = stampedeWave(entries, ENEMY_SPEC, SECTOR_STAMPEDE, { index: b.wavesReleased ?? 0, tier: api.tier?.() ?? 0 }); return { entries: w.entries, gap: w.gap, pace: SECTOR_TIMING.pace, stampede: w.kind }; }
+    if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * swell()).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
+    const flow = def.shape === 'flow', released = b.wavesReleased ?? 0;
+    const plan = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * swell()).entries;
+    const entries = sizeWave(plan, ENEMY_SPEC, { bodies: Math.round((flow ? def.flow.burst : pulseBodies(def.bodies, released)) * swell()), coreShare: def.coreShare ?? 0 });
+    // THE STAMPEDE (src/domain/stampede.js): in a pulse sector every second wave a mouth sends is a trickle or a flood with a few hard cores in it
+    if (!flow && (b.side === 'gate' || b.side === 'back') && isStampede(released, SECTOR_STAMPEDE)) { const w = stampedeWave(entries, ENEMY_SPEC, SECTOR_STAMPEDE, { index: released }); return { entries: w.entries, gap: w.gap, pace: SECTOR_TIMING.pace, stampede: w.kind }; }
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
-    return { entries, pace: SECTOR_TIMING.pace };
+    return { entries, pace: SECTOR_TIMING.pace, stream: flow ? def.flow.pulse : 0 };
   }
-  // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave (src/domain/wave-spread.js)
-  // A BIG WAVE COMES PARTLY IN SQUADS (src/domain/squads.js): its soft bodies past the first fifty five to an entity
-  function queueOf({ entries: plan, pace, spread = 0.8, dens, gap: fixed = null }, sp) {
-    const entries = packSquads(plan, ENEMY_SPEC, SQUADS), gap = fixed ?? waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);   // a trickle stampede keeps its own spacing
+  // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave (src/domain/wave-spread.js); a flow's burst is
+  // STREAMED over its pulse (`stream` seconds) so the lane fills and never piles
+  // A BIG WAVE COMES PARTLY IN SQUADS (src/domain/squads.js): its soft bodies past the first sixty five to an entity; a flow sector whose target is
+  // a squads' wave packs every burst
+  function queueOf({ entries: plan, pace, spread = 0.8, dens, gap: fixed = null, stream = 0 }, sp) {
+    const tune = stream > 0 && def?.flow?.alive >= SQUADS.over ? { ...SQUADS, over: 0 } : SQUADS;
+    const entries = packSquads(plan, ENEMY_SPEC, tune), gap = fixed ?? waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);   // a trickle stampede keeps its own spacing
+    const offsets = stream > 0 ? streamOffsets(waveCount(entries), stream) : null;
     const out = []; let n = 0;
-    for (const { type, count, squad } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread, pace, ...(dens ? { dens } : {}), ...(squad ? { squad } : {}) });
+    for (const { type, count, squad } of entries) for (let k = 0; k < count; k++) { out.push({ type, sp, at: offsets ? offsets[n] : n * gap, spread, pace, ...(dens ? { dens } : {}), ...(squad ? { squad } : {}) }); n++; }
     return out;
   }
-  // one breach sends its next wave: the books count it, a feast is noted, and its queue entries come back (null: nothing to send)
+  // one breach sends its next wave: the books count it, a feast is noted, the last pulse is remembered for the breath, and its queue entries come back (null: nothing to send)
   function sendWave(b, sp, t) {
     const next = nextWaveIndex(sector, b.id);
     if (next === null) return null;
@@ -131,7 +147,8 @@ export function createSectorRun(h) {
     if (feasting) feast = { id: b.id, at: t, scrambled: 0 };
     if (wave.stampede) { h.callout(wave.stampede === 'trickle' ? SECTOR_STAMPEDE.trickleCallout : SECTOR_STAMPEDE.callout, 'co-victory'); stampedes++; }
     const q = queueOf(wave, sp);
-    return { r, entries: api.creatures?.(q, b.side, { released, planned }) ?? q };   // ?creatures=<family>:<tier> takes its share of the wave; ?creatures=pearl builds it up (src/fx/creature-enemies.js)
+    if (b.side !== 'canyon') lastPulse = { sent: true, size: (lastPulse.sent && lastPulse.at === t ? lastPulse.size : 0) + q.reduce((n, e) => n + (e.squad || 1), 0), at: t };
+    return { r, entries: api.creatures?.(q, b.side, { released, planned }) ?? q };   // ?creatures=<family>:<tier> takes its share of the wave; the Pearl set paces its climb (src/fx/creature-enemies.js)
   }
   // how many of the sector's bodies the next pulse would send from the breaches that are open now
   function nextPulseSize() {
@@ -209,6 +226,7 @@ export function createSectorRun(h) {
     // world, and the towers alone lose the base inside a minute, 2026-09-24-pacing-probe); the canyon opens at once
     if (canyon) for (const b of sector.breaches) b.openAt = b.side === 'canyon' ? t0 : Infinity;
     pending = sector.breaches.map((b) => b.id);
+    lastPulse = { sent: false, size: 0, at: 0 };
     phase = 'fighting'; progress();
   }
 
@@ -398,9 +416,9 @@ export function createSectorRun(h) {
     // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
     // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path
     // holds its bodies until the hole is open. Breaches not yet due simply join a later pulse.
-    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && (stalled() || pulseFits(aliveSectorEnemies(true), nextPulseSize(), api.aliveBudget?.() ?? SECTOR_TIMING.aliveBudget)),   // the gunship on auto raises it (GUNSHIP_AUTO)
+    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && (stalled() || due()),   // by shape (2026-10-15): the breath, or the lane under its target
     // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
-    pulseGap: () => (phase === 'fighting' && def ? (canyon?.phase === 'rising' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.pulse ?? null) : null),   // the canyon's swarm does not wait a whole pulse (2026-10-03)
+    pulseGap: () => (phase === 'fighting' && def ? (canyon?.phase === 'rising' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.shape === 'flow' ? 0 : def.pulse ?? null) : null),   // the canyon's swarm does not wait a whole pulse (2026-10-03); a flow's stream is its own gap (2026-10-15)
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now

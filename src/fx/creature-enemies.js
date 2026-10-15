@@ -156,24 +156,17 @@ export function createCreatureEnemies(host) {
       alive: aliveOfTier, pending: pendingOfTier, refused: () => refused, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null, defence });
   }
 
-  // THE WAVES BUILD UP (owner, 2026-10-14: "slower and fewer at the beginning before becoming more intense"; before it round four's flat cut,
-  // "Let's reduce the waves at first, to get the animation right"; PEARL_WAVES, src/domain/pearl-bodies.js pearlBuildUp): a breach's wave at its
-  // climb keeps `scale` of its single bodies of each type (at least one), spread through the wave in its own order and times, squads, bosses,
-  // guards and harmless entries kept, and the whole wave's march is `pace` of the plan's (every entry's `pace`, src/fx/enemy-step.js).
-  // `wave` is { released, planned } from the breach (src/fx/sector-run.js sendWave); without it the wave is at `last`. `&waves=full` keeps the
-  // whole wave at its own pace (the crowd tests)
-  const thinning = pearl && host.flags.waves !== 'full';
-  let thinned = { kept: 0, cut: 0 }, lastWave = null;
-  function thin(entries, wave) {
-    if (!thinning || !entries?.length) return entries;
+  // THE WAVES BUILD UP (owner, 2026-10-14: "slower and fewer at the beginning before becoming more intense"; PEARL_WAVES, src/domain/pearl-bodies.js
+  // pearlBuildUp): a breach's waves march at `pace` of the plan's, climbing to the plan's over the waves it has planned (every entry's `pace`,
+  // src/fx/enemy-step.js). THE COUNT IS THE SECTOR'S (2026-10-15, sector shapes, src/domain/sector-shape.js): the thinning that cut the single bodies
+  // (and skipped squads) is gone; the row sizes the wave. `wave` is { released, planned } from the breach (src/fx/sector-run.js sendWave); without
+  // it the wave is at `last`. `&waves=full` keeps the plan's own pace (the crowd tests)
+  const climbing = pearl && host.flags.waves !== 'full';
+  let lastWave = null;
+  function climb(entries, wave) {
+    if (!climbing || !entries?.length) return entries;
     const up = pearlBuildUp(wave, PEARL_WAVES); lastWave = { ...wave, ...up };
-    const groups = new Map();
-    entries.forEach((q, i) => { if (q.squad || q.guard || q.harmless || ENEMY_SPEC[q.type]?.boss) return; (groups.get(q.type) ?? groups.set(q.type, []).get(q.type)).push(i); });
-    const keep = new Set(entries.map((_, i) => i));
-    for (const idx of groups.values()) { const picks = new Set(spreadPicks(idx.length, Math.max(1, Math.round(idx.length * up.scale)))); idx.forEach((i, k) => { if (!picks.has(k)) keep.delete(i); }); }
-    const out = entries.filter((_, i) => keep.has(i)).map((q) => (up.pace === 1 ? q : { ...q, pace: (q.pace ?? 1) * up.pace }));
-    thinned.kept += out.length; thinned.cut += entries.length - out.length;
-    return out;
+    return up.pace === 1 ? entries : entries.map((q) => ({ ...q, pace: (q.pace ?? 1) * up.pace }));
   }
 
   // the game's ram (src/fx/enemy-step.js, just before the record's kill): a Pearl body staggers along the tank's heading and aside, and the tank jolts
@@ -224,7 +217,7 @@ export function createCreatureEnemies(host) {
       const o = (byType[e.type] ??= { pearl: 0, dots: 0, tier: PEARL_OF[e.type] ?? null });
       if (e.spec?.body === 'pearl') o.pearl++; else o.dots++;
     }
-    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: thinning ? { ...thinned, last: lastWave } : 'full', bodies: bodies?.stats() ?? null };
+    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: climbing ? { last: lastWave } : 'full', bodies: bodies?.stats() ?? null };
   }
 
   // THE PEARL SET AT BOOT (2026-10-14, the story's default): the first soft tier's swarm and the first cored one's made now, so their membrane, shadow
@@ -277,7 +270,7 @@ export function createCreatureEnemies(host) {
     // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
     // canyon's swarm: it rises at the far side of the world, where the heart's plane is singular)
     replace(entries, side, wave) {
-      if (pearl) return thin(entries, wave);
+      if (pearl) return climb(entries, wave);
       if (!choice || side === 'canyon' || !entries?.length) return entries;
       const singles = [];
       entries.forEach((q, i) => { if (!q.squad && !q.guard && !q.harmless) singles.push(i); });

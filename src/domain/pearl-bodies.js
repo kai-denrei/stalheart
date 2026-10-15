@@ -54,10 +54,11 @@ const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b -
 // THE BUILD-UP (owner, 2026-10-14: "slower and fewer at the beginning before becoming more intense"; PEARL_WAVES): a breach's waves climb from
 // `first` to `last` of each of the table's dials over the waves it has planned, wave 0 at `first`, the last planned at `last`, straight between;
 // a breach with one wave planned (or none said) is at `last`, there is no build-up to make. `f` is the climb (0..1), reported. Pure.
+// Since 2026-10-15 (sector shapes) the table's one dial is `pace`: the count is the sector's row (src/domain/sector-shape.js).
 export function pearlBuildUp({ released = 0, planned = 1 } = {}, table) {
   const f = planned > 1 ? Math.min(1, Math.max(0, released / (planned - 1))) : 1;
   const at = ({ first, last }) => first + (last - first) * f;
-  return { f, scale: at(table.scale), pace: at(table.pace) };
+  return { f, pace: at(table.pace) };
 }
 
 export const pearlWait = (lag, hop, { from, to, min }) => (hop > 0 ? 1 - (1 - min) * smooth01(from, to, lag / hop) : 1);

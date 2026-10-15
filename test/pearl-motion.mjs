@@ -137,7 +137,7 @@ console.log('PASS the motion: the gait\'s bodies follow walking records with no 
 }
 console.log('PASS the frame\'s own step');
 
-// ---- the waves, thinned (a breach's first wave, at the build-up's first share; the climb itself is test/pearl-enemies.mjs) ----
+// ---- the waves paced, never thinned (2026-10-15, sector shapes: the count is the sector's row; the climb itself is test/pearl-enemies.mjs) ----
 {
   const scene = new THREE.Scene(), heartPoint = [0, 0, 690];
   const host = (flags) => ({ scene, root: null, flags, camera: null, canvasHeight: () => 800, enemies: [], field: () => null, spawn: () => null, heart: () => [heartPoint, 0, 1], ground: () => null, perf: () => null, perfOn() {}, damage() {}, build: () => null });
@@ -145,14 +145,14 @@ console.log('PASS the frame\'s own step');
   const wave = [...q('amoeba', 40), ...q('phage', 20), ...q('amoeba', 3, { squad: 5 }), ...q('knot', 1), ...q('drifter', 2), ...q('ghost', 1, { harmless: true })];
   const ce = createCreatureEnemies(host({ creatures: 'pearl' }));
   const out = ce.replace(wave, 'gate', { released: 0, planned: 4 }), count = (a, f) => a.filter(f).length;
-  assert.equal(count(out, (e) => e.type === 'amoeba' && !e.squad), Math.round(40 * PEARL_WAVES.scale.first)); assert.equal(count(out, (e) => e.type === 'phage'), Math.round(20 * PEARL_WAVES.scale.first));
-  assert.equal(count(out, (e) => e.type === 'drifter'), 1, 'at least one of a type'); assert.equal(count(out, (e) => e.squad), 3, 'the squads kept');
+  assert.equal(out.length, wave.length, 'every body of the wave is kept');
+  assert.equal(count(out, (e) => e.type === 'amoeba' && !e.squad), 40); assert.equal(count(out, (e) => e.squad), 3, 'the squads kept');
   assert.equal(count(out, (e) => e.type === 'knot'), 1, 'the boss kept'); assert.equal(count(out, (e) => e.harmless), 1, 'harmless entries kept');
-  assert(out.every((e, k) => k === 0 || e.at >= 0), 'the kept entries keep their times');
-  assert.equal(ce.state().waves.cut, wave.length - out.length);
+  assert(out.every((e, k) => e.at === wave[k].at && Math.abs(e.pace - PEARL_WAVES.pace.first) < 1e-9), 'the entries keep their times and march at the first pace');
+  assert.equal(ce.state().waves.last.pace, PEARL_WAVES.pace.first);
   assert.equal(createCreatureEnemies(host({ creatures: 'pearl', waves: 'full' })).replace(wave, 'gate'), wave, '&waves=full keeps the whole wave');
-  assert.equal(createCreatureEnemies(host({})).replace(wave, 'gate'), wave, 'without ?creatures=pearl nothing is thinned');
+  assert.equal(createCreatureEnemies(host({})).replace(wave, 'gate'), wave, 'without ?creatures=pearl nothing is paced');
   ce.dispose();
 }
-console.log('PASS the waves thinned under ?creatures=pearl: a first wave\'s singles of each type to PEARL_WAVES.scale.first, at least one; squads, bosses, harmless kept; &waves=full whole');
+console.log('PASS the waves paced under ?creatures=pearl: a first wave whole at PEARL_WAVES.pace.first; squads, bosses, harmless kept; &waves=full at its own pace');
 

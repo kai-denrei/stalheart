@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
-import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING, SECTOR_CANYON_AGAIN } from '../src/content/sectors.js';
+import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING, SECTOR_CANYON_AGAIN, SECTOR_STAMPEDE } from '../src/content/sectors.js';
 import { ENEMY_SPEC, CREATURE_TINTS, SAFE_HUES, ALARM_HUES, computeWavePlan } from '../src/enemyspec.js';
 import { waveClearBonus } from '../src/domain/economy.js';
 import { POINT_SCALE, waveScore } from '../src/score.js';
@@ -9,7 +9,7 @@ import { SENTRY_ORDER } from '../src/content/sentries.js';
 
 // THE RAMP, THEN THE BACK DOOR (owner, 2026-10-01): four regular gate-side sectors of four pulses, climbing, SOL-82 from the third;
 // the door and BOTH WALLS are their own rows, placed by the schedule
-assert.deepEqual(SECTORS.map((s) => [s.n, s.breaches, s.waves]), [[1, { gate: 2 }, 4], [2, { gate: 2 }, 4], [3, { gate: 1 }, 4], [4, { gate: 2 }, 4], [5, { side: 1, gate: 1 }, 4]]);
+assert.deepEqual(SECTORS.map((s) => [s.n, s.breaches]), [[1, { gate: 2 }], [2, { gate: 2 }], [3, { gate: 1 }], [4, { gate: 2 }], [5, { side: 1, gate: 1 }]]);
 assert.deepEqual(SECTORS.map((s) => !!s.canyon), [false, false, true, false, false], 'sector 3 is THE CANYON, SOL-82\'s first use');
 assert.deepEqual(Object.keys(SECTORS[4].breaches), ['side', 'gate'], 'THE SIDE WALL picks and opens its side breach first');
 assert.ok(SECTORS.every((s, i) => i === 0 || (s.threat > SECTORS[i - 1].threat && s.ladderStart >= SECTORS[i - 1].ladderStart)), 'the ramp climbs');
@@ -51,7 +51,8 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
   assert.equal(def(7, 6).name, 'BOTH WALLS'); assert.equal(def(9, 8).name, 'BOTH WALLS');
   const gen = [8, 9, 10].map((n) => def(n, 6));
   assert.deepEqual(gen.map((d) => d.name), ['SECTOR 8', 'SECTOR 9', 'SECTOR 10']);
-  assert.deepEqual(gen.map((d) => d.waves), [9, 10, 11], 'waves wavesBase + sectors past BOTH WALLS');
+  assert.deepEqual(gen.map((d) => d.flow.alive), [925, 1000, 1075], 'the flow\'s target steps past BOTH WALLS');
+  assert.deepEqual(gen.map((d) => d.waves), gen.map((d) => Math.ceil(d.flow.total / 2 / d.flow.burst)), 'the books count the bursts');
   assert.ok(gen.every((d) => d.pulse === BOTH_WALLS_SECTOR.pulse), 'the clock carries over from BOTH WALLS');
   assert.deepEqual(gen.map((d) => d.threat), [2.55, 2.7, 2.85], 'threat +0.15 a sector');
   assert.deepEqual(gen.map((d) => d.breaches), [{ gate: 2 }, { back: 2 }, { gate: 2 }], 'the pair alternates sides');
@@ -67,28 +68,35 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
   assert.equal(next(SECTOR_DOOR.latest - 1, false), true, 'at latest whatever is unlocked');
 }
 
-// THE CLIMB (owner, 2026-09-16: "slow start, then it should start getting hectic... hundreds of low levels, a few more hardcores").
-// Sector 1 opens gently and every sector's biggest wave beats the last one's, through the invasion surge the old ladder cap held
-// every programme below — which is what made the late waves SHRINK instead of swell.
+// THE CLIMB, BY SHAPE (owner, 2026-10-15: pulses with a breath for the first sectors, the filled lane from THE PRESS on; spec
+// 2026-10-15-sector-shapes-design.md). A sector's peak on the field is its biggest pulse times its breaches, or its flow target; every
+// sector of the climb peaks past the one before (the canyon aside: SOL-82's spike is its swarm), BOTH WALLS past the door, and no flow
+// target past the column the frame holds (1,200 Pearl bodies, 2026-10-15-pearl-crowd-measured-headed)
 {
-  const bodies = (d, i) => computeWavePlan(Math.min(d.ladderCap, d.waveBase + i), 1, 4, d.threat).entries.reduce((n, e) => n + e.count, 0)
-    + (d.hardcoresEveryWave ? d.hardcores ?? 1 : 0);
-  // the canyon's swarm counts in its sector (CANYON: `swarm` two-breach pulses of the ladder wave `ladder` past the start, once), though
-  // the frame budget does not weigh it: it is on the far side of the world
-  const swarm = (d) => (d.canyon ? computeWavePlan(d.waveBase + CANYON.ladder, 1, 4, d.threat).entries.reduce((n, e) => n + e.count, 0) * CANYON.swarm * 2 : 0);
-  const alive = (d, i) => bodies(d, i) * Object.values(d.breaches).reduce((a, b) => a + b, 0) + (i === 1 ? swarm(d) : 0);
-  // both schedules: the door at its earliest, and at its latest with the held sectors before it, through the first generated sector
+  const count = (d) => Object.values(d.breaches).reduce((a, b) => a + b, 0);
+  const peak = (d) => (d.shape === 'flow' ? d.flow.alive : Math.max(...d.bodies) * count(d));
+  assert.deepEqual(SECTORS.map((s) => s.shape), ['pulse', 'pulse', 'pulse', 'flow', 'flow'], 'THE PRESS fills the lane');
+  assert.ok(SECTORS.slice(0, 3).every((s) => s.bodies.length === s.waves && s.breath.at > 0 && s.breath.at < 1 && s.breath.max > s.pulse), 'a pulse sector lists a count a wave and breathes');
+  assert.ok(SECTORS.slice(0, 3).every((s) => s.bodies.every((b, i) => i === 0 || b > s.bodies[i - 1])), 'a pulse sector\'s waves grow');
+  const opens = (d) => d.bodies[0] * count(d);
+  assert.ok(opens(def(1)) <= 30, `sector 1 opens with a crowd, not a flood (${opens(def(1))})`);
   for (const doorAt of [SECTOR_DOOR.earliest, SECTOR_DOOR.latest]) {
-    const peaks = Array.from({ length: doorAt + 2 }, (_, k) => { const d = def(k + 1, doorAt); return Math.max(...Array.from({ length: d.waves }, (_, i) => alive(d, i + 1))); });
-    assert.ok(alive(def(1), 1) <= 30, `sector 1 opens with a crowd, not a flood (${alive(def(1), 1)} alive)`);
-    // the canyon is SOL-82's spike, not a step of the climb: the climb holds across the sectors around it
-    const climb = peaks.slice(0, doorAt).filter((_, k) => !def(k + 1, doorAt).canyon);
-    for (let i = 1; i < climb.length; i++) assert.ok(climb[i] > climb[i - 1], `door at ${doorAt}: each sector of the climb peaks harder than the one before (${peaks})`);
-    assert.ok(peaks[doorAt + 1] > peaks[doorAt - 1], `door at ${doorAt}: BOTH WALLS peaks past the door (${peaks})`);
-    const base = Array.from({ length: doorAt + 2 }, (_, k) => { const d = def(k + 1, doorAt); return Math.max(...Array.from({ length: d.waves }, (_, i) => alive(d, i + 1) - (i === 0 ? swarm(d) : 0))); });
-    assert.ok(Math.max(...base) <= 520, `door at ${doorAt}: the base's own waves never past the frame budget this machine holds (${base})`);
-    assert.ok(swarm(def(3)) >= 300 && swarm(def(3)) <= 520, `the canyon's swarm is hundreds and still drawable (${swarm(def(3))})`);
+    const defs = Array.from({ length: doorAt + 3 }, (_, k) => def(k + 1, doorAt));
+    const climb = defs.slice(0, doorAt).filter((d) => !d.canyon).map(peak);
+    for (let i = 1; i < climb.length; i++) assert.ok(climb[i] > climb[i - 1], `door at ${doorAt}: each sector of the climb peaks harder than the one before (${climb})`);
+    assert.ok(peak(defs[doorAt]) > peak(defs[doorAt - 1]), `door at ${doorAt}: BOTH WALLS peaks past the door`);
+    for (const d of defs.filter((d) => d.shape === 'flow')) {
+      assert.ok(d.flow.alive <= SECTOR_GENERATOR.aliveCap, `${d.name}: the flow never past the column the frame holds (${d.flow.alive})`);
+      assert.ok(d.flow.burst * count(d) < d.flow.alive, `${d.name}: a burst from every mouth does not fill the lane alone`);
+      assert.equal(d.waves, Math.ceil(d.flow.total / count(d) / d.flow.burst), `${d.name}: the books count the flow's bursts`);
+      assert.ok(d.coreShare >= 0 && d.coreShare < 0.2, `${d.name}: a few hard cores`);
+    }
+    assert.ok(defs.at(-1).flow.alive === Math.min(SECTOR_GENERATOR.aliveCap, defs.at(-2).flow.alive + SECTOR_GENERATOR.aliveStep) && defs.at(-1).flow.total === defs.at(-2).flow.total + SECTOR_GENERATOR.totalStep, 'the generated sectors step the flow');
   }
+  const held = def(SECTORS.length + 2, SECTOR_DOOR.latest);
+  assert.ok(held.shape === 'flow' && held.flow.alive === SECTOR_HOLD.flow.alive + SECTOR_HOLD.aliveStep, 'a held sector steps the flow');
+  assert.ok(def(SECTOR_DOOR.latest - 1, SECTOR_DOOR.latest).canyon && def(SECTOR_DOOR.latest - 1, SECTOR_DOOR.latest).shape === 'flow', 'the canyon again flows at the gate under its swarm');
+  assert.ok(!('soft' in SECTOR_TIMING) && !('size' in SECTOR_STAMPEDE) && !('trickle' in SECTOR_STAMPEDE), 'the soft factor and the stampede\'s multipliers are retired: the table is the size');
 }
 
 // the first sector waits for the expedition: a part home, or the grace
@@ -97,14 +105,10 @@ assert.equal(firstSectorDue({ sinceReady: 10, grace: SECTOR_TIMING.firstGrace, p
 assert.equal(firstSectorDue({ sinceReady: SECTOR_TIMING.firstGrace, grace: SECTOR_TIMING.firstGrace }), true, 'and so does the grace running out');
 assert.equal(firstSectorDue({ sinceReady: 0, grace: 0 }), true, 'a run that starts past the expedition opens at once');
 
-// the clock's guard: a pulse arms while it fits, and an empty field always takes the next one
+// the clock's guard, kept for the campaign board: a pulse arms while it fits, and an empty field always takes the next one
 assert.equal(pulseFits(100, 120, 520), true);
 assert.equal(pulseFits(400, 121, 520), false, 'a pulse that would crowd past the budget waits');
 assert.equal(pulseFits(0, 900, 520), true, 'an empty field never stalls on a big pulse');
-{
-  const pulse = (d, i) => (computeWavePlan(Math.min(d.ladderCap, d.waveBase + i), 1, 4, d.threat).entries.reduce((n, e) => n + e.count, 0) + (d.hardcoresEveryWave ? d.hardcores ?? 1 : 0)) * Object.values(d.breaches).reduce((a, b) => a + b, 0);
-  for (const n of [1, 2, 3, 4, 5, 6]) { const d = def(n); for (let i = 1; i <= d.waves; i++) assert.ok(pulse(d, i) <= SECTOR_TIMING.aliveBudget, `sector ${n} pulse ${i} fits the budget on an empty field`); }
-}
 
 // the programme: release, close, spend
 const d2 = def(6, 6);   // the back door: six waves from ladder wave 5
@@ -114,8 +118,10 @@ assert.ok(breachLive(st, 'g') && breachLive(st, 'b') && !breachLive(st, 'x'));
 assert.equal(nextWaveIndex(st, 'g'), 5, 'the door starts at ladder wave 5');
 assert.equal(spendBreach(st, 'g', 101), null, 'a breach with waves to send cannot be spent');
 const waves = [];
-for (let i = 0; i < 8; i++) waves.push(releaseWave(st, 'g', 100 + i));
-assert.deepEqual(waves, [{ wave: 5, last: false }, { wave: 6, last: false }, { wave: 7, last: false }, { wave: 8, last: false }, { wave: 9, last: false }, { wave: 10, last: true }, null, null]);
+for (let i = 0; i < d2.waves + 2; i++) waves.push(releaseWave(st, 'g', 100 + i));
+assert.deepEqual(waves.slice(0, d2.waves).map((w) => w.last), Array.from({ length: d2.waves }, (_, i) => i === d2.waves - 1), 'every planned wave leaves, the last marked');
+assert.deepEqual(waves.slice(0, 6).map((w) => w.wave), [5, 6, 7, 8, 9, 10], 'the door starts at ladder wave 5 and climbs');
+assert.ok(waves.slice(6, d2.waves).every((w) => w.wave === 11) && waves.slice(d2.waves).every((w) => w === null), 'capped at the ladder\'s top, then nothing');
 {
   const s4 = makeSector(def(10, 6), [{ id: 'a', side: 'gate', cell: 1 }], 0);   // a generated sector: eleven waves from ladder 7
   assert.deepEqual(Array.from({ length: 6 }, (_, i) => releaseWave(s4, 'a', i).wave), [7, 8, 9, 10, 11, 11], 'a long programme repeats its top wave at the cap');
@@ -136,7 +142,7 @@ assert.equal(releaseWave(st, 'b', 121), null, 'a closed breach sends nothing');
 assert.equal(nextWaveIndex(st, 'b'), null);
 assert.equal(isSecure(st, 3), false, 'the sector is alive while its enemies are');
 assert.equal(isSecure(st, 0), true);
-assert.deepEqual(summary(st), { sector: 6, name: 'THE BACK DOOR', breaches: 2, open: 0, closed: 1, spent: 1, wavesPlanned: 12, wavesReleased: 7, leftInField: { kg: 88, points: 913 }, bonus: d2.held });
+assert.deepEqual(summary(st), { sector: 6, name: 'THE BACK DOOR', breaches: 2, open: 0, closed: 1, spent: 1, wavesPlanned: 2 * d2.waves, wavesReleased: d2.waves + 1, leftInField: { kg: 88, points: 913 }, bonus: d2.held });
 // a breach whose whole programme is out forfeits nothing when it is closed
 const st2 = makeSector(def(1), [{ id: 'a', side: 'gate', cell: 1 }], 0);
 for (let i = 0; i < def(1).waves; i++) releaseWave(st2, 'a', i);

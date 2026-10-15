@@ -5,37 +5,43 @@
 // of the sector is alive.
 //
 // Pure. The clock, the spawner and the seal effects belong to the caller; the tunables come in from src/content/sectors.js.
+import { flowWaves } from './sector-shape.js';
 
 // The def for sector n >= 1 (2026-10-01, the ramp before the back door). `table`: the fixed opening (SECTORS); `arc`: { hold, door,
 // both, doorAt, canyonAgain } with hold the gate-side sector run while the back door is not due, door and both its two sectors, doorAt the
 // sector the schedule put the door in (null: not yet decided), and canyonAgain the fields laid over the held sector just before the
 // door (SECTOR_CANYON_AGAIN: the canyon a second time, the penultimate sector of the arc). Past both, sectors are generated from it (the generator's
 // arithmetic is documented beside SECTOR_GENERATOR). Without an arc the generator follows the last authored row.
+// THE SHAPE (2026-10-15, src/domain/sector-shape.js): a flow row's waves planned per breach come from its total, its breaches and its
+// burst; a pulse row keeps its own `waves`. Held and generated sectors step the flow as they step the threat
+const shaped = (d) => (d.shape === 'flow' && d.flow ? { ...d, waves: flowWaves(d.flow, Object.values(d.breaches).reduce((a, b) => a + b, 0)) } : d);
 export function sectorDef(n, table, generator, arc = null) {
   n = Math.max(1, Math.floor(n) || 1);
   const ladderCap = generator.ladderCap ?? Infinity;
-  if (n <= table.length) { const d = table[n - 1]; return { ...d, waveBase: d.ladderStart ?? 0, ladderCap }; }
+  if (n <= table.length) { const d = table[n - 1]; return shaped({ ...d, waveBase: d.ladderStart ?? 0, ladderCap }); }
   const doorAt = arc?.doorAt ?? null;
-  if (arc && doorAt !== null && n === doorAt) return { ...arc.door, n, waveBase: arc.door.ladderStart ?? 0, ladderCap };
-  if (arc && doorAt !== null && n === doorAt + 1) return { ...arc.both, n, waveBase: arc.both.ladderStart ?? 0, ladderCap };
+  if (arc && doorAt !== null && n === doorAt) return shaped({ ...arc.door, n, waveBase: arc.door.ladderStart ?? 0, ladderCap });
+  if (arc && doorAt !== null && n === doorAt + 1) return shaped({ ...arc.both, n, waveBase: arc.both.ladderStart ?? 0, ladderCap });
   if (arc && (doorAt === null || n < doorAt)) {
     const last = table[table.length - 1], h = arc.hold, past = n - table.length;
     const again = arc.canyonAgain && doorAt !== null && n === doorAt - 1 ? arc.canyonAgain : null;   // the penultimate sector: the canyon again
-    return {
-      ...last, n, name: `${h.name} ${n}`, new: null, brief: h.brief, breaches: { ...h.breaches }, waves: h.waves, pulse: h.pulse ?? last.pulse,
+    const flow = h.flow ? { ...h.flow, alive: h.flow.alive + (h.aliveStep ?? 0) * (past - 1), total: h.flow.total + (h.totalStep ?? 0) * (past - 1) } : last.flow;
+    return shaped({
+      ...last, n, name: `${h.name} ${n}`, new: null, brief: h.brief, breaches: { ...h.breaches }, shape: h.shape ?? last.shape, flow, coreShare: h.coreShare ?? last.coreShare, pulse: h.pulse ?? last.pulse,
       threat: Math.round((last.threat + h.threatStep * past) * 100) / 100, held: { ...h.held }, feast: undefined, backDoor: false, canyon: false,
       waveBase: h.ladderStart ?? 0, ladderCap, ...(again ? { ...again, breaches: { ...again.breaches } } : {}),
-    };
+    });
   }
   const last = arc ? arc.both : table[table.length - 1], past = n - (arc ? doorAt + 1 : table.length);
-  return {
+  const flow = last.flow ? { ...last.flow, alive: Math.min(generator.aliveCap ?? Infinity, last.flow.alive + (generator.aliveStep ?? 0) * past), total: last.flow.total + (generator.totalStep ?? 0) * past } : undefined;
+  return shaped({
     ...last, n, name: `${generator.name} ${n}`, new: null, brief: generator.brief,
     breaches: { ...generator.sides[(past - 1) % generator.sides.length] },
-    waves: generator.wavesBase + past,
+    flow,
     threat: Math.round((last.threat + generator.threatStep * past) * 100) / 100,
     held: { kg: generator.held.kg + generator.heldStep.kg * (past - 1), points: generator.held.points + generator.heldStep.points * (past - 1) },
     waveBase: generator.ladderStart ?? 0, ladderCap,
-  };
+  });
 }
 
 // IS THE NEXT SECTOR THE BACK DOOR? Asked at the start of sector n: yes once n + 1 is at least `earliest` and everything is unlocked,

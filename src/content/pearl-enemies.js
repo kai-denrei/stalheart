@@ -137,7 +137,8 @@ export const PEARL_GAIT = freeze({
 // high cap 12. This plays very well, fps constant at about 58, we can put that in the game"): the lab ran 1,200 bodies at the game's own levels
 // (CUTIS_LOD 70/12, PEARL_FOLLOW's cap 12), so the thinning that round four put in "to get the animation right" is not needed at the end of a
 // breach's climb: \`last\` is 1, every single body of the plan. The start stays few and slow (the build-up).
-export const PEARL_WAVES = freeze({ scale: freeze({ first: 0.15, last: 1 }), pace: freeze({ first: 0.6, last: 1 }) });
+// THE COUNT IS THE SECTOR'S (2026-10-15, sector shapes, src/content/sectors.js): `scale` is gone; the table sizes every wave, and the build-up is the pace alone.
+export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }) });
 
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.
