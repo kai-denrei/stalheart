@@ -105,7 +105,8 @@ export const PEARL_FOLLOW = freeze({
 // THE FIRST ONES REACH FOR THE BASE (owner, 2026-10-15, the opening's whites under the Rotor: "they should move faster, with more obvious/longer
 // appendage stretching towards the base, slow but menacing"): the white tier keeps its slow six-second cycle and takes a longer stride (`hop`, in
 // radii, over PEARL_GAIT.hop: the stalk reaches that much further each hop) and a higher walk cap (`radii`), so a white body covers more ground a
-// hop without hurrying its hops. A tier without `hop` strides PEARL_GAIT.hop
+// hop without hurrying its hops. A tier without `hop` strides PEARL_GAIT.hop. The cap stays under 1: a body hunts ahead of its record in proportion
+// to the record's walk (pearlLead), and at 1 radius a second the hull touched the body while the record, which the ram kills, was still out of reach
 export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1, radii: id === 'white' ? 1 : id === 'yellow' ? 0.7 : 0.8, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each

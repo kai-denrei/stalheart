@@ -231,7 +231,7 @@ export function createEnemyStep(host) {
       const exits = host.openNeighbors(ci);
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(host.graph().centers[ci])),a=host.whim()()*6.283,r=(CONTENT.breach.craterRadius*EMERGENCE.rim+Math.sqrt(host.whim()())*entry.spread)*host.cellSide();return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point; FROM ITS LIP (2026-10-15): the rim and the scatter beyond it, never over the hole
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(host.graph().centers[ci])),a=host.whim()()*6.283,r=(CONTENT.breach.craterRadius*EMERGENCE.rim+Math.sqrt(host.whim()())*entry.spread*EMERGENCE.scatter)*host.cellSide();return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point; FROM ITS LIP (2026-10-15): the rim and the scatter beyond it, never over the hole
         cur: ci, prev: -1,
         next: exits.length ? exits[Math.floor(host.whim()() * exits.length)] : ci,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
