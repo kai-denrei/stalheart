@@ -5543,6 +5543,7 @@ export function initTdTab(root) {
   if (simParam) {
     simStyle = simParam;
     if (flags.speed !== null && Number.isFinite(+flags.speed) && +flags.speed > 0) params.enemySpeed = Math.max(0.1, Math.min(8, +flags.speed));   // ?speed=N: every enemy's walk x N (a playtest knob)
+    if (flags.descent === '1' && story) setTimeout(() => descentHost.begin(() => endingHost.finale(() => {})), 6000);   // ?descent=1: the cave six seconds in, the ending after it (a playtest entry, 2026-10-16)
     simFast = Math.max(1, Math.min(120, parseInt(flags.simfast || '50', 10)));
     simCap = Math.max(30, parseInt(flags.simcap || '600', 10));
     console.log(`SIMBOOT style=${simStyle} fast=${simFast} cap=${simCap}`);
@@ -5909,6 +5910,7 @@ export function initTdTab(root) {
       sectorCull: (r = 8) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { killCreature(e, false); if (!e.harmless) n++; } return n; },
       sectorContinue: () => sectorRun?.test.cont(),
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
+      descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       sectorKeepHolding: () => sectorRun?.test.keepHolding(),
       sectorQuiet: (on) => sectorRun?.test.quiet(on),
       sectorReport: () => sectorRun?.test.report() ?? null,
