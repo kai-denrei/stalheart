@@ -58,15 +58,15 @@ export function createHullDrive(host) {
         // THE LURE (owner, 2026-10-16, THE ARENA; src/domain/lure.js, LURE): Isao drives the hull as bait: to the arena with no quarry, away from the quarry
         // under `near` hops, toward it past `far`, round it between; and never onto an exit within `blast` cells of a danger point (a painted or
         // falling MK-9 cell, SOL's burn, a Bofors shell's target) while another exit remains: "avoiding both the monster and friendly fire"
-        const L = host.lure();
+        const L = host.lure(), LU = host.tune?.()?.lure ?? LURE;   // the tune panel's hops over the content's
         if (L) {
-          const n = norm3(host.player.pos), hops = L.quarry ? dist3(host.player.pos, L.quarry) / host.cellSide() : null, mode = lureMode({ quarryHops: hops, near: LURE.near, far: LURE.far });
+          const n = norm3(host.player.pos), hops = L.quarry ? dist3(host.player.pos, L.quarry) / host.cellSide() : null, mode = lureMode({ quarryHops: hops, near: LU.near, far: LU.far });
           if (mode === 'arena') { if (L.arenaField) goalField = L.arenaField; }
           else if (L.quarry) {
             const raw = sub3(L.quarry, host.player.pos), flat = sub3(raw, scale3(n, dot3(raw, n))), l = len3(flat);
             if (l > 1e-9) { const q = scale3(flat, 1 / l); if (mode === 'tangent') { goalVec = norm3(cross3(n, q)); goalSign = 1; } else { goalVec = q; goalSign = mode === 'away' ? -1 : 1; } }
           }
-          if (L.dangers?.length) { const safe = exits.filter((e2) => !nearDanger(host.graph().centers[e2], L.dangers, LURE.blast * host.cellSide())); if (safe.length) exits = safe; }
+          if (L.dangers?.length) { const safe = exits.filter((e2) => !nearDanger(host.graph().centers[e2], L.dangers, LU.blast * host.cellSide())); if (safe.length) exits = safe; }
         }
       }
       else if (d === 'avoid' || d === 'ram') {
@@ -165,7 +165,7 @@ export function createHullDrive(host) {
       // always-rolls-forward manual proved too aggressive. Keys override (a held key is an explicit act), else the lever's rest is the speed
       const drive = host.keys.slow ? -0.55
         : host.keys.fast ? (host.cruise() ? 1.45 : 1)
-        : (host.throttle() !== 0 ? host.throttle() : (host.cruise() ? 1 : 0)); const rampMul = stepDriveRamp(host.driveRamp, dt, drive, host.keys.left || host.keys.right, TANK_DRIVE);
+        : (host.throttle() !== 0 ? host.throttle() : (host.cruise() ? 1 : 0)); const rampMul = stepDriveRamp(host.driveRamp, dt, drive, host.keys.left || host.keys.right, host.tune?.()?.hull?.drive ?? TANK_DRIVE);   /* the tune panel's pull (2026-10-16) */
       const kp = stepKick(host.kick(), dt, TANK_KICK);   // THE HOVER KICK (src/domain/hover-kick.js): while it runs it alone moves the hull
       if (kp) { host.player.pos = kp; const ci = host.cellIndex()(kp); if (ci !== -1 && ci !== host.player.cur) arriveAt(ci); }
       else if (drive !== 0) {

@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { readFile, stat, realpath } from 'node:fs/promises';
+import { readFile, stat, realpath, appendFile, mkdir } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { existsSync } from 'node:fs';
 import { createAuthoringService } from './authoring-service.mjs';
@@ -21,6 +21,15 @@ const server = createServer(async (req,res) => {
     if (authoring && await authoring(req, res, route)) return;
     if (route === '__authoring/state' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end('{"available":false}'); return;
+    }
+    // THE TUNE PANEL'S RECORD (src/platform/tune-store.js, owner 2026-10-16): a block appended to feedback/<name> beside the served tree, for the edit > feedback flow; not on a read-only server
+    if (route === '__feedback' && req.method === 'POST') {
+      if (args.includes('--read-only')) { res.writeHead(403).end(); return; }
+      const chunks = []; for await (const c of req) chunks.push(c);
+      const { name, text } = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      if (!/^[\w.-]{1,80}\.(md|txt)$/.test(name) || typeof text !== 'string' || text.length > 200000) { res.writeHead(400).end(); return; }
+      await mkdir(resolve(root, 'feedback'), { recursive: true }); await appendFile(resolve(root, 'feedback', name), text);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify({ path: `feedback/${name}` })); return;
     }
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
     if (route.split('/').some(p => p.startsWith('.')) || (/^(node_modules|docs|test|scripts|artifacts)\//.test(route) && route !== 'docs/FUNMAP.md')) { res.writeHead(404).end(); return; }   // the FunMap is the one doc the app reads

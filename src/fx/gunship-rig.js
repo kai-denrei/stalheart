@@ -38,7 +38,7 @@ export function createGunshipRig(host) {
   // THE FRAME'S GUNSHIP, where the controller's frame steps it: inside `!player.won && !frozen`, after the debris and before the
   // wave clock and the strike's ration. The orbital window fills in game time, like everything else there.
   const tick = (dt) => {
-    const held = (onCall() || !!host.story()?.grow) && !onStation(gunship), ev = held ? null : stepGunship(gunship, dt, GUNSHIP_ORBIT);
+    const held = (onCall() || !!host.story()?.grow) && !onStation(gunship), ev = held ? null : stepGunship(gunship, dt, host.orbit?.() ?? GUNSHIP_ORBIT);   /* the tune panel's station length (2026-10-16) */
     if (onCall() && ev === 'depart') passEnded(call, GUNSHIP_CALL);
     // A GROWING PAGE'S GUNSHIP IS IN ORBIT from the start and comes on station when sector 0 calls it (storyApi.gunshipArrive);
     // after that free pass the meter runs as after the handover
@@ -103,7 +103,7 @@ export function createGunshipRig(host) {
     damage: (e, d) => damageEnemy(e, host.t(), d, true, 'strike', gunship.gun),
     onStation: () => onStation(gunship),
     left: () => phaseLeft(gunship),
-    progress: () => passProgress(gunship, GUNSHIP_ORBIT),
+    progress: () => passProgress(gunship, host.orbit?.() ?? GUNSHIP_ORBIT),
     mount: () => mountGunship(gunship),
     dismount: () => dismountGunship(gunship),
     select: (k) => selectGun(gunship, k, GUNSHIP_GUNS),

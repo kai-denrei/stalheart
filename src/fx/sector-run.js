@@ -73,7 +73,7 @@ export function createSectorRun(h) {
   const swell = () => api.swell?.() ?? 1;
   const due = () => (def?.shape === 'flow'
     ? flowDue({ alive: aliveSectorEnemies(true), target: flowTarget(def.flow.alive * swell(), crowdTrace.cap) })
-    : pulseDue({ sent: lastPulse.sent, alive: aliveSectorEnemies(true), lastSize: lastPulse.size, sinceRelease: clock - lastPulse.at, pulse: def?.pulse ?? 0, breath: def?.breath ?? { at: 0, max: 0 } }));
+    : pulseDue({ sent: lastPulse.sent, alive: aliveSectorEnemies(true), lastSize: lastPulse.size, sinceRelease: clock - lastPulse.at, pulse: (def?.pulse ?? 0) * (h.tune?.().pulse ?? 1), breath: def?.breath ? { ...def.breath, max: def.breath.max * (h.tune?.().breath ?? 1) } : { at: 0, max: 0 } }));   /* the tune panel's pulse and breath (2026-10-16) */
 
   // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
   // gate exists from the first frame of a sector; the BACK GATE (2026-09-18) only once Isao has printed it, so the map fills in as
@@ -432,7 +432,7 @@ export function createSectorRun(h) {
   }
 
   return {
-    tick, hudLine, defOf,   /* defOf(n): a sector's row by number (the VARS playtest page names them, src/fx/vars-modal.js) */
+    tick, hudLine, defOf, defNow: () => def,   /* defOf(n): a sector's row by number (the VARS playtest page names them, src/fx/vars-modal.js); defNow: the one running (the tune panel) */
     // the wave clock may arm only while every breach of the sector stands open and ready and one of them still has waves
     // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
     // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path

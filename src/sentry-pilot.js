@@ -23,7 +23,7 @@ export function createSentryPilot(root, host) {
   listen(panel.querySelector('[data-map]'),'click',toggleMap);
   const editable=e=>/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable;
   listen(window,'keydown',e=>{
-    if(editable(e)||/^[hH?]$/.test(e.key))return;   // H / ? reach the controls page from a seat (src/fx/controls-card.js)
+    if(editable(e)||/^[hH?xX]$/.test(e.key))return;   // H / ? reach the controls page from a seat (src/fx/controls-card.js); X the tune panel (src/fx/tune-panel.js)
     e.stopImmediatePropagation();
     if(e.key==='Escape'){host.leave?.();return;}   // ESC IS THE TANK (owner, 2026-09-25): the first Esc frees the mouse (the browser's), the next leaves, as 7 and TANK do
     if(e.code==='Space'){e.preventDefault();state.held=gunship||!map;}

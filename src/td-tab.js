@@ -59,6 +59,7 @@ import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; i
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { groundAt } from './fx/lance-follow.js';   /* a body's drawn point (2026-10-16: the seekers steer at it) */ import { createEmergeBlobs } from './fx/emerge-blob.js';
+import { createTunePanel } from './fx/tune-panel.js'; import { tuneKnobs, applyTune } from './fx/tune-knobs.js'; import { recordTune } from './platform/tune-store.js'; import { screenTiers } from './domain/tune.js'; import { PEARL_OF } from './content/pearl-enemies.js';   /* THE TUNE PANEL (X; owner, 2026-10-16) */
 import { createCanyonRun } from './fx/canyon-run.js'; import { createHullConsole } from './fx/hull-console.js'; import { createBossRun } from './fx/boss-run.js'; import { createDescentHost } from './fx/descent-host.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
 import { createStrikeConsole } from './fx/strike-console.js'; import { createTerraformerYard } from './fx/terraformer-yard.js';
@@ -459,7 +460,7 @@ export function initTdTab(root) {
   // All logic lives in strike.js (pure, tested); this file owns only what it
   // looks and sounds like. strikeTune is the live knob object the GUI writes.
   const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: flags.gunship === 'station' }); let gunshipBriefing = null, foundryFx = null;   /* the platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance */
-  const gunshipRig = createGunshipRig({ scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
+  const gunshipRig = createGunshipRig({ orbit: () => tune.orbit ?? GUNSHIP_ORBIT, scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
     story: () => story, storyViews: () => storyViews, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotHost: () => pilotHost, isao: () => isao, t: () => t, gunshipBriefing: () => gunshipBriefing, enemies: () => enemies, spawnPoints: () => spawnPoints, debris: () => debris, player: () => player, towers: () => towers, strikeTune: () => strikeTune });
   const strikeTune = makeStrikeParams();
   let strikeGrace = 0;   // s after launch during which a tap cannot skip
@@ -821,7 +822,8 @@ export function initTdTab(root) {
   const HEART_MAX = 10;
   let playerHP = 3;
   let hullArmour = HULL_ARMOUR.hits;   // the hull's dents left before it is lost (owner, 2026-10-16: four hits a hull; src/content/tank.js)
-  const hullHealth = () => (playerHP - 1 + hullArmour / HULL_ARMOUR.hits) / PLAYER_MAX;   // the drawn wear: the hulls left and this one's armour
+  const hullHits = () => tune.hull?.hits ?? HULL_ARMOUR.hits;   // the tune panel's knob over the content (src/fx/tune-knobs.js)
+  const hullHealth = () => (playerHP - 1 + hullArmour / hullHits()) / PLAYER_MAX;   // the drawn wear: the hulls left and this one's armour
   const PLAYER_MAX = 3;
   // A destroyed tank is DOWN, not merely invisible. Without this flag the
   // wreck kept its whole agency through the death hold — it drove (auto),
@@ -1977,6 +1979,8 @@ export function initTdTab(root) {
 
   const steerEase = makeSteerEase();   // the eased yaw rate; the top rate and its ramp are src/content/tank.js TANK_STEER
   // THE HULL'S DRIVE (src/fx/hull-drive.js): movement over the cell graph, the wanderer's exits, the per-frame steer and glide
+  // THE TUNE (X; src/fx/tune-panel.js, src/fx/tune-knobs.js applyTune): the panel's live effects, read each frame where they matter; on params for the enemy loop
+  const tune = { values: {}, tier: {}, pulse: 1, breath: 1, hull: null, lure: null, orbit: null, sentryBase: null }; params.tune = tune;
   const hullDrive = createHullDrive({
     MOVES,
     breachBlocked,
@@ -2010,6 +2014,7 @@ export function initTdTab(root) {
     graph: () => graph,
     kick: () => kick,
     lure: () => bossRun.lure(),   // THE ARENA's lure directive (src/fx/boss-run.js, 2026-10-16)
+    tune: () => tune,   // the panel's drive ramp and lure hops
     playerDown: () => playerDown,
     portalDist: () => portalDist,
     speedBonus: () => speedBonus,
@@ -2893,7 +2898,7 @@ export function initTdTab(root) {
     sfx.reseed(params.seed); // pitch jitter is deterministic per seed
     deathPick = mulberry32((params.seed >>> 0) ^ 0x9e3779b9);
     heartHP = HEART_MAX; integrityHud?.reset();
-    playerHP = PLAYER_MAX; hullArmour = HULL_ARMOUR.hits;
+    playerHP = PLAYER_MAX; hullArmour = hullHits();
     playerDown = false;
     shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
     shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;shield.rackFill=0;refillArray(arrayStation,SHIELD_ARRAY);arrayStation.drawn=0;
@@ -3681,9 +3686,9 @@ export function initTdTab(root) {
       return;
     }
     // FOUR HITS A HULL (owner, 2026-10-16; HULL_ARMOUR): a touch dents the armour, the hull is lost on the last dent; the MK-9's burn (and a harness `whole`) takes it in one
-    hullArmour -= whole || HULL_ARMOUR.whole.includes(killerType) ? HULL_ARMOUR.hits : 1;
+    hullArmour -= whole || HULL_ARMOUR.whole.includes(killerType) ? hullHits() : 1;
     if (hullArmour > 0) { bumpLeft = Math.max(bumpLeft, BUMP_LEN * 0.6); if (playerMesh) applyTankHealth(playerMesh, hullHealth()); container.classList.remove('hull-dent'); void container.offsetWidth; container.classList.add('hull-dent'); sfx.play('danger_alert', { dist: 0, gain: 0.5 }); updateHud(); return; }
-    hullArmour = HULL_ARMOUR.hits;
+    hullArmour = hullHits();
     playerHP--; if (story?.expeditions) storyApi.expeditions().hullLost();   /* the rule drops the part back at its site; the crate tumbles off and the site's flag comes down */
     run.hullsLost++; sectorRun?.hullLost();
     checkAchievements();
@@ -4674,7 +4679,7 @@ export function initTdTab(root) {
     coins: () => coins(),
     runAchvBlock: () => runAchvBlock(),
     ctx: () => ({
-      rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX, hullArmour, hullHits: HULL_ARMOUR.hits,
+      rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX, hullArmour, hullHits: hullHits(),
       towers: towers.length, tankRank, tankKills, round, wave, sectorsTotal: SECTORS_TOTAL, wavesPerSector: params.wavesPerSector,
       sectorWave: sectorWave(), programmeDone: programmeDone(), time: runContext.time, toll: sectorToll(), shield, shieldTune,
       assistant: !!assistant,
@@ -5227,7 +5232,7 @@ export function initTdTab(root) {
       dt,
       pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null),
     );
-    hullConsole.tick(dt, player.pos, { on: !pilotMode && !mobileShell && !(story?.hull?.held?.()) && playerHP > 0, above: radarCss + 8, armour: hullArmour, hits: HULL_ARMOUR.hits, mode: manualActive() ? (cruise ? 'CRUISE' : 'MANUAL') : (DIRECTIVE_LABEL[params.directive] || 'AUTO') }); bossRun.tick(dt); emergeBlobs.step(dt);   /* the hull console over the radar (src/fx/hull-console.js), the boss run, the blobs at the lips */
+    hullConsole.tick(dt, player.pos, { on: !pilotMode && !mobileShell && !(story?.hull?.held?.()) && playerHP > 0, above: radarCss + 8, armour: hullArmour, hits: hullHits(), mode: manualActive() ? (cruise ? 'CRUISE' : 'MANUAL') : (DIRECTIVE_LABEL[params.directive] || 'AUTO') }); bossRun.tick(dt); emergeBlobs.step(dt);   /* the hull console over the radar (src/fx/hull-console.js), the boss run, the blobs at the lips */
     groundFeed.render(renderer, scene, dt); radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
@@ -5240,7 +5245,7 @@ export function initTdTab(root) {
   function makeSectorRun() {
     return createSectorRun({ story, host: root, api: storyApi, waveSize: params.waveSize, threatMult, hardcore: story.hardcore, spawnGap: { spread: SPAWN_SPREAD, max: SPAWN_GAP_MAX }, store: localStorage, rng: () => whim(),
       ready: () => automated() && (story.beats.phase() === 'expedition' || story.handover.stage >= (story.handover.defendStage ?? 8)) && !briefQ && !shotActive() && !syntheticModal?.isOpen() && !paused, firstSector: storyQuery.firstSector,   /* SKIP TUTORIAL opens the run at the back-door sector: its collapse and breach are the first thing the player sees */
-      centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(), hold: () => creatureEnemies.holds(),
+      tune: () => tune, centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(), hold: () => creatureEnemies.holds(),
       // the ring the gunship's far breach walks: a minute out
       field: () => ({
         cellSide,
@@ -5389,6 +5394,10 @@ export function initTdTab(root) {
     shots: () => pilot?.state?.shots ?? 0, station: () => !!gunshipRig.probe().station, arenaField: () => (story?.arena?.cell >= 0 ? (story.arenaField ??= bfsDist(graph.adj, [story.arena.cell], (ci) => dungeon.tags[ci] !== BLOCKED)) : null),
     dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; } });   /* THE ARENA (2026-10-16): the lure's field and its dangers */
   // THE DESCENT (src/fx/descent-host.js, 2026-10-16): the cave game in an iframe over the paused game after the final sector, its outcome back
+  const tunePanel = createTunePanel(root, { storage: globalThis.localStorage, apply: (values) => applyTune({ tune, params }, values),
+    knobs: () => tuneKnobs({ tune, params, enemies, sector: sectorRun?.defNow() ?? null, seat: pilot?.gunship ? 'gunship' : pilot?.state?.tower?.key ?? null, arena: !!sectorRun?.defNow()?.boss }),
+    context: () => ({ rev: document.querySelector('meta[name="rev"]')?.content ?? '', url: location.href, sector: sectorRun?.defNow() ? `${sectorRun.defNow().n} · ${sectorRun.defNow().name}` : '', screen: screenTiers(enemies, PEARL_OF) }),
+    record: (name, text) => recordTune({ base: location.pathname.replace(/[^/]*$/, ''), name, text, download: (n, t) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/markdown' })); a.download = n; a.click(); } }) });   /* THE TUNE PANEL (X): what is on screen, tweaked and recorded (owner, 2026-10-16) */
   const descentHost = createDescentHost(root, { pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t,
     look: (ci) => { endShot(); startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...norm3(graph.centers[ci])), { id: 'descentLook', hold: 600, fromCamera: true, dive: { height: 7, back: 9, diveSeconds: 0.6 } }); } });   /* the arena's hole before the cave (2026-10-16) */
   const canyonRun = createCanyonRun({
@@ -5837,6 +5846,7 @@ export function initTdTab(root) {
         // the hull's true size over its scale: exploded geometry reads absurd here
         playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),
         arena: story?.arena ?? null,   /* the arena's cell (2026-10-16) */
+        tune: tunePanel.state(),
         sector: sectorRun ? { ...sectorRun.state(), sockets: Object.keys(story?.socketToward ?? {}).map(Number) } : null,
         playerAssetReady: !playerMesh?.userData.loading,
         skip: { on: !!storyQuery.skip, chapter: story?.chapter?.id ?? null, offer: skipCard?.state() ?? null },   // SKIP TUTORIAL: whether this run is the skipped entry, and whether the offer still stands
