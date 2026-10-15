@@ -433,6 +433,18 @@ export const BRIEFS = {
   sector_hold: { id: 'sector_hold', face: 'focused', title: 'THE NEXT SECTOR', lines: [...SECTOR_HOLD.brief] },
   sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
   sector_boss: { id: 'sector_boss', face: 'surprised', title: BOSS_SECTOR.name, lines: [...BOSS_SECTOR.brief] },
+  // THE BOSS's own lines (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 16): the two replies to the choice, the boss up,
+  // the hull touched, the boss dead
+  boss_tank: { id: 'boss_tank', face: 'determined', title: 'COMMS · ISAO', once: false, lines: [BOSS_SECTOR.boss.choice.replyA] },
+  boss_auto: { id: 'boss_auto', face: 'determined', title: 'COMMS · ISAO', once: false, lines: [BOSS_SECTOR.boss.choice.replyB] },
+  boss_rises: { id: 'boss_rises', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave.'] },
+  boss_hit_me: { id: 'boss_hit_me', face: 'worried', title: 'COMMS · ISAO', once: false, lines: ['It has a hold of the hull!'] },
+  boss_dead: { id: 'boss_dead', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Target down. I need a car wash.'] },
+  // THE DESCENT (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 17): the brief as the cave opens, the decoding joke on
+  // his return, the same as his last transmission on a sacrifice
+  descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['The nest is under the sinkhole. Somebody has to carry the charge down there, and the hull does not fit.', 'I do.'] },
+  descent_back: { id: 'descent_back', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['I finally decoded their language. From what the Queen said when I set the charge in her nest: "My nest. You, out."', 'And then words that seem to mean... excrement.'] },
+  descent_last: { id: 'descent_last', face: 'focused', title: 'LAST TRANSMISSION · ISAO', once: false, lines: ['I decoded their language. The Queen said: "My nest. You, out." And then words that seem to mean... excrement.', '...'] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
   sector_canyon_again: { id: 'sector_canyon_again', face: 'focused', title: SECTOR_CANYON_AGAIN.name, lines: [...SECTOR_CANYON_AGAIN.brief] },

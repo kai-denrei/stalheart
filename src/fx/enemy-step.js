@@ -292,7 +292,7 @@ export function createEnemyStep(host) {
         e.obj.scale.setScalar(sv);
         e.obj.userData.s0 = sv;
       }
-      let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1);
+      let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1) * (host.params.enemySpeed ?? 1);   // ENEMY SPEED x: the playtest knob over every walk (owner, 2026-10-16)
       if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
       if (e.bodyPace != null) pace *= e.bodyPace;   // a Pearl record waits for its body (round four, src/fx/creature-pearl.js paceOf: the body leads)

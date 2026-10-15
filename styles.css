@@ -1224,6 +1224,16 @@ html, body {
   z-index: 5;
 }
 
+/* THE DESCENT (src/fx/descent-host.js): the cave game over the whole tab while it plays */
+.descent-frame { position: fixed; inset: 0; width: 100vw; height: 100vh; border: 0; z-index: 200; background: #000; }
+
+/* THE CHOICE CARD (owner, 2026-10-15, THE BOSS; src/fx/choice-card.js): Isao's line and two buttons over the paused game, the debrief's look */
+.choice-card { position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 120; width: min(560px, calc(100vw - 32px)); padding: 18px 20px; background: rgba(4, 12, 10, 0.92); border: 1px solid rgba(53, 255, 208, 0.45); box-shadow: 0 0 24px rgba(53, 255, 208, 0.18); color: #c9ffe9; font: 500 14px ui-monospace, Menlo, monospace; letter-spacing: 0.04em; }
+.choice-card .choice-who { font-size: 10px; letter-spacing: 0.18em; color: #4fae63; margin-bottom: 8px; }
+.choice-card .choice-line { line-height: 1.45; margin-bottom: 14px; }
+.choice-card .choice-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.choice-card .sdb-btn { flex: 1 1 200px; }
+
 /* THE SPEED OVER THE RADAR (owner, 2026-10-15; src/td-tab.js hullSpeed): the hull's pace in km/h, small, above the minimap; not on a phone */
 .hull-speed { position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: 222px; z-index: 5; pointer-events: none; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #b8ffca; opacity: 0.85; text-shadow: 0 0 6px rgba(0, 0, 0, 0.8); }
 .hull-speed[hidden] { display: none; }

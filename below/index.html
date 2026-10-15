@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d0c">
+  <title>STÅLHEART — BELOW</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23b7d7bf' d='M4 4h24v5H9v5h19v14H4v-5h19v-5H4z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="view" aria-label="Third-person chase view of ISAO"></canvas>
+    <div class="crt" aria-hidden="true"></div><div id="impact" aria-hidden="true"></div>
+    <div class="frame-corner tl"></div><div class="frame-corner tr"></div><div class="frame-corner bl"></div><div class="frame-corner br"></div>
+    <header class="topline"><a class="wordmark" href="./">STÅLHEART <span>/ BELOW</span></a><div class="top-right"><span class="live-dot"></span> LOCAL FEED <span class="divider">/</span> <span id="clock">00:00:00</span><button id="sound" aria-label="Unmute audio">AUDIO OFF</button></div></header>
+
+    <section id="briefing" class="screen">
+      <div class="brief-content">
+        <p class="eyebrow"><span class="square"></span> ENDGAME EXPEDITION <span class="dim">— 01</span></p>
+        <h1>BELOW<span class="title-dot">.</span></h1>
+        <p class="tagline">Something beneath us is still moving.</p>
+        <div class="brief-rule"></div>
+        <p class="brief-copy">The boss is dead. The tremors haven’t stopped.<br>MÖRK cannot fit through the breach.<br>ISAO can.</p>
+        <div class="assignment"><span class="label">ASSIGNED UNIT</span><strong>ISAO <span class="dim">/ Fabricator</span></strong><span class="unit-warning">NO ARMAMENT · SINGLE PAYLOAD · TEN FLARES</span></div>
+        <button id="begin" class="primary" disabled><span id="begin-label">INITIALIZING FEED</span><span>↗</span></button>
+        <p class="brief-note">Find the source. Plant the charge. Bring him home.</p>
+      </div>
+      <aside class="brief-side"><div class="vertical-rule"></div><span class="label">SINKHOLE 07</span><strong>NO RETURN<br>TELEMETRY</strong><p>Three passages. Two ways through.<br>One fragile light. Twelve hit points.<br>Ten red flares when it fails.</p><div class="mini-wave" aria-hidden="true">▁▂▁▁▃▆▂▁▃▁▂▅▁▁▂▇▃▁▂▁</div><span class="label">SEISMIC ACTIVITY PERSISTS</span></aside>
+      <footer class="brief-footer"><span>EXPERIMENTAL FLIGHT BUILD <b>0.8</b></span><span>HEADPHONES RECOMMENDED <span class="dim">/</span> KEYBOARD + MOUSE</span></footer>
+    </section>
+
+    <section id="hud" hidden aria-label="Flight instruments">
+      <div class="hud-top"><div><span class="label">ISAO / REMOTE PILOT</span><h2 id="objective">DESCEND INTO THE BREACH</h2></div><div class="sensor"><span id="sensor-light" class="live-dot"></span><span id="sensor-mode">OPTICAL</span><small id="sensor-status">LAMP / NOMINAL</small></div></div>
+      <div class="left-gauge"><span class="label">DEPTH</span><strong><span id="depth">028</span><small>m</small></strong><div class="gauge-ticks"></div><span class="label">VEL</span><span id="speed">0.0 m/s</span></div>
+      <div class="right-gauge"><span class="label">HULL</span><strong id="integrity">12<small> / 12 HP</small></strong><div class="hull-track"><div id="hull-bar"></div></div><span class="label">PAYLOAD</span><span id="payload-state">SECURED</span><span class="label">FLARES / F</span><span id="flare-count">10 / 10</span></div>
+      <div id="reticle" aria-hidden="true"><i></i><i></i><i></i><i></i><span>+</span></div>
+      <div id="interaction" hidden><span id="interaction-text">PLACING CHARGE — HOLD E</span><div><i id="arm-bar"></i></div></div>
+      <div id="alert" role="status"></div>
+      <div id="lidar-options" hidden><span class="label">PROCESSED LIDAR</span><div><button data-view="0">1 DEPTH</button><button data-view="1">2 PHOSPHOR</button><button data-view="2">3 MOTION</button><button data-view="optical">V OPTICAL</button></div></div>
+      <div id="countdown" hidden><span class="label">DETONATION IN</span><strong id="timer">01:05</strong><span>GET ISAO TO THE SURFACE</span></div>
+      <div id="comms" aria-live="polite"><div id="isao-face" aria-hidden="true"><span>▪ ▪</span><span>━</span></div><div><span class="label" id="speaker">ISAO</span><p id="dialogue"></p></div></div>
+      <div class="hud-bottom"><div class="controls"><span><kbd>W A S D</kbd> FLY</span><span><kbd>MOUSE / ← → ↑ ↓</kbd> LOOK</span><span><kbd>SPACE / SHIFT</kbd> RISE / LOWER</span><span id="scan-key" hidden><kbd>Q</kbd> SCAN</span><span><kbd>F</kbd> FLARE</span><span><kbd>E</kbd> PLACE</span><span><kbd>ESC</kbd> PAUSE</span></div><div id="depth-key" hidden><span>NEAR</span><i></i><span>FAR</span></div><div class="coordinates"><span id="bearing">HDG 000</span><span id="range">SURVEY / SOURCE UNKNOWN</span><span id="link">LINK 99%</span></div></div>
+    </section>
+
+    <section id="pause" class="modal" hidden><div class="modal-panel"><p class="eyebrow">PILOT LINK / SUSPENDED</p><h2>HOLDING<br>POSITION.</h2><p>ISAO is waiting for you.</p><button id="resume" class="primary">RESUME FLIGHT <span>↗</span></button><button id="restart-pause" class="text-button">RESTART EXPEDITION</button><p class="help">WASD to fly · Mouse or arrow keys to look<br>Space to climb · Shift to descend<br>WASD controls horizontal flight; mouse controls heading/view<br>Q to activate LiDAR when processed / send a wide scan<br>1 / 2 / 3 select Depth / Phosphor / Motion · V optical<br>F to drop one of ten route-marking flares<br>Hold E to place the bomb close to the Queen<br>Esc or P to pause · M to toggle sound</p></div></section>
+    <section id="ending" class="modal" hidden><div class="modal-panel"><p id="ending-kicker" class="eyebrow">MISSION COMPLETE</p><h2 id="ending-title">WELCOME<br>HOME.</h2><p id="ending-copy"></p><div id="ending-stats"></div><button id="restart" class="primary">FLY AGAIN <span>↗</span></button></div></section>
+    <div id="load-error" hidden role="alert"></div>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

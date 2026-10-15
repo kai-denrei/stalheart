@@ -318,6 +318,9 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.deepEqual(log, [['report', SECTOR_DOOR.earliest]], 'the door sector held: its report, no finale');
   // THE BOSS (2026-10-15): the sector after the door, held like any; BOTH WALLS, the final sector, after it
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'THE BOSS'); assert.equal(run.state().name, 'THE BOSS');
+  { let q = []; for (let g = 0; g < 200 && !q.length; g++) { q = run.release(ww.t) ?? []; step(0.5); }   // release() returns the entries the controller queues
+    assert.equal(q.length, 20, `the boss row's first wave: twenty entries (${q.length}; ${JSON.stringify(run.state().breaches?.[0] ?? run.state())})`);
+    assert.ok(q.every((e) => e.type === 'cutis' && e.tier === 'small' && e.hunter && e.spec?.hp === 20 && e.spec?.body === 'cutis' && e.sp), `small Cutis hunters at 20 hp off the breach (${JSON.stringify(q[0])})`); }
   hold();
   assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'the boss sector held: its report, no finale');
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'BOTH WALLS'); assert.equal(run.state().name, 'BOTH WALLS');

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-enemy-speed-knob",
+  "date": "2026-10-16",
+  "type": "change",
+  "status": "accepted",
+  "title": "ENEMY SPEED x, a playtest knob over every record's walk (owner, 2026-10-16): params.enemySpeed on the VARS page (0.25 to 4), ?speed=N at boot, the harness reads it",
+  "context": "Owner, 2026-10-16: 'for the purpose of fine-tuning the game, I also want a \"enemy speed\" variable, where we could increase the moving speed of all enemies while play-testing.' Every record's walk is one line in src/fx/enemy-step.js (ENEMY_SPEED x the spec's speed x its own jitter, the Pearl tiers' caps already folded into the spec by src/fx/creature-enemies.js paced); the Pearl, Cutis and Reed bodies follow their records (their hop cycles scale with the record's speed), so a multiplier on the record moves every body with it. The variables modal (src/fx/vars-modal.js) turns the controller's root lil-gui controls into its GAME page.",
+  "outcome": "src/td-tab.js params.enemySpeed (1) with the control in src/fx/vars-modal.js (`enemy speed x`, 0.25 to 4 by 0.05; `params` added to its host literal); src/fx/enemy-step.js multiplies the pace by host.params.enemySpeed; src/platform/game-flags.js reads ?speed=N (0.1 to 8) into it at boot; state().enemySpeed for the harness. Above about 1.2 the Pearl bodies' transfers may exceed the motion audit's pop threshold (test/pearl-motion.mjs, --pearl-story): a playtest knob, not a balance; the caps in PEARL_PACE stay the shipped walk.",
+  "alternatives": [
+    "A content constant edited between runs: rejected; the owner wants to move it while playing.",
+    "Scaling PEARL_PACE's caps: rejected; the multiplier sits after them so one number moves every type and family alike."
+  ],
+  "evidence": [
+    "node test/enemy-step.mjs, test/host-contracts.mjs, test/game-flags.mjs; the VARS page shows the control on index.html?vars=1 (by eye)"
+  ],
+  "supersedes": []
+}

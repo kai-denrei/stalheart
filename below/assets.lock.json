@@ -1,0 +1,237 @@
+{
+  "snapshot": "2026-10-15",
+  "files": [
+    {
+      "path": "vendor/three.module.js",
+      "sha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495"
+    },
+    {
+      "path": "assets/fonts/ShareTechMono.woff2",
+      "sha256": "73b87eb7b02dfec4cb1ddfabad6e625d9c77b3c81015064420de88d8dd04816c"
+    },
+    {
+      "path": "assets/fonts/VT323.woff2",
+      "sha256": "043a60145af2ddbcd0a6452625cb0bfc4e18b222c76dcd1d4a0106715472faba"
+    },
+    {
+      "path": "assets/models/ovum.bin",
+      "sha256": "9774993bd7f64b54944b5ea99c13153dd52477c736deec4e89ba1a49b3d5ecf1"
+    },
+    {
+      "path": "assets/models/ovum.json",
+      "sha256": "53df21c4da48047d73786de167af9844fe921c539c2b92b39e4b0ef0e869fed7"
+    },
+    {
+      "path": "assets/audio/sinkhole_quake.mp3",
+      "sha256": "d3a6eb6c03a367d3c84b932d75cd1fdc1e586238a2d2bbab0f6802ae30e32f1d"
+    },
+    {
+      "path": "assets/audio/blast_fire.mp3",
+      "sha256": "00b0e149e43e3bf2e5fe7560efbe18e0d69951fe55252764fa5394a270654d08"
+    },
+    {
+      "path": "assets/audio/rotor_spin.wav",
+      "sha256": "27386dcd9781f73e268cc5d8ac8439e90c55e791c2302d2bf6e1c64d290825a3"
+    },
+    {
+      "path": "src/stalheart/sinkhole-shape.js",
+      "sha256": "cfa62095777bf55d467b2146dcf1eef026f2861e4c580f938004d8db29f8553e"
+    },
+    {
+      "path": "src/stalheart/looks.js",
+      "sha256": "963bc18da4c9ded14d7a29caa1f02582bc23f58129de43f5d0a74ced9d577d1d"
+    },
+    {
+      "path": "assets/models/isao_birudoron_lod1.glb",
+      "sha256": "2e9a389a4729f625fa9a7fd018bad8b78db86ac3254ebdcff9df230fba344088"
+    },
+    {
+      "path": "vendor/GLTFLoader.js",
+      "sha256": "1f9b02acfbf219a6ebb77f09e355500449a3ba9e6a77d87e0de72c0b9315ea4e"
+    },
+    {
+      "path": "vendor/BufferGeometryUtils.js",
+      "sha256": "3a6701d824adfe05dc28c09b6c1d64aeab9a183bc3b944d85f15f596e5c6c2b3"
+    },
+    {
+      "path": "vendor/ConvexHull.js",
+      "sha256": "be3c56516aa11537312a3307121cd8bb4ab78fdebc56832d8a45d879b3758757"
+    },
+    {
+      "path": "src/stalheart/pearl-enemies.js",
+      "sha256": "031c0f09fd529e44dc63c31499a19534a3a9fe2d27a96e8d2d3d8525c2b98275"
+    },
+    {
+      "path": "src/fx/cutis-maku/LICENSE",
+      "sha256": "8b1ba204bb69a0ade2bfcf65ef294a920f6bb361b317dba43c7ef29d96332b9b"
+    },
+    {
+      "path": "src/fx/cutis-maku/config.js",
+      "sha256": "9466b27c11962e9e2697e0534c8ff5b4901db5f98795a94bcf223301885f5c38"
+    },
+    {
+      "path": "src/fx/cutis-maku/convex.js",
+      "sha256": "ad6daa1a4fc80dcbb46fabbea55c0e34a15c083b853eb0810dc08ab422f30532"
+    },
+    {
+      "path": "src/fx/cutis-maku/deform.js",
+      "sha256": "796f2b852ec8b287e091d2efbe2086136f769d8f6190d89aff4b582e96643db7"
+    },
+    {
+      "path": "src/fx/cutis-maku/geometry.js",
+      "sha256": "978518d74b10321bed9bc12d96f6f553b54c4a04c2d8a71bc2fe06b2a29ac086"
+    },
+    {
+      "path": "src/fx/cutis-maku/material.js",
+      "sha256": "3c48d26de01dfcd1f60656d1f02b001f28722683b067ec4ad40435266b51be20"
+    },
+    {
+      "path": "src/fx/cutis-maku/shaders.js",
+      "sha256": "ad24a888c7429394decbc523e43839959d9f4b9ae74290d4f3b8f89333c10b75"
+    },
+    {
+      "path": "src/fx/cutis-maku/swarm.js",
+      "sha256": "db96aa70e1a8228f4086ecb12cf4bbf8eb2588ad2bb4985b4086f49964646db5"
+    },
+    {
+      "path": "assets/models/reed.bin",
+      "sha256": "3bc1339ea9b57d436cc43cde2ad9801d6f4877fa245fa5bd688e51cf91ed5207"
+    },
+    {
+      "path": "assets/models/reed.json",
+      "sha256": "785fc6806856c6d774e3bf9fb011920b88729ee5d392f3afb30f3113d001b008"
+    },
+    {
+      "path": "src/fx/gorogoro/LICENSE",
+      "sha256": "8b1ba204bb69a0ade2bfcf65ef294a920f6bb361b317dba43c7ef29d96332b9b"
+    },
+    {
+      "path": "src/fx/gorogoro/config.js",
+      "sha256": "a14286bfcbe6034a996fe9feaed406b20699325e6e0f6af3bae8fea2072b39a1"
+    },
+    {
+      "path": "src/fx/gorogoro/controller.js",
+      "sha256": "886d91a4d9ab199672d4299c8acd44070808ce4a0c5eec90ae7efc6fc6728bd9"
+    },
+    {
+      "path": "src/fx/gorogoro/geometry.js",
+      "sha256": "41a0318f9fe7fc151cd3127d08dbe5ed20efe2ab67b4db93ebcb883b424aeac4"
+    },
+    {
+      "path": "src/fx/gorogoro/locomotion.js",
+      "sha256": "0b212433a958b922796e017cde4e3def2a69045a56ede5de8de91f516ed7658c"
+    },
+    {
+      "path": "src/fx/gorogoro/material.js",
+      "sha256": "31a67775c2cc6a8f3713d0c3c129ed28291ccebea9151b9b02b8b3d98154f6b1"
+    },
+    {
+      "path": "src/fx/gorogoro/shaders.js",
+      "sha256": "3ca0881bbf7c0c320051005b119c4dbf25b9f1130ab013cf29fcb7c39381c108"
+    },
+    {
+      "path": "src/fx/gorogoro/tiers.js",
+      "sha256": "a9d8af3ec1d532745f28dbfc411edd8ebfd740695f4559c64d1d32e1473bd676"
+    },
+    {
+      "path": "assets/audio/isao_strike_countdown.mp3",
+      "sha256": "b1e990e607a0167fe6c7bc3d397b99bc903d8782872705e8485f01b56d271d3f"
+    },
+    {
+      "path": "assets/audio/isao_hit_wall.mp3",
+      "sha256": "e5f7f4cb90b7989b50cc46763c90cacc7b696743ab16f11e151715790e74773a"
+    },
+    {
+      "path": "assets/audio/isao_hit_enemy.mp3",
+      "sha256": "66dfb8f631653fe61cb3c55a2d0dd802fd65626e640d416078f7e2abcf4a0a7e"
+    },
+    {
+      "path": "assets/audio/isao_hit_tentacle.mp3",
+      "sha256": "4825e43da64f2547e27e2e353cfa362d8b4f44ad4805067fc08896b6ea246600"
+    },
+    {
+      "path": "assets/audio/queen_laying_eggs.mp3",
+      "sha256": "7f2388795492a4f061ecaeb8a7f245d68d22772a7e4bf408bc1c5d71799714bb"
+    },
+    {
+      "path": "assets/audio/alien_reverb.mp3",
+      "sha256": "5c516c0d4dfceb2064f7f77e53a97c61f4d23847efbe3f8f2241d705bee56b22"
+    },
+    {
+      "path": "src/fx/reed/LICENSE",
+      "sha256": "8b1ba204bb69a0ade2bfcf65ef294a920f6bb361b317dba43c7ef29d96332b9b"
+    },
+    {
+      "path": "src/fx/reed/monster/arena.js",
+      "sha256": "35e997c4e54cf4305c079ccbab55aaf520ce779c4604bf1ec09150527b83d6ff"
+    },
+    {
+      "path": "src/fx/reed/monster/behavior.js",
+      "sha256": "f713c8597f7cd3b9a460175c70bd3723d9a61b85dae53951696a846173a39512"
+    },
+    {
+      "path": "src/fx/reed/monster/cradle.js",
+      "sha256": "977764ff55b0ddeef65a51be54006515c9de28355ed46c6e78762c09d30fc962"
+    },
+    {
+      "path": "src/fx/reed/monster/feeding.js",
+      "sha256": "5a2796fc1eb9966494a13543517de3d9d904b66a64791bd1b753c36028bcf70c"
+    },
+    {
+      "path": "src/fx/reed/monster/gait.js",
+      "sha256": "42cff8140218a12ff57188a9580436514096ccb76040e01941236eddfa211575"
+    },
+    {
+      "path": "src/fx/reed/monster/limb-separation.js",
+      "sha256": "73b3b945a978725b71258183df455b18c03bbe2175238f0cfa162c721350fd44"
+    },
+    {
+      "path": "src/fx/reed/monster/motion-settings.js",
+      "sha256": "718a41df3bd14ab91e58b3a7dac6dce502a8b54f7c69dc20b9e79c7fe3c7401a"
+    },
+    {
+      "path": "src/fx/reed/monster/prey.js",
+      "sha256": "cee3abb4bc022370563fa2184a3129d9174a6b1b9af448c2814346bbc30fbc21"
+    },
+    {
+      "path": "src/fx/reed/monster/pursuit.js",
+      "sha256": "c8cb8a475d81c5e059eac62f0cd921c8e231031b861bd18c7aaf8f2305d0f248"
+    },
+    {
+      "path": "src/fx/reed/monster/traction.js",
+      "sha256": "0971b57a3a6ea0a5982e60cc4852dc7a15d2e51e282393d497de8345914192a8"
+    },
+    {
+      "path": "src/fx/reed/native/soft-body-kernel.c",
+      "sha256": "d9f2335e81ba4e4ce1e04c741f00826162ec55de7e936eaf93f69e74ee15243f"
+    },
+    {
+      "path": "src/fx/reed/physics/cage-model.js",
+      "sha256": "8d388d15f6e0b20374ba3f33b0c8491d0499fc3fe80cb115f89a565541b78655"
+    },
+    {
+      "path": "src/fx/reed/physics/constants.js",
+      "sha256": "0ad24cae058f52d830b4c65e0f106f56967e7b07ad6bf9b7de63b5dcbd5cb64c"
+    },
+    {
+      "path": "src/fx/reed/physics/deform-surface.js",
+      "sha256": "c2830ebbf5220edafb629c6223b0ed61bbe51dd83e722a6c8b740f5f202c0b31"
+    },
+    {
+      "path": "src/fx/reed/physics/soft-body-kernel.js",
+      "sha256": "c2094f274d2b8a4a7e4319f5d1a5d87357775ea11ddfe2832a0928c32a1d25e2"
+    },
+    {
+      "path": "src/fx/reed/physics/soft-body.js",
+      "sha256": "a55bbb48d322cc14be5a50dce4e8d37b572a87bb76c0af4fc653c03faa2ff8f6"
+    },
+    {
+      "path": "assets/audio/alien_murmur.mp3",
+      "sha256": "2b845691a64101dab25b21e25eba6bd275e4e3becedb9c06f6e52a58aaa39304"
+    }
+  ],
+  "sinkholeAdapterSource": {
+    "path": "../stalheart/src/sinkhole-terrain.js",
+    "sha256": "88afef9bd72bc61ec47fb4a78f18d21a46162642483efb530954bc547d79a631"
+  }
+}

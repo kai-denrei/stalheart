@@ -1457,6 +1457,72 @@ try{
  await evaluate(`${T}.laserAuto(true)`);await delay(2500);
  console.log('PROBE',await evaluate(`JSON.stringify({dom:[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent),navs:document.querySelectorAll("#story-views").length,laser:(l=>({auto:l.auto,platform:l.platform,strip:l.strip}))(${T}.state().laser)})`));
  await finish();
+ } else if(args.includes('--descent')) {
+ // THE DESCENT (owner, 2026-10-15; spec docs/superpowers/specs/2026-10-15-descent-mission-design.md): the cave game in an iframe over the paused game
+ // after the final sector, its outcome posted back: the harness forces the hook on BOTH WALLS, sees the frame with the cave's page and the game paused,
+ // hands an outcome back, and sees the frame gone, the game running and the ending's shot; a lost outcome keeps the frame (the cave's TRY AGAIN)
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {SECTOR_DOOR}=await import('../src/content/sectors.js'), {DESCENT}=await import('../src/content/descent.js');
+ await go('descent-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.n===${SECTOR_DOOR.earliest}`,60000);
+ {const d=await st();assert.equal(d.descent.open,false);assert.equal(d.descent.outcome,null);}
+ // the cave's page is served beside the game (below/, scripts/import-below.mjs)
+ {const ok=await evaluate(`fetch(${JSON.stringify(DESCENT.page)}).then(r=>r.ok&&r.text()).then(t=>typeof t==='string'&&t.includes('src/main.js'))`);assert.ok(ok,'below/index.html is served beside the game');}
+ await evaluate(`${T}.descentNow()`);await delay(500);
+ {const d=await st();assert.equal(d.descent.open,true,`the frame is open (${JSON.stringify(d.descent)})`);assert.ok(d.descent.src.endsWith(DESCENT.page),`with the cave's page (${d.descent.src})`);assert.equal(d.paused,true,'the game paused under it');
+  const f=await evaluate('(f=>f?{cls:f.className,allow:f.getAttribute("allow"),w:f.getBoundingClientRect().width}:null)(document.querySelector("iframe.descent-frame"))');assert.ok(f&&/pointer-lock/.test(f.allow)&&f.w>300,`the frame over the tab (${JSON.stringify(f)})`);}
+ // the cave boots inside the frame in its stalheart mode (same origin: its document is ours to read)
+ await until('(()=>{const f=document.querySelector("iframe.descent-frame");const d=f&&f.contentDocument;return !!d&&!!d.getElementById("begin");})()',30000).catch(()=>assert.fail('the cave\'s page booted inside the frame'));
+ await until('(()=>{const d=document.querySelector("iframe.descent-frame")?.contentDocument;const b=d&&d.getElementById("begin-label");return !!b&&/TAKE THE FEED|FEED UNAVAILABLE|INITIALIZING/.test(b.textContent);})()',60000);
+ {const label=await evaluate('document.querySelector("iframe.descent-frame").contentDocument.getElementById("begin-label").textContent');console.log(`  the cave's card inside the frame: ${label}`);}
+ current='descent-open';await finish();
+ // a lost descent: the frame stays
+ await evaluate(`${T}.descentReport('lost')`);await delay(300);
+ {const d=await st();assert.equal(d.descent.open,true,'a lost descent keeps the cave open for its TRY AGAIN');assert.equal(d.descent.outcome,'lost');assert.equal(d.paused,true);}
+ // rescued: the frame goes, the game runs, the joke, the ending
+ const shot0=(await st()).shotId??null;
+ await evaluate(`${T}.descentReport('rescued')`);await delay(600);
+ {const d=await st();assert.equal(d.descent.open,false,'the frame is gone');assert.equal(d.descent.outcome,'rescued');assert.equal(d.paused,false,'the game runs again');
+  assert.equal(await evaluate('!!document.querySelector("iframe.descent-frame")'),false,'no frame in the DOM');
+  assert.deepEqual(d.descent.said,['descent_brief','descent_back'],`the brief, then Isao's decoding joke (${JSON.stringify(d.descent.said)})`);}
+ current='descent-back';await finish();
+ } else if(args.includes('--boss-sector')) {
+ // THE BOSS SECTOR (owner, 2026-10-15; spec docs/superpowers/specs/2026-10-15-boss-sector-design.md): the sector after the door. A late start at the
+ // door's earliest puts the door there and THE BOSS next; the door is played through with the probe's culls, then the boss: the choice card up and
+ // picked, the hull on its avoid autopilot (Isao drives), the gunship's autopilot off and the seat taken by the strip's own button, the wave of small
+ // Cutis hunters then the Cutis-Maku up, the bar row, SECURE once they are dead (the probe's cull), the hull back to the player
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {SECTOR_DOOR, BOSS_SECTOR}=await import('../src/content/sectors.js');
+ await go('boss-sector-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.n===${SECTOR_DOOR.earliest}`,60000);
+ {const s=await st();assert.equal(s.sector.doorAt,SECTOR_DOOR.earliest,`the door is this sector (${JSON.stringify(s.sector)})`);}
+ // the door played through: an ideal defender culls the field every two seconds and reads on at the debrief
+ const t0=Date.now();
+ while(Date.now()-t0<240000){const s=await st();if(s.sector.n===SECTOR_DOOR.earliest+1)break;await evaluate(`${T}.sectorCull(999)`);if(s.sector.debriefOpen){await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}await delay(2000);}
+ {const s=await st();assert.equal(s.sector.n,SECTOR_DOOR.earliest+1,`the sector after the door (${JSON.stringify({n:s.sector.n,phase:s.sector.phase})})`);assert.equal(s.sector.name,BOSS_SECTOR.name,'is THE BOSS');}
+ await until(`${T}.state().boss.choice`,15000).catch(async()=>assert.fail(`the choice card is up (${JSON.stringify((await st()).boss)})`));
+ {const s=await st();assert.equal(s.paused,true,'the game paused under the choice');}
+ current='boss-choice';await finish();
+ await evaluate('(()=>{const w=console.warn.bind(console);window.__bl=[];console.warn=(...a)=>{window.__bl.push(a.map(String).join(" "));w(...a);};})()');
+ await evaluate('document.querySelector(".choice-card button[data-pick=b]")?.click()');await delay(400);
+ {const s=await st();assert.equal(s.boss.choice,false,'picked');assert.equal(s.paused,false,'the game runs again');assert.ok(s.boss.on&&s.boss.auto&&s.boss.directive==='avoid',`Isao drives the hull on its avoid autopilot (${JSON.stringify(s.boss)})`);
+  assert.equal(s.programme.colony.gunship.auto,false,'the gunship\'s autopilot is off for the sector');}
+ {const w0=Date.now();let last=null;while(Date.now()-w0<90000){const s=await st();last={boss:s.boss,alive:s.performance?.enemies,queued:s.queued,phase:s.sector.phase,breaches:s.sector.breaches,hunters:s.creatureProbe?.hunters,cutis:s.creatureProbe?.bodies?.families?.cutis,warnings:await evaluate('(window.__bl||[]).slice(-4)')};if(s.boss.wave>=10)break;if(((Date.now()-w0)/1000|0)%6===0)console.log(`  boss t+${((Date.now()-w0)/1000).toFixed(0)}s ${JSON.stringify(last)}`);await delay(2000);}
+  assert.ok(last.boss.wave>=10,`the wave of small Cutis hunters rises (${JSON.stringify(last)})`);}
+ await until(`${T}.state().boss.seated`,90000).catch(async()=>assert.fail(`the gunship seat is taken by the strip's button (${JSON.stringify({boss:(await st()).boss,gunship:(await st()).gunship})})`));
+ {const s=await st();assert.ok(s.integrity?.gates?.some(g=>/CUTIS/.test(g.text??'')||g.id==='boss'),`the bar row (${JSON.stringify(s.integrity)})`);}
+ current='boss-wave';await finish();
+ // the wave culled: the boss comes up on the breath
+ for(let i=0;i<40;i++){await evaluate(`${T}.sectorCull(999)`);const s=await st();if(s.boss.bossSeen&&s.boss.boss>0)break;await delay(2000);}
+ {const s=await st();assert.ok(s.boss.bossSeen&&s.boss.boss===1,`the Cutis-Maku is up, one (${JSON.stringify(s.boss)})`);assert.equal(s.boss.bossHp,BOSS_SECTOR.boss.boss.hp,'at its hit points');
+  assert.ok(s.integrity.gates.some(g=>g.id==='boss'&&/100%/.test(g.text)),`the boss row reads its hit points, whole (${JSON.stringify(s.integrity.gates)})`);}
+ current='boss-up';await finish();
+ // dead: the sector secure, the hull the player's again
+ for(let i=0;i<30;i++){await evaluate(`${T}.sectorCull(999)`);const s=await st();if(['secure','finale','debrief','campaign'].includes(s.sector.phase))break;await delay(2000);}
+ {const s=await st();assert.ok(['secure','finale','debrief','campaign'].includes(s.sector.phase),`the boss dead: SECURE (${JSON.stringify({phase:s.sector.phase,boss:s.boss})})`);}
+ await until(`!${T}.state().boss.on`,30000).catch(async()=>assert.fail(`the run ends with the sector's finish (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss})})`));
+ {const s=await st();assert.equal(s.boss.on,false,'the run is over');assert.equal(s.boss.auto,false,'the hull is the player\'s again');assert.equal(s.gunship.seat,false,'the seat left');}
+ current='boss-dead';await finish();
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see

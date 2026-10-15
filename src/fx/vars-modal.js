@@ -6,7 +6,11 @@
 // right-edge column. The lil-gui DOM is MOVED into #td-vars as pages — root
 // controls become the GAME page, each folder its own page — so nothing
 // about any control changes, only where it lives and how it is reached.
-export function buildVarsModal({ root, gui, lab, flags, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt }) {
+export function buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt }) {
+  // ENEMY SPEED x (owner, 2026-10-16: "for the purpose of fine-tuning the game, I also want an 'enemy speed' variable, where we could increase the
+  // moving speed of all enemies while play-testing"): a root control, so it sits on the GAME page; every record's walk is multiplied by it
+  // (src/fx/enemy-step.js, so the Pearl bodies that follow their records go with them); ?speed=N sets it at boot
+  gui.add(params, 'enemySpeed', 0.25, 4, 0.05).name('enemy speed ×');
   // THE LAB PAGE (?lab=1). A folder here becomes a page in VARS below, for free.
   const applyLabSky = applySky;   // the lab's knobs feed the same bake
   if (lab.on) {

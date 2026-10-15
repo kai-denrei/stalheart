@@ -19,7 +19,7 @@ async function packGlb(bytes, name) {
   return out;
 }
 const out = resolve(root, 'dist');
-const dirs = ['src', 'vendor', 'assets', 'icons'];
+const dirs = ['src', 'vendor', 'assets', 'icons', 'below'];   // below/: the cave vendored for THE DESCENT (scripts/import-below.mjs), shipped as it is
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const groups = await Promise.all(entries.map(e => e.isDirectory() ? walk(resolve(dir, e.name)) : e.isFile() ? [resolve(dir, e.name)] : []));

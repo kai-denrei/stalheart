@@ -58,7 +58,7 @@ import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { createCanyonRun } from './fx/canyon-run.js'; import { createHullSpeed } from './fx/hull-speed.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createHullSpeed } from './fx/hull-speed.js'; import { createBossRun } from './fx/boss-run.js'; import { createDescentHost } from './fx/descent-host.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
 import { createStrikeConsole } from './fx/strike-console.js'; import { createTerraformerYard } from './fx/terraformer-yard.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
@@ -103,7 +103,7 @@ import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { createRamJolt } from './fx/ram-jolt.js'; import { shedSquad, squadDamage } from './fx/squads.js';
+import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { createRamJolt } from './fx/ram-jolt.js'; import { shedSquad, squadDamage } from './fx/squads.js';
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
@@ -139,6 +139,7 @@ export function initTdTab(root) {
     look: 'tronColors', // visual identity, see looks.js
     wallTops: 'black', // obstacles read as voids; silhouettes matter here
     speed: 1.1, // cells per second, wanderer pace
+    enemySpeed: 1, // ENEMY SPEED x (owner, 2026-10-16: a playtest variable over every record's walk; ?speed=N at boot, the VARS page live; src/fx/enemy-step.js)
     recoil: 8, // shell-recoil intensity, dialed to MAX per operator
     directive: 'wander', // auto-mode order: wander/avoid/ram/conserve/home/portal
     // Hover feel, all live-tunable — these were guessed wrong twice, so they are knobs rather than constants. Units: `hoverRise`
@@ -3186,6 +3187,7 @@ export function initTdTab(root) {
     if (react && spec.slowOnHit) { e.behMult = spec.slowOnHit; e.behUntil = tNow + 1.2; }
     if (react && spec.accelOnHit) { e.behMult = spec.accelOnHit; e.behUntil = tNow + 1.2; }
     e.lastHitT = tNow; // resets the regenerators' out-of-combat clock
+    dmg *= creatureEnemies.damageScale(e);   // a Cutis body's phase scales the hit (THE BOSS: the reach is the weak spot; src/fx/creature-enemies.js)
     e.hp -= squadDamage(e, dmg, src); creatureEnemies.hit(e, src, dmg);   // the creature probe counts the sentries' work
     for (let k = shedSquad(e) + (e.hp <= 0); k > 0; k--) {   // each body pays, a squad's shed members too
       // any weapon's kill pays — but not the same
@@ -5059,7 +5061,7 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
-    if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? sectorRun?.gates() ?? [] : [] }, dt);   /* src/fx/integrity-hud.js */
+    if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? [...(sectorRun?.gates() ?? []), ...bossRun.rows()] : [] }, dt);   /* src/fx/integrity-hud.js */
     story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos((obj.userData.clear??CONTENT.breach.clearRadius)*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
@@ -5215,7 +5217,7 @@ export function initTdTab(root) {
       dt,
       pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null),
     );
-    hullSpeed.tick(dt, player.pos, { on: !pilotMode && !mobileShell && !(story?.hull?.held?.()) && playerHP > 0, above: radarCss + 8 });   /* the hull's pace over the radar (owner, 2026-10-15; src/fx/hull-speed.js) */
+    hullSpeed.tick(dt, player.pos, { on: !pilotMode && !mobileShell && !(story?.hull?.held?.()) && playerHP > 0, above: radarCss + 8 }); bossRun.tick(dt);   /* the hull's pace over the radar (owner, 2026-10-15; src/fx/hull-speed.js) */
     groundFeed.render(renderer, scene, dt); radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
@@ -5370,6 +5372,12 @@ export function initTdTab(root) {
     sectorRun: () => sectorRun,
   });
   // THE CANYON AND THE SIDE BREACH (src/fx/canyon-run.js)
+  // THE BOSS SECTOR'S RUN (src/fx/boss-run.js, 2026-10-15): the choice, the hull on its avoid autopilot with Isao docked, the gunship seat, the bar row
+  const bossRun = createBossRun({ root, enemies, pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), callout: (text, cls) => showCallout(text, cls),
+    story: () => story, storyViews: () => storyViews, params: () => params, player: () => player, playerHP: () => playerHP, autoMode: () => autoMode, isao: () => isao, cellSide: () => cellSide, t: () => t, pilotMode: () => pilotMode,
+    setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL) });
+  // THE DESCENT (src/fx/descent-host.js, 2026-10-16): the cave game in an iframe over the paused game after the final sector, its outcome back
+  const descentHost = createDescentHost(root, { pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t });
   const canyonRun = createCanyonRun({
     breachQueue,
     breachedCells,
@@ -5499,6 +5507,8 @@ export function initTdTab(root) {
     canyonOver: canyonRun.canyonOver,
     hopsToHeart: isaoMoments.hopsToHeart,
     canyonCut: canyonRun.canyonCut,
+    bossBegin: bossRun.begin, bossEnd: bossRun.end,   // THE BOSS sector (src/fx/boss-run.js)
+    descent: (then) => descentHost.begin(then),   // THE DESCENT before the ending (src/fx/descent-host.js)
     breakSide: canyonRun.breakSide,
     repaired: programme.repaired,
     printed: programme.printed,
@@ -5532,6 +5542,7 @@ export function initTdTab(root) {
   storyApi.setLaserOnline = (on) => laserStation.setOnline(on);   // the sectors switch SOL-82 on (V1 design: sector 2)
   if (simParam) {
     simStyle = simParam;
+    if (flags.speed !== null && Number.isFinite(+flags.speed) && +flags.speed > 0) params.enemySpeed = Math.max(0.1, Math.min(8, +flags.speed));   // ?speed=N: every enemy's walk x N (a playtest knob)
     simFast = Math.max(1, Math.min(120, parseInt(flags.simfast || '50', 10)));
     simCap = Math.max(30, parseInt(flags.simcap || '600', 10));
     console.log(`SIMBOOT style=${simStyle} fast=${simFast} cap=${simCap}`);
@@ -5597,7 +5608,7 @@ export function initTdTab(root) {
   if (!storyMode && !debugging) showBriefing();
 
   perfCtl = gui.add({ get on() { return perfOverlay.on(); }, set on(v) { setPerfOverlay(v); } }, 'on').name('fps readout (`)');   /* a root control, so the VARS modal puts it on the game page */
-  buildVarsModal({ root, gui, lab, flags, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt });   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
+  buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt });   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
@@ -5762,7 +5773,7 @@ export function initTdTab(root) {
   const gameHooks = {
       state: () => ({
         enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(),
-        explosions: explosions.state(), shellBlast: shellBlast.last(),
+        explosions: explosions.state(), shellBlast: shellBlast.last(), boss: bossRun.state(), descent: descentHost.state(), enemySpeed: params.enemySpeed,
         pilotRounds: rs?.pilotRounds ?? 0,
         pilotHits: rs?.pilotHits ?? 0,
         pilotTracerGap: rs?.pilotGap ?? null,   // metres, tracer head to impact, widest; null until one lands
@@ -5897,6 +5908,7 @@ export function initTdTab(root) {
       // leftovers), not a player's kills
       sectorCull: (r = 8) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { killCreature(e, false); if (!e.harmless) n++; } return n; },
       sectorContinue: () => sectorRun?.test.cont(),
+      descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       sectorKeepHolding: () => sectorRun?.test.keepHolding(),
       sectorQuiet: (on) => sectorRun?.test.quiet(on),
       sectorReport: () => sectorRun?.test.report() ?? null,

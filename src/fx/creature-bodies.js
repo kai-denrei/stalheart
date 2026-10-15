@@ -145,6 +145,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   // THE BODY'S OWN POINT (owner, 2026-10-15: "it feels as if I'm aiming straight and it does nothing"; "a soft-body enemy which I could not ram, it
   // kept being just pushed away"): a body hunts ahead of its record, so the record's point is not where the body is. Its drawn centre on the unit
   // sphere (a scratch array: read it at once), null while it has no body (a dot cloud, a Reed not made yet)
+  // the body's phase (the Cutis family's stage; null for a family without phases or a record without a body): THE BOSS's damage scale
+  function phaseOf(e) { const b = live.get(e); return b ? adapters.get(b.family).phase?.(b.h) ?? null : null; }
   const PT = [0, 0, 0];
   function point(e) {
     const b = live.get(e);
@@ -234,7 +236,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   const seen = (v) => (v && v.point && !v.centre && frame ? { ...v, centre: planeOf(v.point) } : v ?? null);
 
   return {
-    has, proxy, spawn, kill, recoil, step, hull, point,
+    has, proxy, spawn, kill, recoil, step, hull, point, phaseOf,
     // a family's bodies made ready before the first record (its adapter, and what it makes ahead: the Pearl tiers' swarms)
     prepare: (family, ids) => adapter(family)?.prepare?.(ids),
     room: (family, tier) => adapter(family)?.room?.(tier) ?? Infinity,   // slots a family's tier still has (Infinity when it does not count)

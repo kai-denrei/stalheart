@@ -24,12 +24,13 @@ function page({ markup = true, query = '', lab = { on: false } } = {}) {
   const root = { querySelector: (s) => markup ? ({ '#td-vars': modal, '#vars-toggle': toggle })[s] : null };
   const control = (label) => ({ label, domElement: node(), name() { return this; }, onChange(fn) { this.change = fn; return this; }, onFinishChange(fn) { this.finish = fn; return this; }, updateDisplay() {} });
   const folder = (title) => ({ _title: title, domElement: node(), opened: false, controls: [], open() { this.opened = true; }, add(o, k) { const c = control(k); c.target = o; this.controls.push(c); return c; }, controllersRecursive() { return this.controls; } });
-  const gui = { controllers: [control('seed'), control('fps readout')], folders: [folder('bloom'), folder('tank feel')], domElement: node(), addFolder(t) { const f = folder(t); this.folders.push(f); return f; } };
+  const gui = { controllers: [control('seed'), control('fps readout')], folders: [folder('bloom'), folder('tank feel')], domElement: node(), addFolder(t) { const f = folder(t); this.folders.push(f); return f; }, add(o, k) { const c = control(k); c.target = o; this.controllers.push(c); return c; } };   // add: a root control (the enemy speed knob, 2026-10-16)
   const calls = [];
-  buildVarsModal({ root, gui, lab, flags: readGameFlags(query), skySeed: 4242, gpuExt: null,
+  const params = { enemySpeed: 1 };
+  buildVarsModal({ root, gui, lab, flags: readGameFlags(query), params, skySeed: 4242, gpuExt: null,
     applySky: () => calls.push(['sky', lab.galaxySeed]), spawnWave: () => calls.push(['wave']), postfx: { setEnabled: (v) => calls.push(['bloom', v]) },
     setPerfOverlay: (...a) => calls.push(['perf', ...a]) });
-  return { nav, body, close, modal, toggle, gui, calls, doc: globalThis.document };
+  return { nav, body, close, modal, toggle, gui, calls, params, doc: globalThis.document };
 }
 const active = (p) => p.nav.kids.findIndex((b) => b.classes.has('active'));
 
@@ -37,7 +38,8 @@ const active = (p) => p.nav.kids.findIndex((b) => b.classes.has('active'));
 {
   const p = page();
   assert.deepEqual(p.nav.kids.map((b) => b.textContent), ['game', 'bloom', 'tank feel']);
-  assert.equal(p.body.kids.length, 3); assert.equal(p.body.kids[0].kids[0].kids[0].kids.length, 2, 'both root controls on the game page');
+  assert.equal(p.body.kids.length, 3); assert.equal(p.body.kids[0].kids[0].kids[0].kids.length, 3, 'the root controls on the game page, the enemy speed knob among them (2026-10-16)');
+  assert.ok(p.gui.controllers.some((c) => c.label === 'enemySpeed' && c.target === p.params), 'ENEMY SPEED x is a root control over params');
   assert.equal(p.body.kids[1].kids[0], p.gui.folders[0].domElement, 'a folder is moved whole'); assert.equal(p.gui.folders[1].opened, true);
   assert.equal(p.gui.domElement.style.display, 'none', 'the emptied root gui is parked');
   assert.equal(p.modal.classList.contains('hidden'), false); assert.equal(active(p), 0);

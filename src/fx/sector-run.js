@@ -16,6 +16,8 @@ import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTo
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { waveCount, waveGap } from '../domain/wave-spread.js';
+import { bossWaves } from '../domain/boss-sector.js';
+import { tierSpec } from './creature-enemies.js';
 import { isStampede, stampedeWave } from '../domain/stampede.js';
 import { sizeWave, pulseBodies, pulseDue, flowDue, flowTarget, streamOffsets } from '../domain/sector-shape.js';
 import { crowdTrace } from './crowd-gate.js';
@@ -143,6 +145,13 @@ export function createSectorRun(h) {
     for (const { type, count, squad } of entries) for (let k = 0; k < count; k++) { out.push({ type, sp, at: offsets ? offsets[n] : n * gap, spread, pace, ...(dens ? { dens } : {}), ...(squad ? { squad } : {}), ...(column ? { cell: column[Math.min(column.length - 1, Math.floor((n / total) * column.length))] } : {}) }); n++; }
     return out;
   }
+  // THE BOSS row's k-th wave as queue entries: the wave of small hunters, then the boss, each with its spec (the family's tier at the row's hit points),
+  // 0.6 s apart off the breach's own source, with its spread (src/domain/boss-sector.js bossWaves; the enemy loop keeps `hunter`, `tier` and `spec`)
+  function bossQueueOf(k, sp) {
+    const plan = bossWaves(def, { tierSpec })[k] ?? [], out = []; let n = 0;
+    for (const e of plan) for (let i = 0; i < e.count; i++) out.push({ type: e.type, sp, at: n++ * 0.6, spread: 0.8, pace: e.pace ?? 1, spec: e.spec, tier: e.tier, hunter: true });
+    return out;
+  }
   // one breach sends its next wave: the books count it, a feast is noted, the last pulse is remembered for the breath, and its queue entries come back (null: nothing to send)
   function sendWave(b, sp, t) {
     const next = nextWaveIndex(sector, b.id);
@@ -150,9 +159,9 @@ export function createSectorRun(h) {
     const wave = waveOf(b, next), feasting = feastFor(b), released = b.wavesReleased ?? 0, planned = b.wavesPlanned ?? def.waves, r = releaseWave(sector, b.id, t);
     if (feasting) feast = { id: b.id, at: t, scrambled: 0 };
     if (wave.stampede) { h.callout(wave.stampede === 'trickle' ? SECTOR_STAMPEDE.trickleCallout : SECTOR_STAMPEDE.callout, 'co-victory'); stampedes++; }
-    const q = queueOf(wave, sp);
+    const q = def.boss ? bossQueueOf(released, sp) : queueOf(wave, sp);   // THE BOSS row sends its own two waves by the breach's count, not the ladder's index (src/domain/boss-sector.js)
     if (b.side !== 'canyon') lastPulse = { sent: true, size: (lastPulse.sent && lastPulse.at === t ? lastPulse.size : 0) + q.reduce((n, e) => n + (e.squad || 1), 0), at: t };
-    return { r, entries: api.creatures?.(q, b.side, { released, planned, n: def.n, pulse: released + 1 }) ?? q };   // n, pulse: the hunters' due (src/fx/creature-enemies.js)   // ?creatures=<family>:<tier> takes its share of the wave; the Pearl set paces its climb (src/fx/creature-enemies.js)
+    return { r, entries: api.creatures?.(q, b.side, { released, planned, n: def.n, pulse: released + 1, boss: !!def.boss }) ?? q };   // n, pulse: the hunters' due (src/fx/creature-enemies.js)   // ?creatures=<family>:<tier> takes its share of the wave; the Pearl set paces its climb (src/fx/creature-enemies.js)
   }
   // how many of the sector's bodies the next pulse would send from the breaches that are open now
   function nextPulseSize() {
@@ -192,6 +201,7 @@ export function createSectorRun(h) {
     // NO DEAD TIME AT THE START (2026-09-24): the breaches are placed and open under the card instead of after it
     cardLeft = SECTOR_TIMING.briefSeconds; feast = null;
     place(doorNow);
+    if (def.boss) api.bossBegin?.(def);   // THE BOSS (src/fx/boss-run.js): the choice, the hull on autopilot, the gunship seat
     h.hud();
   }
 
@@ -287,8 +297,9 @@ export function createSectorRun(h) {
     const r = sectorReport(stats, sector ?? makeSector(def, [], stats.t0), { t: now(), bank: h.bank(), outcome, bests, stamps: SECTOR_STAMPS, records: SECTOR_RECORDS });
     try { h.store?.setItem(SECTOR_BESTS_KEY, JSON.stringify(mergeBests(bests, r.records))); } catch { /* the store refused: the bests simply are not kept */ }
     reports.push(r); lastReport = r;
+    if (def?.boss) api.bossEnd?.(outcome);   // THE BOSS: the hull back to the player, Isao free, the seat left (src/fx/boss-run.js)
     const show = () => { phase = outcome === 'lost' ? 'lost-shown' : 'debrief'; h.pause(true); debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines() }); h.hud(); };
-    if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); finale(show); } else show();   // THE ENDING before the score
+    if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); const fin = () => finale(show); if (!api.descent?.(fin)) fin(); } else show();   // THE DESCENT (src/fx/descent-host.js) before THE ENDING before the score
   }
   // the break between sectors: the host may take it (the paint shop, src/fx/programme-host.js interlude) and hand it back when done
   function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); const go = () => { h.pause(false); begin(def.n + 1); }; phase = 'break'; if (!api.interlude?.(go)) go(); }

@@ -53,6 +53,10 @@ export function createCutisFamily({ parent, tiers, follow, death, lod = null }) 
     return { t, i, dead: false };
   }
 
+  // the body's phase name (the kit's stage: COIL, EXTEND, ANCHOR, TRANSFER, SETTLE, or REST while idle), null for a dead or missing body
+  // (THE BOSS, 2026-10-15: the reach is the weak spot; src/domain/boss-sector.js phaseScale)
+  function phase(h) { return !h || h.dead ? null : h.t.swarm.getState(h.i); }
+
   function track(h, { x, z, ax = x, az = z, lift = 0, dt = 0 }) {
     if (!h || h.dead) return false;
     const { t, i } = h, sw = t.swarm, k = i * 3, r = radius(t, i);
@@ -111,6 +115,7 @@ export function createCutisFamily({ parent, tiers, follow, death, lod = null }) 
   }
 
   return {
+    phase,
     add, track, kill, free, step, setPlanet,
     roots: () => [group],
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, refused for want of a slot, draw

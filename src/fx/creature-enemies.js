@@ -26,6 +26,8 @@ import * as THREE from '../../vendor/three.module.js';
 import { ENEMY_SPEC } from '../enemyspec.js';
 import { CREATURE_TIERS, CREATURE_FOLLOW, CREATURE_DEATH, CREATURE_PROBE, HUNTERS, tierSize } from '../content/creature-enemies.js';
 import { huntersDue } from '../domain/hunters.js';
+import { phaseScale } from '../domain/boss-sector.js';
+import { CUTIS_HITS } from '../content/cutis-maku.js';
 import { STORY_RECIPE } from '../content/story-defaults.js';
 import { parseCreatures, shareOf, spreadPicks } from '../domain/creature-ramp.js';
 import { createCreatureBodies } from './creature-bodies.js';
@@ -244,7 +246,7 @@ export function createCreatureEnemies(host) {
   const hunters = { sent: 0 };
   const aliveHunters = () => host.enemies.reduce((n, e) => n + (e.alive && e.hunter ? 1 : 0), 0);
   function withHunters(out, side, wave) {
-    if (side === 'canyon' || host.flags.hunters === '0' || !out?.length || !wave) return out;
+    if (side === 'canyon' || host.flags.hunters === '0' || !out?.length || !wave || wave.boss) return out;   // a boss row's waves are its own hunters
     const n = huntersDue({ n: wave.n, pulse: wave.pulse, alive: aliveHunters() }, HUNTERS);
     if (!n) return out;
     const spec = tierSpec(HUNTERS.family, HUNTERS.tier), base = out[0];
@@ -296,6 +298,10 @@ export function createCreatureEnemies(host) {
       probe?.step(dt);
     },
     replace: (entries, side, wave) => withHunters(replaceOf(entries, side, wave), side, wave),   // then the hunters (HUNTERS, below)
+    // THE REACH IS THE WEAK SPOT (owner, 2026-10-12, the boss lab; in the game for THE BOSS sector, 2026-10-15): a hit on a Cutis record is scaled
+    // by its body's phase (src/domain/boss-sector.js phaseScale over CUTIS_HITS: full while it coils, reaches and grips, half at rest, none while
+    // the body pours through the cup); every other record 1. damageEnemy multiplies by it before the damage is taken
+    damageScale: (e) => (e?.spec?.body === 'cutis' && bodies ? phaseScale(bodies.phaseOf(e), CUTIS_HITS) : 1),
     // damageEnemy's every hit, after the damage: a sentry's on a creature record is counted (and its kill, once)
     hit(e, src, dmg) {
       if (e.spec?.body && e.alive && dmg > 0) e.hitFlash = 1;   // the body lights for CREATURE_FOLLOW.flash s (owner, 2026-10-15; src/fx/creature-bodies.js lookInto)
