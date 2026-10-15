@@ -1241,6 +1241,7 @@ html, body {
 #tune-panel footer { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid rgba(159, 220, 255, 0.2); }
 #tune-panel footer button { background: #10191de8; color: #e4ecec; border: 1px solid #657479; padding: 6px 10px; cursor: pointer; font: inherit; letter-spacing: 0.1em; }
 #tune-panel .tp-record { border-color: #ffb347; color: #ffd48a; } #tune-panel .tp-note { font-size: 10px; color: #b8ffca; }
+#tune-panel .tp-note.tp-flash { animation: tp-flash 0.9s ease-out; } @keyframes tp-flash { 0% { color: #fff; background: rgba(255, 179, 71, 0.55); } 100% { background: transparent; } }
 @media (pointer: coarse), (max-width: 700px) { #tune-panel { display: none !important; } }
 
 /* THE DESCENT (src/fx/descent-host.js): the cave game over the whole tab while it plays */

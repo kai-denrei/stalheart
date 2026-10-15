@@ -16,7 +16,7 @@ export function createTunePanel(root, c) {
   el.innerHTML = '<header><b>TUNE</b> <span class="tp-ctx"></span><span class="tp-rev"></span><button type="button" class="tp-close" title="close (X or Esc)">×</button></header><div class="tp-body"></div><footer><button type="button" class="tp-record">RECORD</button><button type="button" class="tp-reset">RESET ALL</button><span class="tp-note"></span></footer>';
   root.append(el);
   const body = el.querySelector('.tp-body'), note = el.querySelector('.tp-note');
-  let values = loadTune(c.storage), groups = [], keys = '', timer = null, lastRecord = null;
+  let values = loadTune(c.storage), groups = [], keys = '', timer = null, lastRecord = null, records = 0;
   c.apply(values);
   const editable = (t) => /INPUT|SELECT|TEXTAREA/.test(t?.tagName) || t?.isContentEditable;
   function build() {
@@ -38,7 +38,7 @@ export function createTunePanel(root, c) {
       body.append(sec);
     }
   }
-  const paint = (row, k) => { row.classList.toggle('tp-changed', k.value !== k.default); row.querySelector('.tp-eff').textContent = k.kind === 'mul' ? `${k.base} → ${effective(k)}` : `default ${k.default}`; };
+  const paint = (row, k) => { row.classList.toggle('tp-changed', k.value !== k.default); row.querySelector('.tp-eff').textContent = `${k.kind === 'mul' ? `${k.base} → ${effective(k)}` : `default ${k.default}`} · ${k.when ?? 'now'}`; };
   function refresh() { for (const g of groups) for (const k of g.knobs) { const row = body.querySelector(`[data-id="${CSS.escape(k.id)}"]`); if (row) paint(row, k); } }
   function open() { if (!el.hidden) return; el.hidden = false; build(); document.body.classList.add('tune-open'); try { document.exitPointerLock?.(); } catch { /* none */ } timer = setInterval(build, REFRESH * 1000); }
   function close() { if (el.hidden) return; el.hidden = true; document.body.classList.remove('tune-open'); clearInterval(timer); timer = null; }
@@ -48,7 +48,9 @@ export function createTunePanel(root, c) {
     const text = tuneReport({ rev: ctx.rev, url: ctx.url, at, sector: ctx.sector, screen: ctx.screen, knobs: groups.flatMap((g) => g.knobs) });
     const name = `tune-${(ctx.rev || 'dev').replace(/[^\w.-]+/g, '-')}.md`;   // a file name the server takes (a dev rev reads main@<sha>+dirty)
     const where = await c.record(name, text);
-    lastRecord = { name, where, at }; note.textContent = where === 'server' ? `recorded · feedback/${name}` : `downloaded ${name} (no server to write)`;
+    records++; lastRecord = { name, where, at, n: records };
+    note.textContent = where === 'server' ? `recorded #${records} · ${at.slice(11)} · feedback/${name}` : `downloaded #${records} · ${at.slice(11)} · ${name} (no server to write)`;
+    note.classList.remove('tp-flash'); void note.offsetWidth; note.classList.add('tp-flash');   // seen every time (owner, 2026-10-16: the second RECORD showed nothing new)
     return where;
   }
   function reset() { values = {}; clearTune(c.storage); c.apply(values); keys = ''; build(); note.textContent = 'defaults back'; }
@@ -57,5 +59,5 @@ export function createTunePanel(root, c) {
   window.addEventListener('keydown', onKey, { capture: true });
   const blockKeys = (e) => { if (!el.hidden && editable(e.target)) e.stopPropagation(); };   // typing a number is not driving
   el.addEventListener('keydown', blockKeys); el.addEventListener('keyup', blockKeys);
-  return { toggle, open, close, isOpen: () => !el.hidden, record, reset, state: () => ({ open: !el.hidden, values: { ...values }, groups: groups.map((g) => ({ title: g.title, knobs: g.knobs.map((k) => k.id) })), lastRecord }), dispose() { close(); window.removeEventListener('keydown', onKey, { capture: true }); el.remove(); } };
+  return { toggle, open, close, isOpen: () => !el.hidden, record, reset, state: () => ({ open: !el.hidden, records, values: { ...values }, groups: groups.map((g) => ({ title: g.title, knobs: g.knobs.map((k) => k.id) })), lastRecord }), dispose() { close(); window.removeEventListener('keydown', onKey, { capture: true }); el.remove(); } };
 }

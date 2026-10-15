@@ -12,7 +12,8 @@ import { GUNSHIP_ORBIT } from '../content/gunship.js';
 import { SENTRY_TUNE } from '../sentry.js';
 import { screenTiers } from '../domain/tune.js';
 
-const k = (o) => ({ kind: 'mul', default: 1, min: 0.25, max: 4, step: 0.05, ...o, value: o.value ?? o.default ?? 1 });
+// `when`: the moment a change bites: 'now' (read every frame), 'next spawn' (the ones made from now on), 'next pulse', 'next pass', 'this hull' (the count moves with it)
+const k = (o) => ({ kind: 'mul', default: 1, min: 0.25, max: 4, step: 0.05, when: 'now', ...o, value: o.value ?? o.default ?? 1 });
 const tierLabel = (key) => { const [f, t] = key.split(':'); return f === 'pearl' ? (PEARL_TIERS.find((x) => x.id === t)?.name ?? key) : (CREATURE_TIERS[f]?.[t]?.label ?? key); };
 export function tuneKnobs(ctx) {
   const v = ctx.tune.values ?? {}, val = (id) => v[id], groups = [];
@@ -24,17 +25,17 @@ export function tuneKnobs(ctx) {
     const speedBase = pearl ? (PEARL_PACE[t]?.speed ?? 1) : tier.speed, sizeBase = pearl ? (tier.cored ? PEARL_BODY.scale.cored : PEARL_BODY.scale.soft) : tier.r0;
     enemies.push(
       k({ id: `${key}.speed`, path: pearl ? `PEARL_PACE.${t}.speed` : `CREATURE_TIERS.${f}.${t}.speed`, label: `${tierLabel(key)} ×${count} · walk ×`, base: speedBase, value: val(`${key}.speed`) }),
-      k({ id: `${key}.size`, path: pearl ? `PEARL_BODY.scale.${tier.cored ? 'cored' : 'soft'}` : `CREATURE_TIERS.${f}.${t}.r0`, label: `${tierLabel(key)} · size × (new ones)`, base: sizeBase, value: val(`${key}.size`), min: 0.4, max: 2.5 }),
-      k({ id: `${key}.hp`, path: pearl ? `ENEMY_SPEC[${t} types].hp` : `CREATURE_TIERS.${f}.${t}.hp`, label: `${tierLabel(key)} · hit points × (new ones)`, base: pearl ? 1 : tier.hp, value: val(`${key}.hp`), min: 0.25, max: 6 }),
+      k({ id: `${key}.size`, path: pearl ? `PEARL_BODY.scale.${tier.cored ? 'cored' : 'soft'}` : `CREATURE_TIERS.${f}.${t}.r0`, label: `${tierLabel(key)} · size ×`, base: sizeBase, value: val(`${key}.size`), min: 0.4, max: 2.5, when: 'next spawn' }),
+      k({ id: `${key}.hp`, path: pearl ? `ENEMY_SPEC[${t} types].hp` : `CREATURE_TIERS.${f}.${t}.hp`, label: `${tierLabel(key)} · hit points ×`, base: pearl ? 1 : tier.hp, value: val(`${key}.hp`), min: 0.25, max: 6, when: 'next spawn' }),
     );
   }
   groups.push({ title: screen.length ? 'ENEMIES ON SCREEN' : 'ENEMIES (none on screen)', knobs: enemies });
   if (ctx.sector) groups.push({ title: `SECTOR ${ctx.sector.n} · ${ctx.sector.name}`, knobs: [
-    k({ id: 'pulse', path: `SECTORS[${ctx.sector.n}].pulse`, label: 'pulse size ×', base: ctx.sector.pulse ?? 0, value: val('pulse') }),
-    k({ id: 'breath', path: `SECTORS[${ctx.sector.n}].breath.max`, label: 'breath between pulses ×', base: ctx.sector.breath?.max ?? 0, value: val('breath') }),
+    k({ id: 'pulse', path: `SECTORS[${ctx.sector.n}].pulse`, label: 'pulse size ×', base: ctx.sector.pulse ?? 0, value: val('pulse'), when: 'next pulse' }),
+    k({ id: 'breath', path: `SECTORS[${ctx.sector.n}].breath.max`, label: 'breath between pulses ×', base: ctx.sector.breath?.max ?? 0, value: val('breath'), when: 'next pulse' }),
   ] });
   const hull = [
-    k({ id: 'hull.hits', path: 'HULL_ARMOUR.hits', label: 'hits a hull', kind: 'abs', base: HULL_ARMOUR.hits, default: HULL_ARMOUR.hits, value: val('hull.hits'), min: 1, max: 12, step: 1 }),
+    k({ id: 'hull.hits', path: 'HULL_ARMOUR.hits', label: 'hits a hull', kind: 'abs', base: HULL_ARMOUR.hits, default: HULL_ARMOUR.hits, value: val('hull.hits'), min: 1, max: 12, step: 1, when: 'this hull' }),
     k({ id: 'hull.top', path: 'TANK_DRIVE.top', label: 'drive pull, top ×', kind: 'abs', base: TANK_DRIVE.top, default: TANK_DRIVE.top, value: val('hull.top'), min: 1, max: 6, step: 0.1 }),
     k({ id: 'hull.tau', path: 'TANK_DRIVE.tau', label: 'drive pull, seconds', kind: 'abs', base: TANK_DRIVE.tau, default: TANK_DRIVE.tau, value: val('hull.tau'), min: 1, max: 20, step: 0.5 }),
   ];
@@ -43,7 +44,7 @@ export function tuneKnobs(ctx) {
     k({ id: 'lure.far', path: 'LURE.far', label: 'lure: close in past (hops)', kind: 'abs', base: LURE.far, default: LURE.far, value: val('lure.far'), min: 2, max: 40, step: 1 }),
   );
   groups.push({ title: 'THE HULL', knobs: hull });
-  if (ctx.seat === 'gunship') groups.push({ title: 'THE GUNSHIP', knobs: [k({ id: 'orbit.station', path: 'GUNSHIP_ORBIT.station', label: 'seconds on station', kind: 'abs', base: GUNSHIP_ORBIT.station, default: GUNSHIP_ORBIT.station, value: val('orbit.station'), min: 30, max: 600, step: 10 })] });
+  if (ctx.seat === 'gunship') groups.push({ title: 'THE GUNSHIP', knobs: [k({ id: 'orbit.station', path: 'GUNSHIP_ORBIT.station', label: 'seconds on station', kind: 'abs', base: GUNSHIP_ORBIT.station, default: GUNSHIP_ORBIT.station, value: val('orbit.station'), min: 30, max: 600, step: 10, when: 'next pass' })] });
   else if (ctx.seat) groups.push({ title: `THE SEAT · ${ctx.seat.toUpperCase()}`, knobs: [
     k({ id: 'seat.servo', path: 'SENTRY_TUNE.manualDrive', label: 'servo × the drive rate', kind: 'abs', base: ctx.tune.sentryBase.manualDrive, default: ctx.tune.sentryBase.manualDrive, value: val('seat.servo'), min: 1, max: 10, step: 0.5 }),
     k({ id: 'seat.tolerance', path: 'SENTRY_TUNE.tolerance', label: 'on target within (deg)', kind: 'abs', base: ctx.tune.sentryBase.tolerance, default: ctx.tune.sentryBase.tolerance, value: val('seat.tolerance'), min: 0.5, max: 15, step: 0.5 }),
