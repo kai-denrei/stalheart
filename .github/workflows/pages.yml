@@ -33,4 +33,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
         with:
-          timeout: 1800000   # 30 min: the site carries the cave under below/ since 2026-10-16 (1,090 files, 51 MB) and the first deploy of it timed out at the action's 10-minute default
+          timeout: 600000   # the action's maximum (a larger value is clamped to it); the site carries the cave under below/ since 2026-10-16 (1,090 files, 26 MB packed), and its first deploy (edc5a2a6) hung on GitHub's side and blocked the ones after it until it was cancelled through the API
