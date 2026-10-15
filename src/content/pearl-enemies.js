@@ -53,7 +53,9 @@ export const PEARL_OF = freeze({
 // THE BODY'S SIZE: r0 = the record's size x `metresPerSize` (ENEMY_SPEC's size x 0.7 x cellSide is the record's scale, the tank's touch reach 0.56 x size
 // cells: 5.6 m a unit of size, src/content/creature-enemies.js `sizeOf`), so the touch is the body's own radius; the boss types x `boss` for their
 // presence (the knot; still its own record size for hits).
-export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
+// SOFT SMALLER, CORED BIGGER (owner, 2026-10-16: "we could have the soft-enemies smaller than now, but faster, and the hard-core ones slightly bigger"):
+// `scale` multiplies a soft or a cored tier's record size (src/fx/enemy-step.js) and with it the body's r0, the touch reach and the reticle's box together.
+export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { soft: 0.85, cored: 1.12 } });
 
 // HOW A BODY KEEPS UP WITH ITS RECORD (src/domain/pearl-bodies.js; CREATURE_FOLLOW's catch-up and leash over these). The record walks at its type's speed
 // (11-23 m/s at the sector's pace) and the Pearl bodies are 2-7 m: the set's hop (2.5-6 s) would fall behind at once. So each body's hop cycle is scaled
@@ -115,7 +117,9 @@ export const PEARL_FOLLOW = freeze({
 // proportion to the record's walk (pearlLead), so the hull and the guns meet the body before the record: the ram, the reticle and the lance now
 // test the BODY's point (src/fx/creature-bodies.js point, src/fx/lance-follow.js bodyAt), not the record's, so the white's cap at 1 is safe. The
 // bias is WALK_BIAS (src/content/story-defaults.js)
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1, radii: id === 'white' ? 1 : id === 'yellow' ? 0.85 : id === 'black' ? 0.8 : 0.9, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
+// 2026-10-16 (the owner's note 8): the soft tiers walk `speed` 1.15 (the hard cores 1) and their caps are over the SMALLER body (PEARL_BODY.scale.soft) so the
+// cap in metres a second stays where the motion audit (test/pearl-motion.mjs) passed it: white 1.18 radii (= 1 of the old body), yellow 1, blue 1 at 1.08 (its hops' acceleration sat on the audit's bound at 1.06 / 1.15)
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: ['white', 'yellow'].includes(id) ? 1.15 : id === 'blue' ? 1.08 : 1, radii: id === 'white' ? 1.18 : id === 'yellow' ? 1 : id === 'blue' ? 1 : id === 'black' ? 0.8 : 0.9, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a
@@ -180,7 +184,7 @@ export const PEARL_IMPACT = freeze({
   // `ramSoft` (owner, 2026-10-15: "I encountered a soft-body enemy which I could not ram with the tank, it kept being just pushed away"): a soft body of
   // ANY tier the hull touches while it drives is the game's ram (e.bodyRam), as the light tiers' brush already was; the shove stays the body's answer
   // for the frame it is hit, its death the next (the ram's stagger and deflate)
-  contact: { refRadius: 2.8, loss: 0.25, maxLoss: 0.85, recover: 0.45, cored: 1, again: 0.6, slop: 0.02, minHalf: 1.2, sweep: 1.2, pin: 0.12, ramSoft: true },
+  contact: { refRadius: 2.8, loss: 0.25, maxLoss: 0.85, recover: 0.45, cored: 0.4, again: 0.6, slop: 0.02, minHalf: 1.2, sweep: 1.2, pin: 0.12, ramSoft: true },
   // PER TIER (owner, 2026-10-13, on round four's slower bodies: "the slower Cutis feel much better, but the lower level ones, white and yellow, should
   // feel very easy to run over. The threat starts like more of an annoyance."): `mass` x the contact's speed loss (near none: the hull ploughs on),
   // `pad` metres round the hull within which a body counts as hit (generous: a brush is a ram, never a near miss), `ram` that hit IS the game's ram

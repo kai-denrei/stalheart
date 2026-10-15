@@ -95,17 +95,18 @@ export function createSentryPilot(root, host) {
   // target while it stays inside. Swapping to whichever body is momentarily nearest was the frustration: every swap reset the timer, so
   // a lock looked random. A gun still needs the reticle on the body itself.
   const inBox=(e,cone,cellSide,sight=true)=>{
-    // THE RECORD IS THE AIM (owner, 2026-10-15, second round: "ROTOR shooting is not always aligned with the reticle, and quiver final descent does not
-    // seem to follow the target"): the barrel, the tracer and the guided round all fly at the record's point, so the box is tested there; a gun's box
-    // ALSO takes the Pearl body's own point (it hunts ahead of its record), so the reticle on the body registers (the first round's complaint)
-    v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
-    const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length(),box=cellSide*Math.max(.34,(e.size??e.spec.size)*.95);
-    if(along>0&&(cone?off<along*cone:off<box)&&(!sight||host.visible(e)))return along;
-    if(cone)return -1;
-    const bp=groundAt(e);if(bp===e.pos)return -1;
+    // THE BODY IS THE AIM (owner, 2026-10-16, third round: the Rotor "not aligned with the reticle", "the hitbox of the enemies seems random"; the
+    // second round had put the box on the record, which a Pearl body hunts ahead of): the box is tested on the body's drawn point first (groundAt,
+    // the record's where there is no body), where the head now turns and the tracer, the slug and the guided round now go (src/fx/tower-aim.js,
+    // src/fx/tower-combat.js, the seekers), and on the record's point second, so a harness aim at the record still registers
+    const bp=groundAt(e),box=cellSide*Math.max(.34,(e.size??e.spec.size)*.95);
     v.fromArray(bp).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
+    const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length();
+    if(along>0&&(cone?off<along*cone:off<box)&&(!sight||host.visible(e)))return along;
+    if(bp===e.pos)return -1;
+    v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
     const along2=v.dot(direction),off2=v.clone().addScaledVector(direction,-along2).length();
-    return along2>0&&off2<box&&(!sight||host.visible(e))?along2:-1;   // a gun's box covers the whole dot cloud, top to bottom (owner, 2026-09-13: basic enemies should drop to the Rotor wherever it hits them)
+    return along2>0&&(cone?off2<along2*cone:off2<box)&&(!sight||host.visible(e))?along2:-1;   // a gun's box covers the whole dot cloud, top to bottom (owner, 2026-09-13: basic enemies should drop to the Rotor wherever it hits them)
   };
   // A ROCK EDGE IS NOT A LOSS (operator, 2026-09-13: the Quiver climbed to ~62% and reset, every time). A hard core walking the lane
   // grazes the rock between it and the optic: measured, it stayed dead centre in the box while its sightline flickered off for ~170 ms
@@ -240,9 +241,13 @@ export function createSentryPilot(root, host) {
   // three of the 105's blast radii and stands back far enough to stay inside the monitor's 30° clamp, whichever gun is firing
   const gunshipOptic=()=>{if(!gunship||!impact)return null;const c=host.cellSide(),span=Math.max(c*1.2,(G.guns.heavy?.blastCells??3.2)*c*3),back=Math.max(c*2.2,span*1.9);return{from:aim.fromArray(impact).addScaledVector(t1,back).toArray(),pos:impact,span,lift:back*0.45,label:'GROUND TRUTH · IMPACT'};};
   let hitT=0;const cross=panel.querySelector('.pilot-cross');
+  // THE RETICLE SAYS WHY THE GUN IS QUIET (owner, 2026-10-16: "the gun stops firing without turning red, so the player is unsure as to what is happening"):
+  // its colour is the seat's state (src/domain/seat-status.js through update's info: overheated red, traversing amber, out of range dim), and a Rotor's
+  // heat is a small bar under it, red past 70 % (app.css .pilot-heat)
+  const heat=document.createElement('div');heat.className='pilot-heat';heat.innerHTML='<i></i>';heat.hidden=true;panel.append(heat);
   return {state,pose,target,attach,select,setView,release,isMap:()=>map,hit(){cross.classList.add('hit');clearTimeout(hitT);hitT=setTimeout(()=>cross.classList.remove('hit'),120);},mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
     aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
-    update(text){panel.querySelector('output').textContent=text;panel.classList.toggle('overheat',/OVERHEATED/.test(text));},   // an overheated mount reads red (owner, 2026-10-15)
+    update(text,info=null){panel.querySelector('output').textContent=text;const s=info?.state??(/OVERHEATED/.test(text)?'overheated':'ready');panel.classList.toggle('overheat',s==='overheated');cross.dataset.state=s;const h=gunship?null:info?.heat;heat.hidden=!(h>0.02);if(!heat.hidden){heat.firstElementChild.style.width=`${Math.round(Math.min(1,h)*100)}%`;heat.classList.toggle('hot',h>=0.7);}},   // an overheated mount reads red (owner, 2026-10-15); the reticle and the heat bar (2026-10-16)
     dispose(){vignette.remove();hintOff();dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
   };
 }

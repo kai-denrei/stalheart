@@ -107,7 +107,7 @@
   left: max(12px, env(safe-area-inset-left));
   /* ABOVE THE RADAR, never over it (2026-09-13: the landing-site triangles were hidden under a comms card): the disc is
      min(240px, 32% of the short side) at 14px from the corner, the same rule td-tab sizes it by */
-  bottom: calc(max(14px, env(safe-area-inset-bottom)) + min(240px, 32vmin) + 10px);
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + min(240px, 32vmin) + 34px);   /* over the hull console's line (2026-10-16), which is over the radar */
   z-index: 15;
   display: flex;
   gap: 12px;
@@ -1234,10 +1234,24 @@ html, body {
 .choice-card .choice-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .choice-card .sdb-btn { flex: 1 1 200px; }
 
-/* THE SPEED OVER THE RADAR (owner, 2026-10-15; src/td-tab.js hullSpeed): the hull's pace in km/h, small, above the minimap; not on a phone */
-.hull-speed { position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: 222px; z-index: 5; pointer-events: none; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #b8ffca; opacity: 0.85; text-shadow: 0 0 6px rgba(0, 0, 0, 0.8); }
-.hull-speed[hidden] { display: none; }
-@media (pointer: coarse), (max-width: 700px) { .hull-speed { display: none !important; } }
+/* A DENT (owner, 2026-10-16: four hits a hull; src/td-tab.js playerHit): the frame's edges flash red for a third of a second when the armour takes one */
+#tab-td.hull-dent::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 40; box-shadow: inset 0 0 0 3px rgba(255, 59, 47, 0.9), inset 0 0 60px rgba(255, 59, 47, 0.45); animation: hull-dent 0.35s ease-out forwards; }
+@keyframes hull-dent { from { opacity: 1; } to { opacity: 0; } }
+
+/* THE HULL CONSOLE (owner, 2026-10-16; src/fx/hull-console.js): one line over the radar and the lever: MÖRK and its armour pips, the pace in km/h, the
+   drive mode; a dent flashes it red, the last pip reads low. Isao's card stands above it (#td-brief), the radar and the throttle under it. Not on a phone. */
+.hull-console { position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: 222px; z-index: 5; pointer-events: none; display: flex; gap: 14px; align-items: baseline; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #b8ffca; opacity: 0.85; white-space: nowrap; }
+.hull-console .hc-pips { font-style: normal; letter-spacing: 0.05em; color: #7fe39a; }
+.hull-console .hc-mode { color: #9fdcff; }
+.hull-console.hc-low .hc-pips { color: #ff8a6b; }
+.hull-console.hc-dent { color: #ff3b2f; } .hull-console.hc-dent .hc-pips { color: #ff3b2f; }
+.hull-console[hidden] { display: none; }
+@media (pointer: coarse), (max-width: 700px) { .hull-console { display: none !important; } }
+/* THE LEVER BESIDE THE RADAR on a desktop (2026-10-16: the three were stacked in one corner): the radar's own height, to its right, under the console line */
+@media (min-width: 701px) {
+  body:not(.mobile-shell) .throttle { bottom: max(14px, env(safe-area-inset-bottom)); left: calc(max(14px, env(safe-area-inset-left)) + min(240px, 32vmin) + 10px); }
+  body:not(.mobile-shell) .throttle-track { height: calc(min(240px, 32vmin) - 56px); }
+}
 
 /* --- cache badge: top-left, clear of the navigation shell's bar (its own styles are inline) --- */
 #cb-badge {

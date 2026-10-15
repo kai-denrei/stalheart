@@ -48,7 +48,7 @@ assert.equal(new Set(Object.values(PEARL_OF)).size, 8, 'every tier draws some ty
 const bodies = pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY });
 assert.deepEqual(bodies, PEARL_BODIES);
 for (const [type, b] of Object.entries(bodies)) {
-  close(b.r0, ENEMY_SPEC[type].size * 5.6 * (type === 'knot' ? 1.5 : 1), 1e-3, `${type}: r0 = size x 5.6 m${type === 'knot' ? ' x 1.5' : ''}`);
+  close(b.r0, ENEMY_SPEC[type].size * 5.6 * (type === 'knot' ? 1.5 : 1) * (b.cored ? PEARL_BODY.scale.cored : PEARL_BODY.scale.soft), 1e-3, `${type}: r0 = size x 5.6 m${type === 'knot' ? ' x 1.5' : ''} x the tier's scale`);
   assert.equal(b.rammable, !b.cored);
   const s = pearlSpec(type), slow = PEARL_PACE[b.tier];
   // round four (owner, 2026-10-13: "slower and organic feeling is a must"): every tier is paced, its walk capped at its PEARL_PACE radii of its body a

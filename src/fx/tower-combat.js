@@ -28,7 +28,8 @@ import { pickTarget, shotInterval, towerSound } from '../towers.js';
 import { A6_TUNE, magFor, stepA6 } from '../heptapod.js';
 import { SENTRY_TUNE } from '../sentry.js';
 import { makeLock } from '../lockon.js';
-import { bodyAt } from './lance-follow.js';
+import { bodyAt, groundAt } from './lance-follow.js';
+import { seatStatus } from '../domain/seat-status.js';
 
 export function createTowerCombat(host) {
   // ONE A6, ONE FRAME. The module owns the decisions; this owns the world.
@@ -153,8 +154,9 @@ export function createTowerCombat(host) {
       if (manual) {
         const distance=tw.pilotTarget && !tw.pilotTarget.pilotAim ? host.missileDistance(host.graph().centers[tw.ci],tw.pilotTarget.pos) : null;
         const maxRange=host.effectiveStats(tw.def,tw.tier).range*METRES_PER_CELL;
-        const status=tw.overheated?`OVERHEATED · ${Math.round(tw.heat*100)}%`:tw.obj.userData.loading?'LOADING':distance!==null && distance>maxRange?'OUT OF RANGE':tw.cooldown>0?`COOLING ${tw.cooldown.toFixed(1)} s`:host.missileOf(tw.key) && !tw.lock?.locked?'ACQUIRING':tw.aimErr>SENTRY_TUNE.tolerance?'TRAVERSING':'READY';
-        host.pilot().update(`${tw.def.label} · POST ${host.pilotPost()+1}/${host.pilotPosts().length} · WAVE ${host.wave()} · HEART ${Math.ceil(host.heartHP())}\nMAX ${Math.round(maxRange)} m · ${distance===null?'NO TARGET':`TRACK ${Math.round(distance)} m`} · ${status}${tw.heat>0.02?` · HEAT ${Math.round(Math.min(1,tw.heat)*100)}%`:''}`);
+        // the word and the reticle's state are one rule (src/domain/seat-status.js; owner, 2026-10-16: the gun went quiet without saying why)
+        const st=seatStatus({overheated:!!tw.overheated,heat:tw.heat??0,loading:!!tw.obj.userData.loading,distance,maxRange,cooldown:tw.cooldown,guided:!!host.missileOf(tw.key),locked:!!tw.lock?.locked,aimErr:tw.aimErr??0,tolerance:SENTRY_TUNE.tolerance});
+        host.pilot().update(`${tw.def.label} · POST ${host.pilotPost()+1}/${host.pilotPosts().length} · WAVE ${host.wave()} · HEART ${Math.ceil(host.heartHP())}\nMAX ${Math.round(maxRange)} m · ${distance===null?'NO TARGET':`TRACK ${Math.round(distance)} m`} · ${st.text}${tw.heat>0.02?` · HEAT ${Math.round(Math.min(1,tw.heat)*100)}%`:''}`,{state:st.state,heat:tw.key==='rotor'?tw.heat??0:null});
         host.feedScope(tw, distance, maxRange);   /* THE SCOPE (a guided mount in the story): the workshop's reticle and TRACK panel (src/fx/story-scope.js) */
         if (!host.pilot().state.held || host.pilot().isMap()) continue;
       }
@@ -231,7 +233,7 @@ export function createTowerCombat(host) {
         // this frame — a sniper does not miss — but what you SEE is one fat slug crossing the whole line in ~0.13s, trailing
         // ghosts, with the impact fx landing when the slug does. Straight line, one round.
         if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
-        const hitP = add3(target.pos, scale3(norm3(target.pos), host.cellSide() * 0.3));   // the record's point: where the barrel points (2026-10-15, second round: a tracer to the body left the barrel at an angle)
+        const hitP = add3(groundAt(target), scale3(norm3(target.pos), host.cellSide() * 0.3));   // the body's drawn point, where the head now turns (src/fx/tower-aim.js; 2026-10-16)
         spawnSlug(muzzle, hitP, tw.def.color, host.cellIndex()(target.pos));
         host.warnRing(tw.ci, tw.def.color, 0.35, host.cellSide() * 0.9); // muzzle pulse
       } else if (atk === 'seeker') {
@@ -276,7 +278,7 @@ export function createTowerCombat(host) {
       } else if (atk === 'beam') {
         // hitscan: damage now, draw the light
         if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
-        const at = add3(target.pos, scale3(norm3(target.pos), host.cellSide() * 0.3));
+        const at = add3(groundAt(target), scale3(norm3(target.pos), host.cellSide() * 0.3));
         if (shotOf(tw.def).plasma) host.throwPlasma(tw, muzzle, at, tNow);
         else spawnBeam(muzzle, at, tw.def.color);
       } else if (atk === 'slowfield') {
@@ -319,7 +321,7 @@ export function createTowerCombat(host) {
         spawnTowerShot(muzzle, flat, tw, eff, atk === 'homing' ? target : null,
           atk === 'mortar' ? host.chord(tp, target.pos) : 0,
           // EVERY STRAIGHT ROUND FLIES FROM THE BARREL TO THE BODY, automatic ones too (2026-10-01; they flew along the surface at 2 m, their tracer from there, through the 4 m walls)
-          atk === 'homing' || atk === 'mortar' ? null : target.pilotAim && host.pilotMode() && host.pilot()?.state.tower === tw ? target.pos : add3(target.pos, scale3(norm3(target.pos), host.cellSide() * 0.3)));   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height; with no body, to the reticle's point on the ground
+          atk === 'homing' || atk === 'mortar' ? null : target.pilotAim && host.pilotMode() && host.pilot()?.state.tower === tw ? target.pos : add3(groundAt(target), scale3(norm3(target.pos), host.cellSide() * 0.3)));   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height; with no body, to the reticle's point on the ground
       }
     }
   }

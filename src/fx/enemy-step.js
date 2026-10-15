@@ -19,6 +19,7 @@ import { huntExits } from '../domain/hunters.js';
 import { sub3, add3, scale3, dot3, norm3, dist3, tangentBasis } from '../vec3.js';
 import { makeDebris, makeDotBurst, makeDotEnemy } from '../units.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from '../enemyspec.js';
+import { PEARL_OF, PEARL_TIERS, PEARL_BODY } from '../content/pearl-enemies.js';   /* a blob at the lip takes the tier's skin; a soft tier's record smaller, a cored one's bigger (2026-10-16) */
 import { waveReset as shieldWaveReset, shoveVec, shoveMag } from '../shield.js';
 import { TOWER_ORDER } from '../towers.js';
 import { showContact } from './contact-card.js';
@@ -226,20 +227,23 @@ export function createEnemyStep(host) {
       const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl, { hull: !host.story()?.hull?.held?.() }); }   // before the hull is issued the card says harder, not 'do not ram'   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
-      const size = spec.size * 0.7;
+      const size = spec.size * 0.7 * (spec.body === 'pearl' ? (PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.cored ? PEARL_BODY.scale.cored : PEARL_BODY.scale.soft) : 1);   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
       const exits = host.openNeighbors(ci);
       const next = exits.length ? exits[Math.floor(host.whim()() * exits.length)] : ci;
-      // WHERE IT COMES UP (owner, 2026-09-13: the whole crater boils, not one point; 2026-10-15: from the lip, and crawling out, not hovering; EMERGENCE):
-      // at its breach's own cell a body rises on the crater's rim, on the half facing its first exit, plus its scatter beyond; risen up the lane
-      // (`cell`) it scatters on its spread round that cell as before
+      // WHERE IT COMES UP (owner, 2026-09-13: the whole crater boils, not one point; 2026-10-15: from the lip, and crawling out, not hovering; 2026-10-16:
+      // never over the hole: a blob climbs the lip, the record starts past it; EMERGENCE): at its breach's own cell a record starts `out` crater radii from
+      // the centre, on the half facing its first exit, plus its scatter beyond, under the ground while its blob climbs; risen up the lane (`cell`) it
+      // scatters on its spread round that cell as before
       const atHole = !!sp.obj.userData.breach && ci === sp.ci;
-      const emergeOff = entry.spread ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * entry.spread * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * EMERGENCE.rim * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
+      const emergeOff = entry.spread ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * entry.spread * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * EMERGENCE.out * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
+      // THE BLOB (src/fx/emerge-blob.js): the picture of this one climbing out, in its tint, from the lip to where the record waits; the record itself pops up when it is done
+      if (atHole && emergeOff) { const lip = CONTENT.breach.craterRadius * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
         cur: ci, prev: -1,
         next,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
@@ -279,10 +283,10 @@ export function createEnemyStep(host) {
       if (!e.alive) continue;
       const spec = e.spec;
       if(e.breachSource&&e.emergeAge<1.2){
-        e.emergeAge+=dt;const f=emergence(Math.max(0,e.emergeAge),1.2),entry=e.breachSource.userData.breach;
+        const dur=e.riseDur??1.2;e.emergeAge+=dt;const f=emergence(Math.max(0,Math.min(dur,e.emergeAge)),dur),entry=e.breachSource.userData.breach;   // a record past the lip rises over its own `riseDur` (EMERGENCE.pop); 1.2 is the harness's mark for risen
         const height=-CONTENT.breach.craterRadius*.55*host.cellSide()+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);
         const n=norm3(e.emergeOff?add3(host.graph().centers[e.cur],e.emergeOff):host.graph().centers[e.cur]);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
-        e.obj.quaternion.copy(e.breachSource.quaternion);e.obj.userData.tick?.(tNow+e.phase);continue;
+        e.obj.quaternion.copy(e.breachSource.quaternion);e.obj.userData.tick?.(tNow+e.phase);if(e.emergeAge>=dur)e.emergeAge=1.2;continue;
       }
       // HK healOOC: regenerators knit themselves back together while
       // nothing has hit them for 1.2 s — burst them down or ram them
@@ -487,7 +491,7 @@ export function createEnemyStep(host) {
           }
           continue;   // NOT a ram: pays nothing, scores nothing, combo untouched
         }
-        if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; host.playerHit(e.type, e.pos); host.creatures?.()?.touched?.(e); }   // the story's first wave cannot hurt the tank; a Pearl body recoils
+        if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; host.playerHit(e.type, e.pos); host.creatures?.()?.touched?.(e); e.shove = { dir: shoveVec(e.pos, host.player.pos, host.player.heading), t: host.shieldTune.shoveLife }; e.stagUntil = tNow + host.shieldTune.shoveStun; }   // the story's first wave cannot hurt the tank; a Pearl body recoils; A HARD CORE IS PUSHED OUT OF THE WAY (owner, 2026-10-16: "ramming a hardcore pushes it out of the way and damages the tank"): the shield's shove on its record, the dent on the hull (HULL_ARMOUR)
       }
     }   let live = 0; for (const e of host.enemies) if (e.alive) host.enemies[live++] = e; host.enemies.length = live; host.creatures?.()?.step(dt);   /* the creatures' bodies follow their records (src/fx/creature-enemies.js) */   /* THE DEAD ARE LET GO (2026-09-25): killCreature only marks a record, and every per-frame walk over this array paid for every body ever spawned (~28 KB each, ~100 MB by sector 3). Compacted in place once a frame, after the walk: nothing keeps an index into it across frames */
   }

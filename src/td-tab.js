@@ -42,7 +42,7 @@ import { storage as localStorage } from './storage.js';
 // rules live in src/core, src/domain and src/content and the composition in src/fx and src/platform (docs/ARCHITECTURE.md). The
 // story is the game (docs/STATE.md); the campaign board under it serves the acceptance runs and the wave simulator.
 
-import { makeStuck } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
+import { makeStuck } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA, HULL_ARMOUR } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
 import { makeKick } from './domain/hover-kick.js'; import { showMission } from './fx/mission-card.js'; 
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
@@ -58,7 +58,8 @@ import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { createCanyonRun } from './fx/canyon-run.js'; import { createHullSpeed } from './fx/hull-speed.js'; import { createBossRun } from './fx/boss-run.js'; import { createDescentHost } from './fx/descent-host.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
+import { groundAt } from './fx/lance-follow.js';   /* a body's drawn point (2026-10-16: the seekers steer at it) */ import { createEmergeBlobs } from './fx/emerge-blob.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createHullConsole } from './fx/hull-console.js'; import { createBossRun } from './fx/boss-run.js'; import { createDescentHost } from './fx/descent-host.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
 import { createStrikeConsole } from './fx/strike-console.js'; import { createTerraformerYard } from './fx/terraformer-yard.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
@@ -488,7 +489,7 @@ export function initTdTab(root) {
   radarEl.className = 'minimap';
   container.appendChild(radarEl);
   const radarCtx = radarEl.getContext('2d');
-  const hullSpeed = createHullSpeed(container, { metres: () => METRES_PER_CELL / cellSide });   // the hull's pace in km/h over the radar (owner, 2026-10-15; src/fx/hull-speed.js)
+  const hullConsole = createHullConsole(container, { metres: () => METRES_PER_CELL / cellSide });   // the hull's armour, pace and mode over the radar (owner, 2026-10-15/16; src/fx/hull-console.js)
   let radarCss = 200;
 
   // even-ish lighting: the walker can be anywhere on the sphere, so no side
@@ -819,6 +820,8 @@ export function initTdTab(root) {
   let heartHP = 10;
   const HEART_MAX = 10;
   let playerHP = 3;
+  let hullArmour = HULL_ARMOUR.hits;   // the hull's dents left before it is lost (owner, 2026-10-16: four hits a hull; src/content/tank.js)
+  const hullHealth = () => (playerHP - 1 + hullArmour / HULL_ARMOUR.hits) / PLAYER_MAX;   // the drawn wear: the hulls left and this one's armour
   const PLAYER_MAX = 3;
   // A destroyed tank is DOWN, not merely invisible. Without this flag the
   // wreck kept its whole agency through the death hold — it drove (auto),
@@ -1692,7 +1695,7 @@ export function initTdTab(root) {
     // updateEngine so it survives every rebuild of playerMesh.
     feel.recoil = recoilLeft;   // the game owns the clock; tankfeel draws it
     applyTankFeel(playerMesh, feel, FEEL);
-    applyTankHealth(playerMesh, playerHP / PLAYER_MAX);
+    applyTankHealth(playerMesh, hullHealth());
     markerMesh.quaternion.copy(tmpObj.quaternion); // arrow nose = heading
   }
 
@@ -2889,7 +2892,7 @@ export function initTdTab(root) {
     sfx.reseed(params.seed); // pitch jitter is deterministic per seed
     deathPick = mulberry32((params.seed >>> 0) ^ 0x9e3779b9);
     heartHP = HEART_MAX; integrityHud?.reset();
-    playerHP = PLAYER_MAX;
+    playerHP = PLAYER_MAX; hullArmour = HULL_ARMOUR.hits;
     playerDown = false;
     shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
     shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;shield.rackFill=0;refillArray(arrayStation,SHIELD_ARRAY);arrayStation.drawn=0;
@@ -2986,10 +2989,12 @@ export function initTdTab(root) {
   const SPAWN_GAP_MAX = 0.45, crowdGate = createCrowdGate(); // ...but never slower than this per contact
 
   // --- enemies (src/fx/enemy-step.js): the board's enemies and gates, the wave's arming and spawning, the release, every frame
+  const emergeBlobs = createEmergeBlobs(scene);   // the blobs climbing a sinkhole's lip (src/fx/emerge-blob.js; owner, 2026-10-16)
   const enemyStep = createEnemyStep({
     root,
     enemies,
     scene,
+    emerge: (o) => emergeBlobs.spawn(o),
     disposeObj,
     gameBreaches,
     spawnQueue,
@@ -3654,7 +3659,7 @@ export function initTdTab(root) {
     runTimers.after(DEATH_HOLD * 1000, () => msgEl.classList.remove('hidden'));   // on the run's own timers: a NEW RUN inside the hold used to get the old run's card back
   }
 
-  function playerHit(killerType = null, fromPos = null) {
+  function playerHit(killerType = null, fromPos = null, whole = false) {
     // the lab's tank is a timer with no body to lose: the shove stays, so
     // being hit still reads, and the hull counter never moves
     if (lab.on && lab.immortalTank) { bumpLeft = Math.max(bumpLeft, BUMP_LEN * 0.5); return; }
@@ -3674,6 +3679,10 @@ export function initTdTab(root) {
       bumpLeft = Math.max(bumpLeft, BUMP_LEN * 0.5); // the impact still SHOVES
       return;
     }
+    // FOUR HITS A HULL (owner, 2026-10-16; HULL_ARMOUR): a touch dents the armour, the hull is lost on the last dent; the MK-9's burn (and a harness `whole`) takes it in one
+    hullArmour -= whole || HULL_ARMOUR.whole.includes(killerType) ? HULL_ARMOUR.hits : 1;
+    if (hullArmour > 0) { bumpLeft = Math.max(bumpLeft, BUMP_LEN * 0.6); if (playerMesh) applyTankHealth(playerMesh, hullHealth()); container.classList.remove('hull-dent'); void container.offsetWidth; container.classList.add('hull-dent'); sfx.play('danger_alert', { dist: 0, gain: 0.5 }); updateHud(); return; }
+    hullArmour = HULL_ARMOUR.hits;
     playerHP--; if (story?.expeditions) storyApi.expeditions().hullLost();   /* the rule drops the part back at its site; the crate tumbles off and the site's flag comes down */
     run.hullsLost++; sectorRun?.hullLost();
     checkAchievements();
@@ -4309,7 +4318,7 @@ export function initTdTab(root) {
   function stepTowerSeekers(dt,tNow) {
     for(let i=towerSeekers.length-1;i>=0;i--){
       const m=towerSeekers[i],target=enemies.find(e=>e.id===m.tid && e.alive);
-      const arrived=advanceDart(m.pool,m,dt,target?.pos ?? m.target);
+      const arrived=advanceDart(m.pool,m,dt,target?groundAt(target):m.target);   // the body's drawn point, so the round's last turn follows what the player sees (2026-10-16)
       m.p=m.pose.position;
       if(!arrived)continue;
       if(target){damageEnemy(target,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1),true,'tower',m.by.key);seekerHits++;}   // the story's TALON carries a heavy payload
@@ -4664,7 +4673,7 @@ export function initTdTab(root) {
     coins: () => coins(),
     runAchvBlock: () => runAchvBlock(),
     ctx: () => ({
-      rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX,
+      rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX, hullArmour, hullHits: HULL_ARMOUR.hits,
       towers: towers.length, tankRank, tankKills, round, wave, sectorsTotal: SECTORS_TOTAL, wavesPerSector: params.wavesPerSector,
       sectorWave: sectorWave(), programmeDone: programmeDone(), time: runContext.time, toll: sectorToll(), shield, shieldTune,
       assistant: !!assistant,
@@ -5217,7 +5226,7 @@ export function initTdTab(root) {
       dt,
       pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null),
     );
-    hullSpeed.tick(dt, player.pos, { on: !pilotMode && !mobileShell && !(story?.hull?.held?.()) && playerHP > 0, above: radarCss + 8 }); bossRun.tick(dt);   /* the hull's pace over the radar (owner, 2026-10-15; src/fx/hull-speed.js) */
+    hullConsole.tick(dt, player.pos, { on: !pilotMode && !mobileShell && !(story?.hull?.held?.()) && playerHP > 0, above: radarCss + 8, armour: hullArmour, hits: HULL_ARMOUR.hits, mode: manualActive() ? (cruise ? 'CRUISE' : 'MANUAL') : (DIRECTIVE_LABEL[params.directive] || 'AUTO') }); bossRun.tick(dt); emergeBlobs.step(dt);   /* the hull console over the radar (src/fx/hull-console.js), the boss run, the blobs at the lips */
     groundFeed.render(renderer, scene, dt); radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
@@ -5609,7 +5618,7 @@ export function initTdTab(root) {
   if (!storyMode && !debugging) showBriefing();
 
   perfCtl = gui.add({ get on() { return perfOverlay.on(); }, set on(v) { setPerfOverlay(v); } }, 'on').name('fps readout (`)');   /* a root control, so the VARS modal puts it on the game page */
-  buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt });   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
+  buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt, sectorNow: () => story?.sectorN ?? 0, sectorName: (n) => sectorRun?.defOf?.(n)?.name ?? null });   /* the playtest page reads the sector and its names */   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
@@ -5875,7 +5884,7 @@ export function initTdTab(root) {
       setAmmo: (n) => { ammo = n; updateHud(); }, laserAuto: (on) => laserStation.setAuto(on),   // the harness's rack and SOL's automation switch
       placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
       killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); },
-      hitTank: () => { if (playerHP > 1) playerHit(); },
+      hitTank: (whole = true) => { if (playerHP > 1 || (!whole && hullArmour > 1)) playerHit(null, null, whole); },   /* a hull lost whole (the suites' hull-loss steps), or hitTank(false): one dent */
       cargoView: (k, id) => {
         endShot();
         if (!k || k === 'tank') snapCamera();

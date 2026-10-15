@@ -105,4 +105,20 @@ const body = (id, x, z, y = 1) => ({ id, alive: true, pos: norm3([x, y, z]), spe
   assert.ok(Math.abs(tw.obj.userData.recoilNode.position.z + (SENTRY_TUNE.recoilKick - 0.01 / SENTRY_TUNE.recoilBack) * SENTRY_TUNE.recoilKick) < 1e-12, 'the recoil pivot eases back');
   aim(tw, 1); assert.equal(tw.recoil, 0, 'and rests at zero');
 }
-console.log('Tower aim turns, elevates, lobs, locks and follows the pilot as the board always has.');
+// THE SEAT'S SERVO AND THE BODY'S POINT (owner, 2026-10-16): a piloted gun turns manualDrive times faster than the automated drive; a
+// launcher keeps the drive's rate; the head turns to a body's drawn point (its stand-in's point()) where the record has one
+{
+  const e = body(1, 0.2, 0), pilot = { state: { tower: null }, target: () => e };
+  const gun = tower(); pilot.state.tower = gun;
+  aimFor({ enemies: [e], pilot, pilotMode: true }).aim(gun, 0.01);
+  assert.ok(Math.abs(gun.obj.userData.head.rotation.y - SENTRY_TUNE.yawRate * SENTRY_TUNE.manualDrive * RAD * 0.01) < 1e-9, 'a piloted gun turns at the servo rate');
+  const auto = tower(); aimFor({ enemies: [e] }).aim(auto, 0.01);
+  assert.ok(Math.abs(auto.obj.userData.head.rotation.y - SENTRY_TUNE.yawRate * RAD * 0.01) < 1e-9, 'an automated gun at the drive rate');
+  const q = tower({ key: 'quiver', def: { attack: 'seeker', range: 30 } }); pilot.state.tower = q;
+  aimFor({ enemies: [e], pilot, pilotMode: true }).aim(q, 0.01);
+  assert.ok(Math.abs(q.obj.userData.head.rotation.y - SENTRY_TUNE.yawRate * RAD * 0.01) < 1e-9, 'a piloted launcher keeps the drive rate');
+  const ahead = norm3([0, 1, 0.2]), withBody = { ...body(2, 0.2, 0), obj: { userData: { point: () => ahead } } };
+  const tw = tower(); aimFor({ enemies: [withBody] }).aim(tw, 0.1);
+  assert.ok(Math.abs(tw.aim) < 1e-6, `the head turns to the body's point, dead ahead, not the record's to starboard (${tw.aim.toFixed(3)})`);
+}
+console.log('Tower aim turns, elevates, lobs, locks and follows the pilot as the board always has; a seat has a servo and aims at the body.');

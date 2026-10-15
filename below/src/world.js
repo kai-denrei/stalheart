@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import { center, radius, frameAt, ringPoint, ROUTE_END, SHAFT_TOP, CHAMBER_LIP, chamberFloor, smooth, pointSegmentDistance, FLARE_COUNT, exteriorExposure, nearestRoute } from './mission.js';
+import { center, radius, frameAt, ringPoint, tunnelClearance, chamberClearance, ROUTE_END, SHAFT_TOP, CHAMBER_LIP, chamberFloor, smooth, pointSegmentDistance, FLARE_COUNT, exteriorExposure, nearestRoute } from './mission.js';
 import {createSinkholeEntrance} from './sinkhole.js';
 import {createNursery} from './nursery.js';
 import {createCaveNetwork} from './cave.js';
@@ -118,6 +118,9 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
   const limbs=[],bioFlesh=material(0x535b43,.55,false,.025);
   function addLimb(s,angle,phase,branch='main'){
     const f=frameAt(s,branch),root=vec(ringPoint(s,angle,.3,branch)),length=radius(s,branch)*1.7;
+    // ROOTED IN ROCK (the owner, 2026-10-16: "some tentacles are floating in the air, not attached to walls"): where this tube's wall is cut away by another
+    // tunnel or the chamber (trimSurface, the same clearances) there is no wall to grow from, so a limb whose root would stand in the opening is not made
+    if(Math.max(tunnelClearance(root,branch),chamberClearance(root))>-.6)return;
     const inward=vec(f.u).multiplyScalar(-Math.cos(angle)).addScaledVector(vec(f.v),-Math.sin(angle));
     const side=vec(f.u).multiplyScalar(-Math.sin(angle)).addScaledVector(vec(f.v),Math.cos(angle));
     const segments=32,radial=9,arr=new Float32Array((segments+1)*(radial+1)*3),idx=[];

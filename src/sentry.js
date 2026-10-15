@@ -51,6 +51,10 @@ export const SENTRY_TUNE = {
   elevMin: -35, elevMax: 65,
   yawRate: 110,       // degrees per second
   pitchRate: 70,
+  // THE SEAT'S SERVO (owner, 2026-10-16: "moving the mouse/reticle creates a lag and the gun fire does not follow"): a gun under a pilot
+  // turns this many times faster than the automated drive, so the barrel is where the reticle is within a frame or two and the
+  // tolerance gate opens at once; a launcher keeps the drive's own rate (its lock is the mechanic). Nothing on the range changes.
+  manualDrive: 4,
   tolerance: 2.5,     // degrees of total error that counts as ON TARGET
   cooldown: 0.35,     // seconds between rounds
   recoilKick: 0.15,   // the RECOIL pivot's travel, in model units
@@ -94,6 +98,7 @@ export const SENTRY_KNOBS = [
   { key: 'elevMax', label: 'elevation max', group: 'envelope', min: 5, max: 89, step: 1 },
   { key: 'yawRate', label: 'yaw rate (deg/s)', group: 'drive', min: 10, max: 720, step: 5 },
   { key: 'pitchRate', label: 'elevation rate (deg/s)', group: 'drive', min: 5, max: 360, step: 5 },
+  { key: 'manualDrive', label: 'seat servo ×', group: 'drive', min: 1, max: 10, step: 0.5 },
   { key: 'tolerance', label: 'on target within (deg)', group: 'drive', min: 0.2, max: 15, step: 0.1 },
   { key: 'cooldown', label: 'rate of fire (s)', group: 'gun', min: 0.05, max: 3, step: 0.05 },
   { key: 'recoilKick', label: 'recoil travel', group: 'gun', min: 0, max: 0.6, step: 0.01 },

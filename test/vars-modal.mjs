@@ -37,8 +37,8 @@ const active = (p) => p.nav.kids.findIndex((b) => b.classes.has('active'));
 // THE PAGES: the root controls on the game page, then a page per folder, one button each, the game page shown, the modal unhidden
 {
   const p = page();
-  assert.deepEqual(p.nav.kids.map((b) => b.textContent), ['game', 'bloom', 'tank feel']);
-  assert.equal(p.body.kids.length, 3); assert.equal(p.body.kids[0].kids[0].kids[0].kids.length, 3, 'the root controls on the game page, the enemy speed knob among them (2026-10-16)');
+  assert.deepEqual(p.nav.kids.map((b) => b.textContent), ['game', 'bloom', 'tank feel', 'playtest'], 'the playtest page after the controller\'s folders (2026-10-16)');
+  assert.equal(p.body.kids.length, 4); assert.equal(p.body.kids[0].kids[0].kids[0].kids.length, 3, 'the root controls on the game page, the enemy speed knob among them (2026-10-16)');
   assert.ok(p.gui.controllers.some((c) => c.label === 'enemySpeed' && c.target === p.params), 'ENEMY SPEED x is a root control over params');
   assert.equal(p.body.kids[1].kids[0], p.gui.folders[0].domElement, 'a folder is moved whole'); assert.equal(p.gui.folders[1].opened, true);
   assert.equal(p.gui.domElement.style.display, 'none', 'the emptied root gui is parked');

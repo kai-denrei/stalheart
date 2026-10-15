@@ -68,6 +68,14 @@
 #sentry-pilot button,#sentry-pilot a{pointer-events:auto;background:#10191de8;color:#e4ecec;border:1px solid #657479;padding:7px;cursor:pointer;font:inherit}
 #sentry-pilot .pilot-cross.hit{color:#ff3b2f;transform:translate(-50%,-50%) scale(1.5)}
 #sentry-pilot.overheat output{color:#ff3b2f}
+/* THE RETICLE'S STATE (owner, 2026-10-16: the gun went quiet without turning red; src/domain/seat-status.js through src/sentry-pilot.js update): red and blinking overheated, amber while the head still turns, dim out of range or loading, cool blue cooling or acquiring; a Rotor's heat is the bar under it */
+#sentry-pilot .pilot-cross[data-state="overheated"]{color:#ff3b2f;animation:pilot-hot .5s steps(2) infinite}
+#sentry-pilot .pilot-cross[data-state="traversing"]{color:#ffb347}
+#sentry-pilot .pilot-cross[data-state="range"],#sentry-pilot .pilot-cross[data-state="loading"]{color:#7d8a90;opacity:.7}
+#sentry-pilot .pilot-cross[data-state="cooling"],#sentry-pilot .pilot-cross[data-state="acquiring"]{color:#9fdcff}
+@keyframes pilot-hot{to{opacity:.35}}
+.pilot-heat{position:fixed;left:50%;top:calc(50% + 24px);transform:translateX(-50%);width:64px;height:3px;background:#ffffff22;border:1px solid #ffffff33;border-radius:2px}
+.pilot-heat i{display:block;height:100%;background:#ffb347;width:0}.pilot-heat.hot i{background:#ff3b2f}.pilot-heat[hidden],.pilot-map .pilot-heat,.gunship-seat .pilot-heat{display:none}
 #sentry-pilot .pilot-guns{display:flex;gap:6px;margin:6px 0}#sentry-pilot .pilot-guns button.on{background:#2a2416;border-color:#ffb43d;color:#ffd48a}
 #sentry-pilot button.on{background:#d7e3e5;color:#111}
 #sentry-pilot output{display:block;white-space:pre-line;padding:10px 0}#sentry-pilot footer{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);white-space:normal;width:max-content;max-width:min(92vw,1100px);text-align:center;background:#10191de8;padding:9px}

@@ -16,7 +16,7 @@ export function pearlBodies({ spec, of, tiers, body }) {
   for (const [type, id] of Object.entries(of)) {
     const s = spec[type], t = byId[id];
     if (!s || !t) continue;
-    out[type] = { type, tier: id, r0: +(s.size * body.metresPerSize * (s.boss ? body.boss : 1)).toFixed(3), cored: t.cored, rammable: !!s.rammable };
+    out[type] = { type, tier: id, r0: +(s.size * body.metresPerSize * (s.boss ? body.boss : 1) * (t.cored ? body.scale?.cored ?? 1 : body.scale?.soft ?? 1)).toFixed(3), cored: t.cored, rammable: !!s.rammable };   // a soft tier smaller, a cored one bigger (PEARL_BODY.scale, 2026-10-16)
   }
   return out;
 }

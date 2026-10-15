@@ -6,11 +6,26 @@
 // right-edge column. The lil-gui DOM is MOVED into #td-vars as pages — root
 // controls become the GAME page, each folder its own page — so nothing
 // about any control changes, only where it lives and how it is reached.
-export function buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt }) {
+export function buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt, sectorNow = () => 0, sectorName = () => null }) {
   // ENEMY SPEED x (owner, 2026-10-16: "for the purpose of fine-tuning the game, I also want an 'enemy speed' variable, where we could increase the
   // moving speed of all enemies while play-testing"): a root control, so it sits on the GAME page; every record's walk is multiplied by it
   // (src/fx/enemy-step.js, so the Pearl bodies that follow their records go with them); ?speed=N sets it at boot
   gui.add(params, 'enemySpeed', 0.25, 4, 0.05).name('enemy speed ×');
+  // THE PLAYTEST PAGE (owner, 2026-10-16: "I insist that we need an easy way to play/replay a sector and adapt the speed of enemies for test
+  // play"): a folder, so a page of its own: the sector to open (named from the table), PLAY (the page reloads on ?skip=defence&sector=N, the
+  // enemy speed carried as ?speed=), REPLAY THIS SECTOR, and the same enemy speed knob again beside them
+  {
+    const pt = { sector: Math.max(1, sectorNow() || 1) }, f = gui.addFolder('playtest');
+    const open = (n) => { const u = new URL(location.href); u.searchParams.set('skip', 'defence'); u.searchParams.set('sector', String(n)); for (const k of ['boss', 'descent', 'speed']) u.searchParams.delete(k); if (Math.abs(params.enemySpeed - 1) > 1e-6) u.searchParams.set('speed', params.enemySpeed.toFixed(2)); u.hash = '#td'; location.href = u.href; };
+    const name = () => sectorName(pt.sector) ? `${pt.sector} · ${sectorName(pt.sector)}` : `sector ${pt.sector}`;
+    const label = { now: sectorNow() ? `${sectorNow()} · ${sectorName(sectorNow()) ?? ''}` : 'before sector 1', pick: name() };
+    f.add(label, 'now').name('playing now').disable?.();
+    const pick = f.add(label, 'pick').name('to open'); pick.disable?.();
+    f.add(pt, 'sector', 1, 12, 1).name('sector').onChange(() => { label.pick = name(); pick.updateDisplay?.(); });
+    f.add({ play: () => open(pt.sector) }, 'play').name('▶ play that sector');
+    f.add({ replay: () => open(Math.max(1, sectorNow() || 1)) }, 'replay').name('↻ replay this sector');
+    f.add(params, 'enemySpeed', 0.25, 4, 0.05).name('enemy speed ×');
+  }
   // THE LAB PAGE (?lab=1). A folder here becomes a page in VARS below, for free.
   const applyLabSky = applySky;   // the lab's knobs feed the same bake
   if (lab.on) {

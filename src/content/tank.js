@@ -26,6 +26,10 @@ export const SHELL_BLAST = Object.freeze({ radius: 3, peak: 4.5, rate: 0.6,
 // speed, since there is no friction with the ground. We will display its speed in KM/H in small on the HUD above the RADAR"): top 3.2 (was 2.6)
 // reached over tau 6 s (was 4); a wall, a stop or a hard turn still spends it (src/domain/drive-ramp.js). The readout: src/td-tab.js hullSpeed
 export const TANK_DRIVE = Object.freeze({ base: 1.35, top: 3.2, tau: 6, turn: 0.6, stop: 3, keep: 0.25 });
+// FOUR HITS A HULL (owner, 2026-10-16: "Mork dying to a single hard-core is too punishing, it should be able to get several hits. 4 hits. Ramming a
+// hardcore pushes it out of the way and damages the tank"): a hard core's touch dents the armour by one, the hull is lost on the `hits`-th; a killer
+// in `whole` (the MK-9's burn) takes the hull in one. A new hull comes out with its armour whole (src/td-tab.js playerHit, hullArmour).
+export const HULL_ARMOUR = Object.freeze({ hits: 4, whole: Object.freeze(['laser']) });
 // the hull's steering (owner, 2026-09-16: "the tank turns too sharply = unnatural"): `rate` is the top yaw rate in rad/s — the pace
 // the tank always turned at — now taken up over `attack` seconds and released over `release` instead of switching on and off with the
 // key, and `bank` is how far the hull rolls into the turn at that full rate, in radians. Not a slower tank: the same rate, eased.

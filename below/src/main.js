@@ -109,9 +109,11 @@ function step(dt){
     if(mode==='detonation'&&simulationTime-detonationAt>14)end(mission.outcome);
     return;
   }
-  const turn=(Number(keys.has('ArrowLeft'))-Number(keys.has('ArrowRight')))*dt*1.3;
+  // A DRONE'S HANDS (the owner, 2026-10-16: "Isao control should be like a drone; WS for front back, and AD for rotation. Forcing a rotate then forward
+  // control style. Then up and down separate"): A and D turn the airframe (the arrows still look), W and S fly it where it faces; no strafe
+  const turn=(Number(keys.has('ArrowLeft'))-Number(keys.has('ArrowRight'))+Number(keys.has('KeyA'))-Number(keys.has('KeyD')))*dt*1.3;
   yaw+=turn;pitch=clamp(pitch+(Number(keys.has('ArrowUp'))-Number(keys.has('ArrowDown')))*dt,-1.565,1.565);
-  const forward=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),side=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));
+  const forward=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),side=0;
   const vertical=Number(keys.has('Space'))-Number(keys.has('ShiftLeft')||keys.has('ShiftRight'));
   fly(flight,dt,{forward,right:side,vertical},yaw,mission.payload);
   const player=world.player;
@@ -175,13 +177,16 @@ for(const button of document.querySelectorAll('[data-view]'))button.addEventList
 $('begin').addEventListener('click',start);$('resume').addEventListener('click',resume);$('restart').addEventListener('click',()=>{if(endingAction(mission.outcome,stalheart).action==='return')postOutcome(mission.outcome);else start();});$('restart-pause').addEventListener('click',start);
 $('sound').addEventListener('click',()=>{audio.init().catch(()=>{});audio.mute(audio.enabled);updateSoundLabel();});
 document.addEventListener('keydown',e=>{
+  // A SHORTCUT IS NOT FLIGHT (the owner, 2026-10-16: a screenshot's Cmd+Shift+4 pressed Shift and put Isao into the ground): a key down with the command or
+  // control key held is the system's, and whatever was held is let go; the keys come back when they are pressed again on their own
+  if(e.metaKey||e.ctrlKey){keys.clear();return;}
   if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab'].includes(e.code)&&mode==='playing')e.preventDefault();
   if(e.repeat){if(mode==='playing')keys.add(e.code);return;}
   if(e.code==='Escape'||e.code==='KeyP'){if(['playing','surface','detonation'].includes(mode))pause();else if(mode==='paused')resume();return;}
   if(e.code==='KeyM'){audio.mute(audio.enabled);updateSoundLabel();return;}
   if(mode==='playing'){keys.add(e.code);if(e.code==='KeyQ')scan();if(e.code==='KeyF')dropFlare();if(['Digit1','Digit2','Digit3'].includes(e.code))selectView(Number(e.code.slice(-1))-1);if(e.code==='KeyV')selectView('optical');}
 });
-document.addEventListener('keyup',e=>keys.delete(e.code));
+document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.key==='Meta'||e.key==='Control')keys.clear();});
 document.addEventListener('mousemove',e=>{if(mode!=='playing'||(!document.pointerLockElement&&!dragging))return;yaw-=e.movementX*.002;pitch=clamp(pitch-e.movementY*.002,-1.565,1.565);lookDelta=clamp(e.movementX*.03,-1,1);});
 $('view').addEventListener('mousedown',()=>{if(mode==='playing'){dragging=true;if(!document.pointerLockElement)lock();}});
 document.addEventListener('mouseup',()=>dragging=false);

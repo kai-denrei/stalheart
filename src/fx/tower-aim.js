@@ -21,7 +21,7 @@
 // drift apart. (The range's own degree-based rules are src/sentry.js; this
 // is the board's radian twin over live nodes, kept bit-for-bit as it was.)
 import * as THREE from '../../vendor/three.module.js';
-import { bodyAt } from './lance-follow.js';
+import { bodyAt, groundAt } from './lance-follow.js';
 import { makeLock } from '../domain/lockon.js';
 import { stepMissileLock } from '../domain/missile-targeting.js';
 import { pickTarget } from '../towers.js';
@@ -63,7 +63,10 @@ export function createTowerAim(host) {
       const target = manual ? manualTarget : config ? acquired : pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
       tw.trackTarget = target;   // what the head is turning to: a held lance follows it (src/fx/lance-follow.js)
       if (target) {
-        const tp = tw.def.attack === 'lance' ? bodyAt(target) : target.pos;   // a Lancer aims at the body itself (src/fx/lance-follow.js)
+        // THE HEAD TURNS TO THE BODY THE PLAYER SEES (owner, 2026-10-16, third round: the Rotor "not aligned with the reticle", "the hitbox seems random"):
+        // a Pearl body hunts ahead of its record, so the head, the tracer and the slug all take the body's drawn point (groundAt; the record's where
+        // there is no body); a Lancer the body itself, lifted (bodyAt); a free aim point is its own
+        const tp = tw.def.attack === 'lance' ? bodyAt(target) : target.pilotAim ? target.pos : groundAt(target);
         aimV.set(tp[0], tp[1], tp[2]);
         tw.obj.worldToLocal(aimV);
         tw.aim = Math.atan2(aimV.x, aimV.z) - facing;
@@ -128,11 +131,12 @@ export function createTowerAim(host) {
     // the DRIVE's own rate, in degrees per second, not a lerp factor — a
     // turret that eases proportionally is fastest when it is most wrong,
     // which is the opposite of how a motor behaves
-    const my = SENTRY_TUNE.yawRate * RAD * dt;
+    const servo = manual && !config ? SENTRY_TUNE.manualDrive : 1;   // a piloted gun's servo (SENTRY_TUNE.manualDrive): the barrel keeps up with the reticle
+    const my = SENTRY_TUNE.yawRate * RAD * dt * servo;
     head.rotation.y += Math.max(-my, Math.min(my, d));
     if (ud.pitchNode && tw.elev !== undefined) {
       const de = -tw.elev - ud.pitchNode.rotation.x;   // THE ONE NEGATION
-      const me = SENTRY_TUNE.pitchRate * RAD * dt;
+      const me = SENTRY_TUNE.pitchRate * RAD * dt * servo;
       ud.pitchNode.rotation.x += Math.max(-me, Math.min(me, de));
     }
     if (ud.recoilNode) {

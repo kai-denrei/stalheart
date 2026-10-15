@@ -122,7 +122,14 @@ export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1
 // rim: one risen up the lane (`cell`: the head start, the canyon's column) scatters on its spread as before
 // `settle` 8 s (was 4): the glide now begins once the record is past the rim and walking at its full pace, and its decay rides on top of the walk;
 // at 4 s it hurried the black tier's transfer to 0.26-0.37 radii a frame (--pearl-story's motion audit, 5 pops), at 8 s the decay is ~1.7 m/s
-export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2 });
+// NEVER OVER THE HOLE (owner, 2026-10-16, third round: "they should absolutely never be in the dark/black center area of the sinkhole, diegetically
+// they would fall down if there, so we need to represent them as emerging and climbing on the peripheries, maybe a separate fake animation of blob
+// emerging, and then we generate the actual rammable enemies already out and rammable"; and "the first batch of enemies seem to emerge out of the
+// ground rather than already being on their way"): at its breach's cell a record now STARTS `out` crater radii from the centre (past the lip, on
+// the exit-facing half as before), hidden under the ground for `climb` seconds while a blob of its tint crests the lip at `rim` and slides out to it
+// (src/fx/emerge-blob.js, src/domain/emerge-climb.js), then pops up whole over `pop` seconds and walks; nothing of it is ever drawn over the hole.
+// A body risen up the lane (the head start, the canyon's column) keeps its spread and the old 1.2 s rise.
+export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2, out: 1.35, climb: 1.1, pop: 0.3 });
 // THE WALK LEANS ON THE HEART (owner, 2026-10-15: "all enemies must be a bit faster. And with a much stronger bias to head towards the base"):
 // at a cell a record strays onto any exit `stray` of the time (was 0.05) and otherwise takes an exit nearer the heart, `straight` of those times
 // the nearest of them (src/domain/impact-scare.js seekExits; src/fx/enemy-step.js)

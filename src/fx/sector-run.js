@@ -428,7 +428,7 @@ export function createSectorRun(h) {
   }
 
   return {
-    tick, hudLine,
+    tick, hudLine, defOf,   /* defOf(n): a sector's row by number (the VARS playtest page names them, src/fx/vars-modal.js) */
     // the wave clock may arm only while every breach of the sector stands open and ready and one of them still has waves
     // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
     // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path
