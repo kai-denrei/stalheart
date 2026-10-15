@@ -360,6 +360,10 @@ export function createEnemyStep(host) {
       const b = host.graph().centers[e.next];
       const f = Math.min(e.prog, 1);
       e.pos = norm3([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
+      // FROM THE LIP ONTO THE PATH (2026-10-15): a body rose at the crater's rim (emergeOff, EMERGENCE.rim); its record glides from there onto its
+      // cell path over EMERGENCE.settle seconds, an offset that decays like the shove's, instead of snapping the moment the rise ends (the snap
+      // left a Pearl body a leash behind its record, and the body was put back: the motion audit's pops)
+      if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }
       // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
       // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
       // slides back into its own lane.
