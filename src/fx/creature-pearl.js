@@ -406,6 +406,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
 
   return {
     add, track, rehub, kill, recoil, free, step, setPlanet, paceOf, hullContact, hubs: { margin: tune.hubMargin ?? 0.03 },
+    // the body's drawn centre in its hub's plane, [x, 0, z] metres into `out` (its first live member; null without one): what the hull, the reticle
+    // and the lance meet (owner, 2026-10-15: "aiming straight and it does nothing"; src/fx/creature-bodies.js point)
+    point(h, out = [0, 0, 0]) { const slot = h?.slots?.[0]; if (!slot || h.dead) return null; const sw = h.p.swarm, i = slot.i; return sw.active[i] ? sw.positionInto(i, out) : null; },
     // round four: the motion audit (./pearl-motion.js): watch(opts) starts it afresh, watch(null) stops it; motion() its report so far (null when off)
     watch(opts) { motion = opts ? createMotionAudit(opts) : null; }, motion: () => motion?.report() ?? null,
     roots: () => [group],

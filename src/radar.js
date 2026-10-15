@@ -27,10 +27,25 @@ export function radarBasis(centerPos, up) {
 // A world position onto the scope, in scope-radius units. y is SCREEN y
 // (down positive), because the only consumer is a canvas. `clamped` marks a
 // contact beyond range, pinned to the rim — off-scope threats still exist.
+// ALONG THE GROUND, NOT THROUGH IT (owner, 2026-10-15: "the radar shows the immense column of enemies from SOL at the other antipode, as
+// if they were close, but it's on the other side of the planet"): the chord `pos - centre` projected on the tangent plane shrinks a far-side
+// contact toward the centre (the antipode's chord is all along the normal: it sat dead centre). The offset is the great-circle distance
+// (the arc, in the centre's units) along the contact's tangent bearing, so the far side is far and pins to the rim. `out` [x, y].
+export function scopeOffset(pos, centerPos, basis, out = [0, 0]) {
+  const rc = Math.hypot(centerPos[0], centerPos[1], centerPos[2]) || 1, lp = Math.hypot(pos[0], pos[1], pos[2]) || 1;
+  const px = pos[0] / lp, py = pos[1] / lp, pz = pos[2] / lp, n = basis.n;
+  const c = Math.max(-1, Math.min(1, px * n[0] + py * n[1] + pz * n[2])), arc = Math.acos(c) * rc;
+  const tx = px - n[0] * c, ty = py - n[1] * c, tz = pz - n[2] * c, s = Math.hypot(tx, ty, tz);
+  if (s < 1e-9) { out[0] = 0; out[1] = -arc; return out; }   // dead ahead or the antipode: straight up the scope
+  out[0] = arc * (tx * basis.right[0] + ty * basis.right[1] + tz * basis.right[2]) / s;
+  out[1] = -arc * (tx * basis.fwd[0] + ty * basis.fwd[1] + tz * basis.fwd[2]) / s;
+  return out;
+}
+
 export function radarProject(pos, centerPos, basis, range) {
-  const d = sub3(pos, centerPos);
-  let x = dot3(d, basis.right) / range;
-  let y = -dot3(d, basis.fwd) / range;
+  const o = scopeOffset(pos, centerPos, basis);
+  let x = o[0] / range;
+  let y = o[1] / range;
   const len = Math.hypot(x, y);
   const clamped = len > 1;
   if (clamped) { x /= len; y /= len; }
@@ -117,6 +132,7 @@ export function proximitySectors(contacts, centerPos, basis, reach, cellSide = 0
   for (let i = 0; i < SENSOR_SECTORS; i++) out.push({ level: 0, dist: Infinity, cells: Infinity });
   for (const pos of contacts) {
     const d = sub3(pos, centerPos);
+    if (dot3(pos, basis.n) < 0) continue;   // over the horizon on the far side of the planet: not near, whatever its chord says (2026-10-15)
     const x = dot3(d, basis.right), y = -dot3(d, basis.fwd);
     const dist = Math.hypot(x, y);
     const frac = dist / reach;

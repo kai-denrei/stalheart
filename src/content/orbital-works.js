@@ -6,4 +6,8 @@ export const ORBITAL_WORKS = Object.freeze({
   energyPerCollector: 2, energyCap: 20,
   ring: Object.freeze({ radius: 1.9, tiltDeg: 28, capacity: 48, size: 5, color: 0xbfe6ea }),
   brief: 'works_launch', orbit: 'works_orbit',
+  // A ROUTINE LAUNCH (owner, 2026-10-15: "once the launcher is ready, let's have it launch a few normal satellites once in a while, gives life to
+  // the base"): with SOL-88 up and the launcher standing, a plain satellite goes up `first` s later and then every `every` s (a span, drawn at
+  // random), whenever nothing else is on the sled; no brief, no bonus (src/domain/orbital-works.js routineDue, src/fx/colony-tick.js)
+  routine: Object.freeze({ first: 75, every: Object.freeze([150, 300]) }),
 });

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { applyScare, awayExits, isScared, scarePace, stampScare, towardScare } from '../src/domain/impact-scare.js';
+import { applyScare, awayExits, isScared, scarePace, stampScare, towardScare, seekExits } from '../src/domain/impact-scare.js';
 import { EXPLOSION_SCARE, EXPLOSION_USES, SCARE_FREEZE_S } from '../src/content/explosions.js';
 
 const near = { alive: true, pos: [0, 1, 0] }, edge = { alive: true, pos: [0.05, 0.9987, 0] }, far = { alive: true, pos: [1, 0, 0] }, dead = { alive: false, pos: [0, 1, 0] };
@@ -40,3 +40,15 @@ const AIRBORNE = new Set(['gunship.ignite', 'rock.dust', 'laser.contact', 'laser
 assert.deepEqual(Object.keys(EXPLOSION_SCARE).sort(), Object.keys(EXPLOSION_USES).filter((u) => !AIRBORNE.has(u)).sort(), 'every explosion use that lands scares');
 for (const [use, s] of Object.entries(EXPLOSION_SCARE)) assert.ok(s.cells > 0 && s.seconds > SCARE_FREEZE_S, `${use}: a radius and a scare longer than the freeze`);
 console.log('Impact scare: radius, stamped on the step clock, freeze then flight, turn from the blast, exits away, every use scares.');
+
+// THE WALK LEANS ON THE HEART (owner, 2026-10-15; WALK_BIAS)
+{
+  const dist = [9, 8, 8, 7, 10], exits = [1, 2, 3, 4], bias = { stray: 0.02, straight: 0.6 };
+  assert.deepEqual(seekExits(exits, dist, 0, 0.01, bias), exits, 'under stray: any exit');
+  assert.deepEqual(seekExits(exits, dist, 0, 0.5, bias), [3], 'under straight: the nearest to the heart only');
+  assert.deepEqual(seekExits(exits, dist, 0, 0.9, bias), [1, 2, 3], 'else any exit nearer the heart');
+  assert.deepEqual(seekExits([4], dist, 0, 0.9, bias), [4], 'no way nearer: every exit');
+  assert.deepEqual(seekExits(exits, dist, 0, 0.5), [1, 2, 3], 'the old rule by default: the nearer ones, a 5% stray');
+  assert.deepEqual(seekExits(exits, dist, 0, 0.04), exits);
+}
+console.log('seekExits: stray, straight, nearer.');

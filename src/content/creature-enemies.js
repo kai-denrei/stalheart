@@ -78,7 +78,9 @@ export const CREATURE_REED = freeze({
 // faster than `fastest` (the boss lab's full lunge is 0.375). Simulated (a body on a wandering record at the tier's speed x the sector's pace
 // 1.5, 60 s): 0 to 2 re-placements per ten bodies a minute, the body 1.2 to 2.4 radii behind on average. Behind by more than the leash, max(leashRadii x r, leashMin m), for `grace` seconds, or by
 // twice the leash at once, it is put on the record's point (counted: the probe reports how often). `emergeRadii`: rising out of a breach it starts that many radii under the ground.
-export const CREATURE_FOLLOW = freeze({ lead: 1.8, catchRadii: 1.5, fastest: 0.3, leashRadii: 3, leashMin: 8, grace: 1.5, emergeRadii: 3 });
+// `flash` (owner, 2026-10-15: "maybe we need a slight hit-animation to register the hit, the body lightly flashing white"): seconds a Pearl body
+// stays lit after a hit lands on its record (src/fx/creature-bodies.js lookInto -> the kit's tint channel, src/fx/cutis-maku/shaders.js)
+export const CREATURE_FOLLOW = freeze({ lead: 1.8, catchRadii: 1.5, fastest: 0.3, leashRadii: 3, leashMin: 8, grace: 1.5, emergeRadii: 3, flash: 0.18 });
 
 // THE DEATH (CUTIS_DEATH, the boss lab's): its hop held, it deflates over `deflate` s, then fades and sinks `sink` radii over `fade` s, then
 // its slot is free. The game's puddles fade faster than the lab's 20 s: a sector kills hundreds.

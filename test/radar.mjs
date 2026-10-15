@@ -40,6 +40,13 @@ console.log('projection:');
   const far = radarProject([3, 1, 0], c, b, 1);
   check('beyond range pins to the rim', far.clamped && approx(Math.hypot(far.x, far.y), 1, 1e-9));
   check('the rim keeps the direction', far.y < -0.99);
+  // ALONG THE GROUND (2026-10-15): the far side of the planet is far, not near; the antipode is at the rim, never at the centre
+  const anti = radarProject([0, -1, 0], c, b, 1);
+  check('the antipode pins to the rim', anti.clamped && approx(Math.hypot(anti.x, anti.y), 1, 1e-9), JSON.stringify(anti));
+  const behind = radarProject([0, -0.5, 0.5], c, b, Math.PI);
+  check('a contact past the horizon is over half the planet away', behind.x > 0.7 && Math.hypot(behind.x, behind.y) > 0.7 && Math.hypot(behind.x, behind.y) < 0.8, JSON.stringify(behind));
+  const near = radarProject([0.1, 1, 0], c, b, 1);
+  check('near the centre the arc is the chord', approx(-near.y, Math.atan2(0.1, 1), 1e-9) && Math.abs(-near.y - 0.1) < 1e-3);
 }
 
 console.log('bearing + sweep:');
@@ -89,6 +96,7 @@ console.log('proximity sensor:');
   const two = proximitySectors([at(0.9, 0), at(0.2, 0)], c, basis, 1);
   check('the NEAREST contact in a sector sets its level', two[0].level === 3 && approx(two[0].dist, 0.2, 1e-9));
   check('a contact past the reach does not register', proximitySectors([at(1.5, 0)], c, basis, 1)[0].level === 0);
+  check('a contact on the far side of the planet does not register (2026-10-15)', proximitySectors([[0, 0, -1], [0.01, 0, -1]], c, basis, 1, 0.1).every((s2) => s2.level === 0));
   check(`sector count is ${SENSOR_SECTORS}`, proximitySectors([], c, basis, 1).length === SENSOR_SECTORS);
   // THE CELL RULE (operator, 2026-09-03)
   check('nothing beyond 4 cells', sensorLevelCells(4.01) === 0 && sensorLevelCells(9) === 0);

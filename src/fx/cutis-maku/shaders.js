@@ -288,7 +288,10 @@ void main(){
   if(uDebug>1.5){color=mix(vec3(.1,.3,.8),vec3(1.,.2,.05),clamp((vStretch-1.)/5.,0.,1.));alpha=.95;}
   // Round two (the fable review: the slow tower's ice was lost on these bodies): iLife.w, the body's tint toward ice (0x8fd4ff) at its own brightness,
   // as the dot cloud turns ice for the slow's duration.
-  color=mix(color,vec3(.56,.83,1.)*(.3+.7*max(max(color.r,color.g),color.b)),clamp(vLife.z,0.,1.)*.8);
+  // THE HIT FLASH (owner, 2026-10-15: "the body lightly flashing white"): the channel at 2 and over is a hit's flash (2 + its share left), under 2 the ice
+  float flashHit=step(2.,vLife.z)*clamp(vLife.z-2.,0.,1.),iceTint=(1.-step(2.,vLife.z))*clamp(vLife.z,0.,1.);
+  color=mix(color,vec3(.56,.83,1.)*(.3+.7*max(max(color.r,color.g),color.b)),iceTint*.8);
+  color=mix(color,vec3(1.),flashHit*.6);
   // The Pearl set's death (owner, 2026-10-13: "keeping the current dissolving blob, but having it immediately much darker"): iLife.w below zero takes
   // the body (its skin, veins, pulse, rim and glints, the inner core) toward a near-grey uDeadTone of its brightness
   if(vLife.z<0.){float d=clamp(-vLife.z,0.,1.),l=dot(color,vec3(.299,.587,.114));color=mix(color,mix(vec3(l),color,.2)*uDeadTone,d);}

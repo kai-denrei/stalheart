@@ -114,7 +114,19 @@ export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1
 // where the ground is) plus the spawn's own scatter beyond it, never over the hole (src/fx/enemy-step.js spawnOne)
 // `scatter`: the share of the spawn's own `spread` added beyond the rim; `settle`: seconds the record then takes to glide from where it rose onto its
 // cell path (a snap left its Pearl body a leash behind, and put back; a fast glide hurried the black tier past the motion audit's pop)
-export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 4 });
+// CRAWLING OUT, NOT HOVERING (owner, 2026-10-15: "it still looks uncanny how the enemies emerge straight up at the center, hovering, instead of
+// having the feeling that they're crawling out"): the rim offset held the body at the lip while its record started at the hole's CENTRE, and the
+// glide then pulled the body back over the hole as the offset decayed. Now a body rises on the half of the rim that faces its first exit
+// (`facing`: within that many radians either side of the way out, so its first steps lead away from the hole) and keeps its offset whole until
+// its record has walked past the rim; only then does it glide onto the path over `settle`. Only a body rising at its breach's own cell takes the
+// rim: one risen up the lane (`cell`: the head start, the canyon's column) scatters on its spread as before
+// `settle` 8 s (was 4): the glide now begins once the record is past the rim and walking at its full pace, and its decay rides on top of the walk;
+// at 4 s it hurried the black tier's transfer to 0.26-0.37 radii a frame (--pearl-story's motion audit, 5 pops), at 8 s the decay is ~1.7 m/s
+export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2 });
+// THE WALK LEANS ON THE HEART (owner, 2026-10-15: "all enemies must be a bit faster. And with a much stronger bias to head towards the base"):
+// at a cell a record strays onto any exit `stray` of the time (was 0.05) and otherwise takes an exit nearer the heart, `straight` of those times
+// the nearest of them (src/domain/impact-scare.js seekExits; src/fx/enemy-step.js)
+export const WALK_BIAS = Object.freeze({ stray: 0.02, straight: 0.6 });
 // THE SECOND FRONT (owner, 2026-09-16: "protect the other side of the base"): the sealed clearing mouth nearest +Z, at most
 // `maxCells` wide, collapses with up to `flank` rock cells beside it; back breaches open `hops` steps out from it on lanes at
 // least `margin` hops shorter through the back than through the gate. The collapse shot dives after `preRoll` and holds `hold` seconds at

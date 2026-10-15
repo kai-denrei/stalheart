@@ -4919,7 +4919,8 @@ const killReal=(Date.now()-t0)/1000;
  await evaluate('window.__stalheartTest.laserSteer("breach")');await delay(400);   // the first aim of a pass snaps onto it
  {const s=await laser();assert(s.contact,'the seat lays a contact on the breach');assert.equal(s.fov,52,'the seat takes its ground lens');
   assert(await evaluate('!!document.querySelector("#laser-seat") && document.querySelector("#tab-td").classList.contains("laser-seat")'),'the seat panel is up');}
- await until('(s=>s.nearestBodyM!==null&&s.nearestBodyM<8)(window.__stalheartTest.state().laser)',17000).catch(async()=>assert.fail(`no bodies rose under the beam while the pass was overhead (${JSON.stringify(await laser())})`));
+ // FROM THE LIP (2026-10-15, EMERGENCE): a body rises on the crater's rim (10 m) and walks away from the hole, so the nearest is within the lip and a body, not the footprint
+ await until('(s=>s.nearestBodyM!==null&&s.nearestBodyM<14)(window.__stalheartTest.state().laser)',17000).catch(async()=>assert.fail(`no bodies rose at the breach's lip while the pass was overhead (${JSON.stringify(await laser())})`));
  current='laser-game-seat';await finish();
  // HOLD ON THE BREACH: what rises out of it burns on contact, and one second of beam seals it
  const before=await evaluate('window.__stalheartTest.state().killsBySrc.laser||0');

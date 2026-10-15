@@ -34,7 +34,7 @@ export function createRadarScope(host) {
       up = player.smoothDir;
     }
     const basis = radarBasis(cpos, up);
-    const range = mapMode === 'heart' ? 2.02 : host.pilotMode() ? cellSide * 12 : 1.15;
+    const range = mapMode === 'heart' ? Math.PI * 1.01 : host.pilotMode() ? cellSide * 12 : 1.15;   // the heart's map: the whole planet, the antipode's arc just inside the rim (src/radar.js scopeOffset)
     const sweep = sweepAngle(t);
 
     // ground: near-black green, three range rings, crosshair, rim

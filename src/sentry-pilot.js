@@ -5,6 +5,7 @@ import { headingTurn } from './domain/gunship-track.js';
 import { framingWeight, frameRound, ROUND_FRAME } from './core/round-framing.js';
 import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { seatHint } from './fx/seat-hint.js';
+import { groundAt } from './fx/lance-follow.js';
 export function createSentryPilot(root, host) {
   const state = { tower:null, held:false, yaw:0, pitch:-.2, zoom:1, target:null, shots:0, view:'pov' };   // view: pov (over the barrels) | third (behind the turret)
   const panel=document.createElement('section'); panel.id='sentry-pilot';
@@ -94,7 +95,7 @@ export function createSentryPilot(root, host) {
   // target while it stays inside. Swapping to whichever body is momentarily nearest was the frustration: every swap reset the timer, so
   // a lock looked random. A gun still needs the reticle on the body itself.
   const inBox=(e,cone,cellSide,sight=true)=>{
-    v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
+    v.fromArray(groundAt(e)).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);   // the BODY's point where a record has one (owner, 2026-10-15: a Pearl body hunts ahead of its record; src/fx/lance-follow.js)
     const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length();
     return along>0&&(cone?off<along*cone:off<cellSide*Math.max(.34,(e.size??e.spec.size)*.95))&&(!sight||host.visible(e))?along:-1;   // a gun's box covers the whole dot cloud, top to bottom (owner, 2026-09-13: basic enemies should drop to the Rotor wherever it hits them)
   };

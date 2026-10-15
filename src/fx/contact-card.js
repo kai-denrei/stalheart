@@ -20,13 +20,13 @@ export function contactLook(type, pearl = null) {
   return { tint: hex(luma(skin) < 0.2 ? t.values.coreTint : skin), name: t.name.toUpperCase(), role: [label, i?.role].filter(Boolean).join(' · '), tier: t.id };
 }
 
-export function showContact(root, type, pearl = null) {
+export function showContact(root, type, pearl = null, { hull = true } = {}) {
   if (!ENEMY_SPEC[type] || !root) return;
   const q = (root.__contacts ??= { queue: [], busy: false, log: [], looks: [] });
-  q.log.push(type); q.queue.push([type, pearl]); (q.looks ??= []).push(contactLook(type, pearl)); q.note?.(type);   // the bestiary's sighting (onContact)
+  q.log.push(type); q.queue.push([type, pearl, hull]); (q.looks ??= []).push(contactLook(type, pearl)); q.note?.(type);   // the bestiary's sighting (onContact)
   if (!q.busy) next();
   function next() {
-    const [t, tier] = q.queue.shift() ?? []; if (!t) { q.busy = false; return; }
+    const [t, tier, hullOut = true] = q.queue.shift() ?? []; if (!t) { q.busy = false; return; }
     q.busy = true;
     const s = ENEMY_SPEC[t], look = contactLook(t, tier), tint = look.tint;
     isaoSpeak('first_contact', { qualifier: s?.rammable ? 'rammable' : 'solid core' });   // Isao names it (src/fx/isao-voice.js)
@@ -35,7 +35,9 @@ export function showContact(root, type, pearl = null) {
     const name = document.createElement('div'); name.className = 'contact-name'; name.textContent = look.name;
     const role = document.createElement('div'); role.className = 'contact-role'; role.textContent = look.role;
     const facts = document.createElement('div'); facts.className = 'contact-facts';
-    facts.textContent = `${s.rammable ? 'RAMMABLE' : 'SOLID CORE · DO NOT RAM'} · ${s.hp} HP`;
+    // before the hull is issued the ram does not exist yet (owner, 2026-10-15, the Quiver's first hard core: "we have not introduced the tank or the
+    // concept of ramming yet. Replace it with 'these seem to have a harder-core, more dangerous'")
+    facts.textContent = `${s.rammable ? 'RAMMABLE' : hullOut ? 'SOLID CORE · DO NOT RAM' : 'HARDER CORE · MORE DANGEROUS'} · ${s.hp} HP`;
     card.append(head, name, role, facts); root.appendChild(card);
     setTimeout(() => { card.classList.add('out'); setTimeout(() => { card.remove(); next(); }, 450); }, SHOW_MS);
   }

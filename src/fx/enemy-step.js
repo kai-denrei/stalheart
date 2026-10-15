@@ -5,9 +5,10 @@
 // and the ram combo's are written through setters.
 import { waveGap } from '../domain/wave-spread.js';
 import { emergence } from '../domain/breach-waves.js';
-import { stampScare, scarePace, isScared, towardScare, awayExits } from '../domain/impact-scare.js';
+import { stampScare, scarePace, isScared, towardScare, awayExits, seekExits } from '../domain/impact-scare.js';
+import { groundAt } from './lance-follow.js';
 import { SCARE_FREEZE_S } from '../content/explosions.js';
-import { STORY_EXPEDITIONS, EMERGENCE } from '../content/story-defaults.js';
+import { STORY_EXPEDITIONS, EMERGENCE, WALK_BIAS } from '../content/story-defaults.js';
 import { sinkholeGroundHeight } from '../core/sinkhole-shape.js';
 import { CONTENT } from '../content/runtime.js';
 import { record } from '../diagnostics.js';
@@ -221,7 +222,7 @@ export function createEnemyStep(host) {
   function spawnOne(queued) {
     const entry = host.creatures?.()?.dress?.(queued) ?? queued, { type, sp } = entry, ci = entry.cell ?? sp.ci;   // `cell`: a body that rises up the lane, not at its source (the opening's head start, src/domain/story-beats.js)   // ?creatures=pearl dresses a mapped type in its Pearl body (src/fx/creature-enemies.js)
     {
-      const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl); }   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
+      const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl, { hull: !host.story()?.hull?.held?.() }); }   // before the hull is issued the card says harder, not 'do not ram'   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const size = spec.size * 0.7;
@@ -229,11 +230,17 @@ export function createEnemyStep(host) {
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
       const exits = host.openNeighbors(ci);
+      const next = exits.length ? exits[Math.floor(host.whim()() * exits.length)] : ci;
+      // WHERE IT COMES UP (owner, 2026-09-13: the whole crater boils, not one point; 2026-10-15: from the lip, and crawling out, not hovering; EMERGENCE):
+      // at its breach's own cell a body rises on the crater's rim, on the half facing its first exit, plus its scatter beyond; risen up the lane
+      // (`cell`) it scatters on its spread round that cell as before
+      const atHole = !!sp.obj.userData.breach && ci === sp.ci;
+      const emergeOff = entry.spread ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * entry.spread * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * EMERGENCE.rim * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(host.graph().centers[ci])),a=host.whim()()*6.283,r=(CONTENT.breach.craterRadius*EMERGENCE.rim+Math.sqrt(host.whim()())*entry.spread*EMERGENCE.scatter)*host.cellSide();return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point; FROM ITS LIP (2026-10-15): the rim and the scatter beyond it, never over the hole
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,
         cur: ci, prev: -1,
-        next: exits.length ? exits[Math.floor(host.whim()() * exits.length)] : ci,
+        next,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
         obj, alive: true, phase: host.whim()() * 6.283,
         // a deterministic pace of its own: identical speeds are what let a
@@ -351,7 +358,7 @@ export function createEnemyStep(host) {
         // wobble left so the streams braid but visibly converge
         const exits = host.openNeighbors(e.cur).filter((c) => !host.story()?.sealed(c));   // a closed story gate is a wall to them
         let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, host.graph().centers, e.cur, e.scareFrom); if (away.length) pool = away; }
-        if (!pool) { const down = exits.filter((c) => host.dungeon().distToHeart[c] < host.dungeon().distToHeart[e.cur]); pool = (down.length && host.whim()() > 0.05) ? down : exits; }
+        if (!pool) pool = seekExits(exits, host.dungeon().distToHeart, e.cur, host.whim()(), WALK_BIAS);   // the walk leans on the heart (WALK_BIAS; owner, 2026-10-15: "a much stronger bias to head towards the base")
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (e.guard) pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull: host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, aggro: STORY_EXPEDITIONS.aggro }); else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }
         e.next = pool.length ? pool[Math.floor(host.whim()() * pool.length)] : e.cur;
@@ -363,7 +370,7 @@ export function createEnemyStep(host) {
       // FROM THE LIP ONTO THE PATH (2026-10-15): a body rose at the crater's rim (emergeOff, EMERGENCE.rim); its record glides from there onto its
       // cell path over EMERGENCE.settle seconds, an offset that decays like the shove's, instead of snapping the moment the rise ends (the snap
       // left a Pearl body a leash behind its record, and the body was put back: the motion audit's pops)
-      if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }
+      if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
       // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
       // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
       // slides back into its own lane.
@@ -425,7 +432,7 @@ export function createEnemyStep(host) {
           if (tw.hp <= 0) host.killWalker(tw);
         }
       }
-      if (!host.playerDown() && (dist3(e.pos, host.player.pos) < touchR || (e.bodyRam && spec.rammable))) {   // or a light Pearl body the hull itself hit (round four, src/fx/creature-enemies.js)
+      if (!host.playerDown() && (dist3(spec.rammable ? groundAt(e) : e.pos, host.player.pos) < touchR || (e.bodyRam && spec.rammable))) {   // a soft body's own point where it has one (2026-10-15: the ram meets the body); a hard body's touch stays on its record: on its body it fired at every hull contact and its recoil kept the body ahead of a hull that should have stopped on it (--pearl-story's hull probe)   // or a light Pearl body the hull itself hit (round four, src/fx/creature-enemies.js)
         if (spec.rammable) {
           // run over: tinted splat under the treads + the weight bump
           const burst = makeDotBurst(CREATURE_TINTS[e.type], n);

@@ -197,7 +197,7 @@ export function createCreatureEnemies(host) {
   let clock = 0;
   const hullContact = createHullContact({ tune: PEARL_IMPACT, mesh: () => host.tankMesh?.(), heading: () => { const t = host.tank?.(); return t ? t.smoothDir ?? t.heading : null; },
     metres: () => (bodies ? bodies.metres() : null), hull: (tank, drive, sink) => bodies.hull(tank, drive, sink), ground: onUnitSphere, now: () => clock,
-    brush(e, tier) { if (PEARL_IMPACT.tiers?.[tier]?.ram && e.alive && e.spec?.rammable) e.bodyRam = true; },
+    brush(e, tier) { if (e.alive && e.spec?.rammable && (PEARL_IMPACT.tiers?.[tier]?.ram || PEARL_IMPACT.contact.ramSoft)) e.bodyRam = true; },   // every soft tier the driving hull touches is rammed (PEARL_IMPACT.contact.ramSoft, owner 2026-10-15)
     hit(e, cored) {
       fight.contacts = (fight.contacts ?? 0) + 1;
       if (cored) { const c = e.alive && contact(e); if (c) { bodies?.recoil(e, c.away); host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side }); } }
@@ -282,6 +282,7 @@ export function createCreatureEnemies(host) {
     },
     // damageEnemy's every hit, after the damage: a sentry's on a creature record is counted (and its kill, once)
     hit(e, src, dmg) {
+      if (e.spec?.body && e.alive && dmg > 0) e.hitFlash = 1;   // the body lights for CREATURE_FOLLOW.flash s (owner, 2026-10-15; src/fx/creature-bodies.js lookInto)
       if (!e.spec?.body || src !== 'tower') return;
       fight.hits++; fight.damage += dmg;
       if (e.hp <= 0 && !e.probeKilled) { e.probeKilled = true; fight.killsAll++; if (choice && ofTier(e)) fight.kills++; }

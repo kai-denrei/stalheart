@@ -10,6 +10,7 @@
 // FRAMES. The game draws a unit sphere at the origin, cellSide scene units to a 10 m cell; the domain works in metres on
 // a sphere of radius R about the origin. R = 10 / cellSide, so a scene point times R is the same point in metres.
 import * as THREE from '../../vendor/three.module.js';
+import { groundAt as bodyGround } from './lance-follow.js';
 import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_GAME, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_SOUNDS, LASER_STRUCTURES, LASER_AUTO, LASER_PLATFORMS } from '../content/orbital-laser.js';
 import { densestTarget, countdownTimes } from '../domain/laser-auto.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange, inFootprint, laserStrip } from '../domain/orbital-laser.js';
@@ -101,7 +102,7 @@ export function createLaserArsenal(scene, host) {
     for (const e of host.enemies()) {
       if (!e.alive) continue;
       const kind = (e.spec?.hp ?? 1) > 1 ? 'hard' : 'soft';
-      out.push({ id: `body-${e.id}`, kind, pos: at(e.pos), reach: reach[kind], body: e });
+      out.push({ id: `body-${e.id}`, kind, pos: at(bodyGround(e)), reach: reach[kind], body: e });   // the body's point where a record has one (2026-10-15)
     }
     for (const sp of host.breaches()) out.push({ id: `breach-${sp.ci}`, kind: 'seal', pos: at(centers[sp.ci]), reach: reach.seal, breach: sp });
     const keep = new Set([host.heartCell()]);
@@ -357,7 +358,7 @@ export function createLaserArsenal(scene, host) {
       burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, strip: laserStrip(st, online, beam, LASER_GAME.lowEnergy, platform.name).text, period: +orbit.period.toFixed(1), energyBonus, passEnergy: beam.energy,
       source: laser?.sourceAt?.() ?? null, under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
-      nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,
+      nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(), bp = bodyGround(e); return Math.hypot(bp[0] * R - st.contact[0], bp[1] * R - st.contact[1], bp[2] * R - st.contact[2]); })).toFixed(1) : null,
     }),
 
     dispose() { lift(); laser?.dispose(); laser = null; },

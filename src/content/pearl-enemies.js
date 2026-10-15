@@ -71,7 +71,9 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // offline, sixty amoebas on a clump of records for 30 s: separation 2 1.9 re-placements a body-minute and 5.3 radii from their records, 1 0.8 and 4.3,
 // 0.5 0.03 and 2.9, 0 none and 1.7. At 0.5 the bodies still part a little rather than merge.
 // `squad`: a squad (one record holding SQUADS.size bodies, src/content/sectors.js) is that many bodies round its record, `gap` radii apart across its
-// heading and `stagger` radii along it; a shed member deflates.
+// heading and `stagger` radii along it; a shed member deflates. CLOSER (owner, 2026-10-15: "the way we manage multiple enemies as a pack of 5 for
+// fps, have those closer to each other, currently it can feel strange when ramming them to have some too far apart register as hit"): gap 1.1 and
+// stagger 1.2 radii (were 2.2 and 2: a five-body squad of 2 m bodies stood 17 m across, and a hull touching its edge rammed all five).
 // `hubMargin` (round two, owner 2026-10-13: "there are still a mix of half-dotted and new cutis enemies"; it replaces the first round's `maxArc` 1.2, which
 // left the canyon's far-side swarm as dot clouds): a body is drawn in the plane of the nearest of twelve hubs (src/fx/creature-bodies.js,
 // src/domain/surface-hubs.js) and handed to another only once that one is `hubMargin` rad nearer (23 m on the story planet), so a record walking along
@@ -86,7 +88,7 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // the lowest hull under `low`; bodies outside the view or below the horizon are not drawn.
 export const PEARL_FOLLOW = freeze({
   keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, leashHops: 1, separation: 0.5,
-  squad: { gap: 2.2, stagger: 2 }, hubMargin: 0.03, reachStep: 0.15, opacityRef: 0.95,
+  squad: { gap: 1.1, stagger: 1.2 }, hubMargin: 0.03, reachStep: 0.15, opacityRef: 0.95,
   capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
   lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },
 });
@@ -105,9 +107,15 @@ export const PEARL_FOLLOW = freeze({
 // THE FIRST ONES REACH FOR THE BASE (owner, 2026-10-15, the opening's whites under the Rotor: "they should move faster, with more obvious/longer
 // appendage stretching towards the base, slow but menacing"): the white tier keeps its slow six-second cycle and takes a longer stride (`hop`, in
 // radii, over PEARL_GAIT.hop: the stalk reaches that much further each hop) and a higher walk cap (`radii`), so a white body covers more ground a
-// hop without hurrying its hops. A tier without `hop` strides PEARL_GAIT.hop. The cap stays under 1: a body hunts ahead of its record in proportion
-// to the record's walk (pearlLead), and at 1 radius a second the hull touched the body while the record, which the ram kills, was still out of reach
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1, radii: id === 'white' ? 1 : id === 'yellow' ? 0.7 : 0.8, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
+// hop without hurrying its hops. A tier without `hop` strides PEARL_GAIT.hop.
+// A BIT FASTER, ALL OF THEM (owner, 2026-10-15: "in general all enemies must be a bit faster. And with a much stronger bias to head towards the
+// base"): the white cap at 1 radius a second, yellow 0.85 (from 0.7), the rest 0.9 (from 0.8) but black, which keeps 0.8. The motion audit
+// (test/pearl-motion.mjs, and --pearl-story's in the browser) is the ceiling: at 1 for every tier the purple's transfer stepped 0.27 radii a frame
+// (a pop), at 1.1 the blue's, and at 0.9 the black (the shortest cycle, 2 s) popped once in the browser. A body hunts ahead of its record in
+// proportion to the record's walk (pearlLead), so the hull and the guns meet the body before the record: the ram, the reticle and the lance now
+// test the BODY's point (src/fx/creature-bodies.js point, src/fx/lance-follow.js bodyAt), not the record's, so the white's cap at 1 is safe. The
+// bias is WALK_BIAS (src/content/story-defaults.js)
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1, radii: id === 'white' ? 1 : id === 'yellow' ? 0.85 : id === 'black' ? 0.8 : 0.9, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a
@@ -169,7 +177,10 @@ export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }) });
 // their brightness, near grey, over `seconds`, and stay so while the blob deflates and dissolves as before (src/fx/cutis-maku/shaders.js uDeadTone).
 export const PEARL_IMPACT = freeze({
   death: { tone: 0.22, seconds: 0.12 },
-  contact: { refRadius: 2.8, loss: 0.25, maxLoss: 0.85, recover: 0.45, cored: 1, again: 0.6, slop: 0.02, minHalf: 1.2, sweep: 1.2, pin: 0.12 },
+  // `ramSoft` (owner, 2026-10-15: "I encountered a soft-body enemy which I could not ram with the tank, it kept being just pushed away"): a soft body of
+  // ANY tier the hull touches while it drives is the game's ram (e.bodyRam), as the light tiers' brush already was; the shove stays the body's answer
+  // for the frame it is hit, its death the next (the ram's stagger and deflate)
+  contact: { refRadius: 2.8, loss: 0.25, maxLoss: 0.85, recover: 0.45, cored: 1, again: 0.6, slop: 0.02, minHalf: 1.2, sweep: 1.2, pin: 0.12, ramSoft: true },
   // PER TIER (owner, 2026-10-13, on round four's slower bodies: "the slower Cutis feel much better, but the lower level ones, white and yellow, should
   // feel very easy to run over. The threat starts like more of an annoyance."): `mass` x the contact's speed loss (near none: the hull ploughs on),
   // `pad` metres round the hull within which a body counts as hit (generous: a brush is a ram, never a near miss), `ram` that hit IS the game's ram

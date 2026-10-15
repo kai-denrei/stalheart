@@ -17,7 +17,7 @@ import { createArmoryPad } from './armory-pad.js';
 import { createPaintPad } from './paint-pad.js';
 import { applyGarage } from '../../assets/models/garage/runtime.js';
 import { ORBITAL_WORKS } from '../content/orbital-works.js';
-import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
+import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus, routineDue, beginRoutine, routineUp } from '../domain/orbital-works.js';
 import { createOrbitalRing } from './orbital-ring.js';
 import { createScoreboard } from './scoreboard.js';
 import { createSiteBeacons } from './site-beacons.js';
@@ -124,6 +124,13 @@ export function createColonyTick(c) {
         beginLaunch(s.works, sector);
         s.launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onComplete: () => { const n = collectorUp(s.works); s.worksRing?.set(n); c.laserStation?.setEnergyBonus?.(energyBonus(n, ORBITAL_WORKS)); c.sectorRun()?.note({ type: 'launch', id: 'collector' }); if (!c.pilotMode() && !c.briefQ()) showBrief(ORBITAL_WORKS.orbit); s.launch = null; updateHud(); } });
         if (!c.pilotMode() && !c.briefQ()) showBrief(ORBITAL_WORKS.brief);
+      }
+      // A ROUTINE LAUNCH (owner, 2026-10-15: "once the launcher is ready, let's have it launch a few normal satellites once in a while, gives life to the
+      // base"): a plain satellite up the rail once in a while (ORBITAL_WORKS.routine), no brief, no bonus; a collector's launch comes first
+      if (s.sol88 && !s.launch && routineDue(s.works, { t: c.t(), online: true, standing: programmeHas(pg, 'launcher'), tune: ORBITAL_WORKS.routine })) {
+        const root = c.storyBase()?.structure?.('launcher')?.root ?? null;
+        beginRoutine(s.works, c.t(), ORBITAL_WORKS.routine, (s.works.routines * 0.618034) % 1);
+        s.launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onComplete: () => { routineUp(s.works); c.sectorRun()?.note({ type: 'launch', id: 'routine' }); s.launch = null; } });
       }
       // SOL AUTOMATED: Isao's word the moment the player's second manned pass is in (the ARC-01 step waits on that count)
       const manned = c.laserStation?.manned?.() ?? 0;

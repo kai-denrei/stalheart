@@ -104,7 +104,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     const obj = new THREE.Object3D(); obj.name = 'creature record';
     obj.material = { opacity: 1, transparent: true, dispose() {} };
     // setTint: the enemy loop's slow tint (src/fx/enemy-step.js), kept for the body (round two: the fable review, the ice was lost on these bodies)
-    Object.assign(obj.userData, { kind: 'creature', lift: 0, reach, tint: null, tick() {}, setTint(c) { obj.userData.tint = c ?? null; } });
+    Object.assign(obj.userData, { kind: 'creature', lift: 0, reach, tint: null, point: null, tick() {}, setTint(c) { obj.userData.tint = c ?? null; } });   // point(): the body's own point once it has one (spawn)
     return obj;
   }
 
@@ -123,6 +123,9 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   function lookInto(e, o) {
     o.opacity = e.obj?.material?.opacity; o.grow = (e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1); o.members = e.members ?? 0;
     o.speed = (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * metresPerCell; o.tint = e.obj?.userData?.tint != null ? 1 : 0;
+    // THE HIT FLASH (owner, 2026-10-15: "the body lightly flashing white"): a hit's share left rides the tint channel at 2 and over (the kit's shader
+    // reads it as the flash, not the ice), fading over CREATURE_FOLLOW.flash s
+    if (e.hitFlash > 0) { o.tint = 2 + e.hitFlash; e.hitFlash = Math.max(0, e.hitFlash - (o.dt || 0) / (follow.flash || 0.18)); }
     return o;
   }
   const opt = { x: 0, z: 0, ax: 0, az: 0, lift: 0, pos: null, apos: null, dt: 0, hub: 0, cell: -1, opacity: 1, grow: 1, members: 0, speed: 0, tint: 0 }, xz = [0, 0], axz = [0, 0];
@@ -136,7 +139,18 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     if (!h) return false;
     live.set(e, { family, h, stamp, r0: t.r0, hub, apos });
     h.record = e;   // round four: the hull's contact names the record (hull below)
+    if (e.obj?.userData) e.obj.userData.point = () => point(e);   // the game's ram, reticle and lance meet the body where it is drawn (src/fx/lance-follow.js groundAt)
     return true;
+  }
+  // THE BODY'S OWN POINT (owner, 2026-10-15: "it feels as if I'm aiming straight and it does nothing"; "a soft-body enemy which I could not ram, it
+  // kept being just pushed away"): a body hunts ahead of its record, so the record's point is not where the body is. Its drawn centre on the unit
+  // sphere (a scratch array: read it at once), null while it has no body (a dot cloud, a Reed not made yet)
+  const PT = [0, 0, 0];
+  function point(e) {
+    const b = live.get(e);
+    if (!b || !frame) return null;
+    const p = adapters.get(b.family).point?.(b.h, PT);
+    return p ? (toSphere[b.hub] ?? toSphere[0])(p[0], p[2]) : null;
   }
 
   // a world tangent direction at the record (unit sphere scale) as a unit plane direction in its hub's plane (and the plane direction across it)
@@ -220,7 +234,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   const seen = (v) => (v && v.point && !v.centre && frame ? { ...v, centre: planeOf(v.point) } : v ?? null);
 
   return {
-    has, proxy, spawn, kill, recoil, step, hull,
+    has, proxy, spawn, kill, recoil, step, hull, point,
     // a family's bodies made ready before the first record (its adapter, and what it makes ahead: the Pearl tiers' swarms)
     prepare: (family, ids) => adapter(family)?.prepare?.(ids),
     room: (family, tier) => adapter(family)?.room?.(tier) ?? Infinity,   // slots a family's tier still has (Infinity when it does not count)

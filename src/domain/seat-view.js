@@ -13,7 +13,9 @@ export const TANK_LENS = 68;   // the hull's own vertical field of view
 
 // The views a seat may hand back. A cinematic or derived camera ('drone', 'bastion', a shot's own frame) is not a place
 // the player asked to be, so it is not a place a leave returns to: those come back to the hull's chase camera.
-export const SEAT_RETURN_VIEWS = ['third', 'pov', 'orbit'];
+// Not 'pov' (owner, 2026-10-15: "changing view to the tank led to PoV instead of 3rd person, which breaks the game a bit, especially when carrying
+// a cargo box"): the story never asks for the first person, so a seat hands back the chase camera whatever the hull's view was before it
+export const SEAT_RETURN_VIEWS = ['third', 'orbit'];
 
 export const seatLens = (zoom, base = 60) => base / Math.max(1e-4, zoom);
 export const seatZoom = (fov, base = 60) => base / Math.max(1e-4, fov);

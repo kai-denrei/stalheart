@@ -102,8 +102,11 @@ export const SECTOR_STAMPEDE = freeze({ every: 2, cores: 2, core: 'barbed', call
 // (owner, 2026-10-03: "Canyon announce to control of SOL too long, 2x faster exposition, same for Canyon round 2") the swarm is released
 // `firstPulse` seconds into the sector instead of after a whole pulse (14 s), and SOL comes over it `seatAfter` seconds after its last body
 // is up (was 6). Compressing the rise itself left the swarm bunched at the deep end and the beam's first pass took half as many
-export const CANYON = freeze({ length: 56, halfWidth: 2.5, wall: 3, bodies: freeze({ first: 1500, again: 2000 }), fill: 0.6, ladder: 2, spread: 0.8, dens: 0.35, firstPulse: 3, seatAfter: 2,
-  pass: { overhead: 45, energy: 25, radius: 12, slew: 16, drainedAfter: 3 }, gateAfter: 4, charge: 2, strayHops: 60, brief: 'canyon_rises', passBrief: 'canyon_pass', briefAgain: 'canyon_again' });
+// THE TRENCH IS THE BEAM'S WIDTH (owner, 2026-10-15: "the first SOL manual control, the corridor should be smaller, so the enemies cannot escape to
+// the sides"): `halfWidth` 1.5 (3 cells, 30 m) under a pass whose footprint is `radius` 15 m (was a 5-cell trench under a 12 m footprint: the
+// bodies along either wall stood outside the beam and walked out of the pass). The column stands fifteen to a cell deeper for it.
+export const CANYON = freeze({ length: 56, halfWidth: 1.5, wall: 3, bodies: freeze({ first: 1500, again: 2000 }), fill: 0.6, ladder: 2, spread: 0.8, dens: 0.35, firstPulse: 3, seatAfter: 2,
+  pass: { overhead: 45, energy: 25, radius: 15, slew: 16, drainedAfter: 3 }, gateAfter: 4, charge: 2, strayHops: 60, brief: 'canyon_rises', passBrief: 'canyon_pass', briefAgain: 'canyon_again' });
 // NO LULL AFTER THE PASS (owner, 2026-10-07: 'after the second SOL manual canyon there is a downtime in action; nothing happens for
 // too long; the enemies who survived the canyon take a long time to reach the base'; measured: the base's own bodies dead a minute
 // after the gate, then sixty seconds of nothing while 318 survivors walked, the debrief 104 s after SECURE waiting them out).

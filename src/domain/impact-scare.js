@@ -41,6 +41,16 @@ export function scarePace(e, now, freezeS, { flee = 2.4, trail = 1.3 } = {}) {
 export const towardScare = (cur, next, from) => d2(next, from) < d2(cur, from);
 
 // the exits (cell ids) whose centres are farther from the blast than the current cell
+// THE WALK LEANS ON THE HEART (owner, 2026-10-15: "a much stronger bias to head towards the base"; WALK_BIAS): of a cell's `exits` the ones nearer
+// the heart (`dist` the board's distToHeart); with one draw `r` in [0, 1): under `stray` any exit at all (the streams braid), else under `straight`
+// of the rest only the nearest of them (the steepest way in), else any of the nearer ones. A cell with no way nearer gives every exit
+export function seekExits(exits, dist, cur, r, { stray = 0.05, straight = 0 } = {}) {
+  const down = exits.filter((c) => dist[c] < dist[cur]);
+  if (!down.length || r < stray) return exits;
+  if (straight > 0 && r < stray + (1 - stray) * straight) { const best = Math.min(...down.map((c) => dist[c])); return down.filter((c) => dist[c] === best); }
+  return down;
+}
+
 export function awayExits(exits, centers, cur, from) {
   const here = d2(centers[cur], from);
   return exits.filter((c) => d2(centers[c], from) > here);
