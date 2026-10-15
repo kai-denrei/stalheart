@@ -267,6 +267,7 @@ export function createLaserArsenal(scene, host) {
   return {
     metres,
     anchor,
+    burnAt: () => (burningWas ? ground.toArray() : null),   // where the beam is on the ground, while it burns (the lure keeps off it, 2026-10-16)
     beam: () => beam, orbit: () => orbit,   // the live pass numbers the seat and the briefing read
     forwardAt,
     online: () => online,

@@ -161,12 +161,18 @@ export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flo
 // gate breach sends two waves, `boss.wave` (count of the family's `wave.tier`, each at `wave.hp`) and then `boss.boss` (one of `boss.tier` at
 // `boss.hp`), every one a hunter of the tank (src/domain/boss-sector.js); the breath sends the boss once the wave is mostly dead. Isao drives the
 // hull on its avoid autopilot, the player takes the gunship by manual override after `choice` (src/fx/boss-run.js, src/fx/choice-card.js).
-export const BOSS_SECTOR = freeze({ name: 'THE BOSS', shape: 'pulse', bodies: [20, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { gate: 1 }, waves: 2, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 90, points: 900 },
-  boss: { family: 'cutis', wave: { count: 20, tier: 'small', hp: 20, pace: 1 }, boss: { tier: 'huge', hp: 180, pace: 1 },
+// THE ARENA (owner, 2026-10-16, third round: "a giant opening very far from the base, with a giant Nih Daira creature ... the tank acts as LURE, while the gunship
+// fires from above"; spec docs/superpowers/specs/2026-10-16-arena-design.md; it replaced THE BOSS of 2026-10-15, the Cutis-Maku on the gate lane): one
+// breach, the arena's own (`breaches.arena`: on story.arena.cell, ARENA.craterCells wide, kept open as the nest's mouth), three waves: the small Reeds,
+// the Nih-Dairia pups (CREATURE_TIERS.reed.pup), then the NIH-DAIRIA itself (`boss.boss`), every one a hunter of the tank; Isao drives the hull as the
+// lure (src/fx/boss-run.js, the `lure` directive) and the player takes the gunship.
+export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: [12, 6, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { arena: 1 }, waves: 3, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 120, points: 1200 },
+  boss: { family: 'reed', waves: [{ count: 12, tier: 'small', hp: 4, pace: 1 }, { count: 6, tier: 'pup', hp: 6, pace: 1 }], boss: { tier: 'huge', hp: 180, pace: 1 },
     choice: { line: 'New contact. Big. Two ways: I drive the tank and keep it busy, or I put the gunship on autopilot and you drive.', a: 'YOU DRIVE THE TANK', b: 'GUNSHIP ON AUTOPILOT',
       replyA: 'Then it\'s me in the hull. The gunship is yours: new target, manual override.', replyB: 'The autopilot has never seen this one. Manual override, you. I\'ll drive.' } },
   gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a boss',
-  brief: ['Something big is coming up the lane. Not a wave.', 'I take the hull. You take the gunship. Keep it off me.'] });
+  brief: ['The ground opened, far out. Something very big is under it, and it must never reach the base.', 'I take the hull out there as bait. You take the gunship. Keep it off me, and keep your rounds off me.'] });
+export const BOSS_SECTOR = ARENA_SECTOR;   // the arc's boss row, by its old name
 
 // PAST BOTH WALLS the sectors are generated from it: its flags carry over, `new` is null. With `past` the sectors after BOTH WALLS
 // (1, 2, ...): the flow's alive climbs aliveStep a sector from BOTH WALLS' up to aliveCap (the column the frame holds, 1,200 Pearl
@@ -201,6 +207,9 @@ export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scrambl
 // one opened near the base's rim carved a way in beside a gate that still stood at 100% (measured with --pacing --passive: the
 // heart lost its first life 20 s into sector 1). The far ring never came that close; the near one can
 export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, rimCells: 10 });
+// THE ARENA'S PLACE (owner, 2026-10-16: "a giant opening very far from the base"; src/domain/arena.js, src/platform/story-world.js story.arena): the
+// farthest reachable cell outside the walls within `farHops` of the farthest; its opening `craterCells` wide (the sinkhole scaled, src/game-breaches.js)
+export const ARENA = freeze({ farHops: 4, craterCells: 3 });
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

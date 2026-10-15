@@ -5,7 +5,8 @@
 // again, Isao's decoding joke is said (as his last transmission on a sacrifice) and `then` plays the ending. A lost descent keeps the frame: the
 // cave's own TRY AGAIN. Not due (a phone, DESCENT.mobileSkip): the brief alone, then `then` at once.
 //   createDescentHost(root, c) -> { begin(then) -> boolean (true: the handoff taken), report(outcome) (the harness's message), state(), dispose() }
-// `c`: pause(v), showBrief(id), speak(id), story() (the run's story object: `descent` is written on it), mobile (a phone), t().
+// `c`: pause(v), showBrief(id), speak(id), story() (the run's story object: `descent` is written on it), mobile (a phone), t(), look(cell) (the camera
+// to the arena's hole, DESCENT.lookHold s before the cave: the nest's mouth is a place on the planet, 2026-10-16).
 import { DESCENT } from '../content/descent.js';
 import { descentDue, descentResult, descentNext } from '../domain/descent.js';
 
@@ -31,8 +32,11 @@ export function createDescentHost(root, c) {
       if (!descentDue({ outcome, final, mobile: !!c.mobile }, DESCENT)) { if (final && outcome === 'secure') c.showBrief(DESCENT.brief); then?.(); return false; }
       thenFn = then;
       say(DESCENT.brief);
-      c.pause(true);
-      frame = document.createElement('iframe'); frame.className = 'descent-frame'; frame.title = 'BELOW'; frame.src = DESCENT.page; frame.setAttribute('allow', 'pointer-lock; autoplay; fullscreen');
+      const arena = c.story()?.arena?.cell ?? -1, hold = arena >= 0 && c.look ? (DESCENT.lookHold ?? 0) * 1000 : 0;
+      if (hold) c.look(arena);
+      frame = document.createElement('iframe'); frame.hidden = hold > 0;
+      setTimeout(() => { if (frame) { frame.hidden = false; c.pause(true); } }, hold);
+      if (!hold) c.pause(true); frame.className = 'descent-frame'; frame.title = 'BELOW'; frame.src = DESCENT.page; frame.setAttribute('allow', 'pointer-lock; autoplay; fullscreen');
       root.appendChild(frame);
       onMsg = (e) => { take(e.data); };
       globalThis.addEventListener?.('message', onMsg);

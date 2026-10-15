@@ -30,6 +30,10 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 - **Expeditions you can see:** our flag over a cleared site, the crate on the MÖRK's back, the drop at the foundry with the unlock callout, trophy flags at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`).
 - **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`).
 
+## What landed on 2026-10-16, later: THE ARENA (the boss sector re-pointed)
+
+`2026-10-16-arena-sector-first-version` (notes 7, 11, 12; spec `docs/superpowers/specs/2026-10-16-arena-design.md`): THE BOSS is THE ARENA at `doorAt + 1`. The world picks an arena cell far from the base (`story.arena`, `src/domain/arena.js`; `?arena=<cell>`); the sector opens one breach there, three cells wide, and keeps it open after SECURE (the nest's mouth; the descent's brief names it and the camera looks at it before the cave). Three waves out of it, every one a hunter of the tank: 12 small Reeds, 6 NIH-DAIRIA · PUP (`CREATURE_TIERS.reed.pup`, also in the hunters' mix from sector 5), then the NIH-DAIRIA at 180. Isao drives the hull on the new `lure` directive (`src/domain/lure.js`, `LURE`): to the arena with no quarry, away under 5 hops, toward past 10, round it between, never onto an exit within 4 cells of the MK-9's cell, a shell's target or SOL's burn. The player takes the gunship as before (the choice card, the strip's button); `arena_lure` at the first shot. Entries: `index.html?skip=defence&sector=8&boss=1#td` (THE ARENA at once; `sector=9` for BOTH WALLS then the descent); harness `state().arena`, `state().boss.tiers`; browser `--arena`.
+
 ## What landed on 2026-10-16, the owner's third round (on 4c442e95)
 
 `2026-10-16-third-round-seat-lip-armour-console` (notes 1-4, 6, 8-10 of twelve; 7, 11 and 12 are THE ARENA below; 5 waits for the screenshots):

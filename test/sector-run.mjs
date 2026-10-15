@@ -65,7 +65,7 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
 {
   const w = world({ firstSector: SECTOR_DOOR.earliest + 1, bossStart: true });
   w.step(0.25);
-  assert.equal(w.run.state().name, 'THE BOSS', `opens on the boss (${w.run.state().name})`); assert.equal(w.run.state().doorAt, SECTOR_DOOR.earliest);
+  assert.equal(w.run.state().name, 'THE ARENA', `opens on the boss sector, THE ARENA (${w.run.state().name})`); assert.equal(w.run.state().doorAt, SECTOR_DOOR.earliest);
   const w2 = world({ firstSector: SECTOR_DOOR.earliest + 1 });
   w2.step(0.25);
   assert.equal(w2.run.state().name, 'THE BACK DOOR', 'without the flag the late start is the door, as before');
@@ -300,11 +300,11 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
   const ww = { t: 0, enemies: [], queue: [], opened: [] };
-  const story = { sealed: () => false, gateCell: -1, lateStart: true, expeditions: { sites: [{ id: 'a', state: 'delivered' }] } };
+  const story = { sealed: () => false, gateCell: -1, lateStart: true, expeditions: { sites: [{ id: 'a', state: 'delivered' }] }, arena: { cell: 230, hops: 30 } };   // the arena's cell (2026-10-16)
   const run = make({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0, ready: () => true, firstSector: SECTOR_DOOR.earliest,
     field: () => ({ cellSide: 0.001, centers, dist, rim: centers.map((_, i) => (i % 2 ? 4 : 20)), inside: () => false, excluded: [], farHops: 69, fallback: () => 0 }),
-    open: (cell, o) => { const sp = { ci: cell, alive: true, obj: { cell }, quiet: !!o?.quiet, clear: o?.clear, keep: !!o?.keep }; ww.opened.push(sp); return sp; },
+    open: (cell, o) => { const sp = { ci: cell, alive: true, obj: { cell }, quiet: !!o?.quiet, clear: o?.clear, keep: !!o?.keep, radius: o?.radius }; ww.opened.push(sp); return sp; },
     collapse: (sp) => { sp.alive = false; }, breaches: () => ww.opened, enemies: () => ww.enemies, queue: () => ww.queue,
     queued: (sp) => ww.queue.some((q) => q.sp === sp), push: (qs) => ww.queue.push(...qs), seal: () => {}, clearField: () => {},
     poll: () => ({ passes: 0, drawn: 0, delivered: ['a'], earned: 0, spent: 0, shieldUp: false, laser: null }),
@@ -326,11 +326,14 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   hold();
   assert.deepEqual(log, [['report', SECTOR_DOOR.earliest]], 'the door sector held: its report, no finale');
   // THE BOSS (2026-10-15): the sector after the door, held like any; BOTH WALLS, the final sector, after it
-  run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'THE BOSS'); assert.equal(run.state().name, 'THE BOSS');
+  run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'THE ARENA'); assert.equal(run.state().name, 'THE ARENA');
   { let q = []; for (let g = 0; g < 200 && !q.length; g++) { q = run.release(ww.t) ?? []; step(0.5); }   // release() returns the entries the controller queues
-    assert.equal(q.length, 20, `the boss row's first wave: twenty entries (${q.length}; ${JSON.stringify(run.state().breaches?.[0] ?? run.state())})`);
-    assert.ok(q.every((e) => e.type === 'cutis' && e.tier === 'small' && e.hunter && e.spec?.hp === 20 && e.spec?.body === 'cutis' && e.sp), `small Cutis hunters at 20 hp off the breach (${JSON.stringify(q[0])})`); }
+    assert.equal(q.length, 12, `the arena row's first wave: twelve entries (${q.length}; ${JSON.stringify(run.state().breaches?.[0] ?? run.state())})`);
+    assert.ok(q.every((e) => e.type === 'reed' && e.tier === 'small' && e.hunter && e.spec?.hp === 4 && e.spec?.body === 'reed' && e.sp), `small Reed hunters at 4 hp off the breach (${JSON.stringify(q[0])})`);
+    const ab = ww.opened.at(-1); assert.deepEqual([ab.ci, ab.radius, ab.keep], [230, 3, true], `the arena's breach on the story's arena cell, three cells wide, kept (${JSON.stringify(ab)})`);
+    assert.equal(run.state().breaches?.[0]?.side, 'arena', 'the arena side'); }
   hold();
+  assert.equal(ww.opened.at(-1).alive, true, 'the arena\'s hole is spent, not sealed: the nest\'s mouth stays open');
   assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'the boss sector held: its report, no finale');
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'BOTH WALLS'); assert.equal(run.state().name, 'BOTH WALLS');
   hold();

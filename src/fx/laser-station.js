@@ -90,6 +90,7 @@ export function createLaserStation(root, scene, host) {
     pose: (goal) => !!seat && camOn && seat.pose(goal),   /* camOn: the showcase (src/fx/showcase.js) borrows the camera back for its orbital frame while the seat keeps burning */
     render: (renderer, scene) => seat?.render(renderer, scene),
     seated: () => !!seat,
+    burnAt: () => arsenal.burnAt(),   // the beam's point on the ground while it burns (src/fx/boss-run.js lure)
     briefingOpen: () => !!briefing?.isOpen(),
     setOnline: (on) => arsenal.setOnline(on),
     // THE CANYON'S PASS (src/fx/sector-run.js): the pass laid over a place with its own numbers, and the player in the seat at once, no

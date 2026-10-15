@@ -21,7 +21,7 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
  let template=null,warmer=null;const uploads=[];
  function sync(){let i=0;for(const e of entries){if(i===limit)break;matrices.value[i].copy(e.fx.inverseFrame.value);holes.value[i]=e.fx.hole.value;i++;}count.value=i;}
  return {
-  create(normal,forward,scale){
+  create(normal,forward,scale,cells=1){   // cells: the hole's width in cells (1: a sector's breach; the arena's wider, 2026-10-16): the craters read it
    if(entries.size>=limit)throw Error('Ground breach capacity exceeded');
    const fx=makeSinkhole(scene,camera,{game:true,sounds}),obj=fx.group;
    const up=new THREE.Vector3(...normal).normalize(),z=new THREE.Vector3(...forward).projectOnPlane(up).normalize();
@@ -29,14 +29,14 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
    const x=new THREE.Vector3().crossVectors(up,z).normalize();z.crossVectors(x,up);
    obj.position.copy(up);obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,up,z));obj.rotateY(1-Math.PI/2);obj.scale.setScalar(scale);obj.visible=true;
    Object.assign(fx.tune,CONTENT.breach,{planetRadius:1/scale,spawnWaves:false,sound:false});if(look)fx.tune.look=look();radius.value=1/scale;
-   const entry={fx,obj,age:0,started:false,cleared:false,pending:true};entries.add(entry);
-   obj.userData.breach=entry;obj.userData.grounded=true;obj.userData.sizeScale=scale;obj.userData.tick=()=>{};
+   const entry={fx,obj,age:0,started:false,cleared:false,pending:true,cells};entries.add(entry);
+   obj.userData.breach=entry;obj.userData.grounded=true;obj.userData.sizeScale=scale;obj.userData.cells=cells;obj.userData.tick=()=>{};
    obj.userData.dispose=()=>{entries.delete(entry);fx.dispose();sync();};
    return obj;
   },
   seal(obj){const e=obj.userData.breach;if(!e||!entries.has(e))return false;rubble.add(obj,e.fx.tune.craterRadius);obj.userData.dispose();return true;},
   rubbleState:()=>rubble.state(), rubbleShow:(on)=>rubble.show(on),   /* the montage's ram beat hides the sealed caps while its camera is low over the lane (src/fx/showcase.js) */
-  craters:()=>[...entries].map(e=>({p:e.obj.position.toArray(),r:e.fx.tune.craterRadius})),   // where the ground is open, and how wide: the hull may not drive onto it
+  craters:()=>[...entries].map(e=>({p:e.obj.position.toArray(),r:e.fx.tune.craterRadius*(e.cells??1)})),   // where the ground is open, and how wide: the hull may not drive onto it
   warm(w){if(template)return;warmer=w;template=makeSinkhole(scene,camera,{game:true,sounds});Object.assign(template.tune,CONTENT.breach,{spawnWaves:false,sound:false});if(look)template.tune.look=look();
    template.group.visible=true;template.update(0,0);template.group.visible=false;uploads.push(...template.textures());return template.warm(warmer);},   // one update dresses the template as create()+update() would (look, wraps) before its materials compile
   update(dt,onClear,onOpen=()=>{}){clock+=dt;const opened=[];rubble.update(dt);   // sealed caps pile up over breach-rubble's SETTLE_S

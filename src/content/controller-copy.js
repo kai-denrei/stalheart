@@ -13,6 +13,7 @@ export const HEART_MSGS = Object.freeze(['PROTECT THE HEART!', 'LIVING DANGEROUS
 export const DIRECTIVE_LABEL = Object.freeze({
   wander: 'WANDER', avoid: 'AVOID', ram: 'RAM',
   conserve: 'SAVE AMMO', home: 'HOME', portal: 'PORTAL',
+  lure: 'LURE',   // Isao's own, THE ARENA (2026-10-16): not on the radial
 });
 // the auto radial's options, in its order
 export const AUTO_OPTIONS = Object.freeze([

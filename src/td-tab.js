@@ -2009,6 +2009,7 @@ export function initTdTab(root) {
     gotoField: () => gotoField,
     graph: () => graph,
     kick: () => kick,
+    lure: () => bossRun.lure(),   // THE ARENA's lure directive (src/fx/boss-run.js, 2026-10-16)
     playerDown: () => playerDown,
     portalDist: () => portalDist,
     speedBonus: () => speedBonus,
@@ -2761,7 +2762,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
-    const built = buildGameWorld({ bossStart: flags.boss === '1', world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
+    const built = buildGameWorld({ bossStart: flags.boss === '1', arena: flags.arena != null ? parseInt(flags.arena, 10) : null, world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
     // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     mesh = built.mesh;
     dungeon = built.dungeon;
@@ -4476,9 +4477,9 @@ export function initTdTab(root) {
   }
 
 
-  function buildPortalObj(ci) {
+  function buildPortalObj(ci, cells = 1) {   // cells: the hole's width in cells (the arena's, 2026-10-16); the sinkhole scales whole
     const n = norm3(graph.centers[ci]), dir = sub3(graph.centers[dungeon.heart], n);
-    return gameBreaches.create(n, dir, cellSide);
+    return gameBreaches.create(n, dir, cellSide * cells, cells);
   }
 
   // BFS field to the nearest LIVE portal — the 'portal' directive's map.
@@ -5280,7 +5281,7 @@ export function initTdTab(root) {
     brief: (id) => showBrief(id),
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
     // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
-    breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; obj.userData.keep = !!o?.keep; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
+    breach: (ci, o) => { const obj = buildPortalObj(ci, o?.radius ?? 1); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; obj.userData.keep = !!o?.keep; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
     sourceAlive: () => !!story.source?.alive,
     briefing: () => !!briefQ,
     screenOpen: () => !!syntheticModal?.isOpen(),
@@ -5384,9 +5385,12 @@ export function initTdTab(root) {
   // THE BOSS SECTOR'S RUN (src/fx/boss-run.js, 2026-10-15): the choice, the hull on its avoid autopilot with Isao docked, the gunship seat, the bar row
   const bossRun = createBossRun({ root, enemies, pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), callout: (text, cls) => showCallout(text, cls),
     story: () => story, storyViews: () => storyViews, params: () => params, player: () => player, playerHP: () => playerHP, autoMode: () => autoMode, isao: () => isao, cellSide: () => cellSide, t: () => t, pilotMode: () => pilotMode,
-    setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL) });
+    setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL),
+    shots: () => pilot?.state?.shots ?? 0, station: () => !!gunshipRig.probe().station, arenaField: () => (story?.arena?.cell >= 0 ? (story.arenaField ??= bfsDist(graph.adj, [story.arena.cell], (ci) => dungeon.tags[ci] !== BLOCKED)) : null),
+    dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; } });   /* THE ARENA (2026-10-16): the lure's field and its dangers */
   // THE DESCENT (src/fx/descent-host.js, 2026-10-16): the cave game in an iframe over the paused game after the final sector, its outcome back
-  const descentHost = createDescentHost(root, { pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t });
+  const descentHost = createDescentHost(root, { pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t,
+    look: (ci) => { endShot(); startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...norm3(graph.centers[ci])), { id: 'descentLook', hold: 600, fromCamera: true, dive: { height: 7, back: 9, diveSeconds: 0.6 } }); } });   /* the arena's hole before the cave (2026-10-16) */
   const canyonRun = createCanyonRun({
     breachQueue,
     breachedCells,
@@ -5832,6 +5836,7 @@ export function initTdTab(root) {
         playerAsset: playerMesh?.userData.asset || params.creature,
         // the hull's true size over its scale: exploded geometry reads absurd here
         playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),
+        arena: story?.arena ?? null,   /* the arena's cell (2026-10-16) */
         sector: sectorRun ? { ...sectorRun.state(), sockets: Object.keys(story?.socketToward ?? {}).map(Number) } : null,
         playerAssetReady: !playerMesh?.userData.loading,
         skip: { on: !!storyQuery.skip, chapter: story?.chapter?.id ?? null, offer: skipCard?.state() ?? null },   // SKIP TUTORIAL: whether this run is the skipped entry, and whether the offer still stands

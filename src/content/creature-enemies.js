@@ -54,6 +54,9 @@ export const CREATURE_TIERS = freeze({
       motion: { speed: 4, pauseTime: 0.5, reachTime: 3 } },
     big: { label: 'REED · BIG', r0: 7.5, hp: 20, speed: 0.4, bounty: 60, count: { count: 2 }, probeStep: 1, capacity: 100, variant: 'reed', motion: {} },
     huge: { label: 'NIH-DAIRIA', r0: 20, hp: 60, speed: 0.35, bounty: 150, count: { count: 1 }, probeStep: 1, capacity: 20, variant: 'nih-dairia', motion: {}, fine: true },
+    // THE PUP (owner, 2026-10-16: "small REEDs and small NiDaira emerge here and there in the early waves, new type of enemies"): the Nih-Dairia's own cage at a
+    // sixth of its width, a hunter among the Reeds (HUNTERS.mix) and THE ARENA's second wave; after `huge` so the four sizes still grow in order
+    pup: { label: 'NIH-DAIRIA · PUP', r0: 3.5, hp: 6, speed: 0.42, bounty: 24, count: { share: 0.1, max: 4 }, probeStep: 2, capacity: 100, variant: 'nih-dairia', motion: {} },
   },
 });
 
@@ -113,7 +116,8 @@ export const CREATURE_DEATH = freeze({ deflate: CUTIS_DEATH.deflate, fade: 6, si
 // The small Reed (r0 2 m, 4 m wide) under a wall of 0.03 planet radii; the family's solver is held to its `budget` ms a frame past which the
 // bodies' clocks slow (CREATURE_FAMILY). Measured on this machine (2026-10-12): ~0.6 ms a solver step a Reed at 240 Hz, so two are ~5 ms a frame
 // at 60 fps before the budget bites: the owner measures on his (?creatures=reed:small&ramp=1&fps=1). ?hunters=0 turns them off; count 0 too.
-export const HUNTERS = freeze({ from: 5, every: 3, count: 1, alive: 2, family: 'reed', tier: 'small', pace: 1 });
+// `mix` (2026-10-16): the hunters alternate through it, a pulse's batch at a time (the small Reed, then the Nih-Dairia pup, ...); `family`/`tier` stay the first
+export const HUNTERS = freeze({ from: 5, every: 3, count: 1, alive: 2, family: 'reed', tier: 'small', pace: 1, mix: [{ family: 'reed', tier: 'small' }, { family: 'reed', tier: 'pup' }] });
 
 export const CREATURE_PROBE = freeze({
   hold: 4, settle: 1, span: 1, thresholdMs: 16.7, overSeconds: 3, hardCap: 2000, startDelay: 6, maxSeconds: 900, perFrame: 40, gapMs: 250,

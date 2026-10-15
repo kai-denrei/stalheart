@@ -437,12 +437,13 @@ export const BRIEFS = {
   // the hull touched, the boss dead
   boss_tank: { id: 'boss_tank', face: 'determined', title: 'COMMS · ISAO', once: false, lines: [BOSS_SECTOR.boss.choice.replyA] },
   boss_auto: { id: 'boss_auto', face: 'determined', title: 'COMMS · ISAO', once: false, lines: [BOSS_SECTOR.boss.choice.replyB] },
-  boss_rises: { id: 'boss_rises', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave.'] },
+  boss_rises: { id: 'boss_rises', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave. That is the nest\'s mother.'] },
+  arena_lure: { id: 'arena_lure', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['I\'ll take it for a drive. Keep your rounds off the hull.'] },
   boss_hit_me: { id: 'boss_hit_me', face: 'worried', title: 'COMMS · ISAO', once: false, lines: ['It has a hold of the hull!'] },
   boss_dead: { id: 'boss_dead', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Target down. I need a car wash.'] },
   // THE DESCENT (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 17): the brief as the cave opens, the decoding joke on
   // his return, the same as his last transmission on a sacrifice
-  descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['The nest is under the sinkhole. Somebody has to carry the charge down there, and the hull does not fit.', 'I do.'] },
+  descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['The nest is under that hole in the arena. Somebody has to carry the charge down there, and the hull does not fit.', 'I do.'] },
   descent_back: { id: 'descent_back', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['I finally decoded their language. From what the Queen said when I set the charge in her nest: "My nest. You, out."', 'And then words that seem to mean... excrement.'] },
   descent_last: { id: 'descent_last', face: 'focused', title: 'LAST TRANSMISSION · ISAO', once: false, lines: ['I decoded their language. The Queen said: "My nest. You, out." And then words that seem to mean... excrement.', '...'] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },

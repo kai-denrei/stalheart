@@ -106,15 +106,17 @@ export function createEnemyStep(host) {
   // fixed set; the wave plan decides what pours out of them
   function seedPortals(n) { if (host.storyMode()) return; for (let i = 0; i < n; i++) addSpawnPoint(); }
 
-  // a ground breach closes only to a strike or exhaustion; a shell on it marks it on the scope. A sector's breach takes three
+  // a ground breach closes only to a strike or exhaustion; a shell on it marks it on the scope. A sector's breach takes three; a KEPT one (the arena's
+  // hole, the nest's mouth, 2026-10-16: obj.userData.keep) takes none and closes only when the programme is spent
   function gateTakesShell(sp) {
-    sp.found = true; if (host.sectorRun()?.owns(sp) && --sp.hp <= 0) killPortal(sp, 'shells');
+    sp.found = true; if (!sp.obj.userData.keep && host.sectorRun()?.owns(sp) && --sp.hp <= 0) killPortal(sp, 'shells');
     return false;
   }
 
   function killPortal(sp,reason='impact') {
     if(!sp.alive)return;
     if(sp.obj.userData.breach&&!['strike','gunship','shells','laser','exhausted'].includes(reason))return;
+    if(sp.obj.userData.keep&&reason!=='exhausted')return;   // a kept hole (the arena's) outlives every closer and blast (2026-10-16)
     sp.alive = false; host.sectorRun()?.closed(sp, reason);   // a story sector books who closed its breach
     // THE GATE GOES LIKE THE TANK GOES (operator): its own wreckage, a big burst in its own colour, and the heavy sound — the
     // same three parts as destroyPlayer, because that is the vocabulary the board already has for "something substantial just
@@ -237,10 +239,10 @@ export function createEnemyStep(host) {
       // never over the hole: a blob climbs the lip, the record starts past it; EMERGENCE): at its breach's own cell a record starts `out` crater radii from
       // the centre, on the half facing its first exit, plus its scatter beyond, under the ground while its blob climbs; risen up the lane (`cell`) it
       // scatters on its spread round that cell as before
-      const atHole = !!sp.obj.userData.breach && ci === sp.ci;
-      const emergeOff = entry.spread ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * entry.spread * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * EMERGENCE.out * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
+      const atHole = !!sp.obj.userData.breach && ci === sp.ci, holeCells = sp.obj.userData.cells ?? 1;   // a wide hole (the arena's) has a wide lip
+      const emergeOff = entry.spread ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * entry.spread * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * holeCells * EMERGENCE.out * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
       // THE BLOB (src/fx/emerge-blob.js): the picture of this one climbing out, in its tint, from the lip to where the record waits; the record itself pops up when it is done
-      if (atHole && emergeOff) { const lip = CONTENT.breach.craterRadius * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
+      if (atHole && emergeOff) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
         type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
@@ -284,7 +286,7 @@ export function createEnemyStep(host) {
       const spec = e.spec;
       if(e.breachSource&&e.emergeAge<1.2){
         const dur=e.riseDur??1.2;e.emergeAge+=dt;const f=emergence(Math.max(0,Math.min(dur,e.emergeAge)),dur),entry=e.breachSource.userData.breach;   // a record past the lip rises over its own `riseDur` (EMERGENCE.pop); 1.2 is the harness's mark for risen
-        const height=-CONTENT.breach.craterRadius*.55*host.cellSide()+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);
+        const height=-CONTENT.breach.craterRadius*(e.breachSource.userData.cells??1)*.55*host.cellSide()+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);
         const n=norm3(e.emergeOff?add3(host.graph().centers[e.cur],e.emergeOff):host.graph().centers[e.cur]);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
         e.obj.quaternion.copy(e.breachSource.quaternion);e.obj.userData.tick?.(tNow+e.phase);if(e.emergeAge>=dur)e.emergeAge=1.2;continue;
       }
@@ -386,7 +388,7 @@ export function createEnemyStep(host) {
       // FROM THE LIP ONTO THE PATH (2026-10-15): a body rose at the crater's rim (emergeOff, EMERGENCE.rim); its record glides from there onto its
       // cell path over EMERGENCE.settle seconds, an offset that decays like the shove's, instead of snapping the moment the rise ends (the snap
       // left a Pearl body a leash behind its record, and the body was put back: the motion audit's pops)
-      if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
+      if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
       // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
       // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
       // slides back into its own lane.

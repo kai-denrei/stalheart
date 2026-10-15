@@ -29,7 +29,9 @@ import { makeBuildProgramme } from '../domain/build-programme.js';
 import { BASE_PERKS } from '../content/base-programme.js';
 import { createBasePrint } from '../fx/base-print.js';
 import { createHullIssue, doorBerth, nearestCell } from '../fx/hull-issue.js';
-import { BLOCKED, PATH } from '../dungeon.js';
+import { BLOCKED, PATH, bfsDist } from '../dungeon.js';
+import { pickArenaCell } from '../domain/arena.js';
+import { ARENA } from '../content/sectors.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
 
@@ -115,7 +117,7 @@ function laneBerth(planet, dungeon, from, to, [a, b]) {
   return ci === exit || dungeon.tags[ci] === BLOCKED || dungeon.tags[exit] === BLOCKED ? null : { ci, exit, pos, out };
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null, chapter = null, bossStart = false }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -177,6 +179,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
     bossStart: !!bossStart,   // ?boss=1: a run opened past the door's earliest opens ON THE BOSS (src/fx/sector-run.js, 2026-10-16)
+    // THE ARENA'S PLACE (owner, 2026-10-16; src/domain/arena.js, ARENA): the farthest reachable cell outside the walls, fixed with the world; ?arena=<cell> names one
+    arena: (() => { const dist = bfsDist(planet.graph.adj, [built.dungeon.heart], (ci) => built.dungeon.tags[ci] !== BLOCKED); const cell = Number.isInteger(arena) && arena >= 0 && arena < dist.length ? arena : pickArenaCell({ dist, blocked: (ci) => built.dungeon.tags[ci] === BLOCKED, inside: (ci) => planet.clearing.cells.has(ci), farHops: ARENA.farHops }); return cell >= 0 ? { cell, hops: dist[cell] ?? null } : null; })(),
     beats, arrival: createArrival({ on: arrives, past: pastLanding, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),
     // A TUTORIAL CHAPTER'S START (src/fx/story-entry.js builds it at boot): its number, the steps it prints and the sentries it stands
     // (`berths`: past the hull's issue the Stålheart's door is every berth, as the issue leaves it, src/fx/hull-issue.js)

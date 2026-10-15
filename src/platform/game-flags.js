@@ -19,7 +19,7 @@ export function creaturesFlag(raw, search) {
 }
 
 export const GAME_FLAG_KEYS = Object.freeze([
-  'acceptance', 'blast', 'boss', 'brief', 'callouts', 'coarse', 'creature', 'creatures', 'cuts', 'day', 'descent', 'fps', 'gunship', 'heart', 'hold', 'keyprobe', 'labGalaxySeed', 'labseed',
+  'acceptance', 'arena', 'blast', 'boss', 'brief', 'callouts', 'coarse', 'creature', 'creatures', 'cuts', 'day', 'descent', 'fps', 'gunship', 'heart', 'hold', 'keyprobe', 'labGalaxySeed', 'labseed',
   'laser', 'layout', 'look', 'metal', 'mission', 'mobile', 'mode', 'ramp', 'reedhz', 'reedlook', 'seed', 'sentries', 'sim', 'simcap', 'simfast', 'sky', 'speed', 'stateprobe', 'tier',
   'towerscale', 'vars', 'viewwatch', 'walltops', 'waves',
 ]);

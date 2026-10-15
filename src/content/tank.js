@@ -30,6 +30,10 @@ export const TANK_DRIVE = Object.freeze({ base: 1.35, top: 3.2, tau: 6, turn: 0.
 // hardcore pushes it out of the way and damages the tank"): a hard core's touch dents the armour by one, the hull is lost on the `hits`-th; a killer
 // in `whole` (the MK-9's burn) takes the hull in one. A new hull comes out with its armour whole (src/td-tab.js playerHit, hullArmour).
 export const HULL_ARMOUR = Object.freeze({ hits: 4, whole: Object.freeze(['laser']) });
+// THE LURE (owner, 2026-10-16, THE ARENA: Isao drives the hull as bait "avoiding both the monster and friendly fire"; src/domain/lure.js, the drive's `lure`
+// directive in src/fx/hull-drive.js): the quarry kept between `near` and `far` hops (nearer: kite away; farther: close in; between: circle), and no
+// exit within `blast` cells of a danger point (a painted or falling MK-9 cell, SOL's burn, a Bofors shell's target) while another remains
+export const LURE = Object.freeze({ near: 5, far: 10, blast: 4 });
 // the hull's steering (owner, 2026-09-16: "the tank turns too sharply = unnatural"): `rate` is the top yaw rate in rad/s — the pace
 // the tank always turned at — now taken up over `attack` seconds and released over `release` instead of switching on and off with the
 // key, and `bank` is how far the hull rolls into the turn at that full rate, in radians. Not a slower tank: the same rate, eased.

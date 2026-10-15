@@ -243,15 +243,15 @@ export function createCreatureEnemies(host) {
   }
   // THE HUNTERS (owner, 2026-10-15; HUNTERS, src/domain/hunters.js): a breach's due pulse adds a few of the family's tier to its wave, marked
   // `hunter` (the enemy loop walks them at the tank, src/fx/enemy-step.js); not in the canyon, not under ?hunters=0
-  const hunters = { sent: 0 };
+  const hunters = { sent: 0, batches: 0 };
   const aliveHunters = () => host.enemies.reduce((n, e) => n + (e.alive && e.hunter ? 1 : 0), 0);
   function withHunters(out, side, wave) {
     if (side === 'canyon' || host.flags.hunters === '0' || !out?.length || !wave || wave.boss) return out;   // a boss row's waves are its own hunters
     const n = huntersDue({ n: wave.n, pulse: wave.pulse, alive: aliveHunters() }, HUNTERS);
     if (!n) return out;
-    const spec = tierSpec(HUNTERS.family, HUNTERS.tier), base = out[0];
-    const extra = Array.from({ length: n }, (_, k) => ({ sp: base.sp, at: (base.at ?? 0) + k * 0.6, spread: base.spread ?? 0.8, pace: HUNTERS.pace, type: HUNTERS.family, spec, tier: HUNTERS.tier, hunter: true }));
-    hunters.sent += n;
+    const pick = HUNTERS.mix?.length ? HUNTERS.mix[(hunters.batches ?? 0) % HUNTERS.mix.length] : HUNTERS, spec = tierSpec(pick.family, pick.tier), base = out[0];   // the mix, a batch at a time (2026-10-16)
+    const extra = Array.from({ length: n }, (_, k) => ({ sp: base.sp, at: (base.at ?? 0) + k * 0.6, spread: base.spread ?? 0.8, pace: HUNTERS.pace, type: pick.family, spec, tier: pick.tier, hunter: true }));
+    hunters.sent += n; hunters.batches = (hunters.batches ?? 0) + 1;
     return [...out, ...extra];
   }
   return {

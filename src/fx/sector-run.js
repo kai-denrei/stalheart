@@ -7,7 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
+import { ARENA, SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
@@ -220,17 +220,21 @@ export function createSectorRun(h) {
       side = (api.sideBreachCandidates?.() ?? []).map((x) => ({ cell: x.cell, side: 'side', hops: f.dist[x.cell] ?? 0, pos: f.centers[x.cell], carve: x.carve }));
       if (!side.length) { want.gate = (want.gate ?? 0) + want.side; delete want.side; }
     }
+    // THE ARENA (owner, 2026-10-16; story.arena, src/domain/arena.js): its breach stands on the arena's own cell, ARENA.craterCells wide, kept open after
+    // the sector as the nest's mouth (the descent goes down it); a world with no arena cell makes it a gate breach
+    let arena = [];
+    if (want.arena) { const cell = story?.arena?.cell ?? -1; if (cell >= 0) arena = Array.from({ length: want.arena }, () => ({ cell, side: 'arena', hops: f.dist[cell] ?? 0, pos: f.centers[cell], radius: def.arena?.craterCells ?? ARENA.craterCells })); else want.gate = (want.gate ?? 0) + want.arena; delete want.arena; }
     let far = 0; for (let i = 0; i < f.dist.length; i++) if (Number.isFinite(f.dist[i]) && f.dist[i] > far && !f.inside(i)) far = f.dist[i];
     const ring = Math.min(SECTOR_PLACEMENT.ringHops ?? f.farHops, f.farHops, far), gateSide = [];
     const clear = (i) => !f.inside(i) && !((f.rim?.[i] ?? Infinity) < (SECTOR_PLACEMENT.rimCells ?? 0));   // never where its blast reaches the base's rim
     for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= ring - 6 && f.dist[i] <= ring + 3 && clear(i)) gateSide.push({ cell: i, side: 'gate', hops: f.dist[i], pos: f.centers[i] });
-    const picks = pickBreachCells({ candidates: [...side, ...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng });
+    const picks = [...arena, ...pickBreachCells({ candidates: [...side, ...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng })];
     if (!picks.length) picks.push({ cell: f.fallback(), side: 'gate' });
     // THE CANYON (sector 3): cut at the antipode as the sector begins, its swarm's breach at the deep end after the sector's own
     canyon = null;
     if (def.canyon) { const plan = api.canyonPlan?.(); if (plan) { api.canyonCut(plan); picks.push({ cell: plan.spawn, side: 'canyon' }); canyon = { plan, id: LETTERS[picks.length - 1], phase: 'rising', upAt: null }; } }
     sector = makeSector(def, picks.map((p, i) => ({ id: LETTERS[i], side: p.side, cell: p.cell })), now());
-    picks.forEach((p, i) => { if (p.carve) sector.breaches[i].carve = p.carve; if (p.side === 'canyon') sector.breaches[i].wavesPlanned = 1; });   // the canyon sends its swarm once
+    picks.forEach((p, i) => { if (p.carve) sector.breaches[i].carve = p.carve; if (p.radius) sector.breaches[i].radius = p.radius; if (p.side === 'canyon') sector.breaches[i].wavesPlanned = 1; });   // the arena's width rides on its book   // the canyon sends its swarm once
     // WHEN EACH OPENS: one after another, `staggerSeconds` apart (one breach-opening spike at a time); behind a mouth that fell this
     // very sector start, not before `backDoorLead`; and in a feast sector the gate side waits for the scramble (tick sets it)
     const t0 = now();
@@ -392,7 +396,7 @@ export function createSectorRun(h) {
       // a breach that opens once the fight is on opens quietly: no establishing dive under a player who is driving or aiming
       pending.splice(pending.indexOf(id), 1);
       const far = b.side === 'canyon';   // the canyon's breach opens without the establishing dive (the seat's glide is its reveal); SOL-82 may seal it (2026-10-15: it stands open until the pass is over)
-      progress(); sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined })); b.openedAt = t;
+      progress(); sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined, radius: b.radius, keep: b.side === 'arena' }));   /* the arena's hole: wide, and kept (no closer takes it) */ b.openedAt = t;
       if (far) h.brief(def.n <= SECTORS.length ? CANYON.brief : CANYON.briefAgain);   // the first time, or the canyon again
       // THE WALL CAN BE BREACHED (owner, 2026-10-01: "a chekov's gun of sorts"): the side breach cuts its lane and breaks the wall
       if (b.side === 'side' && api.breakSide?.(b.carve ?? [])) { b.broke = true; h.callout(SIDE_BREACH.callout, 'co-victory'); h.brief(SIDE_BREACH.brief); }
@@ -407,7 +411,7 @@ export function createSectorRun(h) {
       const bonus = spendBreach(sector, b.id, t);
       if (!bonus) continue;
       h.pay(bonus); note({ type: 'score', points: bonus.points, kind: 'bonus' });
-      h.collapse(sp); retarget();
+      if (b.side === 'arena') retarget(); else { h.collapse(sp); retarget(); }   // THE NEST'S MOUTH STAYS OPEN (2026-10-16): the arena's hole is spent, not sealed
       h.callout(`BREACH ${b.id} HELD · +${bonus.kg} KG`, 'co-victory-sub'); h.hud();
     }
     if (!pending.length && !h.hold?.() && isSecure(sector, stalled() ? 0 : aliveSectorEnemies())) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
@@ -487,7 +491,7 @@ export function createSectorRun(h) {
       phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
-      breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
+      breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, hole: !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),
     test: {
       stampedes: () => stampedes,

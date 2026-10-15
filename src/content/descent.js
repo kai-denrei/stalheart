@@ -10,5 +10,6 @@ export const DESCENT = Object.freeze({
   outcomes: Object.freeze(['rescued', 'sacrifice', 'lost']),
   brief: 'descent_brief', back: 'descent_back', last: 'descent_last',
   mobileSkip: true,
+  lookHold: 2.5,   // seconds the camera looks at the arena's hole (the nest's mouth) before the cave opens (2026-10-16)
   jokeHold: 7,   // seconds Isao's line stays up after the cave closes before the ending begins (a caption needs reading)
 });

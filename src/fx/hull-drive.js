@@ -7,7 +7,8 @@
 // pedestalBlocked, player, runContext, spawnOneOrb, steerEase, steeringActive, updateHud, wallCushion, bodyContact), what it rebinds or declares later
 // as getters (cellIndex, towerCells, cellSide, cruise, dungeon, gotoField, graph, kick, playerDown, portalDist, speedBonus, storyBase, stuck,
 // throttle, whim) and the lets this writes as setters (setAutoMode) and getters with setters (respawnClock, steerHold).
-import { TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK, HULL_STUCK } from '../content/tank.js';
+import { TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK, HULL_STUCK, LURE } from '../content/tank.js';
+import { lureMode, nearDanger } from '../domain/lure.js';
 import { stepDriveRamp, scrubDriveRamp } from '../domain/drive-ramp.js';
 import { stepSteerEase } from '../domain/steer-ease.js';
 import { stepStuck, unstick } from '../domain/hull-stuck.js';
@@ -53,6 +54,21 @@ export function createHullDrive(host) {
       if (d === 'home') goalField = host.dungeon().distToHeart;
       else if (d === 'goto' && host.gotoField()) goalField = host.gotoField();
       else if (d === 'portal' && host.portalDist()) goalField = host.portalDist();
+      else if (d === 'lure' && host.lure) {
+        // THE LURE (owner, 2026-10-16, THE ARENA; src/domain/lure.js, LURE): Isao drives the hull as bait: to the arena with no quarry, away from the quarry
+        // under `near` hops, toward it past `far`, round it between; and never onto an exit within `blast` cells of a danger point (a painted or
+        // falling MK-9 cell, SOL's burn, a Bofors shell's target) while another exit remains: "avoiding both the monster and friendly fire"
+        const L = host.lure();
+        if (L) {
+          const n = norm3(host.player.pos), hops = L.quarry ? dist3(host.player.pos, L.quarry) / host.cellSide() : null, mode = lureMode({ quarryHops: hops, near: LURE.near, far: LURE.far });
+          if (mode === 'arena') { if (L.arenaField) goalField = L.arenaField; }
+          else if (L.quarry) {
+            const raw = sub3(L.quarry, host.player.pos), flat = sub3(raw, scale3(n, dot3(raw, n))), l = len3(flat);
+            if (l > 1e-9) { const q = scale3(flat, 1 / l); if (mode === 'tangent') { goalVec = norm3(cross3(n, q)); goalSign = 1; } else { goalVec = q; goalSign = mode === 'away' ? -1 : 1; } }
+          }
+          if (L.dangers?.length) { const safe = exits.filter((e2) => !nearDanger(host.graph().centers[e2], L.dangers, LURE.blast * host.cellSide())); if (safe.length) exits = safe; }
+        }
+      }
       else if (d === 'avoid' || d === 'ram') {
         let bt = null, bd = Infinity;
         for (const en of host.enemies) {
@@ -77,7 +93,7 @@ export function createHullDrive(host) {
     // seek-home): every directive except RAM (its chase must not be disrupted) and AVOID (which already flees everything) gets a
     // flee vector away from the dangerous tier, weighted by proximity so it outvotes the goal field only at close range.
     let fleeVec = null;
-    if (!active && host.params.directive !== 'ram' && host.params.directive !== 'avoid') {
+    if (!active && host.params.directive !== 'ram' && host.params.directive !== 'avoid' && host.params.directive !== 'lure') {   // the lure kites on its own rule
       const R = host.cellSide() * 4;
       let fx = 0, fy = 0, fz = 0, any = false;
       for (const en of host.enemies) {

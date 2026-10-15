@@ -49,8 +49,8 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
   assert.equal(def(6, 8).name, 'SECTOR 6', 'held until the door'); assert.equal(def(7, 8).name, SECTOR_CANYON_AGAIN.name, 'the sector before the door is the canyon again');
   assert.equal(def(6, 6).name, 'THE BACK DOOR'); assert.equal(def(6, 6).n, 6); assert.ok(def(6, 6).feast);
   // THE BOSS (2026-10-15): the sector after the door, BOTH WALLS the one after it
-  assert.equal(def(7, 6).name, 'THE BOSS'); assert.equal(def(8, 6).name, 'BOTH WALLS'); assert.equal(def(9, 8).name, 'THE BOSS'); assert.equal(def(10, 8).name, 'BOTH WALLS');
-  { const b = def(7, 6); assert.equal(b.n, 7); assert.equal(b.waves, 2); assert.deepEqual(b.bodies, [20, 1]); assert.ok(b.boss.boss.hp === 180 && b.boss.wave.count === 20 && b.breaches.gate === 1 && !b.backDoor && b.laser, 'the boss row'); }
+  assert.equal(def(7, 6).name, 'THE ARENA'); assert.equal(def(8, 6).name, 'BOTH WALLS'); assert.equal(def(9, 8).name, 'THE ARENA'); assert.equal(def(10, 8).name, 'BOTH WALLS');
+  { const b = def(7, 6); assert.equal(b.n, 7); assert.equal(b.waves, 3); assert.deepEqual(b.bodies, [12, 6, 1]); assert.ok(b.boss.boss.hp === 180 && b.boss.family === 'reed' && b.boss.waves.length === 2 && b.boss.waves[1].tier === 'pup' && b.breaches.arena === 1 && !b.backDoor && b.laser, 'the arena row (2026-10-16)'); }
   assert.equal(sectorDef(7, SECTORS, SECTOR_GENERATOR, { ...arcOf(6), boss: undefined }).name, 'BOTH WALLS', 'without a boss in the arc, both walls follows the door as before');
   const gen = [9, 10, 11].map((n) => def(n, 6));
   assert.deepEqual(gen.map((d) => d.name), ['SECTOR 9', 'SECTOR 10', 'SECTOR 11']);
@@ -87,7 +87,7 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
     const defs = Array.from({ length: doorAt + 3 }, (_, k) => def(k + 1, doorAt));
     const climb = defs.slice(0, doorAt).filter((d) => !d.canyon).map(peak);
     for (let i = 1; i < climb.length; i++) assert.ok(climb[i] > climb[i - 1], `door at ${doorAt}: each sector of the climb peaks harder than the one before (${climb})`);
-    assert.equal(defs[doorAt].name, 'THE BOSS', `door at ${doorAt}: the boss after the door`); assert.ok(peak(defs[doorAt + 1]) > peak(defs[doorAt - 1]), `door at ${doorAt}: BOTH WALLS peaks past the door`);
+    assert.equal(defs[doorAt].name, 'THE ARENA', `door at ${doorAt}: the arena after the door`); assert.ok(peak(defs[doorAt + 1]) > peak(defs[doorAt - 1]), `door at ${doorAt}: BOTH WALLS peaks past the door`);
     for (const d of defs.filter((d) => d.shape === 'flow')) {
       assert.ok(d.flow.alive <= SECTOR_GENERATOR.aliveCap, `${d.name}: the flow never past the column the frame holds (${d.flow.alive})`);
       assert.ok(d.flow.burst * count(d) < d.flow.alive, `${d.name}: a burst from every mouth does not fill the lane alone`);
