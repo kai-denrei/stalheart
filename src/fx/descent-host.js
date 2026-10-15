@@ -22,7 +22,7 @@ export function createDescentHost(root, c) {
     const then = thenFn; cleanup(); thenFn = null;
     c.pause(false);
     say(o === 'sacrifice' ? DESCENT.last : DESCENT.back);
-    then?.();
+    if (then) setTimeout(then, (DESCENT.jokeHold ?? 0) * 1000);   // the joke read, then the ending
     return true;
   }
   return {

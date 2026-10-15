@@ -1486,6 +1486,15 @@ try{
   assert.equal(await evaluate('!!document.querySelector("iframe.descent-frame")'),false,'no frame in the DOM');
   assert.deepEqual(d.descent.said,['descent_brief','descent_back'],`the brief, then Isao's decoding joke (${JSON.stringify(d.descent.said)})`);}
  current='descent-back';await finish();
+ } else if(args.includes('--boss-start')) {
+ // ?boss=1 (2026-10-16): a run opened past the door's earliest opens ON THE BOSS, the door counted as the sector before (the owner's morning entry)
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {SECTOR_DOOR, BOSS_SECTOR}=await import('../src/content/sectors.js');
+ await go('boss-start-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.n===${SECTOR_DOOR.earliest+1}`,60000);
+ {const s=await st();assert.equal(s.sector.name,BOSS_SECTOR.name,`the run opens on THE BOSS (${JSON.stringify({n:s.sector.n,name:s.sector.name,doorAt:s.sector.doorAt})})`);assert.equal(s.sector.doorAt,SECTOR_DOOR.earliest,'the door counted as the sector before');}
+ await until(`${T}.state().boss.choice`,15000).catch(async()=>assert.fail(`the choice card is up (${JSON.stringify((await st()).boss)})`));
+ current='boss-start';await finish();
  } else if(args.includes('--boss-sector')) {
  // THE BOSS SECTOR (owner, 2026-10-15; spec docs/superpowers/specs/2026-10-15-boss-sector-design.md): the sector after the door. A late start at the
  // door's earliest puts the door there and THE BOSS next; the door is played through with the probe's culls, then the boss: the choice card up and

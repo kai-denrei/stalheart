@@ -15,5 +15,6 @@ assert.equal(descentResult({ below: 'won' }, DESCENT), null, 'an unknown outcome
 assert.equal(descentResult('rescued', DESCENT), null, 'a bare string is nothing');
 assert.equal(descentResult(null, DESCENT), null); assert.equal(descentResult({ other: 1 }, DESCENT), null);
 assert.equal(descentNext('rescued'), 'ending'); assert.equal(descentNext('sacrifice'), 'ending'); assert.equal(descentNext('lost'), 'retry');
+assert.ok(DESCENT.jokeHold >= 3, 'the joke is held long enough to read');
 assert.ok(DESCENT.page.startsWith('below/index.html') && /stalheart=1/.test(DESCENT.page), 'the cave\'s page in its stalheart mode');
 console.log('Descent: due after the final sector, the cave\'s outcome validated, the ending or a retry.');

@@ -2758,7 +2758,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
-    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
+    const built = buildGameWorld({ bossStart: flags.boss === '1', world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
     // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     mesh = built.mesh;
     dungeon = built.dungeon;

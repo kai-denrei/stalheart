@@ -5,11 +5,11 @@ import { sectorDef } from '../src/domain/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
-function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 251, axis: [1, 0, 0] }, firstSector = 1, gate = false, lateStart = true, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }], hold = undefined } = {}) {
+function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 251, axis: [1, 0, 0] }, firstSector = 1, gate = false, lateStart = true, bossStart = false, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }], hold = undefined } = {}) {
   const w = { t: 0, enemies: [], queue: [], opened: [], briefs: [], scrambles: 0, backDoors: 0 };
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
-  const story = { sealed: () => false, gateCell: gate ? 5 : -1, lateStart, expeditions: unlocked ? { sites: [{ id: 'a', state: 'delivered' }] } : null };
+  const story = { sealed: () => false, gateCell: gate ? 5 : -1, lateStart, bossStart, expeditions: unlocked ? { sites: [{ id: 'a', state: 'delivered' }] } : null };
   const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => backCandidates, /* by default 221 is the farthest, and within a blast of the rim */ backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); }, sideBreachCandidates: () => sideCandidates, canyonPlan: () => canyon, canyonCut: (plan) => { w.cut = plan; }, canyonPass: (o) => { w.pass = o; }, breakSide: (cells) => { (w.broken ??= []).push(...cells); return cells.length; } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
@@ -61,6 +61,15 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   w.enemies.length = 0;
 }
 
+// ?boss=1 (2026-10-16): a run opened past the door's earliest opens ON THE BOSS, the door counted as the sector before
+{
+  const w = world({ firstSector: SECTOR_DOOR.earliest + 1, bossStart: true });
+  w.step(0.25);
+  assert.equal(w.run.state().name, 'THE BOSS', `opens on the boss (${w.run.state().name})`); assert.equal(w.run.state().doorAt, SECTOR_DOOR.earliest);
+  const w2 = world({ firstSector: SECTOR_DOOR.earliest + 1 });
+  w2.step(0.25);
+  assert.equal(w2.run.state().name, 'THE BACK DOOR', 'without the flag the late start is the door, as before');
+}
 // THE BACK DOOR: the feast first, the clock held while it is fought, then the scramble and the gate side
 {
   const w = world({ firstSector: SECTOR_DOOR.earliest });

@@ -31,6 +31,20 @@ Evidence:
 - in stalheart-cave: npm test (33), npm run check; here: node test/descent.mjs, test/import-below.mjs, test/isaobriefs.mjs, test/host-contracts.mjs (56 factories), test/sector-run.mjs; npm test, npm run check, npm run build (dist/below/ present)
 - browser, 2026-10-16: --descent green: below/index.html?stalheart=1 served beside the game, descentNow() opens the frame over the tab (pointer-lock allowed) with the game paused, the cave boots inside it in its stalheart mode (its card INITIALIZING FEED then TAKE THE FEED), a lost outcome keeps the frame, rescued removes it, the game runs again, the brief then the decoding joke asked (descent.said). Found on the way: the controller lacked the isaoSpeak import
 
+## 2026-10-16 — ?boss=1 opens a run on THE BOSS (the door counted as the sector before) for the morning's playtest; Isao's decoding joke is held 7 s before the ending begins
+
+change · accepted · 2026-10-16-boss-start-flag-and-joke-hold
+
+After 2026-10-15-boss-sector-first-version and 2026-10-16-descent-mission-first-version: a late start (?skip=defence&sector=N at or past the door's earliest) makes N the door, so THE BOSS could only be reached by playing the door through (the browser step does, with culls, in three minutes); the owner wanted something to play in the morning. And the descent's joke was a brief said the instant the cave closed, with the finale starting over it.
+
+src/platform/game-flags.js reads ?boss; src/platform/story-world.js carries story.bossStart; src/fx/sector-run.js: with it, a first sector past the door's earliest counts the door as the sector before, so the run opens on THE BOSS (index.html?skip=defence&sector=8&boss=1#td); without it the late start is the door as before (test/sector-run.mjs both ways; browser --boss-start). DESCENT.jokeHold 7: src/fx/descent-host.js lets the joke stand that long after the cave closes before the ending's `then` runs.
+
+Alternatives: Change every late start past the door to open on the boss: rejected; the door's own entry (sector 7 or 8) is a playtest entry too.
+
+Evidence:
+
+- node test/sector-run.mjs, test/descent.mjs; npm test (263), npm run check, npm run build; browser --boss-start, --descent, --sectors green
+
 ## 2026-10-16 — THE BOSS sector, a first version (owner, 2026-10-15): the Cutis-Maku fight from the boss lab as the sector after the back door; Isao drives the tank as the lure on the hull's own avoid autopilot, the player takes the gunship by manual override after a two-button choice, a wave of twenty small Cutis then the boss hunt the tank, every hit on a Cutis body scaled by its phase (the reach is the weak spot), SECURE on the boss's death; BOTH WALLS moves to the sector after
 
 change · accepted · 2026-10-15-boss-sector-first-version

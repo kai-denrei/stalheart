@@ -115,7 +115,7 @@ function laneBerth(planet, dungeon, from, to, [a, b]) {
   return ci === exit || dungeon.tags[ci] === BLOCKED || dungeon.tags[exit] === BLOCKED ? null : { ci, exit, pos, out };
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null, chapter = null }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null, chapter = null, bossStart = false }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -176,6 +176,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     armoryPad: padOf(BASE_PERKS.armory.island, BASE_PERKS.armory.pad),   // the armory's reload pad by the assembly line (src/fx/armory-pad.js), live once the armory is printed
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
+    bossStart: !!bossStart,   // ?boss=1: a run opened past the door's earliest opens ON THE BOSS (src/fx/sector-run.js, 2026-10-16)
     beats, arrival: createArrival({ on: arrives, past: pastLanding, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),
     // A TUTORIAL CHAPTER'S START (src/fx/story-entry.js builds it at boot): its number, the steps it prints and the sentries it stands
     // (`berths`: past the hull's issue the Stålheart's door is every berth, as the issue leaves it, src/fx/hull-issue.js)

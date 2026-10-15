@@ -376,6 +376,7 @@ export function createSectorRun(h) {
       if (!h.ready()) return;
       readySince ??= t;
       const first = Math.max(1, h.firstSector ?? 1);   // a harness or drawer entry may open the run past the lane (?skip=defence&sector=N)
+      if (story.bossStart && first >= SECTOR_DOOR.earliest + 1) doorAt ??= first - 1;   // ?boss=1 (2026-10-16): the run opens ON THE BOSS, the door counted as the sector before (a playtest entry)
       if (first >= SECTOR_DOOR.earliest - 1) doorAt ??= Math.max(first, SECTOR_DOOR.earliest);   // opened at or past the door's earliest: the door is that sector; opened one before it: the canyon again, the door next
       // the expedition the tank has just been sent on comes first: a part home, or the grace, opens the first sector
       if (!firstSectorDue({ sinceReady: t - readySince, grace: first > 1 || story.lateStart ? 0 : SECTOR_TIMING.firstGrace ?? 0, partsHome: h.poll().delivered?.length ?? 0 })) return;
