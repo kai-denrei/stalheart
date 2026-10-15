@@ -14,6 +14,7 @@
 const HEART_LINES = [[1, 'heart_hit'], [0.5, 'heart_half'], [0.4, 'heart_below_five'], [0.3, 'heart_critical']];   // below five: GAME OVER MAN! (owner, 2026-10-07, lab 121)   // [share at or below which, brief], said once a run each
 const GATE_LINES = [[0.5, 'gate_half'], [0.25, 'gate_failing']];
 const WORN = 0.6;   // seconds a gate stays UNDER ATTACK after its last loss
+const CALM = 8;   // seconds with nothing lost before the strip fades (owner, 2026-10-15: "they fade out if not used, they re-appear when challenged/under attack"); a hit or a loss brings it back at once
 
 export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
   const el = document.createElement('div');
@@ -22,7 +23,7 @@ export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
   const edge = document.createElement('div'); edge.id = 'integrity-edge';
   root.append(el, edge);
   const heartRow = el.querySelector('.ih-heart'), pips = el.querySelector('.ih-pips'), num = el.querySelector('.ih-num'), gatesEl = el.querySelector('.ih-gates');
-  let heartWas = null, said = new Set(), gateWas = new Map(), gateRows = new Map(), worn = new Map(), shown = null;
+  let heartWas = null, said = new Set(), gateWas = new Map(), gateRows = new Map(), worn = new Map(), shown = null, calm = 0, wake = false;
 
   const flash = (node, cls = 'ih-hit') => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };   // restart the animation
   const panelFlash = () => { const p = root.querySelector('#td-stats'); if (p) flash(p, 'ih-panel-hit'); };
@@ -38,7 +39,7 @@ export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
       heartRow.classList.toggle('ih-low', hp / h.max <= 0.3);
     }
     if (heartWas !== null && hp < heartWas) {
-      flash(heartRow); flash(edge, 'ie-hit'); panelFlash();
+      wake = true; flash(heartRow); flash(edge, 'ie-hit'); panelFlash();
       sfx?.play('danger_alert', { dist: 0 });
       const share = hp / h.max;
       const line = HEART_LINES.findLast(([at]) => share <= at); if (line) say(line[1], line[1]);   // the gravest that applies, once a run
@@ -60,7 +61,7 @@ export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
       row.classList.toggle('ih-down', g.broken); row.classList.toggle('ih-low', !g.broken && share <= 0.25);
     }
     if (was !== undefined && g.hp < was - 1e-6) {
-      if (!worn.get(g.id)) { flash(row); panelFlash(); }
+      wake = true; if (!worn.get(g.id)) { flash(row); panelFlash(); }
       worn.set(g.id, WORN);
       for (const [at, id] of GATE_LINES) if (share <= at && was / g.max > at && say(`${id}:${g.id}`, id) && id === 'gate_failing') sfx?.play('danger_alert', { dist: 0 });
     } else worn.set(g.id, Math.max(0, (worn.get(g.id) ?? 0) - dt));
@@ -77,9 +78,12 @@ export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
       const ids = new Set((read.gates ?? []).map((g) => g.id));
       for (const [id, row] of gateRows) if (!ids.has(id)) { row.remove(); gateRows.delete(id); gateWas.delete(id); }
       for (const g of read.gates ?? []) gate(g, dt);
+      // THE FADE: nothing lost for CALM seconds and the strip dims; a loss, a first showing or a gate's first bar wakes it
+      if (wake || read.wake) { calm = 0; wake = false; } else calm += dt;
+      el.classList.toggle('ih-calm', calm >= CALM);
     },
-    reset() { heartWas = null; said = new Set(); gateWas.clear(); worn.clear(); for (const row of gateRows.values()) row.remove(); gateRows.clear(); },
-    state: () => ({ shown, heart: heartRow.hidden ? null : num.textContent, gates: [...gateRows].map(([id, r]) => ({ id, text: r.querySelector('.ih-num').textContent, worn: r.classList.contains('ih-worn') })), said: [...said] }),
+    reset() { heartWas = null; said = new Set(); gateWas.clear(); worn.clear(); calm = 0; wake = false; el.classList.remove('ih-calm'); for (const row of gateRows.values()) row.remove(); gateRows.clear(); },
+    state: () => ({ shown, calm: el.classList.contains('ih-calm'), heart: heartRow.hidden ? null : num.textContent, gates: [...gateRows].map(([id, r]) => ({ id, text: r.querySelector('.ih-num').textContent, worn: r.classList.contains('ih-worn') })), said: [...said] }),
     dispose() { el.remove(); edge.remove(); },
   };
 }

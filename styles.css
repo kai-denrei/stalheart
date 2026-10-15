@@ -1224,6 +1224,11 @@ html, body {
   z-index: 5;
 }
 
+/* THE SPEED OVER THE RADAR (owner, 2026-10-15; src/td-tab.js hullSpeed): the hull's pace in km/h, small, above the minimap; not on a phone */
+.hull-speed { position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: 222px; z-index: 5; pointer-events: none; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #b8ffca; opacity: 0.85; text-shadow: 0 0 6px rgba(0, 0, 0, 0.8); }
+.hull-speed[hidden] { display: none; }
+@media (pointer: coarse), (max-width: 700px) { .hull-speed { display: none !important; } }
+
 /* --- cache badge: top-left, clear of the navigation shell's bar (its own styles are inline) --- */
 #cb-badge {
   top: max(10px, env(safe-area-inset-top)) !important;
@@ -4748,6 +4753,8 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 #integrity-hud { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); z-index: 40; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; gap: 3px; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; }
 #integrity-hud[hidden] { display: none; }
+#integrity-hud { transition: opacity 1.4s ease; }
+#integrity-hud.ih-calm { opacity: 0.18; }   /* nothing lost for a while: the strip fades until something is (src/fx/integrity-hud.js CALM) */
 #integrity-hud .ih-row { display: flex; align-items: center; gap: 8px; padding: 2px 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.12); color: #b8ffca; }
 #integrity-hud .ih-row[hidden] { display: none; }
 #integrity-hud .ih-lbl { font-size: 10px; letter-spacing: 0.16em; color: #4fae63; min-width: 9ch; text-align: right; }

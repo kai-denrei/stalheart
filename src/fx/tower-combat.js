@@ -28,7 +28,7 @@ import { pickTarget, shotInterval, towerSound } from '../towers.js';
 import { A6_TUNE, magFor, stepA6 } from '../heptapod.js';
 import { SENTRY_TUNE } from '../sentry.js';
 import { makeLock } from '../lockon.js';
-import { bodyAt, groundAt } from './lance-follow.js';
+import { bodyAt } from './lance-follow.js';
 
 export function createTowerCombat(host) {
   // ONE A6, ONE FRAME. The module owns the decisions; this owns the world.
@@ -231,7 +231,7 @@ export function createTowerCombat(host) {
         // this frame — a sniper does not miss — but what you SEE is one fat slug crossing the whole line in ~0.13s, trailing
         // ghosts, with the impact fx landing when the slug does. Straight line, one round.
         if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
-        const hitP = add3(groundAt(target), scale3(norm3(target.pos), host.cellSide() * 0.3));   // on the body, not its record (2026-10-15)
+        const hitP = add3(target.pos, scale3(norm3(target.pos), host.cellSide() * 0.3));   // the record's point: where the barrel points (2026-10-15, second round: a tracer to the body left the barrel at an angle)
         spawnSlug(muzzle, hitP, tw.def.color, host.cellIndex()(target.pos));
         host.warnRing(tw.ci, tw.def.color, 0.35, host.cellSide() * 0.9); // muzzle pulse
       } else if (atk === 'seeker') {
@@ -276,7 +276,7 @@ export function createTowerCombat(host) {
       } else if (atk === 'beam') {
         // hitscan: damage now, draw the light
         if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
-        const at = add3(groundAt(target), scale3(norm3(target.pos), host.cellSide() * 0.3));
+        const at = add3(target.pos, scale3(norm3(target.pos), host.cellSide() * 0.3));
         if (shotOf(tw.def).plasma) host.throwPlasma(tw, muzzle, at, tNow);
         else spawnBeam(muzzle, at, tw.def.color);
       } else if (atk === 'slowfield') {

@@ -95,9 +95,17 @@ export function createSentryPilot(root, host) {
   // target while it stays inside. Swapping to whichever body is momentarily nearest was the frustration: every swap reset the timer, so
   // a lock looked random. A gun still needs the reticle on the body itself.
   const inBox=(e,cone,cellSide,sight=true)=>{
-    v.fromArray(groundAt(e)).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);   // the BODY's point where a record has one (owner, 2026-10-15: a Pearl body hunts ahead of its record; src/fx/lance-follow.js)
-    const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length();
-    return along>0&&(cone?off<along*cone:off<cellSide*Math.max(.34,(e.size??e.spec.size)*.95))&&(!sight||host.visible(e))?along:-1;   // a gun's box covers the whole dot cloud, top to bottom (owner, 2026-09-13: basic enemies should drop to the Rotor wherever it hits them)
+    // THE RECORD IS THE AIM (owner, 2026-10-15, second round: "ROTOR shooting is not always aligned with the reticle, and quiver final descent does not
+    // seem to follow the target"): the barrel, the tracer and the guided round all fly at the record's point, so the box is tested there; a gun's box
+    // ALSO takes the Pearl body's own point (it hunts ahead of its record), so the reticle on the body registers (the first round's complaint)
+    v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
+    const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length(),box=cellSide*Math.max(.34,(e.size??e.spec.size)*.95);
+    if(along>0&&(cone?off<along*cone:off<box)&&(!sight||host.visible(e)))return along;
+    if(cone)return -1;
+    const bp=groundAt(e);if(bp===e.pos)return -1;
+    v.fromArray(bp).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
+    const along2=v.dot(direction),off2=v.clone().addScaledVector(direction,-along2).length();
+    return along2>0&&off2<box&&(!sight||host.visible(e))?along2:-1;   // a gun's box covers the whole dot cloud, top to bottom (owner, 2026-09-13: basic enemies should drop to the Rotor wherever it hits them)
   };
   // A ROCK EDGE IS NOT A LOSS (operator, 2026-09-13: the Quiver climbed to ~62% and reset, every time). A hard core walking the lane
   // grazes the rock between it and the optic: measured, it stayed dead centre in the box while its sightline flickered off for ~170 ms

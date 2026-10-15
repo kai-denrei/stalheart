@@ -16,11 +16,13 @@ export const lanceTrace = { calls: 0, from: null, aim: null };
 
 // AT THE BODY, NOT ITS FEET (owner, 2026-10-05: "the lancer always seems to aim just a little bit too low"): a body's `pos` is the
 // ground under it; it is drawn `lift` x its size above that (td-tab's walk), and its rendered position is where the beam belongs
-// A PEARL BODY IS NOT WHERE ITS RECORD IS (owner, 2026-10-15: "the rotor hit logic needs re-work since we changed the enemies ... it feels as if
-// I'm aiming straight and it does nothing"): a body hunts ahead of its record (src/fx/creature-pearl.js), so a creature record's stand-in carries
-// `point()` (src/fx/creature-bodies.js), the body's drawn centre on the ground: groundAt is that point or the record's; bodyAt lifts a dot cloud's
+// A PEARL BODY IS NOT WHERE ITS RECORD IS (owner, 2026-10-15: a body hunts ahead of its record, src/fx/creature-pearl.js): a creature record's
+// stand-in carries `point()` (src/fx/creature-bodies.js), the body's drawn centre on the ground: groundAt is that point or the record's. The hull's
+// ram and SOL's beam read it. THE AIM READS THE RECORD (owner, 2026-10-15, second round: "ROTOR shooting is not always aligned with the reticle, and
+// quiver final descent does not seem to follow the target"): the barrel, the tracer, the lance and the guided round all go to the record's point,
+// where the body's hunt keeps it within about a radius; bodyAt is that point, lifted for a dot cloud
 export const groundAt = (e) => e?.obj?.userData?.point?.() ?? e?.pos;
-export const bodyAt = (e) => { const p = e?.obj?.userData?.point?.(); return p ? p.slice() : e?.obj?.position ? e.obj.position.toArray() : e?.pos; };
+export const bodyAt = (e) => (e?.obj?.position ? e.obj.position.toArray() : e?.pos);
 export function lanceFollow(tw, opts) { const r = followOf(tw, opts); if (r) { lanceTrace.calls++; lanceTrace.from = r.from; lanceTrace.aim = r.aim; } return r; }
 function followOf(tw, { piloted = false, camera = null, range = 0 } = {}) {
   const m = tw.lastMuzzle;

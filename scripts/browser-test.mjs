@@ -4310,6 +4310,10 @@ const killReal=(Date.now()-t0)/1000;
  if(again){const s=await st();assert.equal(s.sector.doorAt,sectorN+1,`the door is decided for the sector after (${JSON.stringify(s.sector)})`);}
  {const s=await st();assert(s.sector.canyon&&s.sector.canyon.floor>20,`the canyon is cut (${JSON.stringify(s.sector.canyon)})`);}
  const glides0=(await st()).glide.n;
+ // CANYON_SEATED=1 (owner, 2026-10-15: "sector 7, the canyon again, I suspect that IF the user was manually controlling SOL, it becomes unavailable, the
+ // mission trigger should reset SOL"): the player takes SOL-82 by hand on a regular pass BEFORE the canyon's pass is laid over him
+ if(process.env.CANYON_SEATED){await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);await evaluate(`${T}.laserSeat(true)`);await until(`!!document.querySelector("#sol82-briefing [data-skip]") || ${T}.state().laser.seated`,5000);await evaluate(`document.querySelector("#sol82-briefing [data-skip]")?.click()`);await until(`${T}.state().laser.seated`,10000);
+  const s=await st();console.log(`  seated by hand before the canyon's pass: ${JSON.stringify({seated:s.laser.seated,phase:s.laser.phase,special:s.laser.special,strip:s.laser.strip})}`);assert(s.laser.seated&&!s.laser.special,'in a regular pass by hand');}
  await until(`${T}.state().performance.enemies>=250`,60000).catch(async()=>assert.fail(`the swarm rises (${(await st()).performance.enemies} alive)`));
  await until(`${T}.state().laser.seated && ${T}.state().laser.special`,60000).catch(async()=>assert.fail(`SOL-82's canyon pass and its seat (${JSON.stringify((await st()).laser)})`));
  {const s=await st(),L=(await import('../src/content/sectors.js')).CANYON;assert.equal(s.laser.radius,L.pass.radius,'the canyon\'s wide beam');assert(s.laser.energy>=L.pass.energy-0.5,`the canyon's long burn (${s.laser.energy})`);

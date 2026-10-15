@@ -22,7 +22,10 @@ export const SHELL_BLAST = Object.freeze({ radius: 3, peak: 4.5, rate: 0.6,
 // the hull's forward pace on top of the game's speed (operator, 2026-09-13: faster from the first moment, and ramping for a while so a
 // long drive stops being tedious): base at once, toward top with time constant tau (s); steering hard gains `turn` s/s less, idling or
 // reversing bleeds `stop` s/s, and a wall keeps `keep` of the run-up on a head-on hit (a graze keeps more)
-export const TANK_DRIVE = Object.freeze({ base: 1.35, top: 2.6, tau: 4, turn: 0.6, stop: 3, keep: 0.25 });
+// MORE OF THE PULL (owner, 2026-10-15: "we will increase the hover tank's speed system whereby going forward and not hitting anything increases the
+// speed, since there is no friction with the ground. We will display its speed in KM/H in small on the HUD above the RADAR"): top 3.2 (was 2.6)
+// reached over tau 6 s (was 4); a wall, a stop or a hard turn still spends it (src/domain/drive-ramp.js). The readout: src/td-tab.js hullSpeed
+export const TANK_DRIVE = Object.freeze({ base: 1.35, top: 3.2, tau: 6, turn: 0.6, stop: 3, keep: 0.25 });
 // the hull's steering (owner, 2026-09-16: "the tank turns too sharply = unnatural"): `rate` is the top yaw rate in rad/s — the pace
 // the tank always turned at — now taken up over `attack` seconds and released over `release` instead of switching on and off with the
 // key, and `bank` is how far the hull rolls into the turn at that full rate, in radians. Not a slower tank: the same rate, eased.

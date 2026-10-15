@@ -45,5 +45,7 @@ for (const manual of [false, true]) {
 }
 // THE ORIGINAL BLOCK's logs on these fakes (src/td-tab.js before the refactor run's Task 9, through new Function beside the module):
 // 160 frames of the wanderer on auto past a blocked cell, and 160 driven by hand with a turn
-assert.equal(createHash('sha256').update(all).digest('hex').slice(0, 16), '3ee1520209a9ce12', 'the drive behaves as the controller block did');
+// RE-BASED 2026-10-15 (TANK_DRIVE top 3.2 and tau 6, the owner's longer pull): the same fakes and frames, the hull's positions under the new ramp;
+// the recorded block's hash was 3ee1520209a9ce12 under top 2.6 / tau 4
+assert.equal(createHash('sha256').update(all).digest('hex').slice(0, 16), 'bd6ce1cd579c0c71', 'the drive behaves as the controller block did (re-based for TANK_DRIVE, 2026-10-15)');
 print('Hull drive: the wanderer picks its exits and the hand-driven hull steers, glides and arrives, as the controller block did.');

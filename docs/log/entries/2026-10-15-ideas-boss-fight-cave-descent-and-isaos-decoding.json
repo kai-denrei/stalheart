@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-10-15-ideas-boss-fight-cave-descent-and-isaos-decoding",
+  "date": "2026-10-15",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Ideas to notes, not to implement yet (owner, 2026-10-15): a BOSS fight; a final Cave Descent mission; at its end Isao jokes that he finally decoded the alien language from what the Queen said when he set up a nuke in her nest",
+  "context": "Owner, 2026-10-15, the second round of notes on the day's builds: '2) ideas to notes, not implement yet. a) we will bring in a BOSS fight, b) we will bring in a final Cave Descent mission c) at the end of that mission, ISAO will joke that he finally decoded the Alien language from what the Queen said when he set-up a nuke in her nest... My Nest, you out, and then words that seem to mean excrement.' Alongside: '5) the canyon plays well, part 1' and, on the end-game asked about earlier the same day (2026-10-15-fourteen-notes-on-the-shapes-build: the campaign ends at the sector after the back door, then the generator runs on), these are the shape of what comes after it. What exists toward them: the Nih-Dairia boss lab and its bait mode (2026-10-08 to 2026-10-11, labs.html#boss, branch refactor-run's work since merged), the Cutis-Maku scenario (?creature=cutis), the Reeds and the Nih-Dairia as story-mode bodies (creature-reed.js), the hunters (2026-10-15-hunters-first-version), THE ENDING's host (src/fx/ending-host.js) and Isao's recorded lines through ../seiyu_voice/export.",
+  "outcome": "Recorded, not built, not designed. When the owner opens them: the boss fight is the lab's creature brought into the campaign (the fight prototype, the gunship x3, the SOL wall, fear/stun, the arena are in the lab); the Cave Descent is a new mission type (a descent, so a terrain and a camera the game does not have; the sloped sinkholes filed in 2026-10-15-notes-to-investigate-hunters-fps-gate-slopes are its nearest kin); Isao's decoding joke is a recorded line for the mission's end (the lines are the owner's recordings, imported by node scripts/import-isao-voice.mjs). The canyon's first part is judged good as it stands.",
+  "alternatives": [],
+  "evidence": [
+    "the owner's note of 2026-10-15; src/fx/ending-host.js, src/fx/creature-reed.js, labs.html#boss"
+  ],
+  "supersedes": []
+}
