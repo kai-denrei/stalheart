@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
-import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING, SECTOR_CANYON_AGAIN, SECTOR_STAMPEDE } from '../src/content/sectors.js';
+import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING, SECTOR_CANYON_AGAIN, SECTOR_STAMPEDE } from '../src/content/sectors.js';
 import { ENEMY_SPEC, CREATURE_TINTS, SAFE_HUES, ALARM_HUES, computeWavePlan } from '../src/enemyspec.js';
 import { waveClearBonus } from '../src/domain/economy.js';
 import { POINT_SCALE, waveScore } from '../src/score.js';
@@ -35,7 +35,7 @@ for (const type of Object.keys(ENEMY_SPEC)) {
 }
 
 // sectorDef with the schedule: the fixed rows, held sectors until the door, the door, BOTH WALLS, then the generator
-const arcOf = (doorAt) => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt, canyonAgain: SECTOR_CANYON_AGAIN });
+const arcOf = (doorAt) => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt, canyonAgain: SECTOR_CANYON_AGAIN, boss: BOSS_SECTOR });
 const def = (n, doorAt = null) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arcOf(doorAt));
 assert.deepEqual(SECTORS.map((s) => def(s.n).waveBase), SECTORS.map((s) => s.ladderStart), 'each sector starts the ladder where content says');
 assert.ok([1, 3, 6, 9, 12].every((n) => def(n, 8).ladderCap === SECTOR_GENERATOR.ladderCap), 'one ladder cap for every sector');
@@ -48,9 +48,12 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
   assert.ok(held[1].threat > held[0].threat && held[0].threat > SECTORS.at(-1).threat, 'their threat keeps climbing');
   assert.equal(def(6, 8).name, 'SECTOR 6', 'held until the door'); assert.equal(def(7, 8).name, SECTOR_CANYON_AGAIN.name, 'the sector before the door is the canyon again');
   assert.equal(def(6, 6).name, 'THE BACK DOOR'); assert.equal(def(6, 6).n, 6); assert.ok(def(6, 6).feast);
-  assert.equal(def(7, 6).name, 'BOTH WALLS'); assert.equal(def(9, 8).name, 'BOTH WALLS');
-  const gen = [8, 9, 10].map((n) => def(n, 6));
-  assert.deepEqual(gen.map((d) => d.name), ['SECTOR 8', 'SECTOR 9', 'SECTOR 10']);
+  // THE BOSS (2026-10-15): the sector after the door, BOTH WALLS the one after it
+  assert.equal(def(7, 6).name, 'THE BOSS'); assert.equal(def(8, 6).name, 'BOTH WALLS'); assert.equal(def(9, 8).name, 'THE BOSS'); assert.equal(def(10, 8).name, 'BOTH WALLS');
+  { const b = def(7, 6); assert.equal(b.n, 7); assert.equal(b.waves, 2); assert.deepEqual(b.bodies, [20, 1]); assert.ok(b.boss.boss.hp === 180 && b.boss.wave.count === 20 && b.breaches.gate === 1 && !b.backDoor && b.laser, 'the boss row'); }
+  assert.equal(sectorDef(7, SECTORS, SECTOR_GENERATOR, { ...arcOf(6), boss: undefined }).name, 'BOTH WALLS', 'without a boss in the arc, both walls follows the door as before');
+  const gen = [9, 10, 11].map((n) => def(n, 6));
+  assert.deepEqual(gen.map((d) => d.name), ['SECTOR 9', 'SECTOR 10', 'SECTOR 11']);
   assert.deepEqual(gen.map((d) => d.flow.alive), [925, 1000, 1075], 'the flow\'s target steps past BOTH WALLS');
   assert.deepEqual(gen.map((d) => d.waves), gen.map((d) => Math.ceil(d.flow.total / 2 / d.flow.burst)), 'the books count the bursts');
   assert.ok(gen.every((d) => d.pulse === BOTH_WALLS_SECTOR.pulse), 'the clock carries over from BOTH WALLS');
@@ -84,7 +87,7 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
     const defs = Array.from({ length: doorAt + 3 }, (_, k) => def(k + 1, doorAt));
     const climb = defs.slice(0, doorAt).filter((d) => !d.canyon).map(peak);
     for (let i = 1; i < climb.length; i++) assert.ok(climb[i] > climb[i - 1], `door at ${doorAt}: each sector of the climb peaks harder than the one before (${climb})`);
-    assert.ok(peak(defs[doorAt]) > peak(defs[doorAt - 1]), `door at ${doorAt}: BOTH WALLS peaks past the door`);
+    assert.equal(defs[doorAt].name, 'THE BOSS', `door at ${doorAt}: the boss after the door`); assert.ok(peak(defs[doorAt + 1]) > peak(defs[doorAt - 1]), `door at ${doorAt}: BOTH WALLS peaks past the door`);
     for (const d of defs.filter((d) => d.shape === 'flow')) {
       assert.ok(d.flow.alive <= SECTOR_GENERATOR.aliveCap, `${d.name}: the flow never past the column the frame holds (${d.flow.alive})`);
       assert.ok(d.flow.burst * count(d) < d.flow.alive, `${d.name}: a burst from every mouth does not fill the lane alone`);

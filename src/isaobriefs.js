@@ -17,7 +17,7 @@
 // is a fact and then a plan: "Oh no! They destroyed my RADAR!" (angry)...
 // "Oh well. Rebuild." Two short lines at most; the second line is always what
 // he does next. Curiosity over dread, resources over blame.
-import { SECTORS, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_CANYON_AGAIN } from './content/sectors.js';
+import { SECTORS, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_CANYON_AGAIN } from './content/sectors.js';
 
 export const BRIEFS = {
   // --- THE STORY -----------------------------------------------------------
@@ -432,6 +432,7 @@ export const BRIEFS = {
   ...Object.fromEntries(SECTORS.map((s) => [`sector_${s.n}`, { id: `sector_${s.n}`, face: s.n === 1 ? 'determined' : 'focused', title: `SECTOR ${s.n} · ${s.name}`, lines: [...s.brief] }])),
   sector_hold: { id: 'sector_hold', face: 'focused', title: 'THE NEXT SECTOR', lines: [...SECTOR_HOLD.brief] },
   sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
+  sector_boss: { id: 'sector_boss', face: 'surprised', title: BOSS_SECTOR.name, lines: [...BOSS_SECTOR.brief] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
   sector_canyon_again: { id: 'sector_canyon_again', face: 'focused', title: SECTOR_CANYON_AGAIN.name, lines: [...SECTOR_CANYON_AGAIN.brief] },

@@ -154,6 +154,20 @@ export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flo
   gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: true, hardcores: 2, new: 'hard cores in every wave',
   brief: ['Every wave brings hard cores now. Do not ram them.', 'One front each side. Split the tank and the sky between them.'] });
 
+// THE BOSS (owner, 2026-10-15: "bring in this boss fight ... replacing ISAO as a lure, with ISAO-Controlling the Tank as lure, while we control
+// the Gunship ... a funny choice; ISAO offering to either drive the tank, or let the gunship on autopilot. they land on the idea that since it's a
+// new target, a round of manual-override of the gunship is needed. This Boss fight will be somewhere around round 8"; spec
+// docs/superpowers/specs/2026-10-15-boss-sector-design.md). The sector after THE BACK DOOR (doorAt + 1; BOTH WALLS moves to doorAt + 2): one
+// gate breach sends two waves, `boss.wave` (count of the family's `wave.tier`, each at `wave.hp`) and then `boss.boss` (one of `boss.tier` at
+// `boss.hp`), every one a hunter of the tank (src/domain/boss-sector.js); the breath sends the boss once the wave is mostly dead. Isao drives the
+// hull on its avoid autopilot, the player takes the gunship by manual override after `choice` (src/fx/boss-run.js, src/fx/choice-card.js).
+export const BOSS_SECTOR = freeze({ name: 'THE BOSS', shape: 'pulse', bodies: [20, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { gate: 1 }, waves: 2, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 90, points: 900 },
+  boss: { family: 'cutis', wave: { count: 20, tier: 'small', hp: 20, pace: 1 }, boss: { tier: 'huge', hp: 180, pace: 1 },
+    choice: { line: 'New contact. Big. Two ways: I drive the tank and keep it busy, or I put the gunship on autopilot and you drive.', a: 'YOU DRIVE THE TANK', b: 'GUNSHIP ON AUTOPILOT',
+      replyA: 'Then it\'s me in the hull. The gunship is yours: new target, manual override.', replyB: 'The autopilot has never seen this one. Manual override, you. I\'ll drive.' } },
+  gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a boss',
+  brief: ['Something big is coming up the lane. Not a wave.', 'I take the hull. You take the gunship. Keep it off me.'] });
+
 // PAST BOTH WALLS the sectors are generated from it: its flags carry over, `new` is null. With `past` the sectors after BOTH WALLS
 // (1, 2, ...): the flow's alive climbs aliveStep a sector from BOTH WALLS' up to aliveCap (the column the frame holds, 1,200 Pearl
 // bodies measured headed on 2026-10-15) and its total totalStep; threat climbs threatStep a sector from BOTH WALLS', sides cycle by

@@ -316,16 +316,20 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest, 'the door sector'); assert.equal(run.state().doorAt, SECTOR_DOOR.earliest);
   hold();
   assert.deepEqual(log, [['report', SECTOR_DOOR.earliest]], 'the door sector held: its report, no finale');
-  run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'BOTH WALLS');
+  // THE BOSS (2026-10-15): the sector after the door, held like any; BOTH WALLS, the final sector, after it
+  run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'THE BOSS'); assert.equal(run.state().name, 'THE BOSS');
   hold();
-  assert.deepEqual(log.slice(1), [['finale']], 'the final sector held: the finale first, before any score');
+  assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'the boss sector held: its report, no finale');
+  run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'BOTH WALLS'); assert.equal(run.state().name, 'BOTH WALLS');
+  hold();
+  assert.deepEqual(log.slice(2), [['finale']], 'the final sector held: the finale first, before any score');
   assert.equal(run.state().phase, 'finale'); assert.equal(run.state().secure, true, 'held, under the finale');
   hand();
-  assert.deepEqual(log.slice(2), [['report', SECTOR_DOOR.earliest + 1]], 'the finale over: the report');
-  run.test.cont(); assert.deepEqual(log.slice(3), [["campaign"]], "then the campaign card");
+  assert.deepEqual(log.slice(3), [['report', SECTOR_DOOR.earliest + 2]], 'the finale over: the report');
+  run.test.cont(); assert.deepEqual(log.slice(4), [["campaign"]], "then the campaign card");
   run.test.keepHolding(); step(1);
-  assert.ok(!log.slice(4).some((l) => l[0] === 'finale'), `leaving the card plays no finale again (${JSON.stringify(log.slice(4))})`);
-  assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'and the next sector begins');
+  assert.ok(!log.slice(5).some((l) => l[0] === 'finale'), `leaving the card plays no finale again (${JSON.stringify(log.slice(5))})`);
+  assert.equal(run.state().n, SECTOR_DOOR.earliest + 3, 'and the next sector begins');
   assert.equal(run.state().phase, 'fighting');
 }
 // THE CREATURE PROBE HOLDS THE SECTOR OPEN (owner, 2026-10-12; src/fx/creature-enemies.js): every pulse out and every body dead, the

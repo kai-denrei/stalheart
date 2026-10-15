@@ -8,7 +8,7 @@
 import { flowWaves } from './sector-shape.js';
 
 // The def for sector n >= 1 (2026-10-01, the ramp before the back door). `table`: the fixed opening (SECTORS); `arc`: { hold, door,
-// both, doorAt, canyonAgain } with hold the gate-side sector run while the back door is not due, door and both its two sectors, doorAt the
+// both, doorAt, canyonAgain, boss } with hold the gate-side sector run while the back door is not due, door and both its two sectors (boss, when given, between them: THE BOSS at doorAt + 1 and both at doorAt + 2), doorAt the
 // sector the schedule put the door in (null: not yet decided), and canyonAgain the fields laid over the held sector just before the
 // door (SECTOR_CANYON_AGAIN: the canyon a second time, the penultimate sector of the arc). Past both, sectors are generated from it (the generator's
 // arithmetic is documented beside SECTOR_GENERATOR). Without an arc the generator follows the last authored row.
@@ -21,7 +21,10 @@ export function sectorDef(n, table, generator, arc = null) {
   if (n <= table.length) { const d = table[n - 1]; return shaped({ ...d, waveBase: d.ladderStart ?? 0, ladderCap }); }
   const doorAt = arc?.doorAt ?? null;
   if (arc && doorAt !== null && n === doorAt) return shaped({ ...arc.door, n, waveBase: arc.door.ladderStart ?? 0, ladderCap });
-  if (arc && doorAt !== null && n === doorAt + 1) return shaped({ ...arc.both, n, waveBase: arc.both.ladderStart ?? 0, ladderCap });
+  // THE BOSS (2026-10-15, src/content/sectors.js BOSS_SECTOR): the sector after the door when the arc has one; BOTH WALLS the one after it
+  const bothAt = doorAt === null ? null : doorAt + (arc?.boss ? 2 : 1);
+  if (arc && arc.boss && doorAt !== null && n === doorAt + 1) return shaped({ ...arc.boss, n, waveBase: arc.boss.ladderStart ?? 0, ladderCap });
+  if (arc && doorAt !== null && n === bothAt) return shaped({ ...arc.both, n, waveBase: arc.both.ladderStart ?? 0, ladderCap });
   if (arc && (doorAt === null || n < doorAt)) {
     const last = table[table.length - 1], h = arc.hold, past = n - table.length;
     const again = arc.canyonAgain && doorAt !== null && n === doorAt - 1 ? arc.canyonAgain : null;   // the penultimate sector: the canyon again
@@ -32,7 +35,7 @@ export function sectorDef(n, table, generator, arc = null) {
       waveBase: h.ladderStart ?? 0, ladderCap, ...(again ? { ...again, breaches: { ...again.breaches } } : {}),
     });
   }
-  const last = arc ? arc.both : table[table.length - 1], past = n - (arc ? doorAt + 1 : table.length);
+  const last = arc ? arc.both : table[table.length - 1], past = n - (arc ? bothAt : table.length);
   const flow = last.flow ? { ...last.flow, alive: Math.min(generator.aliveCap ?? Infinity, last.flow.alive + (generator.aliveStep ?? 0) * past), total: last.flow.total + (generator.totalStep ?? 0) * past } : undefined;
   return shaped({
     ...last, n, name: `${generator.name} ${n}`, new: null, brief: generator.brief,

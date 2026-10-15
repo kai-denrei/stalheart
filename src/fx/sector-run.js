@@ -7,7 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
+import { SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
@@ -94,11 +94,12 @@ export function createSectorRun(h) {
   const note = (ev) => (stats ? record(stats, ev) : false);
   const retarget = () => { if (sps.size && [...sps.values()].includes(story.source) && story.source.alive) return; const live = [...sps.values()].find((s) => s.alive); if (live) story.source = live; };
   // THE ARC (2026-10-01): the fixed ramp, held sectors until the back door is due, the door, BOTH WALLS, then the generator
-  const arc = () => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt, canyonAgain: SECTOR_CANYON_AGAIN });
+  const arc = () => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt, canyonAgain: SECTOR_CANYON_AGAIN, boss: BOSS_SECTOR });
+  const bothAt = () => (doorAt === null ? null : doorAt + 2);   // THE BOSS at doorAt + 1 (2026-10-15), BOTH WALLS after it
   const defOf = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arc());
   // EVERYTHING UNLOCKED: every landing site's part is home and Isao's programme is printed but for the back gate (which needs the door)
   const unlocked = () => { const sites = story.expeditions?.sites ?? [], owed = story.programme ? programmeSnapshot(story.programme).owed : []; return sites.length > 0 && sites.every((x) => x.state === 'delivered') && owed.length === 0; };   // the back gate and the launcher are passable: never owed
-  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
+  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'sector_boss' : doorAt !== null && n === bothAt() ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
@@ -108,7 +109,7 @@ export function createSectorRun(h) {
   // celebration cinematic AFTER the final wave, before the score is looked at"): the host plays it once, when the final sector (the one
   // after the door, BOTH WALLS) is held, before that sector's report and the campaign card; leaving the card then goes straight on
   const finale = (then) => { if (!api.finale?.(then)) then(); };
-  const finalSector = () => doorAt !== null && def?.n === doorAt + 1;
+  const finalSector = () => doorAt !== null && def?.n === bothAt();
   const loadBests = () => { try { const v = JSON.parse(h.store?.getItem(SECTOR_BESTS_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } };
 
   // ONE BREACH'S NEXT WAVE, at ladder wave `wave`: THE FEAST (the door's back breach, first wave: the content's soft flood at its own pace),
