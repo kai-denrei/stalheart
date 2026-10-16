@@ -16,10 +16,12 @@ export function stepFlare(body,seconds){
       const dx=next.x-free.x,dy=next.y-free.y,dz=next.z-free.z,length=Math.hypot(dx,dy,dz);
       if(length>1e-7){
         const nx=dx/length,ny=dy/length,nz=dz/length,into=v.x*nx+v.y*ny+v.z*nz;
-        if(into<0){v.x-=nx*into*1.2;v.y-=ny*into*1.2;v.z-=nz*into*1.2;}
-        // Ground friction never cancels the downward motion along a steep wall.
-        if(ny>.9){const drag=Math.exp(-12*dt);v.x*=drag;v.z*=drag;
-          if(Math.hypot(v.x,v.y,v.z)<.32){v.x=v.y=v.z=0;body.resting=true;}
+        if(into<0){v.x-=nx*into*1.05;v.y-=ny*into*1.05;v.z-=nz*into*1.05;}   // 1.05 (was 1.2): a flare barely rebounds (the owner, 2026-10-16: one dropped in the chute landed and bounced back to the same spot)
+        // STICKINESS (the owner, 2026-10-16): any contact scrubs the motion along the surface, more the flatter it is; on a slope steeper than 65 degrees a
+        // flare still slides. It rests once slow on anything flatter than that.
+        const flat=Math.max(0,(ny-.42)/.58);
+        if(flat>0){const drag=Math.exp(-(4+8*flat)*dt);v.x*=drag;v.z*=drag;v.y*=Math.exp(-3*flat*dt);
+          if(Math.hypot(v.x,v.y,v.z)<.32+.4*flat){v.x=v.y=v.z=0;body.resting=true;}   // a creeping flare on a slope comes to rest sooner the flatter the slope
         }
       }
     }

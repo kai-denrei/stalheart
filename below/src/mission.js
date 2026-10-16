@@ -1,7 +1,7 @@
 import {rimRadius, bowlHeight, SINKHOLE_INNER, SINKHOLE_DEPTH} from './stalheart/sinkhole-shape.js';
 
 // Metres and seconds. The same geometry contract drives rendering and flight.
-export const FUSE=65, FLARE_COUNT=10, EGG_COUNT=1600, HOLE_SCALE=24;
+export const FUSE=65, FLARE_COUNT=15, EGG_COUNT=1600, HOLE_SCALE=24;
 export const CHAMBER={x:0,y:-208,z:-79,r:90,ry:58,opening:.1};
 export const QUEEN={x:0,y:-219,z:-101,scale:620,baseY:-254};
 export const START={x:0,y:11,z:23};
@@ -113,19 +113,31 @@ export function confine(p,margin=.65){
 }
 export function pointSegmentDistance(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;const t=clamp(((p.x-a.x)*dx+(p.y-a.y)*dy+(p.z-a.z)*dz)/(dx*dx+dy*dy+dz*dz||1),0,1);return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy,p.z-a.z-t*dz);}
 // A broad region around the Queen, never a world-space waypoint or exact socket.
-export function closeToQueen(p){return p.y<QUEEN.y+9&&p.y>QUEEN.baseY-8&&Math.hypot(p.x-QUEEN.x,p.z-QUEEN.z)<49&&inChamber(p,1);}
+// anywhere near the Queen, not one spot (the owner, 2026-10-16): the chamber round her within 70 m, from well under her to well over
+export function closeToQueen(p){return p.y<QUEEN.y+16&&p.y>QUEEN.baseY-14&&Math.hypot(p.x-QUEEN.x,p.z-QUEEN.z)<70&&inChamber(p,1);}
 export const MAX_HP=12;
 export function createMission(){return {phase:'descent',integrity:MAX_HP,hits:0,lampState:'working',lidarAvailable:false,lidarProcessingAt:0,lidar:false,lidarMode:0,payload:true,armProgress:0,bombPosition:null,fuse:FUSE,time:0,nursery:false,shaftSeen:false,deadEndSeen:false,flares:FLARE_COUNT,extracted:false,signalLost:false,detonated:false,outcome:null};}
 export function recordImpact(m){
   if(m.outcome||m.extracted||m.signalLost||m.integrity<=0)return [];
   m.integrity=Math.max(0,m.integrity-1);m.hits++;
   if(m.hits===1)return ['airframe-hit'];
-  if(m.hits===2){m.lampState='failed';return ['lamp-failed'];}
+  if(m.hits===2){m.lampState='flicker';m.lampAt=m.time;return ['lamp-flicker'];}   // the second hit: the lamp flickers, comes back, then fails for good (the owner, 2026-10-16; see lampStrength)
   return [];
 }
 export function useFlare(m){if(m.outcome||m.extracted||m.signalLost||m.flares<=0)return false;m.flares--;return true;}
+// THE WORK LIGHT (the owner, 2026-10-16: "the lamp should not fail right away... it should start stronger, then start to fail with flickers... come back...
+// fail again for good a bit later"): strong while whole; after the second hit LAMP.flicker seconds of flicker, back (dimmer) for LAMP.back seconds, then out
+export const LAMP={strong:1.25,flicker:6,back:25,dim:.8};
+export function lampStrength(m){
+  if(m.lampState==='failed')return 0;
+  if(m.lampState==='flicker'){const t=m.time*1;return .25+.75*Math.abs(Math.sin(t*23.1)*Math.sin(t*7.3)+.3*Math.sin(t*41));}
+  if(m.lampState==='back')return LAMP.dim;
+  return LAMP.strong;
+}
 export function tickMission(m,dt,p,arming){
   if(m.outcome)return [];const events=[];m.time+=dt;
+  if(m.lampState==='flicker'&&m.time-m.lampAt>LAMP.flicker){m.lampState='back';m.lampAt=m.time;events.push('lamp-back');}
+  else if(m.lampState==='back'&&m.time-m.lampAt>LAMP.back){m.lampState='failed';events.push('lamp-failed');}
   if(!m.lidarAvailable&&!m.lidarProcessingAt&&p.y<=-86){m.lidarProcessingAt=m.time+4;events.push('lidar-processing');}
   if(!m.lidarAvailable&&m.lidarProcessingAt&&m.time>=m.lidarProcessingAt){m.lidarAvailable=true;events.push('lidar-ready');}
   if(!m.deadEndSeen){const n=nearestRoute(p),b=BRANCHES.find(b=>b.id===n.branch);if(b.id==='blind'&&n.s>b.length-13){m.deadEndSeen=true;events.push('dead-end');}}

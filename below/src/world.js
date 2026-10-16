@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import { center, radius, frameAt, ringPoint, tunnelClearance, chamberClearance, ROUTE_END, SHAFT_TOP, CHAMBER_LIP, chamberFloor, smooth, pointSegmentDistance, FLARE_COUNT, exteriorExposure, nearestRoute } from './mission.js';
+import { center, radius, frameAt, ringPoint, tunnelClearance, chamberClearance, lampStrength, ROUTE_END, SHAFT_TOP, CHAMBER_LIP, chamberFloor, smooth, pointSegmentDistance, FLARE_COUNT, exteriorExposure, nearestRoute } from './mission.js';
 import {createSinkholeEntrance} from './sinkhole.js';
 import {createNursery} from './nursery.js';
 import {createCaveNetwork} from './cave.js';
@@ -163,7 +163,7 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
     isao.rig.visible=!preview&&(!cinematic||mission.extracted);
     if(cinematic){const state=blast.stats(),age=blast.ageAt(time),q=flightData.reducedMotion||!state.detonationActive?0:Math.max(0,1-age/5)*1.5;const pull=smooth(.35,1.15,age);camera.position.set(31+pull*115+Math.sin(time*47)*q,29+pull*73+Math.cos(time*41)*q,39+pull*145);camera.lookAt(0,-3+pull*7,0);}
     uniforms.uLampPosition.value.copy(player).add(new THREE.Vector3(0,-.15,-.8).applyAxisAngle(new THREE.Vector3(0,1,0),flightData?.yaw||0));
-    uniforms.uLampDirection.value.set(-Math.sin(flightData?.yaw||0),-.1,-Math.cos(flightData?.yaw||0)).normalize();uniforms.uLampStrength.value=mission.lampState==='working'?1:0;
+    uniforms.uLampDirection.value.set(-Math.sin(flightData?.yaw||0),-.1,-Math.cos(flightData?.yaw||0)).normalize();uniforms.uLampStrength.value=lampStrength(mission);
     uniforms.uTime.value=time;uniforms.uLidar.value=mission.lidar&&!preview&&!cinematic?1:0;uniforms.uPreview.value=0;
     const location=nearestRoute(player),surface=cinematic||preview?1:exteriorExposure(player.y,colonyDistance(location.s,location.branch));exposure=surface;surfaceHemi.intensity=surface*.9;surfaceSun.intensity=surface*1.3;
     scene.background.setRGB(.002+surface*.003,.005+surface*.004,.004+surface*.012);

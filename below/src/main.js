@@ -72,6 +72,10 @@ function end(outcome){
 function event(type){
   if(type==='airframe-hit'){
     say('I felt that. Light’s still working.',4);
+  } else if(type==='lamp-flicker'){
+    say('Light’s going… hold on.',4);
+  } else if(type==='lamp-back'){
+    say('It’s back. Won’t last.',4);
   } else if(type==='lamp-failed'){
     alert('USE THE FLARES (F) FOR TEMPORARY LIGHT',10);say('Lamp’s dead. Use the flares (F) for temporary light.',8);
   } else if(type==='lidar-processing'){
@@ -153,8 +157,8 @@ function updateHUD(){
   $('speed').textContent=`${velocity.length().toFixed(1)} m/s`;
   $('integrity').innerHTML=`${mission.integrity}<small> / ${MAX_HP} HP</small>`;$('hull-bar').style.width=`${mission.integrity/MAX_HP*100}%`;$('hull-bar').style.background=mission.integrity<=3?'var(--red)':'';
   $('sensor-mode').textContent=cinematic?'SURFACE / OPTICAL':mission.lidar?['LIDAR / DEPTH','LIDAR / PHOSPHOR','LIDAR / MOTION'][mission.lidarMode]:'OPTICAL';
-  $('sensor-status').textContent=cinematic?'OBSERVATION FEED':mission.lidar?'Q / WIDE SURVEY PULSE':mission.lampState==='working'?'WORK LIGHT / NOMINAL':'WORK LIGHT LOST / FLARES F';
-  $('sensor-light').style.background=mission.lampState!=='working'&&!mission.lidar?'var(--red)':'';
+  $('sensor-status').textContent=cinematic?'OBSERVATION FEED':mission.lidar?'Q / WIDE SURVEY PULSE':mission.lampState==='working'?'WORK LIGHT / NOMINAL':mission.lampState==='flicker'?'WORK LIGHT / UNSTABLE':mission.lampState==='back'?'WORK LIGHT / WEAK':'WORK LIGHT LOST / FLARES F';
+  $('sensor-light').style.background=mission.lampState==='failed'&&!mission.lidar?'var(--red)':'';
   $('lidar-options').hidden=!mission.lidarAvailable||cinematic;
   $('scan-key').hidden=!mission.lidarAvailable;
   for(const button of document.querySelectorAll('[data-view]'))button.classList.toggle('active',button.dataset.view===(mission.lidar?String(mission.lidarMode):'optical'));
