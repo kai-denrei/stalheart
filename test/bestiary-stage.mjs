@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { createBestiaryStage } from '../src/fx/bestiary-stage.js';
 import { bestiaryRoster } from '../src/domain/bestiary.js';
 import { ENTRIES, BESTIARY_STAGE } from '../src/content/bestiary.js';
-import { PEARL_TIERS, PEARL_OF, PEARL_GAIT } from '../src/content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_OF, PEARL_GAIT, PEARL_PACE } from '../src/content/pearl-enemies.js';
 
 const roster = bestiaryRoster({ entries: ENTRIES, tiers: PEARL_TIERS, of: PEARL_OF });
 const B = BESTIARY_STAGE.body, L = BESTIARY_STAGE.lure;
@@ -41,6 +41,7 @@ function watch(stage, id, secs = 20) {
 }
 const lines = [];
 for (const e of roster.filter((x) => x.kind === 'tier')) {
+  if (PEARL_PACE[e.id]?.glide) continue;   // a gliding blob (the small tiers, 2026-10-16) hops never: nothing to stretch
   const slow = watch(BESTIARY_STAGE, e.id), game = watch(GAME, e.id);
   lines.push(`${e.id} ${game.mean.toFixed(2)} -> ${slow.mean.toFixed(2)} body lengths a hop, ${game.hops.length} -> ${slow.hops.length} hops, extending ${game.extend.toFixed(1)} -> ${slow.extend.toFixed(1)} s`);
   assert(slow.mean > 1.2, `${e.id}: the stalk stretches more than a body length a hop on average (${slow.mean.toFixed(2)})`);

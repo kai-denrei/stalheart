@@ -196,12 +196,20 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     h.op = opacityOf(opacity);
     // the lead and the leash change only with the record's speed
     if (speed !== h.speedAt) { h.speed = h.speedAt = speed; h.ahead = speed * pearlLead({ cycle: c.cycleDuration, pace: h.pace }, tune); h.leash = pearlLeash({ r: h.r, speed, hop: c.reach * h.r }, follow, tune); }
-    const ahead = h.ahead, leash = h.leash, hop = c.reach * h.r;
+    const ahead = h.ahead, leash = h.leash, hop = c.reach * h.r, glide = !!pace?.[p.id]?.glide;
     if (gait && h.slots.length > 1) fold(h, x, z);
     const ang = Math.atan2(h.dz, h.dx);
     let replaced = false, worst = 0;
     for (const slot of h.slots) {
       const i = slot.i, k = i * 3, s = slot.f ?? slot.s, [px, pz] = at(x, z, h.dx, h.dz, s, P), [tx, tz] = at(x + h.dx * ahead, z + h.dz * ahead, h.dx, h.dz, s, T);
+      if (glide) {
+        // THE BLOB (owner, 2026-10-16: "get rid of the appendages for the little ones for now, just have them be swarms of amoeba like blobs that move fast";
+        // PEARL_PACE[tier].glide): no hop and no leash: the body slides onto its record's point, eased over gait.glideSeconds, its stalk at rest; a small
+        // body is no longer held to a radius a second, so the small tiers can be the fast ones
+        const f = dt > 0 ? 1 - Math.exp(-dt / (gait?.glideSeconds ?? 0.12)) : 1, gx = sw.offset[k] + (px - sw.offset[k]) * f, gz = sw.offset[k + 2] + (pz - sw.offset[k + 2]) * f;
+        sw.scale[i] = (h.r / c.r0) * grow; sw.place(i, gx, gz, ang); sw.setTarget(i, gx, gz); sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; sw.life[i * 4 + 3] = tint;
+        continue;
+      }
       const pos = sw.positionInto(i, POS), lag = Math.min(Math.hypot(pos[0] - px, pos[2] - pz), Math.hypot(sw.anchor[k] - px, sw.anchor[k + 2] - pz));
       // round four: a hit's shrink (and the regenerators' knitting) eased over gait.shrinkSeconds, not taken in one frame (a shape pop)
       const size = (h.r / c.r0) * grow;
@@ -346,7 +354,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   }
 
   // round four: the record's pace factor (the enemy loop's walk x this): it waits for its body (1 without the gait)
-  const paceOf = (h) => (h && !h.dead && gait ? h.wait ?? 1 : 1);
+  const paceOf = (h) => (h && !h.dead && gait && !pace?.[h.p.id]?.glide ? h.wait ?? 1 : 1);   // a gliding blob never holds its record back
 
   function kill(h, imp = null) {
     if (!h || h.dead) return;

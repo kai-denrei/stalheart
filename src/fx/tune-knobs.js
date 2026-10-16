@@ -5,7 +5,7 @@
 // (src/fx/sector-run.js), `tune.hull` (src/td-tab.js playerHit, src/fx/hull-drive.js the ramp), `tune.lure` (the lure directive), `tune.orbit`
 // (src/fx/gunship-rig.js), `params.enemySpeed` (every walk) and SENTRY_TUNE's servo and tolerance (a plain object, written in place).
 //   ctx: { tune, params, enemies, sector: { n, name, pulse, breath } | null, seat: 'gunship' | '<mount key>' | null, arena: boolean }
-import { PEARL_OF, PEARL_PACE, PEARL_BODY, PEARL_TIERS } from '../content/pearl-enemies.js';
+import { PEARL_OF, PEARL_PACE, PEARL_TIERS, pearlScaleOf } from '../content/pearl-enemies.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
 import { PEARL_BODIES } from './creature-enemies.js';   /* a tier's drawn radius in metres, for the size knob's readout */
 import { HULL_ARMOUR, TANK_DRIVE, LURE } from '../content/tank.js';
@@ -25,10 +25,10 @@ export function tuneKnobs(ctx) {
   for (const { key, count } of screen) {
     const [f, t] = key.split(':'), pearl = f === 'pearl', tier = pearl ? PEARL_TIERS.find((x) => x.id === t) : CREATURE_TIERS[f]?.[t];
     if (!tier) continue;
-    const speedBase = pearl ? (PEARL_PACE[t]?.speed ?? 1) : tier.speed, sizeBase = pearl ? (tier.cored ? PEARL_BODY.scale.cored : PEARL_BODY.scale.soft) : tier.r0;
+    const speedBase = pearl ? (PEARL_PACE[t]?.speed ?? 1) : tier.speed, sizeBase = pearl ? pearlScaleOf(t) : tier.r0;
     enemies.push(
       k({ id: `${key}.speed`, path: pearl ? `PEARL_PACE.${t}.speed` : `CREATURE_TIERS.${f}.${t}.speed`, label: `${tierLabel(key)} ×${count} · walk ×`, base: speedBase, value: val(`${key}.speed`) }),
-      k({ id: `${key}.size`, path: pearl ? `PEARL_BODY.scale.${tier.cored ? 'cored' : 'soft'}` : `CREATURE_TIERS.${f}.${t}.r0`, label: `${tierLabel(key)} · size ×`, base: sizeBase, value: val(`${key}.size`), min: 0.1, max: 4, metres: pearl ? pearlRadius(t) : tier.r0 }),
+      k({ id: `${key}.size`, path: pearl ? `PEARL_BODY.scale.${t}` : `CREATURE_TIERS.${f}.${t}.r0`, label: `${tierLabel(key)} · size ×`, base: sizeBase, value: val(`${key}.size`), min: 0.1, max: 4, metres: pearl ? pearlRadius(t) : tier.r0 }),
       k({ id: `${key}.hp`, path: pearl ? `ENEMY_SPEC[${t} types].hp` : `CREATURE_TIERS.${f}.${t}.hp`, label: `${tierLabel(key)} · hit points ×`, base: pearl ? 1 : tier.hp, value: val(`${key}.hp`), min: 0.25, max: 6 }),
     );
   }

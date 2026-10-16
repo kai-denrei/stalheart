@@ -55,7 +55,10 @@ export const PEARL_OF = freeze({
 // presence (the knot; still its own record size for hits).
 // SOFT SMALLER, CORED BIGGER (owner, 2026-10-16: "we could have the soft-enemies smaller than now, but faster, and the hard-core ones slightly bigger"):
 // `scale` multiplies a soft or a cored tier's record size (src/fx/enemy-step.js) and with it the body's r0, the touch reach and the reticle's box together.
-export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { soft: 0.85, cored: 1.12 } });
+// BY SIZE (owner, 2026-10-16: "decision: we split them by size; cutis-soft ivory 0.4, lemon 0.6, blue 0.8, purple 1.2 for now, some sense of differences in sizes
+// and speed"): `scale` by tier id; the other cored tiers keep 1.12
+export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.4, yellow: 0.6, blue: 0.8, orange: 1.12, green: 1.12, purple: 1.2, brown: 1.12, black: 1.12 } });
+export const pearlScaleOf = (tier) => PEARL_BODY.scale[tier] ?? 1;
 
 // HOW A BODY KEEPS UP WITH ITS RECORD (src/domain/pearl-bodies.js; CREATURE_FOLLOW's catch-up and leash over these). The record walks at its type's speed
 // (11-23 m/s at the sector's pace) and the Pearl bodies are 2-7 m: the set's hop (2.5-6 s) would fall behind at once. So each body's hop cycle is scaled
@@ -117,9 +120,12 @@ export const PEARL_FOLLOW = freeze({
 // proportion to the record's walk (pearlLead), so the hull and the guns meet the body before the record: the ram, the reticle and the lance now
 // test the BODY's point (src/fx/creature-bodies.js point, src/fx/lance-follow.js bodyAt), not the record's, so the white's cap at 1 is safe. The
 // bias is WALK_BIAS (src/content/story-defaults.js)
-// 2026-10-16 (the owner's note 8): the soft tiers walk `speed` 1.15 (the hard cores 1) and their caps are over the SMALLER body (PEARL_BODY.scale.soft) so the
-// cap in metres a second stays where the motion audit (test/pearl-motion.mjs) passed it: white 1.18 radii (= 1 of the old body), yellow 1, blue 1 at 1.08 (its hops' acceleration sat on the audit's bound at 1.06 / 1.15)
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: ['white', 'yellow'].includes(id) ? 1.15 : id === 'blue' ? 1.08 : 1, radii: id === 'white' ? 1.18 : id === 'yellow' ? 1 : id === 'blue' ? 1 : id === 'black' ? 0.8 : 0.9, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
+// 2026-10-16 (the owner's note 8, then the split by size): the small tiers walk faster (`speed`) and their caps in radii a second are over much smaller bodies
+// (PEARL_BODY.scale white 0.4, yellow 0.6, blue 0.8). A hopping body is held to about 1.2 radii a second (test/pearl-motion.mjs: past it the hops pop; bursts too),
+// so a small hopping body is a slow one in metres: THE BLOB (owner: "get rid of the appendages for the little ones for now, just have them be swarms of amoeba
+// like blobs that move fast"): white and yellow `glide` (src/fx/creature-pearl.js: no hop, the body slides onto its record's point, PEARL_GAIT.glideSeconds)
+// with no radii cap, so they walk at their records' full pace (x1.3 and x1.2).
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1 : 1, radii: id === 'white' || id === 'yellow' ? Infinity : id === 'blue' ? 0.9 : id === 'black' ? 0.8 : 0.9, glide: id === 'white' || id === 'yellow', erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a
@@ -139,7 +145,7 @@ export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 
 export const PEARL_GAIT = freeze({
   hop: 2.4, sectorPace: 1.5,
   config: { timing: { coil: 0.1, extend: 0.22, anchor: 0.03, transfer: 0.52, settle: 0.13 }, transferEase: 1, turnInCoil: true, maxTurn: 0.7, headingJitter: 0.3, forkAngle: 0.65, frameStep: true, wobble: 0.15 },
-  keep: 1, seekEfficiency: [1, 0.85, 0.95], smoothing: 0.6, catchUp: 0.5, turnSeconds: 0.5, shrinkSeconds: 0.15,
+  keep: 1, seekEfficiency: [1, 0.85, 0.95], smoothing: 0.6, catchUp: 0.5, turnSeconds: 0.5, shrinkSeconds: 0.15, glideSeconds: 0.12,
   wait: { from: 1, to: 2, min: 0.12 },
   replace: { hops: 4, grace: 2, forceGrace: 10, fade: 0.35 },
 });

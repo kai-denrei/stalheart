@@ -48,7 +48,7 @@ const SPECS = new Map();
 export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY }));
 // round four: every tier paced, its walk capped at PEARL_PACE's `radii` body radii a second (src/domain/pearl-bodies.js pearlSpeed), its bursts and jink off
 const paced = (s, p, b) => (p ? { ...s, speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
-  ...(p.erratic === false ? { erratic: false } : {}), ...(p.jink === false ? { jink: false } : {}) } : s);
+  ...(typeof p.erratic === 'boolean' ? { erratic: p.erratic } : {}), ...(typeof p.jink === 'boolean' ? { jink: p.jink } : {}) } : s);   // the tier's bursts, on or off
 // round four (owner: "white and yellow, should feel very easy to run over"): `lightRam` on a tier PEARL_IMPACT.tiers rams by its body (no run-over drag)
 export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier, ...(PEARL_IMPACT.tiers?.[b.tier]?.ram ? { lightRam: true } : {}) })])));
 export const pearlSpec = (type) => PEARL_SPECS[type] ?? null;

@@ -71,7 +71,8 @@ console.log('PASS the heading turned through the coil (the stalks keep their wor
 {
   for (const [type, b] of Object.entries(PEARL_BODIES)) {
     const s = pearlSpec(type), radii = s.speed * PEARL_GAIT.sectorPace * 10 / b.r0;
-    assert(radii <= PEARL_PACE[b.tier].radii + 1e-9 && radii <= 1.2, `${type} walks ${radii.toFixed(2)} radii a second`);
+    if (PEARL_PACE[b.tier].glide) assert(radii > 1.2, `${type} glides past the gait's ceiling (${radii.toFixed(2)} radii a second)`);   // a blob is not held (2026-10-16)
+    else assert(radii <= PEARL_PACE[b.tier].radii + 1e-9 && radii <= 1.2, `${type} walks ${radii.toFixed(2)} radii a second`);
     assert.equal(s.erratic, false); assert.equal(s.jink, false);
   }
   assert.equal(pearlSpeed({ speed: 1, r0: 2, sectorPace: 1.5, metresPerCell: 10 }), 1, 'no cap without radii');
@@ -118,8 +119,9 @@ function follow(gait, secs = 12, per = 3) {
   const sum = (o, k) => Object.values(o.motion).reduce((a, m) => a + m[k], 0);
   assert(sum(before, 'pops') > 100, `the audit sees the round-three follow's jumps (${sum(before, 'pops')} pops)`);
   for (const [id, m] of Object.entries(after.motion)) {
-    assert(m.frames > 300 && m.hops > 3, `${id}: watched (${m.frames} frames, ${m.hops} hops)`);
     assert.equal(m.pops, 0, `${id}: no centre pop (${JSON.stringify(m)})`); assert.equal(m.shapePops, 0, `${id}: no shape pop (${JSON.stringify(m)})`);
+    if (PEARL_PACE[id].glide) { assert.equal(m.hops, 0, `${id}: a gliding blob hops never (${m.hops})`); continue; }   // the blobs (2026-10-16): no hops, no pops
+    assert(m.frames > 300 && m.hops > 3, `${id}: watched (${m.frames} frames, ${m.hops} hops)`);
     assert(m.speed[1] < 9 && m.accel[0] < 80 && m.jerk[0] < 3000, `${id}: slow and smooth (speed p95 ${m.speed[1]} r/s, accel p95 ${m.accel[0]}, jerk p95 ${m.jerk[0]})`);
     assert(m.cycle > 1.5 && m.moving > 0.45, `${id}: long hops, moving half the time (${m.cycle} s, ${m.moving})`);
     assert.equal(after.stats[id].replaced, 0, `${id}: never put back`);

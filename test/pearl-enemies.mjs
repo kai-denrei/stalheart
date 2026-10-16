@@ -48,7 +48,7 @@ assert.equal(new Set(Object.values(PEARL_OF)).size, 8, 'every tier draws some ty
 const bodies = pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY });
 assert.deepEqual(bodies, PEARL_BODIES);
 for (const [type, b] of Object.entries(bodies)) {
-  close(b.r0, ENEMY_SPEC[type].size * 5.6 * (type === 'knot' ? 1.5 : 1) * (b.cored ? PEARL_BODY.scale.cored : PEARL_BODY.scale.soft), 1e-3, `${type}: r0 = size x 5.6 m${type === 'knot' ? ' x 1.5' : ''} x the tier's scale`);
+  close(b.r0, ENEMY_SPEC[type].size * 5.6 * (type === 'knot' ? 1.5 : 1) * (PEARL_BODY.scale[b.tier] ?? 1), 1e-3, `${type}: r0 = size x 5.6 m${type === 'knot' ? ' x 1.5' : ''} x the tier's scale`);
   assert.equal(b.rammable, !b.cored);
   const s = pearlSpec(type), slow = PEARL_PACE[b.tier];
   // round four (owner, 2026-10-13: "slower and organic feeling is a must"): every tier is paced, its walk capped at its PEARL_PACE radii of its body a
@@ -60,7 +60,7 @@ for (const [type, b] of Object.entries(bodies)) {
     else if (k === 'erratic' || k === 'jink') assert.equal(s[k], false, `${type}: no ${k}`);
     else assert.equal(s[k], v, `${type}: the spec keeps ${k}`);
   }
-  assert(s.speed <= ENEMY_SPEC[type].speed + 1e-12 && s.speed * PEARL_GAIT.sectorPace * 10 / b.r0 <= slow.radii + 1e-9, `${type}: at most ${slow.radii} radii a second`);
+  assert(s.speed <= ENEMY_SPEC[type].speed * (slow.speed ?? 1) + 1e-12 && s.speed * PEARL_GAIT.sectorPace * 10 / b.r0 <= slow.radii + 1e-9, `${type}: at most ${slow.radii} radii a second, its tier's speed over the spec's`);
   assert.equal(s.erratic, false, `${type}: creeps steadily`);
   assert.equal(s.body, 'pearl'); assert.equal(s.pearl, b.tier);
 }
@@ -125,7 +125,7 @@ console.log('PASS the core inside its padded shell for every cored tier at the g
 
 // ---- the family ----
 {
-  const parent = new THREE.Group(), fam = createPearlFamily({ parent, tiers: bodies, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW });
+  const parent = new THREE.Group(), fam = createPearlFamily({ parent, tiers: bodies, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, pace: PEARL_PACE });   // the pace table: the white tier glides (2026-10-16)
   fam.setPlanet(R);
   const a = fam.add('amoeba', { x: 0, z: 0, angle: 0, speed: 17 }), b = fam.add('phage', { x: 30, z: 0, angle: 0, speed: 11 }), c = fam.add('rolling', { x: -30, z: 5, speed: 10 });
   const va = fam.view(a), vb = fam.view(b), vc = fam.view(c);

@@ -20,7 +20,7 @@ import { tierKeyOf } from '../domain/tune.js';   /* the tune panel's per-tier kn
 import { sub3, add3, scale3, dot3, norm3, dist3, tangentBasis } from '../vec3.js';
 import { makeDebris, makeDotBurst, makeDotEnemy } from '../units.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from '../enemyspec.js';
-import { PEARL_OF, PEARL_TIERS, PEARL_BODY } from '../content/pearl-enemies.js';   /* a blob at the lip takes the tier's skin; a soft tier's record smaller, a cored one's bigger (2026-10-16) */
+import { PEARL_OF, PEARL_TIERS, pearlScaleOf } from '../content/pearl-enemies.js';   /* a blob at the lip takes the tier's skin; a soft tier's record smaller, a cored one's bigger (2026-10-16) */
 import { waveReset as shieldWaveReset, shoveVec, shoveMag } from '../shield.js';
 import { TOWER_ORDER } from '../towers.js';
 import { showContact } from './contact-card.js';
@@ -231,7 +231,7 @@ export function createEnemyStep(host) {
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const tierKey = tierKeyOf({ type, tier: entry.tier }, PEARL_OF), tk = host.params.tune?.tier?.[tierKey];   // the tune panel's knobs for this tier (src/fx/tune-knobs.js)
-      const size = spec.size * 0.7 * (spec.body === 'pearl' ? (PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.cored ? PEARL_BODY.scale.cored : PEARL_BODY.scale.soft) : 1) * (tk?.size ?? 1);   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
+      const size = spec.size * 0.7 * (spec.body === 'pearl' ? pearlScaleOf(PEARL_OF[type]) : 1) * (tk?.size ?? 1);   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
