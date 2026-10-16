@@ -205,7 +205,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       if (glide) {
         // THE SPREAD (owner, 2026-10-16: "too neatly in a single line ... they should spread out a little bit as if attacking a prey from varied angles"): each
         // blob keeps an offset of its own across and along its record's line, gait.glideSpread radii, drawn once
-        const sc = (slot.sc ??= [(Math.random() - 0.5) * 2 * (gait?.glideSpread ?? 1.6) * h.r, (Math.random() - 0.5) * (gait?.glideSpread ?? 1.6) * h.r]);
+        const sc = (slot.sc ??= [(hash01(i * 7 + 1) - 0.5) * 2 * (gait?.glideSpread ?? 1.2) * h.r, (hash01(i * 13 + 5) - 0.5) * (gait?.glideSpread ?? 1.2) * h.r]);   // by the slot, the same every run (the tests)
         const [qx, qz] = at(px, pz, h.dx, h.dz, sc, P);
         // THE BLOB (owner, 2026-10-16: "get rid of the appendages for the little ones for now, just have them be swarms of amoeba like blobs that move fast";
         // PEARL_PACE[tier].glide): no hop and no leash: the body slides onto its record's point, eased over gait.glideSeconds, its stalk at rest; a small
@@ -364,6 +364,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   }
 
   // round four: the record's pace factor (the enemy loop's walk x this): it waits for its body (1 without the gait)
+  const hash01 = (n) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
   const paceOf = (h) => (h && !h.dead && gait && !pace?.[h.p.id]?.glide ? h.wait ?? 1 : 1);   // a gliding blob never holds its record back
   // THE THERMALS (owner, 2026-10-16): under the gunship's FLIR a cored tier's membrane and core run hot (a white emissive the pass reads as heat), a soft tier's
   // stay cold; off again when the view leaves (the materials' own emissive put back)

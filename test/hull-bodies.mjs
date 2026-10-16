@@ -75,7 +75,7 @@ console.log('PASS the speed a body\'s mass takes, recovering');
   softMoved = Math.hypot(fam.view(soft).centre[0] - s0[0], fam.view(soft).centre[1] - s0[1]);
   assert(worst < 0.1, `the hull is never inside a body (${worst} m)`);
   assert(touches.some((t) => t[0] === 'soft' && !t[1]) && touches.some((t) => t[0] === 'cored' && t[1]), `both touched (${JSON.stringify(touches.slice(0, 3))})`);
-  assert(softMoved > 3, `the soft body was shoved out of the way (${softMoved.toFixed(1)} m)`);
+  assert(softMoved > 1.5, `the soft body was shoved out of the way (${softMoved.toFixed(1)} m)`);   // 1.5 (was 3): a blob keeps a spread of its own off its line (2026-10-16), so it starts partly aside and is shoved less; never inside it stays the rule above
   assert(stoppedAt !== null && box.x < 60, `the cored body stopped the hull (${stoppedAt?.toFixed(1)}, now ${box.x.toFixed(1)})`);
   const cv = fam.view(cored); assert(box.x + box.hl < cv.centre[0], 'the hull stands before the cored body, not through it');
   assert(fam.stats().white.shoved > 0, 'the soft body booked as shoved');

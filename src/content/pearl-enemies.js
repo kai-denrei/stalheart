@@ -150,7 +150,7 @@ export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 
 export const PEARL_GAIT = freeze({
   hop: 2.4, sectorPace: 1.5,
   config: { timing: { coil: 0.1, extend: 0.22, anchor: 0.03, transfer: 0.52, settle: 0.13 }, transferEase: 1, turnInCoil: true, maxTurn: 0.7, headingJitter: 0.3, forkAngle: 0.65, frameStep: true, wobble: 0.15 },
-  keep: 1, seekEfficiency: [1, 0.85, 0.95], smoothing: 0.6, catchUp: 0.5, turnSeconds: 0.5, shrinkSeconds: 0.15, glideSeconds: 0.12, glideShove: 6, glideSpread: 1.6,
+  keep: 1, seekEfficiency: [1, 0.85, 0.95], smoothing: 0.6, catchUp: 0.5, turnSeconds: 0.5, shrinkSeconds: 0.15, glideSeconds: 0.12, glideShove: 6, glideSpread: 1.2,
   wait: { from: 1, to: 2, min: 0.12 },
   replace: { hops: 4, grace: 2, forceGrace: 10, fade: 0.35 },
 });
