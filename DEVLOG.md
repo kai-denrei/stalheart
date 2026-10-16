@@ -150,6 +150,7 @@ Evidence:
 
 - test/nav-content.mjs (the jumps, the labs as routes), the cave's 33 tests (the bow, the flare into the chamber), test/arc.mjs; --nav and --colony after
 - a screencast still of the launch for the lights (artifacts/browser/colony-*)
+- a labs smoke (the scratchpad's labs-smoke.mjs: every lab in the drawer opened headless once): all fourteen load with no page error, no console error and no failed request; --story-world green end to end after its stale 'planet pulled back' expectation (the shot cut on 2026-10-07) was corrected
 
 ## 2026-10-16 — ENEMY SPEED x, a playtest knob over every record's walk (owner, 2026-10-16): params.enemySpeed on the VARS page (0.25 to 4), ?speed=N at boot, the harness reads it
 
