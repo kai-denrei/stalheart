@@ -19,7 +19,7 @@ const ROWS = [
   ['white', 'Cutis-Soft Ivory', 0xf2efe5, 0x90979d, 0.12, 1, 6, 0.35, 0, 0, 15],
   ['yellow', 'Cutis-Soft Lemon', 0xe6cc53, 0x8c6021, 0.14, 1, 5.5, 0.6, 0, 0, 25],
   ['orange', 'Cutis-Core Pumpkin', 0xeb883e, 0x853b20, 0.16, 2, 5, 1, 3, 0, 40],
-  ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.4, 0, 0, 60],
+  ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.8, 0, 0, 60],   // aggression 1.8 (was 1.4; owner, 2026-10-16: "more aggressive")
   ['green', 'Cutis-Core Emerald', 0x76a76a, 0xc7e8a4, 0.21, 2, 4, 1.8, 3, 8, 100],
   ['purple', 'Cutis-Core Amethyst', 0xa879c5, 0xdfa9ff, 0.24, 2, 5, 2.3, 3, 14, 160],
   ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 3, 4.5, 3, 3, 22, 240],
@@ -150,7 +150,7 @@ export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 
 export const PEARL_GAIT = freeze({
   hop: 2.4, sectorPace: 1.5,
   config: { timing: { coil: 0.1, extend: 0.22, anchor: 0.03, transfer: 0.52, settle: 0.13 }, transferEase: 1, turnInCoil: true, maxTurn: 0.7, headingJitter: 0.3, forkAngle: 0.65, frameStep: true, wobble: 0.15 },
-  keep: 1, seekEfficiency: [1, 0.85, 0.95], smoothing: 0.6, catchUp: 0.5, turnSeconds: 0.5, shrinkSeconds: 0.15, glideSeconds: 0.12, glideShove: 6,
+  keep: 1, seekEfficiency: [1, 0.85, 0.95], smoothing: 0.6, catchUp: 0.5, turnSeconds: 0.5, shrinkSeconds: 0.15, glideSeconds: 0.12, glideShove: 6, glideSpread: 1.6,
   wait: { from: 1, to: 2, min: 0.12 },
   replace: { hops: 4, grace: 2, forceGrace: 10, fade: 0.35 },
 });

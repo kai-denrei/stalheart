@@ -63,7 +63,9 @@ export function createBossRun(c) {
     if (!c.autoMode() || c.params().directive !== 'lure') { c.params().directive = 'lure'; c.setAutoMode(true); }
     dock();
     const t = c.t();
-    if (!seated && !c.pilotMode() && t - retryAt >= RETRY) { retryAt = t; seatButton()?.click(); }
+    // THE SEAT OPENS OVER THE ARENA (owner, 2026-10-16: "after picking, the gunship just shows empty grounds below"): the strip's button is clicked only once the
+    // gunship's track is within ARENA_SEAT cells of the arena's cell (its own flight out takes half a minute); until then Isao drives and the meter reads
+    if (!seated && !c.pilotMode() && t - retryAt >= RETRY && (c.gunshipNearArena?.() ?? true)) { retryAt = t; seatButton()?.click(); }
     // A LONG SESSION (owner, 2026-10-16: "a longer gunship session"): a pass that ends is called again at once, so the gunship keeps coming back over the arena until the sector ends
     if (t - refillAt >= REFILL && c.station && !c.station()) { refillAt = t; c.fillCall(); seated = false; }
     if (!seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') seated = true;

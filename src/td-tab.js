@@ -58,7 +58,7 @@ import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { groundAt } from './fx/lance-follow.js';   /* a body's drawn point (2026-10-16: the seekers steer at it) */ import { createEmergeBlobs } from './fx/emerge-blob.js';
+import { ARENA } from './content/sectors.js';   /* the arena's seat distance (2026-10-16) */ import { groundAt } from './fx/lance-follow.js';   /* a body's drawn point (2026-10-16: the seekers steer at it) */ import { createEmergeBlobs } from './fx/emerge-blob.js';
 import { createTunePanel } from './fx/tune-panel.js'; import { tuneKnobs, applyTune } from './fx/tune-knobs.js'; import { recordTune } from './platform/tune-store.js'; import { screenTiers } from './domain/tune.js'; import { PEARL_OF } from './content/pearl-enemies.js';   /* THE TUNE PANEL (X; owner, 2026-10-16) */
 import { createCanyonRun } from './fx/canyon-run.js'; import { createHullConsole } from './fx/hull-console.js'; import { createBossRun } from './fx/boss-run.js'; import { createDescentHost } from './fx/descent-host.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
@@ -1351,7 +1351,7 @@ export function initTdTab(root) {
     }
   }
 
-  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ hold: () => paused, wait: () => shotId() === 'takeControl' });
+  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ seconds: 1.0, far: 1.8, hold: () => paused, wait: () => shotId() === 'takeControl' });   /* shorter (owner, 2026-10-16: "the time between announcing SOL and getting control is too long"; was 1.4 / 3.2) */
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -5393,7 +5393,8 @@ export function initTdTab(root) {
     story: () => story, storyViews: () => storyViews, params: () => params, player: () => player, playerHP: () => playerHP, autoMode: () => autoMode, isao: () => isao, cellSide: () => cellSide, t: () => t, pilotMode: () => pilotMode,
     setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL),
     shots: () => pilot?.state?.shots ?? 0, station: () => !!gunshipRig.probe().station, arenaField: () => (story?.arena?.cell >= 0 ? (story.arenaField ??= bfsDist(graph.adj, [story.arena.cell], (ci) => dungeon.tags[ci] !== BLOCKED)) : null),
-    dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; } });   /* THE ARENA (2026-10-16): the lure's field and its dangers */
+    dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; },
+    gunshipNearArena: () => { const a = story?.arena?.cell, p = gunshipRig.probe().track?.pos; return !(a >= 0) || !p || dist3(p, graph.centers[a]) < ARENA.seatCells * cellSide; } });   /* THE ARENA (2026-10-16): the lure's field and its dangers; the seat once the gunship is over the arena */
   // THE DESCENT (src/fx/descent-host.js, 2026-10-16): the cave game in an iframe over the paused game after the final sector, its outcome back
   // the panel's values applied: hits a hull moves this hull's count with it; a tier's size and hit points reach the ones on screen (owner, 2026-10-16)
   function applyTunePanel(values) {

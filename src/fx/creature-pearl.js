@@ -203,15 +203,19 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     for (const slot of h.slots) {
       const i = slot.i, k = i * 3, s = slot.f ?? slot.s, [px, pz] = at(x, z, h.dx, h.dz, s, P), [tx, tz] = at(x + h.dx * ahead, z + h.dz * ahead, h.dx, h.dz, s, T);
       if (glide) {
+        // THE SPREAD (owner, 2026-10-16: "too neatly in a single line ... they should spread out a little bit as if attacking a prey from varied angles"): each
+        // blob keeps an offset of its own across and along its record's line, gait.glideSpread radii, drawn once
+        const sc = (slot.sc ??= [(Math.random() - 0.5) * 2 * (gait?.glideSpread ?? 1.6) * h.r, (Math.random() - 0.5) * (gait?.glideSpread ?? 1.6) * h.r]);
+        const [qx, qz] = at(px, pz, h.dx, h.dz, sc, P);
         // THE BLOB (owner, 2026-10-16: "get rid of the appendages for the little ones for now, just have them be swarms of amoeba like blobs that move fast";
         // PEARL_PACE[tier].glide): no hop and no leash: the body slides onto its record's point, eased over gait.glideSeconds, its stalk at rest; a small
         // body is no longer held to a radius a second, so the small tiers can be the fast ones
         // what the world moved it by since the last glide (the hull's shove, a knock) is kept, and let go only as its record walks on (gait.glideShove metres
         // for a fall of e): a standing blob stays where it was pushed; a walking one is back on its line in a few metres
         if (slot.gx != null) { slot.sx = (slot.sx ?? 0) + (sw.offset[k] - slot.gx); slot.sz = (slot.sz ?? 0) + (sw.offset[k + 2] - slot.gz); }
-        const walked = slot.px == null ? 0 : Math.hypot(px - slot.px, pz - slot.pz), keep = Math.exp(-walked / (gait?.glideShove ?? 6)); slot.px = px; slot.pz = pz;
+        const walked = slot.px == null ? 0 : Math.hypot(qx - slot.px, qz - slot.pz), keep = Math.exp(-walked / (gait?.glideShove ?? 6)); slot.px = qx; slot.pz = qz;
         slot.sx = (slot.sx ?? 0) * keep; slot.sz = (slot.sz ?? 0) * keep;
-        const f = dt > 0 ? 1 - Math.exp(-dt / (gait?.glideSeconds ?? 0.12)) : 1, gx = sw.offset[k] + (px + slot.sx - sw.offset[k]) * f, gz = sw.offset[k + 2] + (pz + slot.sz - sw.offset[k + 2]) * f;
+        const f = dt > 0 ? 1 - Math.exp(-dt / (gait?.glideSeconds ?? 0.12)) : 1, gx = sw.offset[k] + (qx + slot.sx - sw.offset[k]) * f, gz = sw.offset[k + 2] + (qz + slot.sz - sw.offset[k + 2]) * f;
         sw.scale[i] = (h.r / c.r0) * grow; sw.place(i, gx, gz, ang); sw.setTarget(i, sw.offset[k], sw.offset[k + 2]); sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; sw.life[i * 4 + 3] = tint;
         slot.gx = sw.offset[k]; slot.gz = sw.offset[k + 2];
         continue;

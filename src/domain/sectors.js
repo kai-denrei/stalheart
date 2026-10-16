@@ -115,7 +115,7 @@ export function spendBreach(st, id, t) {
 }
 
 // no breach open and none of the sector's enemies alive (guards at expedition sites are the caller's to leave out)
-export const isSecure = (st, aliveSectorEnemies) => st.breaches.every((b) => b.state !== 'open') && aliveSectorEnemies <= 0;
+export const isSecure = (st, aliveSectorEnemies, stragglers = 0) => st.breaches.every((b) => b.state !== 'open') && aliveSectorEnemies <= stragglers;   // stragglers: a few left alive do not hold a sector open (owner, 2026-10-16)
 
 export function summary(st) {
   const sum = (f) => st.breaches.reduce((s, b) => s + f(b), 0);

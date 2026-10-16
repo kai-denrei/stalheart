@@ -209,7 +209,7 @@ export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scrambl
 export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, rimCells: 10 });
 // THE ARENA'S PLACE (owner, 2026-10-16: "a giant opening very far from the base"; src/domain/arena.js, src/platform/story-world.js story.arena): the
 // farthest reachable cell outside the walls within `farHops` of the farthest; its opening `craterCells` wide (the sinkhole scaled, src/game-breaches.js)
-export const ARENA = freeze({ farHops: 4, craterCells: 3 });
+export const ARENA = freeze({ farHops: 4, craterCells: 3, seatCells: 14 });   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)
@@ -229,7 +229,7 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // firstGrace: the first sector's wait after the story is ready for it, unless a part comes home first (src/domain/sectors.js
 // firstSectorDue): the expedition Isao has just sent the tank on
 // `stall`: seconds a fighting sector may go without a kill, a wave or a breach opening before it moves itself on (2026-10-05)
-export const SECTOR_TIMING = freeze({ stall: 20, briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90 });   // aliveBudget: the campaign board's clock guard (pulseFits); the story's sectors are sized by their shape (2026-10-15)
+export const SECTOR_TIMING = freeze({ stragglers: 20, stall: 20, briefSeconds: 6,   /* stragglers: a sector is SECURE with up to this many bodies still alive (owner, 2026-10-16: "a sector could be closed while a few stragglers remain") */ staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90 });   // aliveBudget: the campaign board's clock guard (pulseFits); the story's sectors are sized by their shape (2026-10-15)
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

@@ -415,7 +415,7 @@ export function createSectorRun(h) {
       if (b.side === 'arena') retarget(); else { h.collapse(sp); retarget(); }   // THE NEST'S MOUTH STAYS OPEN (2026-10-16): the arena's hole is spent, not sealed
       h.callout(`BREACH ${b.id} HELD · +${bonus.kg} KG`, 'co-victory-sub'); h.hud();
     }
-    if (!pending.length && !h.hold?.() && isSecure(sector, stalled() ? 0 : aliveSectorEnemies())) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
+    if (!pending.length && !h.hold?.() && isSecure(sector, stalled() ? 0 : aliveSectorEnemies(), SECTOR_TIMING.stragglers ?? 0)) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
       phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t;
       h.callout('SECTOR SECURE', 'co-victory'); h.sfx?.('tank_pickup'); h.hud();
     }
