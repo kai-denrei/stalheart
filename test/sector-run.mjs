@@ -231,6 +231,20 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.ok(!w.run.state().breaches.find((b) => b.side === 'canyon').live, 'the pass over and the beam never on it: the hole collapses on its own');
   assert.equal(w.run.canRelease(), true, 'the swarm on the far side does not hold the base\'s pulses');
 }
+
+// THE QUEUE NEED NOT EMPTY (owner, 2026-10-16: 'sector 3, the canyon: it fails to unlock and give us the SOL control'): the crowd gate on a slow
+// machine holds part of the column in the queue, which only drains as the base kills far away; CANYON.queueWait seconds after the first body is
+// up the pass is laid anyway
+{
+  const w = world({ firstSector: 3 });
+  w.step(2.25);
+  const far = w.opened.find((sp) => sp.ci === 250), pulse = w.run.release(w.t);
+  w.queue.push(...pulse.filter((q) => q.sp === far));   // held at the gate: none of it spawned, all of it queued
+  w.step(CANYON.seatAfter + 1);
+  assert.equal(w.pass, undefined, 'the pass still waits on the queue inside queueWait');
+  w.step(CANYON.queueWait + CANYON.seatAfter);
+  assert.ok(w.pass && w.run.state().canyon.phase === 'pass', `the pass comes queueWait (and seatAfter) seconds after the first body is up, the queue still held (${JSON.stringify(w.run.state().canyon)})`);
+}
 {
   const w = world({ firstSector: 3, canyon: null });
   w.step(0.25);

@@ -362,7 +362,12 @@ export function createSectorRun(h) {
     // held this tick forever), so there is no pass to lay over an empty canyon: the gate side opens now. Sealed by a weapon (the breach
     // closed), not spent: the hole collapses on its own once its one swarm is out, and the pass is laid over the swarm, not the hole
     if (b && b.state === 'closed') { canyon.phase = 'done'; for (const x of sector.breaches) if (x.openAt === Infinity) x.openAt = t; h.hud(); return; }
-    if (!sp || !b || b.wavesReleased < 1 || h.queued(sp)) return;
+    if (!sp || !b || b.wavesReleased < 1) return;
+    canyon.firstAt ??= t;   // the column entered the queue
+    // THE QUEUE NEED NOT EMPTY (owner, 2026-10-16: 'sector 3, the canyon: it fails to unlock and give us the SOL control'): on a slow machine the crowd gate
+    // (src/fx/crowd-gate.js) holds part of the column in the queue until the base kills, far away, so the pass waited on a queue that never drained;
+    // CANYON.queueWait seconds after the first body is up the pass comes anyway, the rest rising under the beam
+    if (h.queued(sp) && t - canyon.firstAt < (CANYON.queueWait ?? Infinity)) return;
     canyon.upAt ??= t;
     if (t - canyon.upAt < CANYON.seatAfter) return;
     canyon.phase = 'pass'; canyon.passAt = t;

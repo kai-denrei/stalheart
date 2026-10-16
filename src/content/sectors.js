@@ -96,6 +96,8 @@ export const SECTOR_STAMPEDE = freeze({ every: 2, cores: 2, core: 'barbed', call
 // have room to walk, and the frame's own guard (CROWD_CAP, 1,500 at best) holds what it cannot draw. THE HOLE STAYS OPEN: the sinkhole the
 // swarm rose from is not collapsed once its swarm is out; it stands open at the deep end for SOL-82's beam to seal (the pass starts over it),
 // and collapses on its own when the pass is over if the beam never touched it (src/fx/sector-run.js). `seatAfter` seconds after the last is up
+// (or `queueWait` seconds after the first, when the crowd gate on a slow machine still holds part of the column in the queue: owner, 2026-10-16,
+// 'sector 3, the canyon: it fails to unlock and give us the SOL control'; the pass is not kept waiting for a queue that only drains as the base kills)
 // the pass is laid over the canyon with `pass` (overhead and energy in seconds, radius in metres, slew m/s), the player in its seat.
 // The base's own breach opens `gateAfter` seconds after the pass's overhead ends (the player is in SOL-82's seat until then).
 // Isao: `brief` as the swarm rises, `passBrief` as SOL-82 comes over it
@@ -105,7 +107,7 @@ export const SECTOR_STAMPEDE = freeze({ every: 2, cores: 2, core: 'barbed', call
 // THE TRENCH IS THE BEAM'S WIDTH (owner, 2026-10-15: "the first SOL manual control, the corridor should be smaller, so the enemies cannot escape to
 // the sides"): `halfWidth` 1.5 (3 cells, 30 m) under a pass whose footprint is `radius` 15 m (was a 5-cell trench under a 12 m footprint: the
 // bodies along either wall stood outside the beam and walked out of the pass). The column stands fifteen to a cell deeper for it.
-export const CANYON = freeze({ length: 56, halfWidth: 1.5, wall: 3, bodies: freeze({ first: 1500, again: 2000 }), fill: 0.6, ladder: 2, spread: 0.8, dens: 0.35, firstPulse: 3, seatAfter: 2,
+export const CANYON = freeze({ length: 56, halfWidth: 1.5, wall: 3, bodies: freeze({ first: 1500, again: 2000 }), fill: 0.6, ladder: 2, spread: 0.8, dens: 0.35, firstPulse: 3, seatAfter: 2, queueWait: 10,
   pass: { overhead: 45, energy: 25, radius: 15, slew: 16, drainedAfter: 3 }, gateAfter: 4, charge: 2, strayHops: 60, brief: 'canyon_rises', passBrief: 'canyon_pass', briefAgain: 'canyon_again' });
 // NO LULL AFTER THE PASS (owner, 2026-10-07: 'after the second SOL manual canyon there is a downtime in action; nothing happens for
 // too long; the enemies who survived the canyon take a long time to reach the base'; measured: the base's own bodies dead a minute
