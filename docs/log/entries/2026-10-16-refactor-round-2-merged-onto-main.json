@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-refactor-round-2-merged-onto-main",
+  "date": "2026-10-16",
+  "type": "change",
+  "status": "accepted",
+  "title": "Refactor round 2 merged onto tonight's main (round 3's first commit): four conflicts, one td-tab hunk folded token-wise, every proven region verbatim in main, the five equivalence proofs re-run green; the ceiling stays 6,400",
+  "context": "Refactor round 3 (branch refactor-round-3 from main dedce7e3, 2026-10-16). Round 2 (branch refactor-round-2, ten commits on pearl-enemies 8bf59188, reviewed 'build on it' on 2026-10-14) was never merged, and main moved 95 commits past its base (sector shapes, the arena, the tune panel, the hull console, the lure). The task: carry round 2 forward by measurement, a merge if tractable, else fresh moves.",
+  "outcome": "Merged (git merge --no-ff refactor-round-2). Conflicts: DEVLOG.md (generated; main's, re-rendered), docs/STATE.md (main's), src/fx/laser-station.js (main's burnAt member beside round 2's leave member, both kept), src/td-tab.js one hunk in the sector run's literal (main's `tune: () => tune` and round 2's `!briefs.queue()` on adjacent lines of one statement; folded token-wise, each side checked to equal the other with only its own change). docs/architecture-budget.json auto-merged round 2's ceiling 6,000 and was set back to main's 6,400: the integrator re-bases at the round's end (the round-2 review entry's re-base is not carried). src/td-tab.js 6,181 -> 5,900 lines (-281), 0 lines over 500 characters. Owners now on main's tree: src/domain/wave-clock.js, src/platform/boot-probes.js, src/fx/brief-queue.js, src/fx/engine-audio.js, src/fx/hull-deploy.js, the laser arsenal's own literal.",
+  "alternatives": [
+    "Re-apply round 2's extractions as fresh moves on main: not needed; the merge left one td-tab conflict and every region round 2 removed is unchanged on main, so its proofs carry over by text identity and were re-run.",
+    "Rebase round 2's ten commits onto main: the same conflicts ten times over and rewritten hashes for reviewed commits; the merge keeps them."
+  ],
+  "evidence": [
+    "round 2's td-tab diff (48 hunks) against main's td-tab: 42 apply with exact context, 6 only miss changed context lines; all 475 removed lines are verbatim in main; the executors' proven original regions (wave clock, boot probes, brief queue, engine audio, hull deploy) are verbatim substrings of main's td-tab (the deploy region modulo round 2's own engineAudio.stop rewrite)",
+    "round 2's proofs re-run against this tree (t1 and t4 guarded to throw unless their original text is verbatim in main): wave clock 2,000 frames 597/597 entries; boot probes 400 runs 39,755 entries; brief queue 200x300 ops 3,017,824 entries; engine audio 100x2,000 ops 280,761 entries; hull deploy 200x600 ops 157,992 entries; all equal",
+    "tools/refactor/undef-diff main -> merged: no new undefined or unused names; node test/host-contracts.mjs: 63 factories; npm test 277 programs, npm run check, npm run build green",
+    "browser suites from snapshot merge-202602: --opening --seats --sectors --grow --laser-game --chapters --pacing --arena --story-world PASS; --defense red at 'no unpiloted tower kill' and --probe red at the tank.shell explosion wait, both identical on main dedce7e3 (snapshot mainbase-203159; the --defense red is d0a7e640's, open since 2026-10-14)"
+  ],
+  "supersedes": []
+}

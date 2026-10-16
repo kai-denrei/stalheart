@@ -77,6 +77,23 @@ Evidence:
 - test/arena.mjs (the floor by the chord, the road through rock against a detour, the look-ahead), test/story-beats.mjs, test/host-contracts.mjs (57 factories), test/sectors.mjs, npm test and npm run check green
 - the screencast captures under the session's scratchpad flash/ (frames f08xx with the spike), the draw instrument's draws.json
 
+## 2026-10-16 — Refactor round 2 merged onto tonight's main (round 3's first commit): four conflicts, one td-tab hunk folded token-wise, every proven region verbatim in main, the five equivalence proofs re-run green; the ceiling stays 6,400
+
+change · accepted · 2026-10-16-refactor-round-2-merged-onto-main
+
+Refactor round 3 (branch refactor-round-3 from main dedce7e3, 2026-10-16). Round 2 (branch refactor-round-2, ten commits on pearl-enemies 8bf59188, reviewed 'build on it' on 2026-10-14) was never merged, and main moved 95 commits past its base (sector shapes, the arena, the tune panel, the hull console, the lure). The task: carry round 2 forward by measurement, a merge if tractable, else fresh moves.
+
+Merged (git merge --no-ff refactor-round-2). Conflicts: DEVLOG.md (generated; main's, re-rendered), docs/STATE.md (main's), src/fx/laser-station.js (main's burnAt member beside round 2's leave member, both kept), src/td-tab.js one hunk in the sector run's literal (main's `tune: () => tune` and round 2's `!briefs.queue()` on adjacent lines of one statement; folded token-wise, each side checked to equal the other with only its own change). docs/architecture-budget.json auto-merged round 2's ceiling 6,000 and was set back to main's 6,400: the integrator re-bases at the round's end (the round-2 review entry's re-base is not carried). src/td-tab.js 6,181 -> 5,900 lines (-281), 0 lines over 500 characters. Owners now on main's tree: src/domain/wave-clock.js, src/platform/boot-probes.js, src/fx/brief-queue.js, src/fx/engine-audio.js, src/fx/hull-deploy.js, the laser arsenal's own literal.
+
+Alternatives: Re-apply round 2's extractions as fresh moves on main: not needed; the merge left one td-tab conflict and every region round 2 removed is unchanged on main, so its proofs carry over by text identity and were re-run.; Rebase round 2's ten commits onto main: the same conflicts ten times over and rewritten hashes for reviewed commits; the merge keeps them.
+
+Evidence:
+
+- round 2's td-tab diff (48 hunks) against main's td-tab: 42 apply with exact context, 6 only miss changed context lines; all 475 removed lines are verbatim in main; the executors' proven original regions (wave clock, boot probes, brief queue, engine audio, hull deploy) are verbatim substrings of main's td-tab (the deploy region modulo round 2's own engineAudio.stop rewrite)
+- round 2's proofs re-run against this tree (t1 and t4 guarded to throw unless their original text is verbatim in main): wave clock 2,000 frames 597/597 entries; boot probes 400 runs 39,755 entries; brief queue 200x300 ops 3,017,824 entries; engine audio 100x2,000 ops 280,761 entries; hull deploy 200x600 ops 157,992 entries; all equal
+- tools/refactor/undef-diff main -> merged: no new undefined or unused names; node test/host-contracts.mjs: 63 factories; npm test 277 programs, npm run check, npm run build green
+- browser suites from snapshot merge-202602: --opening --seats --sectors --grow --laser-game --chapters --pacing --arena --story-world PASS; --defense red at 'no unpiloted tower kill' and --probe red at the tank.shell explosion wait, both identical on main dedce7e3 (snapshot mainbase-203159; the --defense red is d0a7e640's, open since 2026-10-14)
+
 ## 2026-10-16 — The Pearl tiers split by size (ivory 0.4, lemon 0.6, blue 0.8, purple 1.2, black 1.3), the small soft tiers glide as rushing blobs instead of hopping, larger waves that die faster, teams only in huge waves, blue faster
 
 decision · accepted · 2026-10-16-pearl-by-size-and-the-blob
@@ -421,6 +438,22 @@ Evidence:
 - node test/swarm-lab-pearl.mjs (the walk, the touch, the far seat, the drive's blockers, the hull and the camera on the planet, the family's death and re-seat with the count held), node test/pearl-enemies.mjs, npm test (252), npm run check, npm run architecture green
 - src/labs/swarm-pearl.js walkToward, touched, farSeat, laneBoxes, hullFrame, gamePose, simulate, the fps windows; src/labs/swarm-tab.js keyInput and the hull ratios
 
+## 2026-10-14 — Refactor round 2 reviewed: build on it; the ceiling re-based to 6,000; four suites are red on the base itself; the Pearl seam is the next round's subject
+
+decision · accepted · 2026-10-14-refactor-round-2-architecture-review
+
+Architecture review (Fable, per the architecture-review skill) of branch refactor-round-2 (d1726b58..c22d001a, nine commits, plan docs/superpowers/plans/2026-10-13-refactor-round-2.md) against its base pearl-enemies 8bf59188. The round was planned and reviewed by Fable and executed by Opus and Sonnet subagents overnight on the owner's instruction (2026-10-13: 'devise a refactoring plan, implement'). git diff --stat: 25 files, +2,280/-487; src/td-tab.js 6,120 -> 5,839 lines (-281; +32 of them the laser arsenal's and station's literals one member per line, paid back by the four moves), 0 lines over 500 characters throughout; no other file over 1,000 lines changed. npm run architecture: 'Guard: src/td-tab.js: 5839 lines under its ceiling 6000' and '155 pure-layer modules checked; game/lab controller boundaries, the line ceiling, the long-line budget and top-level placement hold.' node test/host-contracts.mjs: 'Host contracts hold for 57 factories' (52 on the base; NESTED is empty, MISSING unchanged at sector-run's beep). npm test 259 programs (251 on the base), npm run check and npm run build green at c22d001a. New owners: src/domain/wave-clock.js (six controller lets as one state with named transitions, the frame keeping its order), src/platform/boot-probes.js, src/fx/brief-queue.js, src/fx/engine-audio.js, src/fx/hull-deploy.js; each with test/<module>.mjs of named assertions; tests added for colony-tick, ending-host and laser-station. Existing owners checked for each concept: the deploy maths stays in src/domain/deploy-path.js (the fx module calls it), the brief content in src/isaobriefs.js, the steer bank in src/domain/steer-ease.js; no parallel implementation. Every move was proven by running the original block text beside the module on the same seeded inputs (the wave clock 20,000 frames / 8,072 log entries equal; the probes 400 runs / 39,755 entries; the briefs 2,988,521 entries; the engine 281,524; the deploy 157,992; two mutants caught per move), by undef-diff, comments-kept and tdz-check, and by the browser suites from frozen snapshots: --sectors --round6 --round7 --pacing --waves --laser-game --laser --seats --finale --opening --chapters --opening-probe green after their tasks. The baseline battery on the untouched base (seventeen suites, scratch baseline/summary.log) is red at four: --defense ('no unpiloted tower kill'), --story ('twelve landmarks at stage 8', 15 found, 15 s in, so its later steps never run), --pearl-story ('no Pearl body jumps in a frame', intermittent per 2026-10-13-pearl-enemies-round-four), --probe (shell-explosion, after mobile-input passes); every one of them fails at the same step with the same values on the branch.
+
+Build on it. The ceiling is re-based by decision from 6,400 to 6,000 (5,839 measured plus a round's slack; the plan said the printed count plus 150, rounded up to the hundred). Findings, most structural first, none repaired here: (1) The four base reds are the owner's to triage before this branch is judged by them: --defense and --story were green at the refactor run's review on 2026-10-07 and are red at 8bf59188 before this round touched anything; a bisect over the pearl-enemies commits is the next step (--story's 'twelve landmarks at stage 8' smells of the Pearl set's bodies or the feed inset counting as landmarks). (2) src/fx/creature-enemies.js (359 lines) is three subjects behind one factory: the creature probe (its ground, garrison, spawnProbe and card), the Pearl set in story mode (dress, thin, pearlState) and the hull-against-bodies contact (hullAt, contactSink, bodyContact, the settle pass, about 80 allocation-free lines over PEARL_IMPACT.contact), plus a `test` bag of about twenty-five harness-only members shipped inside the module; once the Pearl direction settles (hit points, full waves), the contact block wants src/fx/hull-contact.js, the harness bag its own module, and `thin` (a wave-balance rule over queue entries, pure) belongs in src/domain beside spreadPicks. (3) PEARL_SPECS and PEARL_BODIES are content-derived tables built in an fx module from ENEMY_SPEC and the content set; a domain or content owner would let labs and tests import them without three.js. (4) src/fx/engine-audio.js steps the hull's feel and bank inside the audio update, as the controller did; a presentation tick inside an audio module, named and left. (5) Three oddities the executors recorded, pre-existing and unchanged: updateEngine skips the feel step on frames with no mesh or a zero dt; the state probe's header says 24 s but it runs 140 s (a later comment explains it); deployStart on a hull not yet issued counts a deploy, zeroes the lever and stops the engine, then parks and returns true. (6) The move-proof tests of the 2026-10-07 round still pin sha digests (finding 2 of that review); no such module was changed on purpose this round, so none was converted. Nothing is merged or pushed; the owner test-runs the worktree /Users/minikai/Dev/stalheart-refactor-2 locally first.
+
+Alternatives: Keep the ceiling at 6,400: it would leave 561 lines of slack, more than a playtest round has ever added; the ceiling is meant to be felt.; Refactor the Pearl seam in this round: the owner's direction there is a day old and still moving (hit points, full waves, the shell order); a split now would be redone.; Bisect the base's four reds in this round: outside a behaviour-neutral refactor's scope, and the owner's machine is where --pearl-story's intermittency was measured.
+
+Evidence:
+
+- git log --oneline 8bf59188..c22d001a; git diff --stat 8bf59188..c22d001a; wc -l src/td-tab.js (5839); npm run architecture; node test/host-contracts.mjs (57); npm test (259); npm run check; npm run build (all at c22d001a in /Users/minikai/Dev/stalheart-refactor-2)
+- the executors' proof scripts and suite logs in the session scratchpad exec1/ (t1-proof.mjs, t1-suites, t3-suites) and exec3/ (t4..t7); the baseline battery baseline/summary.log and baseline/<flag>.log from /private/tmp/stalheart-snapshots/base-231854
+- entries 2026-10-13-wave-clock-one-state-named-transitions, 2026-10-13-no-host-handed-on, 2026-10-13-boot-probes-platform-module, 2026-10-13-brief-queue-fx-module, 2026-10-13-engine-audio-fx-module, 2026-10-13-hull-deploy-fx-module
+
 ## 2026-10-14 — The Pearl set's waves build up: a breach's waves climb from thin and slow to the table's last in share and pace over the waves it has planned (owner, 2026-10-14, on the 8159 tree)
 
 change · accepted · 2026-10-14-pearl-waves-build-up
@@ -589,6 +622,24 @@ Evidence:
 - commits cff72ea5 (names and stage) on bestiary; merges of swarm-lab-pearl and bestiary into pearl-enemies (e5f3bd14); the battery logs in the session scratchpad merge/
 - src/content/pearl-enemies.js PEARL_TIERS; src/content/bestiary.js BESTIARY_STAGE and ENTRIES; src/domain/bestiary.js the card label; test/bestiary.mjs; scripts/browser-test.mjs --bestiary
 
+## 2026-10-13 — The wave clock is one state with named transitions (src/domain/wave-clock.js); six controller lets gone
+
+change · accepted · 2026-10-13-wave-clock-one-state-named-transitions
+
+Deferred twice: the 2026-09-25 extraction round left the clock in the frame, and the 2026-10-07 refactor run (2026-10-07-warn-ring-module-wave-clock-deferred) kept it there because its lets are read and written at about twenty controller sites and the cleared branch interleaves the clock's writes with spawnWave(), the score, the sim curve, the sector's hold and the sitrep, so a module returning decisions would reorder effects. Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 1) moves it as a state object whose transitions are the original statements under names, called by the frame in its own order.
+
+src/domain/wave-clock.js createWaveClock({ warn }) holds in (waveIn), charge (waveCharge), beat (warnBeat), inter (interClock), age (waveAge) and active (waveActive) with getters, setters returning the written value, and the frame's transitions countdown(dt) (true when a shock ring is due), due, disarm, grow, clear, stalled(cap), wait, readyToArm(gap), idle and secsToWave(gap, alive) (the gates asked only when the rule reaches them, as the controller's secsToWave did). src/td-tab.js: the six lets are gone (their comments in the module; 'waveCharge is 0..1 over that window' stays at the clock's line, the pure-layer scan flags that word in a domain file); the wave card, enemy-step and hull hosts read and write through the clock with their keys unchanged; secsToWave is a hoisted one-liner over the clock; expandRound, the radar scope and the two acceptance adapters call it; the frame's block calls the transitions in the original order (spawnWave still writes the state through enemy-step's setters before the active branch runs). td-tab 6,120 -> 6,097 lines. No behaviour change.
+
+Alternatives: A pure decision function returning what the frame should do: rejected (2026-10-07's reason), spawnWave changes the state mid-frame and the cleared branch's effects interleave with the clock's writes.; Move the frame's whole wave block into the module with callbacks: rejected for this round, the block calls a dozen controller effects (score, sim curve, hold card, sitrep, rings) and would become a host of its own.
+
+Evidence:
+
+- Side-by-side proof (scratch harness, not committed): the ORIGINAL block (td-tab 5010-5057 at 8bf59188) and the new block over the module, closure names bound to recording fakes, enemy-step's spawnWave/armWave modelled through the lets/setters, 20,000 seeded frames (dt 1/120..1/20, gates/queue/sector/story/lab/automation flags re-rolled about every 40 frames, resets, expandRound, the adapter's re-arm): 8,072 log entries equal, the six values and bossCued equal after every frame, simCurve equal (1,219 rings, 60 waves, 49 clears, 32 sitreps); two mutants (a ring radius, a dropped idle()) are caught.
+- node test/wave-clock.mjs: the transitions by name, and the frame's block read from src/td-tab.js over the module for 200 seeded frames against the original block's six values kept every tenth frame (25 rings, 2 spawns, 116 arms, 2 clears, 2 sitreps).
+- tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the clock's line: none in the dead zone; node test/host-contracts.mjs: hold for 52 factories.
+- npm test 252 programs; npm run check (architecture: 6097 lines under 6400); npm run build.
+- Browser suites from snapshot t1-waveclock (tools/refactor/suites.sh): --sectors, --round6, --round7, --pacing, --waves pass; --defense fails at 'no unpiloted tower kill' and --story at 'twelve landmarks at stage 8' (15 vs 12), the same steps and values as the untouched base's battery.
+
 ## 2026-10-13 — The tank shell's blast: 4.5 at the centre over 3 cells with the 40 mm's falloff, the body struck 4.5; the landing is the gunship's 40 mm burst at that radius, brighter, longer, with a white-hot core pop, a lower report and a hull jolt
 
 change · accepted · 2026-10-13-tank-shell-blast
@@ -684,6 +735,25 @@ Evidence:
 - --pearl-story, --ground-feed, --creature-probe, --boss-cutis pass
 - Known gaps: dying white puddles pinned in a crowded lane can sit up to ~2 m under the hull for frames (live bodies 0.03-0.08 m); the knot grazes drawn walls by up to 0.2 radii squeezed through a lane narrower than it; off-screen leash re-placements remain (white 69 of 250 bodies placed in --pearl-story's crowded run, 4 on-screen as dissolves); the autopilot's walk has no body contact
 
+## 2026-10-13 — No host is handed on: td-tab builds the laser arsenal's own literal and the ending host names the diorama's seven members; NESTED is empty
+
+change · accepted · 2026-10-13-no-host-handed-on
+
+The 2026-10-07 refactor run's host-contracts test (2026-10-07-host-contracts-test) allow-listed two hosts passed on whole, each an open finding: src/fx/laser-station.js handed its host to createLaserArsenal ({ ...host, passEnded: () => leave() }) and src/fx/ending-host.js handed its host to playDiorama. The run's architecture review (2026-10-07-refactor-run-architecture-review) asked for both to close. Refactor round 2, Task 3.
+
+src/td-tab.js builds the arsenal before the station: const laserArsenal = createLaserArsenal(scene, { the 29 members the arsenal reads, one per line, carried from the station's literal with the same source text, plus passEnded: () => laserStation.leave() }) (a lazy call: the arsenal calls it only when a pass closes or the uplink drops, after the station exists); the breaches query both literals need is hoisted once as laserBreaches. The station's literal is one member per line and keeps only what the station reads (arsenal, mobile, centers, heart, enemies, breaches, walls, structures, views, canvas, fov, paused, togglePause, vacate, enter, leave); src/fx/laser-station.js takes host.arsenal instead of creating it and its surface gains leave (the internal leave(), what passEnded called before). src/fx/ending-host.js passes playDiorama a literal of story, startShot, scene, cellSide, hull, isao and spawnIsao (each still read by the diorama; nothing td-tab supplies became unread, td-tab's createEndingHost literal is unchanged). test/host-contracts.mjs: NESTED is empty and the check keeps it so; the arsenal is a contract of its own (53 factories). td-tab +32 lines (the two literals one member per line); later tasks of the round pay it back.
+
+Alternatives: Keep the station building the arsenal and give it a host.arsenalHost member: rejected, it is still a host handed on under another name.; Repeat the breaches filter-and-sort in both literals: rejected, two copies of one query; it is one const used by both.
+
+Evidence:
+
+- Member check (scratch script over espree): the old station literal's 38 members are all carried, each with the same source text (arsenal 29 + passEnded; station 15 + arsenal), laserBreaches resolved to its initializer.
+- test/laser-station.mjs: the station over a fake arsenal and a recording host refuses the seat while no pass is overhead and lights the strip's tank, reaches the arsenal it was given (setOnline, tick, steer at the first live breach), sits at once on a seen briefing (vacate, arsenal.seat(true), enter(groundFov), the strip on laser), and leave() on its surface unseats.
+- undef-diff: no new undefined or unused names (td-tab, laser-station); tdz-check at both literals: none in the dead zone; comments-kept: every word kept but the ending host's rewritten header ('reads', 'which', 'it;', 'takes,', '(src/fx/finale-diorama.js),'), as the plan asks.
+- node test/host-contracts.mjs: Host contracts hold for 53 factories; npm test 253; npm run check (6129 lines under 6400); npm run build.
+- test/ending-host.mjs (the plan's Task 2) does not exist in this worktree yet: the diorama's seven members are not yet asserted there.
+- Browser suites from snapshot t3-hosts (tools/refactor/suites.sh): --laser-game, --laser, --seats, --sectors (the canyon's pass), --finale all pass.
+
 ## 2026-10-13 — Isao quieter and varied: light lines halved by per-trigger chances, a 40 s gap between light lines and short lines first; the owner's Dylan Thomas pair at the final sector and his good/true/beautiful trio as rare lines; twenty-six short agent drafts for review
 
 change · accepted · 2026-10-13-isao-quieter-and-varied
@@ -702,6 +772,24 @@ Evidence:
 - --opening, --round22, --sector-probe on the final tree
 - docs/isao-voice-audio.lock.json
 - ~/Dev/seiyu_voice ce4219b
+
+## 2026-10-13 — The hull's deploy is an fx module (src/fx/hull-deploy.js); the deploy let leaves the controller
+
+change · accepted · 2026-10-13-hull-deploy-fx-module
+
+Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 7). DEPLOY, the one way a hull enters the world (at rest in its berth, driven out in manual, an authored roll-out playing its clip, the hung-deploy watch), was about ninety controller lines around the let `deploy`, which was read or written at twenty-odd sites: the CTL state line, the drive camera's blend, the shield's frozen check, the hull's visibility (three sites), the frame (pilot cancels, the step), five hosts' deploy getters, two setDeploy setters (the first hull's issue, the key probe), the acceptance state and two adapters. deployStart, deployFramePoseFor and deployProgress are held as values by host literals above the region (the diag overlay at 1240, the hull loss at 3630, the boot probes).
+
+src/fx/hull-deploy.js createHullDeploy(host) holds the region as it was, every comment with it, `deploy` its own state, and returns { active, clip, state, set, cancel, start, step, framePoseFor, progress, ease }. Host: player, params, shots, poseCamera, arriveAt, paintThrottle as values; stopEngine: (fade, quiet) => engineAudio.stop(fade, quiet), lazy (the engine is made later); getters for berths, graph, lifeContainers, story, playerMesh, speedBonus, cellSide, cellIndex, deployCount; setters for deployCount (deployCount++ becomes setDeployCount(deployCount() + 1)), throttle, cruise, autoMode, playerDown. td-tab keeps deployStart, deployFramePoseFor and deployProgress as hoisted one-liners; the sites read hullDeploy.state() / clip() / active() / ease(), write hullDeploy.cancel() / set(v), and the frame and the hull host step through hullDeploy.step. The deploy-path imports leave td-tab. td-tab 5,899 -> 5,839 lines. No behaviour change.
+
+Alternatives: Keep `deploy` in td-tab and move only the functions: rejected, the functions write it and the module would need a getter and setter for its own state.; Rewrite the deployStart call sites (seven) to hullDeploy.start: rejected, two host literals above the region hold it as a value, so the hoisted one-liner stays and the sites stay unchanged.
+
+Evidence:
+
+- Side-by-side proof (scratch harness, not committed): the ORIGINAL region (td-tab 3635-3721 at 2701edd3) through new Function under `with` beside the module over the same fakes (a 40-cell sphere graph, four berths of both shapes, bays with and without roll-outs, the real src/domain/deploy-path.js), 200 seeded scenarios x 600 operations (start of valid and invalid berths, steps including dt 0 and 3 s, poses, reads of active/progress/ease/clip, cancel, set(null), speed 0, the bonus, the cell size, a held/unheld/absent story hull, the graph missing, the mesh): 157,992 log entries (camera poses, arrivals, paint and engine calls, bay rolls, the hung warnings and shots.hung, the thrown errors' messages when the graph is missing, and after every operation the deploy, the player, the count, the lever, cruise, auto, playerDown, the mesh's visibility and the bays) equal; two mutants (a held hull leaving the player up, the roll-out framing's rolled test inverted) caught.
+- node test/hull-deploy.mjs: nothing starts without a berth or a graph; start puts the hull at rest in the berth (free mode and virtual start off, manual, lever at zero, the engine stopped quietly) and counts; travelled grows by params.speed * speedBonus * cellSide * 1.6 * dt along the run with an eased progress; the hull arrives at the exit cell and hands over; a held hull is parked with the player down; an authored roll-out hides our hull and rolls the bay on the deploy's clock, once; a speedless deploy is handed over at 6.5 s with the SHOTWATCH line; a deploy whose berth is gone is dropped.
+- tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the call: none in the dead zone; node test/host-contracts.mjs: hold for 57 factories.
+- npm test 259 programs; npm run check (5839 lines under 6400, the long-line budget held); npm run build.
+- Browser suites from snapshot t7-deploy-002139 (tools/refactor/suites.sh): --opening, --seats, --sectors pass; --defense fails at 'no unpiloted tower kill' and --story at 'twelve landmarks at stage 8', the same steps and values as the untouched base's battery; --probe passes mobile-input (the key probe clears the deploy through setDeploy; its 15 LAYOUT/KEYPROBE lines identical to the base snapshot's) and fails at shell-explosion as the base does.
 
 ## 2026-10-13 — Ground events in SAT-3's orbital feed, a corner inset, instead of a camera cut; &cuts=dive keeps the dives
 
@@ -723,6 +811,60 @@ Evidence:
 - Browser steps on the branch: --ground-feed, --breach-game, --backdoor (after the wall-count fix; one earlier run saw a 114 ms long task at the collapse, the rerun none), --pearl-story, --sector-probe (SECTOR=4 PLAY=1, 90 s) pass
 - --story-world fails at 'the planet pulled back' (state().shot null, expected 'sites') on this branch and identically on its base f2367e17: the sites pull-back was removed on 2026-10-07 and the assertion is stale; every step before it passes (rotor-kill included)
 - npm test (246 programs), npm run check, npm run build, npm run architecture (td-tab 6141 of 6400, 0 lines over 500)
+
+## 2026-10-13 — The engine audio is an fx module (src/fx/engine-audio.js)
+
+change · accepted · 2026-10-13-engine-audio-fx-module
+
+Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 6). The engine (hydraulics up, thruster bed, hydraulics down) was seventy controller lines: five lets, ENGINE_STOP, stopEngine(fade, quiet) and updateEngine(dt), the speed taken from the hull's actual per-frame movement. stopEngine had four call sites (regenerate, destroyPlayer, deployStart, the controller's setActive(false)), updateEngine one (the frame).
+
+src/fx/engine-audio.js createEngineAudio(host) holds the region as it was, every comment with it, and returns { stop, update } (nothing outside read the level, so no getter). Its host is { sfx, feel, player, params, steerEase } as values and getters for the lets it reads (playerMesh, cellSide, speedBonus, paused, kick). td-tab makes it where the region was; the frame calls engineAudio.update(dt) and the four stop sites call engineAudio.stop(...) directly (none is a value in a literal, and none runs before the engine is made: before the move they would have met engineHandle's dead zone the same way), so no hoisted one-liner. TANK_DRIVE, TANK_STEER, steerBank and stepTankFeel leave td-tab's imports. updateEngine also steps the hull's feel and its bank (stepTankFeel, feel.bank from steerBank and the kick's roll), as it did: the move keeps that, and the feel is still not stepped on a frame the engine returns early (no hull mesh, dt <= 0, the first frame). td-tab 5,957 -> 5,899 lines. No behaviour change.
+
+Alternatives: Hoisted one-liners for stopEngine and updateEngine (the plan's suggestion): not needed, their five sites are calls inside functions run after init; rewriting them saves the lines.; Split the feel step out of updateEngine: rejected for a move task, it would reorder the feel against the bed's start and stop within the frame.
+
+Evidence:
+
+- Side-by-side proof (scratch harness, not committed): the ORIGINAL region (td-tab 4731-4801 at b64e2d8f) through new Function under `with` beside the module over the same recording sfx (a bed that is null until decoded), real tank feel objects and real steerBank/stepTankFeel/landTankFeel; 100 seeded scenarios x 2,000 operations (frames with dt 0, negative and 1/120..1/20, moving, creeping or still; stops with every default/explicit fade and quiet combination; pause, a won hull, the mesh missing, speed 0, the bonus, the cell size, the steering rate and the kick's roll re-rolled): 281,524 log entries (cues, bed loops/sets/stops, the feel after every operation) equal, 2,846 spool cues, 59,751 bed settings; two mutants (the kick's roll dropped from the bank, the level not reset on stop) caught.
+- node test/engine-audio.mjs: no sound before a previous position, at dt 0 or without a hull; one spool-up, the bed retried until decoded and then set from the level (gain 0.34..1, pitch 0.92..1.14); the level spins up while moving; stillness fades the bed over ENGINE_STOP with one spool-down and the landing; paused does not count as moving; a quiet stop fades without a cue or a landing.
+- tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the call: none in the dead zone; node test/host-contracts.mjs: hold for 56 factories.
+- npm test 258 programs; npm run check (5899 lines under 6400); npm run build.
+- Browser suites from snapshot t6-engine-001425 (tools/refactor/suites.sh): --seats passes; --defense fails at 'no unpiloted tower kill' ({"tank":0,"tower":0,"strike":0}) after the same two passing steps and --story at 'twelve landmarks at stage 8', the same steps and values as the untouched base's battery.
+
+## 2026-10-13 — The brief queue is an fx module (src/fx/brief-queue.js)
+
+change · accepted · 2026-10-13-brief-queue-fx-module
+
+Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 5). Isao's panel (ISAO SPEAKING) was about eighty controller lines: the five #td-brief elements and the bar, the seen list of the once-beats in storage, the queue, the line clock, the one-deep pending beat, paint/show/step/stepClock/end/clear and the panel's tap. showBrief is called from 21 sites and held as a value by host literals above the region (td-tab 392, 3033, 4073).
+
+src/fx/brief-queue.js createBriefQueue(root, host) holds the region as it was, every comment with it (the panel's elements are still looked up on root in the same order, the seen list still read through src/storage.js, the tap still wired at creation), and returns { el, seen, paint, show, step, stepClock, end, clear, queue, pending }. Its host is { sfx, isao: () => isao } (the drone is declared later in initTdTab: a getter). td-tab: createBriefQueue at the region's place; showBrief stays a hoisted one-liner over briefs.show; the frame calls briefs.stepClock(dt); the three clearBriefs() sites call briefs.clear(); the five briefQ reads (the expedition's ready gate, the briefing probe, three hosts' briefQ getters) read briefs.queue(); the ?brief= replay edits briefs.seen; the boot probes' literal takes briefEl: briefs.el. brief, lineDwell and drawEmotion leave td-tab's imports. td-tab 6,036 -> 5,957 lines. No behaviour change.
+
+Alternatives: const { showBrief } = createBriefQueue(...): rejected (the plan's rule), host literals evaluated earlier in initTdTab hold showBrief as a value, so it stays a hoisted function.; Keep hoisted one-liners for clearBriefs and stepBriefClock too: rejected, their four call sites are inside functions run after init and read briefs directly.
+
+Evidence:
+
+- Side-by-side proof (scratch harness, not committed): the ORIGINAL region (td-tab 665-748 at 1858abf0) through new Function under `with` beside the module over the same fake root, storage, sfx and a recording isaoSay (the module's import replaced through a loader hook); 200 seeded scenarios x 300 operations (show of every brief id and an unknown one, clock steps including dt 0, taps, clear, end, the drone present or absent, the seen list edited, the bar or the panel element missing, the stored seen list valid, malformed or not an array): 2,988,521 log entries (element writes, classList, the 2D context's calls, storage writes, clicks, the lines said, the queue/pending/seen after every operation) equal, 7,121 lines said; two mutants (the face not released on end, clear keeping the pending beat) caught.
+- node test/brief-queue.mjs: a seen once-beat is silent; a brief paints its title, line and dots with a full bar, clicks and says its first line, is marked seen in storage; one beat pending and the rest dropped; the bar drains on the frame clock and a retiring line makes no click; a tap clicks; the pending beat shows when the panel frees; clear hides the panel, drops the pending beat and releases Isao's face; per-line faces lock the drone; the seen list survives into a new queue.
+- tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the call: none in the dead zone; node test/host-contracts.mjs: hold for 55 factories.
+- npm test 257 programs; npm run check (5957 lines under 6400); npm run build.
+- Browser suites from snapshot t5-briefs-000759 (tools/refactor/suites.sh): --sectors, --opening, --chapters pass; --story fails at 'twelve landmarks at stage 8' 15 s in, the same step and values as the untouched base's battery.
+
+## 2026-10-13 — The boot probes (?layout, ?stateprobe, ?keyprobe) are a platform module (src/platform/boot-probes.js)
+
+change · accepted · 2026-10-13-boot-probes-platform-module
+
+Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 4). The three dev probes sat at the end of the controller's init as about ninety lines of console instrumentation that nothing else read; the SHIELD_TUNE knob override sits between the state probe and the key probe and is not a probe.
+
+src/platform/boot-probes.js createBootProbes(host) holds the three blocks as they were, under their flags, every comment with them, and returns { started } (the probes it armed). td-tab calls it where the layout probe began, with a literal one member per line: 19 values (flags, simulateCoarse, mobileShell, toastEl, diagOverlay, camera, player, renderer, params, keys, shotId, msgEl, briefEl, sitrepEl, deployProgress, root, shots, deployShieldNow, shield), 13 getters for the lets the state probe reads when it fires (throttle, stick, cellSide, paused, buildMode, deploy, playerHP, tankLostDeploys, playerDown, dungeon, autoMode, gotoCi, playerMesh) and setPaused/setDeploy for the key probe's two writes. The shield knob block stays in td-tab; the key probe's timer is still registered after the state probe's (the knob block schedules nothing). td-tab no longer imports boxOverlaps or viewportLine. td-tab 6,129 -> 6,036 lines. No behaviour change.
+
+Alternatives: Leave the probes in td-tab as dev-only code: rejected, the round's goal is the controller's size and the probes are self-contained.; Move the shield knob override with them: rejected, it is game tuning from the URL, not a probe.
+
+Evidence:
+
+- Side-by-side proof (scratch harness, not committed): the ORIGINAL three blocks (td-tab 5616-5667, 5669-5699, 5718-5762 at f261c0c1) run through new Function under `with` over recording fakes, beside the module over a host of getters/setters on the same fakes; 8 flag sets x 50 seeds (400 runs), the lets re-rolled before every timer fires, 7,650 timer firings, 39,755 log entries (timers, console lines, DOM writes, dispatched keys, the final paused/deploy/shield) equal; two mutants (setPaused(true), a getter left uncalled) caught.
+- node test/boot-probes.mjs: nothing armed without a flag; the state probe's 71 timers and a line read at fire time; the key probe's order (message hidden, unpaused, shots dropped, deploy cleared before the control call, S then T) and its OK/WRONG verdicts; the layout probe's boxes, skips and overlaps.
+- tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the call: none in the dead zone; node test/host-contracts.mjs: hold for 54 factories.
+- npm test 256 programs; npm run check (6036 lines under 6400); npm run build.
+- Browser suites from snapshot t4-probes-000148: --probe passes mobile-input (keyprobe=1&layout=1) and fails at shell-explosion as the base does; its 15 LAYOUT/KEYPROBE console lines are identical to the base snapshot's; --opening-probe runs (no assertions). A page with ?stateprobe=1&layout=2&keyprobe=1 (--audio-probe on the same snapshot) runs with no page errors.
 
 ## 2026-10-12 — The creature probe's bodies come up beyond the gate, six sentries stand at boot to meet them, and the heart is held while it runs
 
