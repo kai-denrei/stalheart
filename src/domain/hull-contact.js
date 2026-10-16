@@ -20,3 +20,7 @@ export function hullDepth(points, { cellOf, blocked, centers, adj }) {
 // a move is refused when it takes the hull deeper than it already is: clear ground stays clear, and a hull already touching rock
 // (a turn on the spot swung its nose in) can always back or slide out instead of wedging
 export const deepensContact = (before, after, slack = 0) => after > 0 && after > Math.max(0, before) + slack;
+// THREADING A WAIST (2026-10-16, the wedge at rocket-b): a hull going nowhere drops its nose and tail and threads on its centre, but the
+// centre kept its full clearance, and where two rock cells pinch a corridor (506|504 before rocket-b's clearing: 0.43 cells between the
+// faces at the best crossing, the centre needs 0.46) no line through was ever clear. Squeezed, the centre keeps only `thread` of room
+export const threadClearance = (clearance, squeezed, thread) => (squeezed ? Math.min(clearance, thread) : clearance);
