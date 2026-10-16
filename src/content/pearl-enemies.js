@@ -57,7 +57,7 @@ export const PEARL_OF = freeze({
 // `scale` multiplies a soft or a cored tier's record size (src/fx/enemy-step.js) and with it the body's r0, the touch reach and the reticle's box together.
 // BY SIZE (owner, 2026-10-16: "decision: we split them by size; cutis-soft ivory 0.4, lemon 0.6, blue 0.8, purple 1.2 for now, some sense of differences in sizes
 // and speed"): `scale` by tier id; the other cored tiers keep 1.12
-export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.4, yellow: 0.6, blue: 0.8, orange: 1.12, green: 1.12, purple: 1.2, brown: 1.2, black: 1.45 } });   // black: the biggest (owner, 2026-10-16)
+export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.4, yellow: 0.6, blue: 0.8, orange: 1.12, green: 1.12, purple: 1.2, brown: 1.2, black: 1.3 } });   // black: the biggest (owner, 2026-10-16; 1.3: at 1.45 a knot's membrane ran 2.5 m into a 10 m corridor's rock, test/body-footprint.mjs)
 export const pearlScaleOf = (tier) => PEARL_BODY.scale[tier] ?? 1;
 
 // HOW A BODY KEEPS UP WITH ITS RECORD (src/domain/pearl-bodies.js; CREATURE_FOLLOW's catch-up and leash over these). The record walks at its type's speed
