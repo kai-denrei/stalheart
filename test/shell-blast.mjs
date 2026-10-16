@@ -43,6 +43,10 @@ assert.ok(at(0.99) > 2 && at(1.99) > 1 && at(2.5) > 0 && at(SHELL_BLAST.radius) 
   assert.ok(Math.abs(hits[1].dmg - 4.5 * (1 - 0.25)) < 1e-9);
   const scaled = shellHits([{ alive: true, pos: [0.15, 0, 0] }], [0, 0, 0], null, { radius: 3, peak: 4.5 }, 0.1, dist3);
   assert.ok(Math.abs(scaled[0].dmg - 4.5 * 0.75) < 1e-9);
+  // the body's drawn point (2026-10-16): a record far off whose body stands in the blast is hit; a record in the blast whose body has hopped away is not
+  const drawn = [{ alive: true, pos: [9, 0, 0], obj: { userData: { point: () => [1.5, 0, 0] } } }, { alive: true, pos: [1.5, 0, 0], obj: { userData: { point: () => [9, 0, 0] } } }];
+  const byBody = shellHits(drawn, [0, 0, 0], null, { radius: 3, peak: 4.5 }, 1, dist3, (e) => e.obj?.userData?.point?.() ?? e.pos);
+  assert.deepEqual(byBody.map((h) => drawn.indexOf(h.e)), [0], 'measured where the body is drawn');
 }
 
 // THE EFFECT: the 40 mm's module, hotter and longer; its scare; a flash pop at the core

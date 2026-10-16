@@ -10,13 +10,14 @@ import { makeDotBurst } from '../units.js';
 import { norm3, dist3 } from '../vec3.js';
 import { shellHits } from '../domain/shell-blast.js';
 import { SHELL_BLAST } from '../content/tank.js';
+import { groundAt } from './lance-follow.js';   /* the body's drawn point (2026-10-16): a shell counts against the body the player sees, not its record */
 
 export function createShellBlast(host, tune = SHELL_BLAST) {
   let last = null;
   function land(pos, struck, tNow, from = null) {
     const cs = host.cellSide(), r = tune.radius * cs, at = norm3(pos);
-    const inside = host.enemies.filter((e) => e.alive && dist3(pos, e.pos) < r).length;
-    const hits = shellHits(host.enemies, pos, struck, tune, cs, dist3);
+    const inside = host.enemies.filter((e) => e.alive && dist3(pos, groundAt(e)) < r).length;
+    const hits = shellHits(host.enemies, pos, struck, tune, cs, dist3, groundAt);
     for (const { e, dmg } of hits) host.damageEnemy(e, tNow, dmg, e === struck, 'tank');
     const ci = host.cellIndex()(at);
     if (ci !== -1) for (const [hex, life, k] of tune.rings) host.warnRing(ci, hex, life, r * k);

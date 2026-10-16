@@ -3409,7 +3409,7 @@ export function initTdTab(root) {
       let hit = false;
       for (const e of enemies) {
         if (!e.alive) continue;
-        if (dist3(p.pos, e.pos) < cellSide * Math.max(0.45, (e.size ?? e.spec.size) * 0.8)) {
+        if (dist3(p.pos, groundAt(e)) < cellSide * Math.max(0.45, (e.size ?? e.spec.size) * 0.8)) {   /* the body's drawn point, not the record's (owner, 2026-10-16: 'a direct tank shell hit goes right through') */
           // NINE shells a rack, each one precious, so each one is an EVENT (operator ruling); since 2026-10-13 the gunship's 40 mm landing
           // at the shell's blast (src/content/tank.js SHELL_BLAST, src/fx/shell-blast.js). Count what THIS shell kills: live bodies before and after
           const aliveBeforeShell = enemies.reduce((n2, x) => n2 + (x.alive ? 1 : 0), 0);
@@ -4364,6 +4364,7 @@ export function initTdTab(root) {
     a6Rng,
     aimTower,
     automated,
+    autoTower: (tw) => !!story?.autoTowers?.has(tw.ci),   /* Isao's Rotor fires before the handover (2026-10-16) */
     beams,
     chord,
     debris,
@@ -5299,6 +5300,7 @@ export function initTdTab(root) {
     near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r),
     kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
     screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },
+    autoTower: (ci) => { (story.autoTowers ??= new Set()).add(ci); },   /* ISAO MANS IT (2026-10-16): this sentry fires on its own before the handover (src/fx/tower-combat.js) */
     pilot: (ci, laneCi) => {
       if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
       const seat = pilotMode, from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, perch = perchOf(towerByCell.get(ci) ?? { ci }), lit = seat ? highlightSeat(scene, perch, graph.normals[ci], cellSide) : null;   // from one seat to the next: back out, the next one lit (owner, 2026-10-02)
