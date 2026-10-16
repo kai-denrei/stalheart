@@ -2470,6 +2470,39 @@ try{
  const k1=(await st()).kicks;console.log(`  round13: drove ${moved.toFixed(4)} units in 12 s, ${still} still samples of 119, kicks ${k1-k0}`);
  assert.ok(moved>0.05,'the hull drives');assert.ok(still<40,`it never sits ground against a wall for long (${still} still samples)`);
  current='round13-drive';await finish();
+ } else if(args.includes('--nest-guards')) {
+ // THE SMALL REED AT EACH NEST (owner, 2026-10-16: 'let's put a small Reed at each cargo spot too'; STORY_EXPEDITIONS.sites guards with family/tier,
+ // src/fx/expedition-glue.js openSite): on the expedition page each open site has its guards up, one of them a Reed of the small tier with a creature
+ // body (a record whose spec names its family), and the Reed chases the hull like any guard once the hull is within the nest's aggro radii. Measured first,
+ // asserted after: the owner never saw the nest guards in play (2026-10-16)
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),{STORY_EXPEDITIONS}=await import('../src/content/story-defaults.js');
+ await go('nest-guards','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await evaluate(`${T}.sectorQuiet(true)`);
+ const sites=STORY_EXPEDITIONS.sites.filter(s=>!s.reveal).map(s=>s.id);
+ const report=async()=>{const o={};for(const id of sites)o[id]=await evaluate(`${T}.showcase.guards("${id}")`);return o;};
+ await until(`${sites.map(id=>`${T}.showcase.guards("${id}").length>0`).join('&&')}`,60000).catch(async()=>assert.fail(`every open site has guards up (${JSON.stringify(await report())})`));
+ await delay(3000);   // the queue drips a guard every 0.3 s: the whole nest up
+ let g=await report();const summary=Object.fromEntries(Object.entries(g).map(([id,list])=>[id,{guards:list.length,reeds:list.filter(x=>x.type==='reed').map(({type,tier,tierKey,body,size,cells})=>({type,tier,tierKey,body,size,cells}))}]));
+ console.log('NEST GUARDS '+JSON.stringify(summary));
+ console.log('NEST GUARDS bodies '+JSON.stringify((await st()).creatureProbe?.bodies?.families??null));
+ for(const id of sites){const want=STORY_EXPEDITIONS.sites.find(s=>s.id===id).guards.filter(x=>x.family==='reed').reduce((a,x)=>a+x.count,0),reeds=g[id].filter(x=>x.type==='reed');
+  assert.equal(reeds.length,want,`${id}: ${want} small Reed guard(s) up (${JSON.stringify(g[id].map(x=>x.type))})`);
+  for(const r of reeds){assert.ok(r.tier==='small'||r.tierKey==='reed:small',`${id}: the Reed is the small tier (${JSON.stringify(r)})`);assert.equal(r.body,'reed',`${id}: the Reed's record names its family, so a Reed body is made for it (${JSON.stringify(r)})`);assert.ok(Number.isFinite(r.size)&&r.size>0,`${id}: the Reed has a size (${JSON.stringify(r)})`);}}
+ current='nest-guards-up';await finish();
+ // THE CHASE: the hull put down at a site's stand (inside the nest's aggro radii); the Reed comes for it like the soft bodies do
+ const site=process.env.SITE||'rocket-b',stand=await evaluate(`${T}.cargoStand("site","${site}")`);assert.ok(stand>=0,`a stand cell for ${site}`);
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);   // the hull out of its bay first: a bay's roll-out owns the hull's place until it hands over
+ await evaluate(`${T}.placeTank(${stand})`);await delay(300);
+ {const ps=await evaluate(`${T}.showcase.probeSite("${site}")`),s=await st();console.log(`NEST GUARDS hull at the stand ${stand}: ${JSON.stringify({cur:s.playerCell,deploying:s.deploying,site:ps})}`);assert.ok(ps&&ps.dist<(ps.clear/10+2)*STORY_EXPEDITIONS.aggro,`the hull stands inside the nest's aggro radii (${ps?.dist} cells of ${(ps?.clear/10+2)*STORY_EXPEDITIONS.aggro})`);}
+ const reed0=(await evaluate(`${T}.showcase.guards("${site}")`)).find(x=>x.type==='reed');assert.ok(reed0,`the ${site} Reed is alive at the chase's start`);
+ const others0=(await evaluate(`${T}.showcase.guards("${site}")`)).filter(x=>x.type!=='reed');
+ let best=reed0.cells,bestOther=Math.min(...others0.map(x=>x.cells)),moves=0,lastCur=reed0.cur;const t0=Date.now();
+ while(Date.now()-t0<25000){await delay(500);const list=await evaluate(`${T}.showcase.guards("${site}")`),r=list.find(x=>x.type==='reed');if(!r)break;if(r.cur!==lastCur){moves++;lastCur=r.cur;}best=Math.min(best,r.cells);for(const o of list)if(o.type!=='reed')bestOther=Math.min(bestOther,o.cells);if(best<1.5)break;}
+ console.log(`NEST GUARDS chase ${site}: reed ${reed0.cells.toFixed(2)} -> ${best.toFixed(2)} cells in ${moves} cell moves over ${((Date.now()-t0)/1000).toFixed(1)} s; the nearest soft guard came to ${bestOther.toFixed(2)} cells`);
+ assert.ok(moves>0,`the Reed guard moves at all (${moves} cell moves)`);
+ assert.ok(best<reed0.cells-0.5||best<2,`the Reed closes on the hull in the nest (${reed0.cells.toFixed(2)} -> ${best.toFixed(2)} cells)`);
+ current='nest-guards-chase';await finish();
  } else if(args.includes('--corridor-probe')) {
  // THE MÖRK THROUGH THE NARROW TILES (owner's twenty-seventh notes, 3: "there is STILL a problem going through narrow tiles with the
  // MÖRK" near the second site): a virtual driver takes the hull from the base along the shortest open route to a site (SITE, default

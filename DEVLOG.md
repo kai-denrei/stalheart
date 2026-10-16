@@ -32,6 +32,21 @@ Evidence:
 - test/seat-status.mjs, test/tower-aim.mjs (the servo, the body's point), test/emerge-climb.mjs, test/hull-console.mjs, test/pearl-motion.mjs (the audit at the new paces), test/pearl-enemies.mjs; node 265 green; browser --seats --laser-game --sinkhole --sectors --boss-start --descent --gunship-auto --canyon --skip-tutorial; the cave's 33 tests
 - scratchpad captures of the tank view before and after: the lever, the km/h and Isao's card in one corner; the console line over the radar and the lever beside it
 
+## 2026-10-16 — The small Reed at each cargo nest had no body and no size: the glue queued it with the raw tier table as its spec, so no Reed body was made for the record and its dot took a NaN scale; it takes the family spec the hunters get (tierSpec), and --nest-guards watches every nest's guards and the Reed's chase
+
+decision · accepted · 2026-10-16-the-nest-reed-had-no-body
+
+The owner away (2026-10-16): a reproduction pass over the night's two unseen additions, the small Reed that guards each cargo nest (2026-10-16-nine-notes-arena-third-version-rotor-auto) and the road SOL cuts (below, its own entry). No suite had ever looked at a nest guard's record. A new step --nest-guards opens the expedition page, lists every open site's guards through a showcase hook (type, tier, the spec's body family, size, distance to the hull in cells) and found at all three open nests: the Reed guard alive, type 'reed', tierKey 'reed:small', body null, size null (NaN). The cause read straight off: src/fx/expedition-glue.js openSite queued the creature guard with `spec: CREATURE_TIERS[g.family][g.tier]`, the raw tier table (label, r0, hp, speed, bounty, count, probeStep, capacity, variant, ramAt), where the hunters are queued with tierSpec(family, tier) (src/fx/creature-enemies.js: ENEMY_SPEC[family] with the tier's hp, speed, size and bounty). src/fx/creature-bodies.js makes a creature body only for a record whose spec names its family (`e.spec.body`), and src/fx/enemy-step.js sizes the record from `spec.size`: the nest's Reed was an unsized dot with no Reed body, which is why the owner never mentioned one.
+
+src/fx/expedition-glue.js imports tierSpec from ./creature-enemies.js and queues a nest's creature guard with it (the entry keeps `tier`). test/nest-guards.mjs pins the content (one small Reed among every site's guards, the tier exists) and the glue's spawn over a fake host (the Reed's entry carries tierSpec('reed','small'): body 'reed', a finite size, the tier's hp, speed and ramAt, the family's other fields; the soft guards stay plain entries); it is red on main's glue and green here. Harness: showcase.guards(id) (src/fx/showcase-hooks.js). Browser step --nest-guards: every open site's guards up, the Reed small with body 'reed' and a size, then the hull deployed and put down at a site's stand inside the nest's aggro radii and the Reed watched closing on it.
+
+Alternatives: Teach creature-bodies to look the family up from the record's type when the spec has none: two places deciding what a creature is; the queue entry is the one contract and the hunters already use it.; Give the raw tier table a body and a size: tierSize derives the size from r0 and the body is the family's; duplicating them in content invites drift.
+
+Evidence:
+
+- --nest-guards before: {"type":"reed","tier":"reed:small","body":null,"size":null} at rocket-a, rocket-b and wreck; after: tier 'small', body 'reed', size 0.2499 at all three, PASS nest-guards-up
+- test/nest-guards.mjs red on main's expedition-glue (the entry carries the tier spec: body 'reed' missing), green on the fix; npm test 270, npm run check
+
 ## 2026-10-16 — The one-frame grid flash on the first beacon was the Rotor's print ghost drawn once from the origin at planet scale: the worker added it to the scene a tick before placing it; it is placed first now, and a screencast probe with a per-draw WebGL instrument is the way such a frame is caught
 
 decision · accepted · 2026-10-16-the-grid-flash-was-the-print-ghost

@@ -8,7 +8,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { reveal, guardsCleared, reach, deliver, deliverAtOnce, hullLost, nextReveals } from '../domain/expeditions.js';
 import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
 import { CARGO_LOOK } from '../content/cargo.js';
-import { CREATURE_TIERS } from '../content/creature-enemies.js';   /* a nest's creature guards (the small Reed, 2026-10-16) */
+import { tierSpec } from './creature-enemies.js';   /* a nest's creature guards (the small Reed, 2026-10-16): the family's spec with the tier's numbers, as the hunters get it; the raw tier table has no body and no size */
 import { TOWER_BY_KEY } from '../towers.js';
 import { norm3 } from '../vec3.js';
 import { createCargo } from './cargo.js';
@@ -141,7 +141,7 @@ export function createExpeditionGlue(h) {
       const cfg = STORY_EXPEDITIONS.sites.find((s) => s.id === id), c = cellOf(id);
       if (!cfg || !c || !reveal(ex(), id)) return;
       h.revealSite(id);
-      for (const g of cfg.guards) for (let k = 0; k < g.count; k++) h.spawn(g.type ?? g.family, c.cell, { spread: 1.2, delay: k * 0.3, guard: { site: id, c: h.centers()[c.cell], r: h.cellSide * (c.clear / 10 + 2), avoid: h.solid }, ...(g.family ? { spec: CREATURE_TIERS[g.family][g.tier], tier: g.tier } : {}) });   // avoid: never a cell under the lander itself (guard-aggro.js); a creature tier (the small Reed) in its own kit
+      for (const g of cfg.guards) for (let k = 0; k < g.count; k++) h.spawn(g.type ?? g.family, c.cell, { spread: 1.2, delay: k * 0.3, guard: { site: id, c: h.centers()[c.cell], r: h.cellSide * (c.clear / 10 + 2), avoid: h.solid }, ...(g.family ? { spec: tierSpec(g.family, g.tier), tier: g.tier } : {}) });   // avoid: never a cell under the lander itself (guard-aggro.js); a creature tier (the small Reed) in its own kit
     },
     begin() { for (const s of STORY_EXPEDITIONS.sites) if (!s.reveal) glue.openSite(s.id); },
     // THE SKIP TUTORIAL ENTRY (owner, 2026-09-16): these parts came home before the player arrived. The rule says
