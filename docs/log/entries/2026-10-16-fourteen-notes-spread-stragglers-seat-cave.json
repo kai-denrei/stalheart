@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-fourteen-notes-spread-stragglers-seat-cave",
+  "date": "2026-10-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The owner's fourteen notes: the blobs spread across their line, a sector is SECURE with up to twenty stragglers, the seat glide shorter, the arena's gunship seat opens over the arena, the terminal on B in any tank view, and the cave's flares that stick, a lamp that flickers and returns, fifteen flares, the bomb anywhere near the Queen",
+  "context": "Owner, 2026-10-16 (evening), on 06ca7531: rushing ivories 'too neatly in a single line at the gate, should scatter'; 'time between announcing SOL and getting control too long'; 'a sector could close with fewer than ~20 stragglers'; 'blue faster, more aggressive'; the boss fight 'after picking you drive the tank the gunship shows empty ground'; flares 'need stickiness on slopes'; 'the lamp should not fail right away: start stronger, flicker, come back, fail for good later'; '15 flares; the bomb can be dropped anywhere near the queen'; and, before that, 'where is the terminal in-game to access the bestiary ... that allows me to get back to my test-play game'.",
+  "outcome": "PEARL_GAIT.glideSpread 1.2 radii: each gliding body keeps a deterministic offset across and along its line (hash01 by slot), so a rush fans out. SECTOR_TIMING.stragglers 20 (src/domain/sectors.js isSecure takes the allowance). The seat glide 1.0 s, 1.8 s across the planet (was 1.4 / 3.2). Blue's aggression 1.7 (1.8 broke the ladder test: it must stay under green's). ARENA.seatCells 14: the boss run presses the gunship button only once the gunship's track is within that many cells of the arena (td-tab gunshipNearArena). The terminal opens on B in any tank view of a story run (the automated() gate dropped); the controls card names X and B. The cave (stalheart-cave 707a886, imported under below/): FLARE_COUNT 15; closeToQueen 70 m with a taller window; flare physics restitution 1.05, drag on any contact scaled by the slope's flatness, rest sooner the flatter; LAMP { strong 1.25, flicker 6, back 25, dim 0.8 } with the states working, flicker (the second hit), back, failed and Isao's lines for the flicker and the return.",
+  "alternatives": [
+    "Let the player sit in SOL's seat before the satellite is overhead with the beam locked: offered to the owner if the countdown itself is what drags.",
+    "Count stragglers only outside the walls: the simple allowance matches what he asked and the next sector's cave-in handles their breach."
+  ],
+  "evidence": [
+    "test/sectors.mjs (isSecure with stragglers), test/hull-bodies.mjs (the shove expectation for a body that starts aside), test/pearl-motion.mjs, the cave repo's 33 tests",
+    "commits 4f5dc7ff, 3aff1e4f, 13370a34, 0cf42138, 11c932b7 on main; the blob spread and the arena seat timing verified headless"
+  ],
+  "supersedes": []
+}

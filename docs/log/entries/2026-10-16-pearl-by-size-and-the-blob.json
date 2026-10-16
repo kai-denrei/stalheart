@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-pearl-by-size-and-the-blob",
+  "date": "2026-10-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The Pearl tiers split by size (ivory 0.4, lemon 0.6, blue 0.8, purple 1.2, black 1.3), the small soft tiers glide as rushing blobs instead of hopping, larger waves that die faster, teams only in huge waves, blue faster",
+  "context": "Owner, 2026-10-16, after the third round: 'The Rotor is not working, and I am tired of troubleshooting it endlessly ... 1) decision: we split them by size; cutis-soft ivory 0.4, lemon 0.6, blue 0.8, purple 1.2 for now 2) perhaps give the smaller ivory and lemon ones the rolling propulsion ... Another alternative would be to get rid of the appendages for the little ones for now, just have them be swarms of amoeba like blobs that move fast.' Then on the first cut: 'good, promising; ivory new movement as a small rushing unit can work. let's set it at 2 instead of 4, but it works ... grouping in teams of 3/4/5 should be left for huge waves only ... let's experiment with larger waves that die faster. feeling of swarm ... blue units should be faster a bit.' The motion audit caps a hopping body at about 1.2 radii a second, so small and fast could not be a hop.",
+  "outcome": "PEARL_BODY.scale by tier (src/content/pearl-enemies.js: white 0.4, yellow 0.6, blue 0.8, orange and green 1.12, purple and brown 1.2, black 1.3), carried by the record's size, the body's r0, the touch reach and the reticle's box together (src/fx/enemy-step.js). White and yellow glide (PEARL_PACE[tier].glide): the body is placed on its record each frame, eased over PEARL_GAIT.glideSeconds, a world push kept and decayed over glideShove, a deterministic per-slot spread (glideSpread, 1.2 radii, hash01) so a rush fans out; caps white 5 and yellow 2.8 radii a second (about 5.5 m/s, twice the old walk; the swarm lab bound is 6 m/s), speeds 1.3 and 1.2, hit points 0.6 and 0.7 of the spec's (blue 0.85, black 1.8), a white does a tenth of the heart damage. PEARL_WAVES.crowd 1.4 (each pulse's bodies x this), blackPerPulse 3 (the rest come up brown). SQUADS.over 600 and unpackUnder 100: packs only in huge waves, and unpacked once fewer than a hundred walk (src/fx/enemy-step.js unpackSquads, once a second). Blue: radii 1, speed 1.08, aggression 1.7 (the audit bites between 1.06 and 1.1; it must stay under green's 1.8 for the ladder test).",
+  "alternatives": [
+    "The rolling propulsion (the gorogoro gait) for the small tiers: a new body motion in the kit; the blob is one placement rule and ships tonight. Rolling stays open for purple and brown.",
+    "Keep hopping and raise the audit's cap: the cap is what keeps a hop readable; a 0.4 body lunging five radii a hop reads as teleporting.",
+    "x4 for ivory as first asked: the owner read it on screen and set 2."
+  ],
+  "evidence": [
+    "test/pearl-motion.mjs (the audit: the glide bound), test/pearl-enemies.mjs (scale, hp, heartDmg, the aggression ladder), test/squads.mjs, test/body-footprint.mjs (the black's longer cycle grazes 2.5 m in the 10 m corridor: narrow allowance 0.4 r0)",
+    "commits 6841d61a, 9a433d02, b8e76091 on main; the owner's verdict on the first cut: 'good, promising'"
+  ],
+  "supersedes": []
+}

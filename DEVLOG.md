@@ -32,6 +32,36 @@ Evidence:
 - test/seat-status.mjs, test/tower-aim.mjs (the servo, the body's point), test/emerge-climb.mjs, test/hull-console.mjs, test/pearl-motion.mjs (the audit at the new paces), test/pearl-enemies.mjs; node 265 green; browser --seats --laser-game --sinkhole --sectors --boss-start --descent --gunship-auto --canyon --skip-tutorial; the cave's 33 tests
 - scratchpad captures of the tank view before and after: the lever, the km/h and Isao's card in one corner; the console line over the radar and the lever beside it
 
+## 2026-10-16 — The owner's ten notes on the by-size build: soft tiers hunt the nearest of tank or gate, small Reeds from sector 2 rammable only at 120 km/h, the cored tiers slower and more opaque with longer seeking appendages, the shell's blast with a floor, hard cores hot on the thermals, the hull's health on its levitator, a white does a tenth to the heart
+
+decision · accepted · 2026-10-16-ten-notes-hunt-reeds-armour-thermals
+
+Owner, 2026-10-16, on 06ca7531: '1) first-wave ivories emerge from the ground, should come from the sinkhole; 2) ivories/lemons hunting logic: rush whichever is closest, tank if tank, gate if gate; 3) lemons correctly afraid of mortar; 4) from sector 2 introduce a few small Reeds, rammable only at high speed, say 120; 5) purple hard-core less transparent, slower, longer appendages seeking before moving, same brown and black; black only a few at a time, much stronger, biggest, slow and deliberate; 6) tank shell AOE more impactful, not just direct hits; 7) packs of 5 and 3 lemons walking to the base look odd: IF creatures FEWER than 100 THEN split packs; 8) hard cores more distinct on gunship thermals; 9) Mork 4 hits: diegetic health on the cyan energy levitator; 10) small ivories do 1/10th damage to the heart.'
+
+STORY_FODDER.headStart null (the first wave rises at the sinkhole, not up the lane). PEARL_HUNT { tiers white and yellow, within 10 }: a soft body within ten hops of the hull rushes it, else the gate (src/fx/enemy-step.js wantsTank; the hunters' field is computed while any hunter or soft hunter lives). HUNTERS.from 2; the small Reed's ramAt 120 (CREATURE_TIERS.reed.small; the ram checks hullKmh). Purple, brown and black: membraneOpacity 0.5, cycles 5 / 4.5 / 4, reach 1.35, caps 0.7 / 0.6 / 0.5 radii a second; black 1.3 in size, 1.8 in hit points, at most three a pulse. SHELL_BLAST { radius 3, peak 4.5, floor 0.45 }: any body inside the blast takes at least the floor's share of the peak (the peak must stay under 5 for the shell-blast test). creatureEnemies.thermal(on): under the gunship's FLIR the cored pools' membranes and cores run a white emissive (1.4), the soft tiers stay cold; off when the seat is left. HEALTH_STOPS: the levitator's glow cyan at four hits, darker blue at three, orange at two, red at one (hullArmour / hullHits). PEARL heart damage: white 0.1. SQUADS.unpackUnder 100.
+
+Alternatives: A HUD bar for the hull's hits: the owner asked for it on the body ('diegetic'); the console keeps the pips as the readout.; Blue thermals for the soft tiers: the cored ones hot and the rest cold already reads at a glance on the FLIR's palette.
+
+Evidence:
+
+- test/pearl-enemies.mjs (opacity, cycles, hp, heartDmg), test/shell-blast.mjs, test/hull-armour.mjs, test/body-footprint.mjs, test/enemy-step.mjs
+- commits f2f8a2dd, 06ca7531 on main; thermals and the levitator's colours verified headless
+
+## 2026-10-16 — The Pearl tiers split by size (ivory 0.4, lemon 0.6, blue 0.8, purple 1.2, black 1.3), the small soft tiers glide as rushing blobs instead of hopping, larger waves that die faster, teams only in huge waves, blue faster
+
+decision · accepted · 2026-10-16-pearl-by-size-and-the-blob
+
+Owner, 2026-10-16, after the third round: 'The Rotor is not working, and I am tired of troubleshooting it endlessly ... 1) decision: we split them by size; cutis-soft ivory 0.4, lemon 0.6, blue 0.8, purple 1.2 for now 2) perhaps give the smaller ivory and lemon ones the rolling propulsion ... Another alternative would be to get rid of the appendages for the little ones for now, just have them be swarms of amoeba like blobs that move fast.' Then on the first cut: 'good, promising; ivory new movement as a small rushing unit can work. let's set it at 2 instead of 4, but it works ... grouping in teams of 3/4/5 should be left for huge waves only ... let's experiment with larger waves that die faster. feeling of swarm ... blue units should be faster a bit.' The motion audit caps a hopping body at about 1.2 radii a second, so small and fast could not be a hop.
+
+PEARL_BODY.scale by tier (src/content/pearl-enemies.js: white 0.4, yellow 0.6, blue 0.8, orange and green 1.12, purple and brown 1.2, black 1.3), carried by the record's size, the body's r0, the touch reach and the reticle's box together (src/fx/enemy-step.js). White and yellow glide (PEARL_PACE[tier].glide): the body is placed on its record each frame, eased over PEARL_GAIT.glideSeconds, a world push kept and decayed over glideShove, a deterministic per-slot spread (glideSpread, 1.2 radii, hash01) so a rush fans out; caps white 5 and yellow 2.8 radii a second (about 5.5 m/s, twice the old walk; the swarm lab bound is 6 m/s), speeds 1.3 and 1.2, hit points 0.6 and 0.7 of the spec's (blue 0.85, black 1.8), a white does a tenth of the heart damage. PEARL_WAVES.crowd 1.4 (each pulse's bodies x this), blackPerPulse 3 (the rest come up brown). SQUADS.over 600 and unpackUnder 100: packs only in huge waves, and unpacked once fewer than a hundred walk (src/fx/enemy-step.js unpackSquads, once a second). Blue: radii 1, speed 1.08, aggression 1.7 (the audit bites between 1.06 and 1.1; it must stay under green's 1.8 for the ladder test).
+
+Alternatives: The rolling propulsion (the gorogoro gait) for the small tiers: a new body motion in the kit; the blob is one placement rule and ships tonight. Rolling stays open for purple and brown.; Keep hopping and raise the audit's cap: the cap is what keeps a hop readable; a 0.4 body lunging five radii a hop reads as teleporting.; x4 for ivory as first asked: the owner read it on screen and set 2.
+
+Evidence:
+
+- test/pearl-motion.mjs (the audit: the glide bound), test/pearl-enemies.mjs (scale, hp, heartDmg, the aggression ladder), test/squads.mjs, test/body-footprint.mjs (the black's longer cycle grazes 2.5 m in the 10 m corridor: narrow allowance 0.4 r0)
+- commits 6841d61a, 9a433d02, b8e76091 on main; the owner's verdict on the first cut: 'good, promising'
+
 ## 2026-10-16 — Pages: the first deploy carrying the cave (edc5a2a6, 1,090 files) hung on GitHub's side and every push after it was refused as 'in progress deployment'; cancelled through the Pages API, the next fresh run published; a rerun of a failed publish uploads a second artifact and fails on that
 
 issue · resolved · 2026-10-16-pages-deploy-hung-on-the-cave
@@ -45,6 +75,21 @@ Alternatives: Wait for GitHub to time the deployment out on its own: unknown len
 Evidence:
 
 - gh run list --branch main (edc5a2a6 through c47270f9), gh run view <id> --log-failed; curl https://kai-denrei.github.io/stalheart/release.json, .../below/index.html
+
+## 2026-10-16 — The owner's fourteen notes: the blobs spread across their line, a sector is SECURE with up to twenty stragglers, the seat glide shorter, the arena's gunship seat opens over the arena, the terminal on B in any tank view, and the cave's flares that stick, a lamp that flickers and returns, fifteen flares, the bomb anywhere near the Queen
+
+decision · accepted · 2026-10-16-fourteen-notes-spread-stragglers-seat-cave
+
+Owner, 2026-10-16 (evening), on 06ca7531: rushing ivories 'too neatly in a single line at the gate, should scatter'; 'time between announcing SOL and getting control too long'; 'a sector could close with fewer than ~20 stragglers'; 'blue faster, more aggressive'; the boss fight 'after picking you drive the tank the gunship shows empty ground'; flares 'need stickiness on slopes'; 'the lamp should not fail right away: start stronger, flicker, come back, fail for good later'; '15 flares; the bomb can be dropped anywhere near the queen'; and, before that, 'where is the terminal in-game to access the bestiary ... that allows me to get back to my test-play game'.
+
+PEARL_GAIT.glideSpread 1.2 radii: each gliding body keeps a deterministic offset across and along its line (hash01 by slot), so a rush fans out. SECTOR_TIMING.stragglers 20 (src/domain/sectors.js isSecure takes the allowance). The seat glide 1.0 s, 1.8 s across the planet (was 1.4 / 3.2). Blue's aggression 1.7 (1.8 broke the ladder test: it must stay under green's). ARENA.seatCells 14: the boss run presses the gunship button only once the gunship's track is within that many cells of the arena (td-tab gunshipNearArena). The terminal opens on B in any tank view of a story run (the automated() gate dropped); the controls card names X and B. The cave (stalheart-cave 707a886, imported under below/): FLARE_COUNT 15; closeToQueen 70 m with a taller window; flare physics restitution 1.05, drag on any contact scaled by the slope's flatness, rest sooner the flatter; LAMP { strong 1.25, flicker 6, back 25, dim 0.8 } with the states working, flicker (the second hit), back, failed and Isao's lines for the flicker and the return.
+
+Alternatives: Let the player sit in SOL's seat before the satellite is overhead with the beam locked: offered to the owner if the countdown itself is what drags.; Count stragglers only outside the walls: the simple allowance matches what he asked and the next sector's cave-in handles their breach.
+
+Evidence:
+
+- test/sectors.mjs (isSecure with stragglers), test/hull-bodies.mjs (the shove expectation for a body that starts aside), test/pearl-motion.mjs, the cave repo's 33 tests
+- commits 4f5dc7ff, 3aff1e4f, 13370a34, 0cf42138, 11c932b7 on main; the blob spread and the arena seat timing verified headless
 
 ## 2026-10-16 — ENEMY SPEED x, a playtest knob over every record's walk (owner, 2026-10-16): params.enemySpeed on the VARS page (0.25 to 4), ?speed=N at boot, the harness reads it
 
