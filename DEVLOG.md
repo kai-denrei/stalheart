@@ -154,6 +154,21 @@ Evidence:
 - test/sector-run.mjs (the queue-wait block), test/shell-blast.mjs (the drawn point), test/story-beats.mjs (rotorAuto: the override is autoTower, the Quiver the first seat, the second hard core a phantom at 0.6), test/host-contracts.mjs (57 factories), test/expeditions.mjs
 - scripts/browser-test.mjs --sector-probe SECTOR=2 PLAY=1 through sectors 2 to 4 (the pass at 135 s, two seconds after the queue emptied); --canyon green before the change; --arena rewritten for the three phases
 
+## 2026-10-16 — Where the opening garrison goes is a domain rule (src/domain/garrison.js)
+
+change · accepted · 2026-10-16-garrison-sites-domain-rule
+
+Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. garrisonSites (36 lines and its 12-line comment) is pure: wall cells by the heart band, nearest a live gate, kept apart, with an any-wall fallback.
+
+src/domain/garrison.js garrisonSites(want, w) holds the rule and its comment; the world comes in as w (spawnPoints, dungeon, graph, cellSide, placeError) and the tunables as w.band and w.apart, which stay in td-tab (GARRISON_BAND, GARRISON_APART) beside a hoisted garrisonSites(want) that builds w per call, so its values are read when the original read them. Imports only the pinned kernel (BLOCKED, dist3). src/td-tab.js 5,694 -> 5,659 (-35).
+
+Alternatives: Move GARRISON_BAND and GARRISON_APART to src/content: they have one reader and no lab; left where they were to keep the move behaviour-neutral and small.
+
+Evidence:
+
+- side by side: the original function over random 20-80 cell worlds (3,000 worlds x want 0,1,2,3,5), 15,000 calls equal
+- test/garrison.mjs (band, nearest gate, apart, fallback, placeError); npm run architecture checks the domain imports; npm test, check, build
+
 ## 2026-10-16 — The owner's fourteen notes: the blobs spread across their line, a sector is SECURE with up to twenty stragglers, the seat glide shorter, the arena's gunship seat opens over the arena, the terminal on B in any tank view, and the cave's flares that stick, a lamp that flickers and returns, fifteen flares, the bomb anywhere near the Queen
 
 decision · accepted · 2026-10-16-fourteen-notes-spread-stragglers-seat-cave

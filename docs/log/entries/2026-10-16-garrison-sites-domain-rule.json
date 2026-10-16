@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-garrison-sites-domain-rule",
+  "date": "2026-10-16",
+  "type": "change",
+  "status": "accepted",
+  "title": "Where the opening garrison goes is a domain rule (src/domain/garrison.js)",
+  "context": "Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. garrisonSites (36 lines and its 12-line comment) is pure: wall cells by the heart band, nearest a live gate, kept apart, with an any-wall fallback.",
+  "outcome": "src/domain/garrison.js garrisonSites(want, w) holds the rule and its comment; the world comes in as w (spawnPoints, dungeon, graph, cellSide, placeError) and the tunables as w.band and w.apart, which stay in td-tab (GARRISON_BAND, GARRISON_APART) beside a hoisted garrisonSites(want) that builds w per call, so its values are read when the original read them. Imports only the pinned kernel (BLOCKED, dist3). src/td-tab.js 5,694 -> 5,659 (-35).",
+  "alternatives": [
+    "Move GARRISON_BAND and GARRISON_APART to src/content: they have one reader and no lab; left where they were to keep the move behaviour-neutral and small."
+  ],
+  "evidence": [
+    "side by side: the original function over random 20-80 cell worlds (3,000 worlds x want 0,1,2,3,5), 15,000 calls equal",
+    "test/garrison.mjs (band, nearest gate, apart, fallback, placeError); npm run architecture checks the domain imports; npm test, check, build"
+  ],
+  "supersedes": []
+}

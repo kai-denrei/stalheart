@@ -90,7 +90,7 @@ import { deepLink, wireDeepLink } from './deeplink.js';
 import { parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
-import { makeScore } from './score.js';
+import { makeScore } from './score.js'; import { garrisonSites as pickGarrisonSites } from './domain/garrison.js';
 import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
@@ -3645,54 +3645,19 @@ export function initTdTab(root) {
     }
   }
 
-  // WHERE THE OPENING GARRISON GOES.
-  //
-  // Forward of the heart, not on top of it. Towers mount on WALL cells, so a
-  // candidate is a blocked cell with an open neighbour — and "forward" is
-  // that neighbour sitting a few cells out from the heart rather than one.
-  // Among those, prefer the sites nearest a live gate, because forward only
-  // means anything in the direction the wave actually comes from.
-  //
-  // The two are also kept apart: the first pass of this put both on the same
-  // stretch of wall, which is two towers covering one lane and none covering
-  // the other.
+  // WHERE THE OPENING GARRISON GOES (src/domain/garrison.js): forward of the heart on a wall cell, nearest a live gate, two kept apart
   const GARRISON_BAND = [3, 6];    // cells from the heart, inclusive
   const GARRISON_APART = 4;        // cells between the two, minimum
   function garrisonSites(want) {
-    const gates = spawnPoints.filter((sp) => sp.alive).map((sp) => sp.ci);
-    const cand = [];
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] !== BLOCKED || placeError(i)) continue;
-      let best = Infinity;
-      for (const nb of graph.adj[i]) {
-        const d = dungeon.tags[nb] !== BLOCKED ? dungeon.distToHeart[nb] : -1;
-        if (d >= GARRISON_BAND[0] && d <= GARRISON_BAND[1]) best = Math.min(best, d);
-      }
-      if (best === Infinity) continue;
-      // nearest gate, as a straight distance on the sphere in cells
-      let toGate = Infinity;
-      for (const g of gates) {
-        toGate = Math.min(toGate, dist3(graph.centers[i], graph.centers[g]) / cellSide);
-      }
-      cand.push({ ci: i, toGate: Number.isFinite(toGate) ? toGate : 0, fromHeart: best });
-    }
-    cand.sort((a, b) => a.toGate - b.toGate);
-    const out = [];
-    for (const c of cand) {
-      if (out.length >= want) break;
-      const clear = out.every((o2) =>
-        dist3(graph.centers[o2], graph.centers[c.ci]) / cellSide >= GARRISON_APART);
-      if (clear) out.push(c.ci);
-    }
-    // ...and if the band or the spacing could not be satisfied on this board,
-    // fall back to ANY legal wall rather than opening with no garrison at all
-    if (out.length < want) {
-      for (let i = 0; i < dungeon.tags.length && out.length < want; i++) {
-        if (dungeon.tags[i] !== BLOCKED || placeError(i) || out.includes(i)) continue;
-        if (graph.adj[i].some((nb) => dungeon.tags[nb] !== BLOCKED)) out.push(i);
-      }
-    }
-    return out;
+    return pickGarrisonSites(want, {
+      spawnPoints,
+      dungeon,
+      graph,
+      cellSide,
+      placeError,
+      band: GARRISON_BAND,
+      apart: GARRISON_APART,
+    });
   }
 
   function commitTower(key, ci, spent) {
