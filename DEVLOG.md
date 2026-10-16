@@ -161,6 +161,21 @@ Evidence:
 - test/arena.mjs (the floor by the chord, the road through rock against a detour, the look-ahead), test/story-beats.mjs, test/host-contracts.mjs (57 factories), test/sectors.mjs, npm test and npm run check green
 - the screencast captures under the session's scratchpad flash/ (frames f08xx with the spike), the draw instrument's draws.json
 
+## 2026-10-16 — Refactor round 3 closed on the integration branch: round 2 merged onto main and five more modules out, src/td-tab.js 6,181 -> 5,551 lines with the wedge's hook and the road's chord test on it; the ceiling re-based 6,400 -> 5,700
+
+decision · accepted · 2026-10-16-refactor-round-3-ceiling-re-based-5700
+
+The owner away (2026-10-16 night): an Opus agent ran the round on branch refactor-round-3 (2026-10-16-refactor-round-2-merged-onto-main, then board-actors, tower-pose, garrison, ammo-orbs, tank-sight). The ceiling is re-based by decision at the end of a round, never per commit (owner, 2026-10-07; round 2 re-based 6,400 -> 6,000 at 5,839 but was never merged, so main kept 6,400 and the agent reverted the merge's 6,000 for the integrator). Branch integrate-2026-10-16 carries the round, the wedge branch (+2 td-tab lines: freeBlocked's refusal reason) and the arena pass (+0): 5,551 lines, 0 over 500 chars. Round 2's rule of thumb was about 3% of slack over the measured count.
+
+docs/architecture-budget.json lineCeilings src/td-tab.js 5700 (2.7% over 5,551). The guard holds at 5,551; host contracts hold for 65 factories. Not re-based: the long-line budget (0, unchanged). The round's next candidates, from the agent's notes: the control watchdog (ctlState, ctlWatch, the raw-key listener) to src/platform; wallCushion with breachBlocked to src/domain with tunables passed in; updateProjectiles; expandRound and loseGame; regenerate, gameHooks and frame left alone.
+
+Alternatives: Re-base to 5,600 (under 1% slack): the next playtest round's hooks would hit the ceiling on the first note, as the 2026-10-07 round did at zero slack.; Leave 6,400 until the owner merges: a ceiling 850 lines over the file is no guard; the integrator's job at a round's end is this number.
+
+Evidence:
+
+- npm run architecture on integrate-2026-10-16: 5,551 under 5,700; node test/host-contracts.mjs: 65 factories
+- the agent's notes /Users/minikai/Dev/stalheart-refactor-3/artifacts/refactor-round-3-notes.md (local)
+
 ## 2026-10-16 — Refactor round 2 merged onto tonight's main (round 3's first commit): four conflicts, one td-tab hunk folded token-wise, every proven region verbatim in main, the five equivalence proofs re-run green; the ceiling stays 6,400
 
 change · accepted · 2026-10-16-refactor-round-2-merged-onto-main
