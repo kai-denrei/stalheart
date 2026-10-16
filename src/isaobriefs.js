@@ -440,9 +440,10 @@ export const BRIEFS = {
   sector_boss: { id: 'sector_boss', face: 'surprised', title: BOSS_SECTOR.name, lines: [...BOSS_SECTOR.brief] },
   // THE BOSS's own lines (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 16): the two replies to the choice, the boss up,
   // the hull touched, the boss dead
-  boss_tank: { id: 'boss_tank', face: 'determined', title: 'COMMS · ISAO', once: false, lines: [BOSS_SECTOR.boss.choice.replyA] },
-  boss_auto: { id: 'boss_auto', face: 'determined', title: 'COMMS · ISAO', once: false, lines: [BOSS_SECTOR.boss.choice.replyB] },
-  boss_rises: { id: 'boss_rises', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave. That is the nest\'s mother.'] },
+  // THE ARENA (owner, 2026-10-16, third version; src/fx/boss-run.js): `arena_open` as the ground opens at the beacon the hull drove out to, `arena_force` as the
+  // mother rises and Isao takes the hull while the player is put in the gunship (the choice card's lines of 2026-10-15 are gone with it)
+  arena_open: { id: 'arena_open', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['There it goes. Small ones first.', 'Keep the hull moving and keep shooting. The gunship is on you.'] },
+  arena_force: { id: 'arena_force', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave. That is the nest\'s mother. Too big for the shells, and it must never reach the base.', 'Bait is the only play, and I am the better driver. I take the hull. You take the gun.'] },
   arena_lure: { id: 'arena_lure', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['I\'ll take it for a drive. Keep your rounds off the hull.'] },
   boss_hit_me: { id: 'boss_hit_me', face: 'worried', title: 'COMMS · ISAO', once: false, lines: ['It has a hold of the hull!'] },
   boss_dead: { id: 'boss_dead', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Target down. I need a car wash.'] },

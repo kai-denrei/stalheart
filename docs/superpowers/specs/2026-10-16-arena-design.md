@@ -14,6 +14,16 @@ run module, the phase scale, the hunter plans, the strip row, the harness) and c
 
 ## Decisions
 
+> **Third version (2026-10-16, evening; owner: "a message to go investigate a different tremor somewhere far… we reach the beacon with the tank… it opens up,
+> phase 1 the player controls the tank as the gunship helps with the reeds (avoid and shoot with shells), then phase 2 the monster is too enormous… Being
+> bait is the only way… Now we FORCE the player to take the gunship. Isao quips 'I am the better driver, I'll lure it'"): decision 4's choice card is
+> gone. The sector's brief sends the player to a tremor far out (`storyApi.tremor` at `story.arena.cell`); the arena's breach opens once the hull is within
+> `ARENA.reachCells` of the cell or `ARENA.waitMax` seconds after the start (`api.arenaDue`, src/fx/sector-run.js); phase one the player drives and shoots the
+> small Reeds and the pups while the gunship flies itself overhead (`story.gsAuto`, its call refilled off station); phase two, as the Nih-Dairia rises,
+> Isao takes the hull on the `lure` directive, the gunship's autopilot is turned off and the player is put in its seat once the gunship's track is over the
+> arena (`ARENA.seatCells`) or `ARENA.seatWait` seconds later. Lines: `arena_open`, `arena_force` (src/isaobriefs.js). The same spot is the stage for the
+> boss and the cave (decision 6). Everything below that speaks of the choice card reads with this note.
+
 1. **The arena is a place on the planet**: one cell far from the base — the farthest band of the cell graph that is reachable and outside
    the walls (`SECTOR_PLACEMENT.arenaHops` below the farthest hop count) — fixed for the run the moment the story world is built
    (`story.arena = { cell }`, src/platform/story-world.js, by the same field the sector loop places breaches with). Its opening is a

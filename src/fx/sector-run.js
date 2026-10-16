@@ -244,6 +244,8 @@ export function createSectorRun(h) {
     // THE CANYON FIRST: the base's own breaches wait for SOL-82's pass over it to end (the player is in its seat on the far side of the
     // world, and the towers alone lose the base inside a minute, 2026-09-24-pacing-probe); the canyon opens at once
     if (canyon) for (const b of sector.breaches) b.openAt = b.side === 'canyon' ? t0 : Infinity;
+    // THE ARENA WAITS FOR THE HULL (owner, 2026-10-16): its breach opens once the boss run says the beacon is reached (api.arenaDue; tick opens it)
+    if (api.arenaDue) for (const b of sector.breaches) if (b.side === 'arena') b.openAt = Infinity;
     pending = sector.breaches.map((b) => b.id);
     lastPulse = { sent: false, size: 0, at: 0 };
     phase = 'fighting'; progress();
@@ -398,6 +400,7 @@ export function createSectorRun(h) {
     if (phase !== 'fighting') return;
     for (const id of pending.slice()) {
       const b = breachOf(id);
+      if (b.side === 'arena' && b.openAt === Infinity && api.arenaDue?.()) b.openAt = t;   // the hull at the beacon (src/fx/boss-run.js)
       if (!(t >= b.openAt)) continue;
       // a breach that opens once the fight is on opens quietly: no establishing dive under a player who is driving or aiming
       pending.splice(pending.indexOf(id), 1);
@@ -420,7 +423,9 @@ export function createSectorRun(h) {
       if (b.side === 'arena') retarget(); else { h.collapse(sp); retarget(); }   // THE NEST'S MOUTH STAYS OPEN (2026-10-16): the arena's hole is spent, not sealed
       h.callout(`BREACH ${b.id} HELD · +${bonus.kg} KG`, 'co-victory-sub'); h.hud();
     }
-    if (!pending.length && !h.hold?.() && isSecure(sector, stalled() ? 0 : aliveSectorEnemies(), SECTOR_TIMING.stragglers ?? 0)) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
+    // NO STRAGGLERS AND NO STALL IN A BOSS SECTOR (2026-10-16): the arena's whole wave is under the allowance, and it read SECURE with the Nih-Dairia alive at
+    // 180; and twenty seconds of a fight without a kill (its 180 hit points take longer) is not a stall there
+    if (!pending.length && !h.hold?.() && isSecure(sector, stalled() && !def.boss ? 0 : aliveSectorEnemies(), def.boss ? 0 : SECTOR_TIMING.stragglers ?? 0)) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
       phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t;
       h.callout('SECTOR SECURE', 'co-victory'); h.sfx?.('tank_pickup'); h.hud();
     }
