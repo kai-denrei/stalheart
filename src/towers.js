@@ -6,7 +6,7 @@ const COMBAT = {
     "color": 15397631,
     "cost": 45,
     "dmg": 0.1,
-    "range": 3.6,
+    "range": 4.6,   // 4.6 (owner, 2026-10-16: the first wave is the lemon, whose bodies hold about 42 m off the wall; at 3.6 cells the piloted Rotor read OUT OF RANGE on all of them)
     "rate": 2.2,
     "attack": "single"
   },

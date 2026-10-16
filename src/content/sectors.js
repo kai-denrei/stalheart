@@ -216,7 +216,11 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // farthest reachable cell outside the walls within `farHops` of the farthest; its opening `craterCells` wide (the sinkhole scaled, src/game-breaches.js)
 // reachCells: the hull this near the arena's cell opens it (the drive out to the beacon); waitMax: seconds after the sector's start it opens anyway; seatWait: seconds after the
 // boss rose the gunship seat is taken whether or not the gunship is over the arena yet (src/fx/boss-run.js, owner 2026-10-16: the drive out, then the forced hand-over)
-export const ARENA = freeze({ farHops: 4, craterCells: 3, seatCells: 14, reachCells: 8, waitMax: 150, seatWait: 45 });   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, waitMax: 150, seatWait: 45,
+  // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
+  // `ahead` cells on the cheapest walk to the arena (a rock cell costs `rockCost` ground cells) is burned by SOL for `burn` seconds; a pass is laid over it
+  // (overhead, energy in seconds, radius in metres, slew m/s) when none is up
+  road: freeze({ every: 7, ahead: 7, burn: 2.5, rockCost: 4, overhead: 45, energy: 40, radius: 6, slew: 16 }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

@@ -55,5 +55,6 @@ for (const keys of [['needle', 'mortar'], ['plasma', 'lancer'], ['quiver', 'rela
   all += JSON.stringify(newLog);
 }
 // THE ORIGINAL BLOCK's logs on these fakes (src/td-tab.js before its move in the refactor run, through new Function beside the module)
-assert.equal(createHash('sha256').update(all).digest('hex').slice(0, 16), 'c853a73433c6a1b6', 'the module behaves as the controller block did');
+// re-pinned 2026-10-16: the Rotor's range 4.6 cells (was 3.6) reaches the lemon pile; the module itself is unchanged by it
+assert.equal(createHash('sha256').update(all).digest('hex').slice(0, 16), '81649e065cd56963', 'the module behaves as the controller block did');
 print("Tower combat: the needle, the mortar, the plasma, the lancer, the quiver, the relay and the rotor through 90 frames, the shots, beams and slugs, line of sight and the board cleared, as the controller block did.");

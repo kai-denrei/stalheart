@@ -30,7 +30,7 @@ import { BASE_PERKS } from '../content/base-programme.js';
 import { createBasePrint } from '../fx/base-print.js';
 import { createHullIssue, doorBerth, nearestCell } from '../fx/hull-issue.js';
 import { BLOCKED, PATH, bfsDist } from '../dungeon.js';
-import { pickArenaCell } from '../domain/arena.js';
+import { pickArenaCell, arenaFloor } from '../domain/arena.js';
 import { ARENA } from '../content/sectors.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
@@ -169,7 +169,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // wanders within it. The Quiver's two rise beyond it (STORY_QUIVER.rise), on the horizon as its optic opens, and walk in (owner, 2026-10-05)
   const perch = plan.sockets[1]?.pos ?? null, ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, perch), far = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.rise, perch);
   const rise = riseCells(far.size >= 2 ? far : ring, planet.graph.centers, plan.cells.forward);
-  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
+  const beats = stage >= 1 ? makeStoryBeats({ fodderType: STORY_FODDER.type ?? 'amoeba', fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
@@ -180,7 +180,9 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
     bossStart: !!bossStart,   // ?boss=1: a run opened past the door's earliest opens ON THE BOSS (src/fx/sector-run.js, 2026-10-16)
     // THE ARENA'S PLACE (owner, 2026-10-16; src/domain/arena.js, ARENA): the farthest reachable cell outside the walls, fixed with the world; ?arena=<cell> names one
-    arena: (() => { const dist = bfsDist(planet.graph.adj, [built.dungeon.heart], (ci) => built.dungeon.tags[ci] !== BLOCKED); const cell = Number.isInteger(arena) && arena >= 0 && arena < dist.length ? arena : pickArenaCell({ dist, blocked: (ci) => built.dungeon.tags[ci] === BLOCKED, inside: (ci) => planet.clearing.cells.has(ci), farHops: ARENA.farHops }); return cell >= 0 ? { cell, hops: dist[cell] ?? null } : null; })(),
+    // AN ENORMOUS ARENA (owner, 2026-10-16): the cells within ARENA.radiusCells of it are carved to ground here, before the geometry is built (src/domain/arena.js arenaFloor)
+    arena: (() => { const dist = bfsDist(planet.graph.adj, [built.dungeon.heart], (ci) => built.dungeon.tags[ci] !== BLOCKED); const cell = Number.isInteger(arena) && arena >= 0 && arena < dist.length ? arena : pickArenaCell({ dist, blocked: (ci) => built.dungeon.tags[ci] === BLOCKED, inside: (ci) => planet.clearing.cells.has(ci), farHops: ARENA.farHops });
+      const floor = cell >= 0 ? arenaFloor({ centers: planet.graph.centers, cell, cellArc: planet.cellSide ?? planet.cellArc ?? 0, radiusCells: ARENA.radiusCells, inside: (ci) => planet.clearing.cells.has(ci) }) : []; for (const ci of floor) built.dungeon.tags[ci] = PATH; return cell >= 0 ? { cell, hops: dist[cell] ?? null, floor: floor.length } : null; })(),
     beats, arrival: createArrival({ on: arrives, past: pastLanding, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),
     // A TUTORIAL CHAPTER'S START (src/fx/story-entry.js builds it at boot): its number, the steps it prints and the sentries it stands
     // (`berths`: past the hull's issue the Stålheart's door is every berth, as the issue leaves it, src/fx/hull-issue.js)

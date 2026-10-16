@@ -102,7 +102,7 @@ export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8, tankMet
 // in), so the Rotor has them in reach as the tour ends (measured headless: 11.5 cells from the Rotor at the seat before, 4.9 with six hops; the
 // Pearl records walk a fifth of a cell a second, PEARL_PACE radii, so the gate is reached ~25 s into the seat, not ~50).
 // A breach the player watches open (the tremor and the dive shot) keeps its pile at the crater (src/domain/story-beats.js spawnTick)
-export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7, headStart: null });   // headStart off (owner, 2026-10-16: "they should come from the sinkhole"): every one climbs the lip; was { hops: 6, depth: 3 }
+export const STORY_FODDER = Object.freeze({ type: 'ghost', total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7, headStart: null });   // type: the lemon (PEARL_OF ghost: yellow; owner, 2026-10-16: 'let's make the first wave yellow-lemon, they are less crazy, slightly bigger target'; was the white amoeba)   // headStart off (owner, 2026-10-16: "they should come from the sinkhole"): every one climbs the lip; was { hops: 6, depth: 3 }
 // emergeHold: the orbit camera holds over the crater after the breach FX. The fifty are all up within `stagger` (1.2 s), so holding
 // six more seconds over a finished pile was watching, not reading: three is the pile seen and the camera released.
 // preRoll: the story's own orbit beat before the dive, overriding the shared breach preset's 1.6 (immutable, and the breach lab
@@ -162,7 +162,7 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // rise: the lane hops (from the forward cell, seen from the Quiver) where its two hard cores come up, past the hold ring: on the horizon
 // as the optic opens, walking in to be held (owner, 2026-10-05: on the ring they were "much too close, making a long-range strike
 // somewhat useless"; from the sinkhole they had taken five seconds and more to show)
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore: 'barbed', second: 'phantom', secondPace: 0.6, secondDelay: 3, hold: [5, 9], rise: [10, 13], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, diveRate: 2.6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore: 'barbed', second: 'phantom', secondPace: 0.6, secondDelay: 3, hold: [8, 12], rise: [15, 18],   /* farther out (owner, 2026-10-16: 'the purple and black enemies should spawn further away, leaving more time for the player to aim'; was hold 5-9, rise 10-13) */ nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, diveRate: 2.6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
 
 // THE BEAT CLOCK (owner, 2026-09-18: "everything must feel faster"). Every wait in src/domain/story-beats.js that the player only
 // watches, gathered here as content. `faceDelays` are Isao's two landing lines; `rotorDelay` the pause before he deploys the AFR-01;
@@ -186,8 +186,10 @@ export const STORY_CALM = Object.freeze({ near: 8, calm: 3, maxHold: 120, heartH
 // ISAO MANS THE ROTOR (owner, 2026-10-16: 'The Rotor is not working, and I am tired of troubleshooting it endlessly. let's have Isao set-up the first two towers and
 // they shoot automatically'; then 'quiver, since we one-shot them with the quiver': the Quiver stays the player's first seat): `rotorAuto` true, the Rotor fires
 // on its own from the first wave (src/domain/story-beats.js autoTower; src/fx/tower-combat.js exempts it from the tutorial's hush) and the player watches the gate
+// REVERTED THE SAME NIGHT (owner: 'the player has nothing to do for too long, we are stuck in top-down view forever as the rotor apparently fails to hit the
+// first wave entirely... we revert back to user doing the manual override'): rotorAuto false; the path stays behind the flag
 export const STORY_BEATS = Object.freeze({
-  rotorAuto: true, rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
+  rotorAuto: false, rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
   tremorDelay: 0.6, breachDelay: 1.5, spawnDelay: 0.3, overrideDelay: 0.8, overrideCells: 99, earlyBreach: 0, tankAfterNuke: 1.6,
 });
 // THE NUKE'S TANK: the berth on the lane outside the gate it is handed on, `berth` [from, to] cells out from the forward cell along the

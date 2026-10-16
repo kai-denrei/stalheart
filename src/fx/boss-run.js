@@ -37,6 +37,7 @@ const REFILL = 5;       // seconds between calls for the gunship while it is off
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
   let phase = 'off', beganAt = 0, forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
+  let roadAt = -99, roadUntil = 0, roadSaid = false;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
   const bossRecord = () => c.enemies.find((e) => e.alive && e.hunter && e.tier === (def?.boss?.boss?.tier ?? 'huge')) ?? null;
@@ -51,7 +52,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP();
+    on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon'; beganAt = c.t();
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -65,6 +66,14 @@ export function createBossRun(c) {
     if (!on) return;
     const t = c.t();
     if (phase === 'beacon' && c.arenaOpen?.()) { phase = 'waves'; c.tremor?.(-1); c.showBrief('arena_open'); c.speak('arena_open'); }
+    // THE ROAD SOL CUTS (owner, 2026-10-16: "have SOL shoot ahead of it here and there to open the maze"): on the drive out, every ARENA.road.every seconds the
+    // first rock on the hull's cheapest walk to the arena (c.roadNext) is burned by SOL (c.solRoad: a pass laid over it when none is up, the beam held
+    // ARENA.road.burn seconds); the first time Isao says so
+    else if (phase === 'beacon' && c.roadNext && t - roadAt >= (ARENA.road?.every ?? 7) && c.hullNearArena?.() !== true) {
+      roadAt = t; const ci = c.roadNext();
+      if (ci >= 0 && c.solRoad?.(ci)) { roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
+    }
+    if (roadUntil && t >= roadUntil) { roadUntil = 0; c.solRoad?.(-1); }
     // A LONG SESSION (owner, 2026-10-16: "a longer gunship session"): off station the gunship is called again, so it keeps coming back over the arena until the sector ends
     if (t - refillAt >= REFILL && c.station && !c.station()) { refillAt = t; c.fillCall(); seated = false; }
     const h = hunters();
@@ -94,7 +103,7 @@ export function createBossRun(c) {
   function end(outcome) {
     if (!on) return;
     on = false; shotSaid = false; phase = 'off';
-    c.tremor?.(-1);
+    c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
     if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) c.story().gsAuto = was.gsAuto; }
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
     if (outcome === 'secure' && !done) { done = true; c.showBrief('boss_dead'); c.speak('boss_dead'); }
@@ -117,5 +126,5 @@ export function createBossRun(c) {
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
   return { begin, tick, end, rows, lure, arenaDue, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, seated, bossSeen, hullHit, road: { said: roadSaid, burning: roadUntil > 0 }, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

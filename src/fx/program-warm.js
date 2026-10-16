@@ -42,13 +42,23 @@ export function createProgramWarm(renderer, scene, camera, { perFrame = 4, resca
     }
     renderer.setRenderTarget(target);
   }
-  const added = { canvas: 0, target: 0 }; let ticks = 0, scans = 0, lastErr = null, lastBg = null, draws = 0, drawDue = false;   // programs each bind actually linked; log: the probe's trace of scans and compiles (bounded)
+  const added = { canvas: 0, target: 0 }; let ticks = 0, scans = 0, lastErr = null, lastBg = null, draws = 0, drawDue = false, drawPending = false;   // programs each bind actually linked; log: the probe's trace of scans and compiles (bounded)
   const api = {
     // tick() is kept for the frame's call site and does nothing: the timer below does the work
     // ON ITS OWN TIMER (2026-10-01): driven from the frame it ran only when a frame painted, and a scan every `rescanSeconds` of frame
     // time never came in the harness (98 frames in a run) nor in the game (the frame's dt was not a finite number here). The compiles
     // do not need a frame: a timer steps it, `every` ms a batch, whether or not the page paints
-    tick() {},
+    // (2026-10-16) ...except the one-pixel canvas draw the timer asked for: made here, inside the frame, so it is never presented on its own
+    tick() {
+      if (!drawPending) return;
+      drawPending = false; draws++;
+      try {
+        const target = renderer.getRenderTarget(), size = renderer.getSize(new THREE.Vector2()), ac = renderer.autoClear;
+        renderer.setRenderTarget(null); renderer.setScissorTest(true); renderer.setScissor(0, 0, 1, 1); renderer.setViewport(0, 0, 1, 1); renderer.autoClear = false;
+        renderer.render(scene, camera);
+        renderer.setScissorTest(false); renderer.setViewport(0, 0, size.x, size.y); renderer.autoClear = ac; renderer.setRenderTarget(target);
+      } catch (e) { lastErr = String(e?.stack ?? e); }
+    },
     step() { ticks++; try { this.scanAndCompile(); } catch (e) { lastErr = String(e?.stack ?? e); } },
     scanAndCompile() {
       // THE RESCAN CLOCK (2026-10-01): it added the caller's dt, which at the call site is not a finite number, so the scene was scanned
@@ -67,13 +77,12 @@ export function createProgramWarm(renderer, scene, camera, { perFrame = 4, resca
       // spot. When the background changes or new objects have arrived and been compiled, the whole scene is drawn once at one pixel of
       // the canvas under a scissor, exactly the monitor's draw; the next frame paints over it
       if (scene.background !== lastBg) { lastBg = scene.background; drawDue = true; }
-      if (drawDue && !queue.length) {
-        drawDue = false; draws++;
-        const target = renderer.getRenderTarget(), size = renderer.getSize(new THREE.Vector2()), ac = renderer.autoClear;
-        renderer.setRenderTarget(null); renderer.setScissorTest(true); renderer.setScissor(0, 0, 1, 1); renderer.setViewport(0, 0, 1, 1); renderer.autoClear = false;
-        renderer.render(scene, camera);
-        renderer.setScissorTest(false); renderer.setViewport(0, 0, size.x, size.y); renderer.autoClear = ac; renderer.setRenderTarget(target);
-      }
+      // ...BUT INSIDE THE FRAME (owner, 2026-10-16: 'one frame of a blue grid flashing on the first beacon from space'; caught on a screencast: the
+      // frame after the landers' near tiers arrived was the whole canvas brighter and grey-blue with the planet's far side showing through). A
+      // draw made here, on the timer, is its own task: the browser presents the canvas at the end of it, and with preserveDrawingBuffer off what it
+      // presents is whatever the buffer holds, not the frame the game composed. tick() makes the draw from the frame's own call site instead, where
+      // the frame paints over its one pixel in the same task
+      if (drawDue && !queue.length) { drawDue = false; drawPending = true; }
       if (!queue.length) return;
       const batch = [];
       for (let i = 0; i < perFrame && queue.length; i++) { const o = queue.shift(); if (o.parent) batch.push(o); }   // dropped: removed from the scene since the scan
