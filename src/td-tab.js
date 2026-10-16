@@ -1082,10 +1082,11 @@ export function initTdTab(root) {
   function pedestalBlocked(ci) {
     return dist3(graph.centers[ci], graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.45;
   }
+  let hullWhy = '';   // which test refused the last refused candidate (the corridor probe's trace; 2026-10-16)
   function freeBlocked(cand) {
     const ci = cellIndex(cand);
-    if (ci === -1 || dungeon.tags[ci] === BLOCKED || containerBlocked(ci)) return true;
-    if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3 || breachBlocked(cand)) return true;   // the pad, and any open sinkhole: no-go
+    if (ci === -1 || dungeon.tags[ci] === BLOCKED || containerBlocked(ci)) return (hullWhy = ci === -1 ? 'off' : dungeon.tags[ci] === BLOCKED ? 'rock' : 'container'), true;
+    if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3 || breachBlocked(cand)) return (hullWhy = breachBlocked(cand) ? 'breach' : 'pedestal'), true;   // the pad, and any open sinkhole: no-go
     // THE HULL'S OWN FOOTPRINT against the rock faces (operator, 2026-09-13): its centre, nose and tail; a move may not take it deeper
     // into a face than it already is (src/domain/hull-contact.js)
     const crowdedBy = berthed()
@@ -1094,9 +1095,10 @@ export function initTdTab(root) {
     const half = Math.min(unitScale * 0.73, cellSide * 0.6), squeeze = stuck.t >= HULL_STUCK.after, side = cross3(norm3(player.pos), player.smoothDir);
     const hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...(squeeze ? [] : [[1, 0], [-1, 0], ...(TANK_WALL.width ? [[0, 1], [0, -1]] : [])]).map(([k, w]) => ({ p: norm3(add3(add3(p, scale3(player.smoothDir, k * half)), scale3(side, w * half * TANK_WALL.width))), clearance: cellSide * 0.04 }))];   // nose, tail and both flanks; wedged: they let go and it threads on its centre (2026-10-03)
     const board = { cellOf: cellIndex, blocked: (nb) => nb !== ci && crowdedBy(nb), centers: graph.centers, adj: graph.adj };
-    if (stuck.t < HULL_STUCK.after + HULL_STUCK.ramp && deepensContact(hullDepth(hull(player.pos), board), hullDepth(hull(cand), board), cellSide * 0.002)) return true;   // fully wedged on open ground, no snag holds it (2026-10-03)
-    if ((storyBase?.solidAt(cand) && !storyBase.solidAt(player.pos)) || (storyBase?.gateShut(cand) && !storyBase.gateShut(player.pos))) return true;   // and a door not yet open   // the buildings are solid (src/fx/story-base.js solidAt)
-    return unitBlocker(cand);
+    const d0 = stuck.t < HULL_STUCK.after + HULL_STUCK.ramp ? hullDepth(hull(player.pos), board) : 0, d1 = stuck.t < HULL_STUCK.after + HULL_STUCK.ramp ? hullDepth(hull(cand), board) : 0;
+    if (deepensContact(d0, d1, cellSide * 0.002)) return (hullWhy = `depth ${(d0 / cellSide).toFixed(3)}>${(d1 / cellSide).toFixed(3)}${squeeze ? ' sq' : ''}`), true;   // fully wedged on open ground, no snag holds it (2026-10-03)
+    if ((storyBase?.solidAt(cand) && !storyBase.solidAt(player.pos)) || (storyBase?.gateShut(cand) && !storyBase.gateShut(player.pos))) return (hullWhy = storyBase.solidAt(cand) ? `solid ${storyBase.solidAt(cand)}` : 'gate'), true;   // and a door not yet open   // the buildings are solid (src/fx/story-base.js solidAt)
+    return unitBlocker(cand) && ((hullWhy = 'unit'), true);
   }
 
   // nearest blocked neighbour's centre for wall sliding; a point inside rock names that rock
@@ -1990,7 +1992,7 @@ export function initTdTab(root) {
     driveRamp,
     enemies,
     floorColorOf,
-    freeBlocked,
+    freeBlocked, blockWhy: () => hullWhy,
     keys,
     manualActive,
     nearestWall,
@@ -6060,7 +6062,7 @@ export function initTdTab(root) {
       // THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems
       // through these and nothing else, so it needs no ?acceptance=1
       showcase: createShowcaseHooks({
-        camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci),
+        camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci), hullBlock: () => hullDrive.block(),
         story: () => story, storyBase: () => storyBase, deploy: () => deploy, playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP,
         setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipRig.setTrack(v); },
       }),

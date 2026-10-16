@@ -206,6 +206,8 @@ export function createShowcaseHooks(host) {
       return path.reverse().map((ci) => ({ ci, open: g.adj[ci].filter((nb) => tags[nb] !== BLOCKED).length, solid: !!sb?.solidAt(g.centers[ci]) }));
     },
     solid: (ci) => !!host.storyBase()?.solidAt(host.graph().centers[ci]),
+    // the cells within `hops` of a cell, with their centres, neighbours and rock tags, and the cell's side: the corridor probe's geometry for an offline reading of a wedge (2026-10-16)
+    cellsNear: (ci, hops = 2) => { const g = host.graph(), tags = host.dungeon().tags, seen = new Set([ci]); let ring = [ci]; for (let k = 0; k < hops; k++) { const next = []; for (const c of ring) for (const nb of g.adj[c]) if (!seen.has(nb)) { seen.add(nb); next.push(nb); } ring = next; } return { cellSide: host.cellSide(), cells: [...seen].map((c) => ({ ci: c, c: g.centers[c].slice(), adj: [...g.adj[c]], rock: tags[c] === BLOCKED, solid: !!host.storyBase()?.solidAt(g.centers[c]) })) }; },
     // the hull against a site, for the corridor probe: its distance to the site cell in cells, the site's reach, and what the points ahead of it meet
     probeSite: (id) => {
       const st = host.story(), c = st?.siteCells?.[id], cs = host.cellSide(), g = host.graph(), tags = host.dungeon().tags, sb = host.storyBase();
@@ -226,7 +228,7 @@ export function createShowcaseHooks(host) {
     strays: (hops = 60) => { const d = host.dungeon()?.distToHeart ?? []; let near = 0, far = 0; for (const e of enemies) if (e.alive && !e.guard && !e.harmless) { if (d[e.cur] > hops) far++; else near++; } return { near, far }; },   // hostiles by walking hops from the heart (--canyon-again TIMELINE)
     deploying: () => !!host.deploy(),   // the bay's roll-out owns the camera and the hull's heading until it hands over: a look waits for it
     look: (dir) => { const n = norm3(player.pos), d = sub3(dir, scale3(n, dot3(dir, n))); if (Math.hypot(...d) > 1e-9) { player.heading = norm3(d); player.travelDir = player.heading.slice(); player.smoothDir = player.heading.slice(); } endShot(); setView('pov'); },
-    drive: () => { const adj = host.graph().adj[player.cur].filter((nb) => host.dungeon().tags[nb] !== BLOCKED); return { pos: player.pos.slice(), heading: player.heading.slice(), cur: player.cur, open: adj.length, adj }; },
+    drive: () => { const adj = host.graph().adj[player.cur].filter((nb) => host.dungeon().tags[nb] !== BLOCKED); return { pos: player.pos.slice(), heading: player.heading.slice(), cur: player.cur, open: adj.length, adj, block: host.hullBlock() }; },
   };
   return hooks;
 }
