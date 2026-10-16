@@ -16,6 +16,9 @@ export async function registerServiceWorker(onUpdateReady) {
   registerServiceWorker.why = '';
   if (document.querySelector('meta[name="cb"]')?.content === '00000000'
       && new URLSearchParams(location.search).get('sw') !== '1') {
+    // A DEVELOPMENT PAGE RUNS NO WORKER, including one an earlier build left on this origin: it would serve the modules it cached under the
+    // new page's badge (2026-10-16: the owner saw a fresh commit and old behaviour on :8159)
+    try { navigator.serviceWorker?.getRegistrations().then((rs) => { for (const r of rs) r.unregister(); }); caches?.keys().then((ks) => { for (const k of ks) if (k.startsWith('stalheart:')) caches.delete(k); }); } catch { /* none */ }
     registerServiceWorker.why = 'development build'; return null;
   }
   if (!('serviceWorker' in navigator)) { registerServiceWorker.why = 'unsupported'; return null; }

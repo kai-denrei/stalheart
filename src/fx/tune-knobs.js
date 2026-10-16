@@ -7,13 +7,16 @@
 //   ctx: { tune, params, enemies, sector: { n, name, pulse, breath } | null, seat: 'gunship' | '<mount key>' | null, arena: boolean }
 import { PEARL_OF, PEARL_PACE, PEARL_BODY, PEARL_TIERS } from '../content/pearl-enemies.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
+import { PEARL_BODIES } from './creature-enemies.js';   /* a tier's drawn radius in metres, for the size knob's readout */
 import { HULL_ARMOUR, TANK_DRIVE, LURE } from '../content/tank.js';
 import { GUNSHIP_ORBIT } from '../content/gunship.js';
 import { SENTRY_TUNE } from '../sentry.js';
 import { screenTiers } from '../domain/tune.js';
 
 // `when`: the moment a change bites: 'now' (read every frame; a tier's size and hit points reach the bodies on screen through the seam's retune), 'next pulse', 'next pass', 'this hull' (the count moves with it)
-const k = (o) => ({ kind: 'mul', default: 1, min: 0.25, max: 4, step: 0.05, when: 'now', ...o, value: o.value ?? o.default ?? 1 });
+const k = (o) => ({ kind: 'mul', default: 1, min: 0.25, max: 8, step: 0.05, when: 'now', ...o, value: o.value ?? o.default ?? 1 });
+// a Pearl tier's drawn radius (metres): the mean of its types' r0 (PEARL_BODIES carries PEARL_BODY.scale already)
+const pearlRadius = (t) => { const rs = Object.values(PEARL_BODIES).filter((b) => b.tier === t).map((b) => b.r0); return rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null; };
 const tierLabel = (key) => { const [f, t] = key.split(':'); return f === 'pearl' ? (PEARL_TIERS.find((x) => x.id === t)?.name ?? key) : (CREATURE_TIERS[f]?.[t]?.label ?? key); };
 export function tuneKnobs(ctx) {
   const v = ctx.tune.values ?? {}, val = (id) => v[id], groups = [];
@@ -25,7 +28,7 @@ export function tuneKnobs(ctx) {
     const speedBase = pearl ? (PEARL_PACE[t]?.speed ?? 1) : tier.speed, sizeBase = pearl ? (tier.cored ? PEARL_BODY.scale.cored : PEARL_BODY.scale.soft) : tier.r0;
     enemies.push(
       k({ id: `${key}.speed`, path: pearl ? `PEARL_PACE.${t}.speed` : `CREATURE_TIERS.${f}.${t}.speed`, label: `${tierLabel(key)} ×${count} · walk ×`, base: speedBase, value: val(`${key}.speed`) }),
-      k({ id: `${key}.size`, path: pearl ? `PEARL_BODY.scale.${tier.cored ? 'cored' : 'soft'}` : `CREATURE_TIERS.${f}.${t}.r0`, label: `${tierLabel(key)} · size ×`, base: sizeBase, value: val(`${key}.size`), min: 0.4, max: 2.5 }),
+      k({ id: `${key}.size`, path: pearl ? `PEARL_BODY.scale.${tier.cored ? 'cored' : 'soft'}` : `CREATURE_TIERS.${f}.${t}.r0`, label: `${tierLabel(key)} · size ×`, base: sizeBase, value: val(`${key}.size`), min: 0.1, max: 4, metres: pearl ? pearlRadius(t) : tier.r0 }),
       k({ id: `${key}.hp`, path: pearl ? `ENEMY_SPEC[${t} types].hp` : `CREATURE_TIERS.${f}.${t}.hp`, label: `${tierLabel(key)} · hit points ×`, base: pearl ? 1 : tier.hp, value: val(`${key}.hp`), min: 0.25, max: 6 }),
     );
   }

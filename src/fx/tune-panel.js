@@ -38,7 +38,7 @@ export function createTunePanel(root, c) {
       body.append(sec);
     }
   }
-  const paint = (row, k) => { row.classList.toggle('tp-changed', k.value !== k.default); row.querySelector('.tp-eff').textContent = `${k.kind === 'mul' ? `${k.base} → ${effective(k)}` : `default ${k.default}`} · ${k.when ?? 'now'}`; };
+  const paint = (row, k) => { row.classList.toggle('tp-changed', k.value !== k.default); const m = k.metres ? ` · r ${k.metres.toFixed(1)} m → ${(k.metres * k.value).toFixed(1)} m` : ''; row.querySelector('.tp-eff').textContent = `${k.kind === 'mul' ? `${k.base} → ${effective(k)}` : `default ${k.default}`}${m} · ${k.when ?? 'now'}`; };
   function refresh() { for (const g of groups) for (const k of g.knobs) { const row = body.querySelector(`[data-id="${CSS.escape(k.id)}"]`); if (row) paint(row, k); } }
   function open() { if (!el.hidden) return; el.hidden = false; build(); document.body.classList.add('tune-open'); try { document.exitPointerLock?.(); } catch { /* none */ } timer = setInterval(build, REFRESH * 1000); }
   function close() { if (el.hidden) return; el.hidden = true; document.body.classList.remove('tune-open'); clearInterval(timer); timer = null; }
