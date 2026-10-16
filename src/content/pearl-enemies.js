@@ -21,9 +21,9 @@ const ROWS = [
   ['orange', 'Cutis-Core Pumpkin', 0xeb883e, 0x853b20, 0.16, 2, 5, 1, 3, 0, 40],
   ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.4, 0, 0, 60],
   ['green', 'Cutis-Core Emerald', 0x76a76a, 0xc7e8a4, 0.21, 2, 4, 1.8, 3, 8, 100],
-  ['purple', 'Cutis-Core Amethyst', 0xa879c5, 0xdfa9ff, 0.24, 2, 3.5, 2.3, 3, 14, 160],
-  ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 3, 3, 3, 3, 22, 240],
-  ['black', 'Cutis-Core Onyx', 0x11151d, 0xff0000, 0.33, 3, 2.5, 4, 3, 35, 360],
+  ['purple', 'Cutis-Core Amethyst', 0xa879c5, 0xdfa9ff, 0.24, 2, 5, 2.3, 3, 14, 160],
+  ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 3, 4.5, 3, 3, 22, 240],
+  ['black', 'Cutis-Core Onyx', 0x11151d, 0xff0000, 0.33, 3, 4, 4, 3, 35, 360],
 ];
 // a tier: `values` is the kit config's Pearl part (over src/fx/cutis-maku/config.js DEFAULT_CONFIG; r0 is set per body by the game's size)
 // THE NAMES (owner, 2026-10-14, from the bestiary: "Cutis-Soft Ivory, Cutis-Soft Lemon, Cutis-Soft Sky, etc. for all the colors, then Cutis-Core Pumpkin for
@@ -32,7 +32,7 @@ export const PEARL_TIERS = freeze(ROWS.map(([id, name, skin, core, labR0, seekCo
   id, name, rank: rank + 1, cored: coreShape > 0, labR0,
   values: {
     seekCount, cycleDuration, aggression, skinTint: skin, veinTint: id === 'black' ? 0xbab6c1 : 0x45404b, pulseTint: core, coreTint: core, coreShape,
-    coreSize: id === 'black' ? 0.18 : id === 'purple' ? 0.22 : 0.28, membraneOpacity: coreShape ? 0.32 : 0.65, contactDamage, health,
+    coreSize: id === 'black' ? 0.18 : id === 'purple' ? 0.22 : 0.28, membraneOpacity: coreShape ? (['purple', 'brown', 'black'].includes(id) ? 0.5 : 0.32) : 0.65, contactDamage, health,
     transferAcceleration: rank < 4 ? 1.8 : 2.5, reach: rank < 4 ? 8 + rank : 12 + (rank - 4), noiseAmp: 0.15, veinWidth: 0.035, pearlVariant: 1,
   },
 })));
@@ -57,7 +57,7 @@ export const PEARL_OF = freeze({
 // `scale` multiplies a soft or a cored tier's record size (src/fx/enemy-step.js) and with it the body's r0, the touch reach and the reticle's box together.
 // BY SIZE (owner, 2026-10-16: "decision: we split them by size; cutis-soft ivory 0.4, lemon 0.6, blue 0.8, purple 1.2 for now, some sense of differences in sizes
 // and speed"): `scale` by tier id; the other cored tiers keep 1.12
-export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.4, yellow: 0.6, blue: 0.8, orange: 1.12, green: 1.12, purple: 1.2, brown: 1.12, black: 1.12 } });
+export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.4, yellow: 0.6, blue: 0.8, orange: 1.12, green: 1.12, purple: 1.2, brown: 1.2, black: 1.45 } });   // black: the biggest (owner, 2026-10-16)
 export const pearlScaleOf = (tier) => PEARL_BODY.scale[tier] ?? 1;
 
 // HOW A BODY KEEPS UP WITH ITS RECORD (src/domain/pearl-bodies.js; CREATURE_FOLLOW's catch-up and leash over these). The record walks at its type's speed
@@ -126,8 +126,11 @@ export const PEARL_FOLLOW = freeze({
 // like blobs that move fast"): white and yellow `glide` (src/fx/creature-pearl.js: no hop, the body slides onto its record's point, PEARL_GAIT.glideSeconds)
 // with caps in radii that read about 5.5 m/s on their small bodies (the swarm lab's bound is a few metres a second), twice the hopping pace they had (the
 // owner: "set it at 2 instead of 4, but it works"). Blue a bit faster (1 radius a second at x1.08: the audit's bound sits just past it). `hp` (owner: "larger
-// waves that die faster. feeling of swarm"): the soft tiers' hit points over the spec's, with PEARL_WAVES.crowd for the larger waves.
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1.08 : 1, radii: id === 'white' ? 5 : id === 'yellow' ? 2.8 : id === 'blue' ? 1 : id === 'black' ? 0.8 : 0.9, glide: id === 'white' || id === 'yellow', hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : 1, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
+// waves that die faster. feeling of swarm"): the soft tiers' hit points over the spec's, with PEARL_WAVES.crowd for the larger waves. THE HARD CORES (owner,
+// 2026-10-16: "a bit less transparent, slower, and with longer appendages seeking and feeling before moving ... the black ones ... much stronger, biggest and
+// move slow and deliberately"): purple, brown and black at a membrane of 0.5, longer cycles (the rows: 5 / 4.5 / 4 s), `reach` 1.35, caps 0.7 / 0.6 / 0.5
+// radii a second; black 1.8 x hit points and 1.45 the size. `heart`: an ivory's bite on the Stålheart, a tenth (owner: "they are so small").
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1.08 : 1, radii: id === 'white' ? 5 : id === 'yellow' ? 2.8 : id === 'blue' ? 1 : id === 'purple' ? 0.7 : id === 'brown' ? 0.6 : id === 'black' ? 0.5 : 0.9, glide: id === 'white' || id === 'yellow', hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, reach: ['purple', 'brown', 'black'].includes(id) ? 1.35 : undefined, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a
@@ -163,7 +166,10 @@ export const PEARL_GAIT = freeze({
 // (CUTIS_LOD 70/12, PEARL_FOLLOW's cap 12), so the thinning that round four put in "to get the animation right" is not needed at the end of a
 // breach's climb: \`last\` is 1, every single body of the plan. The start stays few and slow (the build-up).
 // THE COUNT IS THE SECTOR'S (2026-10-15, sector shapes, src/content/sectors.js): `scale` is gone; the table sizes every wave, and the build-up is the pace alone.
-export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd: 1.4 });   // crowd: every pulse's bodies x this (the swarm: larger waves that die faster, owner 2026-10-16)
+export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd: 1.4, blackPerPulse: 3 });   // blackPerPulse: a few at a time (owner, 2026-10-16)
+// THE SOFT HUNT (owner, 2026-10-16: "hunting logic of the weak ivories and lemons; they rush to kill whichever enemy is closest; tank if tank, gate if gate"):
+// a record of these tiers within `within` cells of the tank, and nearer the tank than the gate, walks at the tank (src/fx/enemy-step.js, the hunters' field)
+export const PEARL_HUNT = freeze({ tiers: ['white', 'yellow'], within: 10 });   // crowd: every pulse's bodies x this (the swarm: larger waves that die faster, owner 2026-10-16)
 
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.

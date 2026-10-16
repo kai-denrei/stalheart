@@ -237,6 +237,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
 
   return {
     has, proxy, spawn, kill, recoil, step, hull, point, phaseOf,
+    thermal: (on) => { for (const a of adapters.values()) a.thermal?.(on); },   // the gunship's thermal view (2026-10-16)
     // a family's bodies made ready before the first record (its adapter, and what it makes ahead: the Pearl tiers' swarms)
     prepare: (family, ids) => adapter(family)?.prepare?.(ids),
     room: (family, tier) => adapter(family)?.room?.(tier) ?? Infinity,   // slots a family's tier still has (Infinity when it does not count)

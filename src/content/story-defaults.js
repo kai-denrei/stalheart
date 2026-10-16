@@ -102,7 +102,7 @@ export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8, tankMet
 // in), so the Rotor has them in reach as the tour ends (measured headless: 11.5 cells from the Rotor at the seat before, 4.9 with six hops; the
 // Pearl records walk a fifth of a cell a second, PEARL_PACE radii, so the gate is reached ~25 s into the seat, not ~50).
 // A breach the player watches open (the tremor and the dive shot) keeps its pile at the crater (src/domain/story-beats.js spawnTick)
-export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7, headStart: Object.freeze({ hops: 6, depth: 3 }) });
+export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7, headStart: null });   // headStart off (owner, 2026-10-16: "they should come from the sinkhole"): every one climbs the lip; was { hops: 6, depth: 3 }
 // emergeHold: the orbit camera holds over the crater after the breach FX. The fifty are all up within `stagger` (1.2 s), so holding
 // six more seconds over a finished pile was watching, not reading: three is the pile seen and the camera released.
 // preRoll: the story's own orbit beat before the dive, overriding the shared breach preset's 1.6 (immutable, and the breach lab

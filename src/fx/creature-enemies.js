@@ -47,7 +47,7 @@ const SPECS = new Map();
 // tiers paced by PEARL_PACE: the owner's "much slower, a slow controlled threat", their walk slowed and their bursts off)
 export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY }));
 // round four: every tier paced, its walk capped at PEARL_PACE's `radii` body radii a second (src/domain/pearl-bodies.js pearlSpeed), its bursts and jink off
-const paced = (s, p, b) => (p ? { ...s, hp: s.hp * (p.hp ?? 1), speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
+const paced = (s, p, b) => (p ? { ...s, hp: s.hp * (p.hp ?? 1), heartDmg: (s.heartDmg ?? 1) * (p.heart ?? 1), speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
   ...(typeof p.erratic === 'boolean' ? { erratic: p.erratic } : {}), ...(typeof p.jink === 'boolean' ? { jink: p.jink } : {}) } : s);   // the tier's bursts, on or off
 // round four (owner: "white and yellow, should feel very easy to run over"): `lightRam` on a tier PEARL_IMPACT.tiers rams by its body (no run-over drag)
 export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier, ...(PEARL_IMPACT.tiers?.[b.tier]?.ram ? { lightRam: true } : {}) })])));
@@ -55,7 +55,7 @@ export const pearlSpec = (type) => PEARL_SPECS[type] ?? null;
 // a tier's spec: the family's ENEMY_SPEC entry with the tier's hit points, speed, size and bounty (a queue entry carries it)
 export function tierSpec(family, tier) {
   const k = `${family}:${tier}`;
-  if (!SPECS.has(k)) { const t = CREATURE_TIERS[family][tier]; SPECS.set(k, Object.freeze({ ...ENEMY_SPEC[family], hp: t.hp, speed: t.speed, size: tierSize(t), bounty: t.bounty, tier })); }
+  if (!SPECS.has(k)) { const t = CREATURE_TIERS[family][tier]; SPECS.set(k, Object.freeze({ ...ENEMY_SPEC[family], hp: t.hp, speed: t.speed, size: tierSize(t), bounty: t.bounty, tier, ...(t.ramAt ? { ramAt: t.ramAt } : {}) }));   /* ramAt: rammable by a hull that fast (km/h) */ }
   return SPECS.get(k);
 }
 
@@ -166,6 +166,14 @@ export function createCreatureEnemies(host) {
   // it the wave is at `last`. `&waves=full` keeps the plan's own pace (the crowd tests)
   const climbing = pearl && host.flags.waves !== 'full';
   let lastWave = null;
+  // A FEW BLACK AT A TIME (owner, 2026-10-16; PEARL_WAVES.blackPerPulse): past the cap a pulse's black-tier entries come up brown instead (the wave keeps its
+  // mass and its entries; the black ones are the few)
+  function capBlack(entries) {
+    const cap = PEARL_WAVES.blackPerPulse; if (!pearl || !(cap > 0) || !entries?.length) return entries;
+    let left = cap, turned = 0;
+    const out = entries.map((q) => { if (PEARL_OF[q.type] !== 'black' || q.guard) return q; const n = q.count ?? 1; if (n <= left) { left -= n; return q; } turned++; return { ...q, type: 'rolling', spec: undefined }; });   // a queue entry is one body unless it says `count`
+    return turned ? out : entries;   // the same list when nothing turned (&waves=full keeps the wave itself)
+  }
   function climb(entries, wave) {
     if (!climbing || !entries?.length) return entries;
     const up = pearlBuildUp(wave, PEARL_WAVES); lastWave = { ...wave, ...up };
@@ -300,7 +308,10 @@ export function createCreatureEnemies(host) {
       if (pearl && bodies && host.tank?.()?.pos) hullContact.settle(host.tank().pos);
       probe?.step(dt);
     },
-    replace: (entries, side, wave) => withHunters(replaceOf(entries, side, wave), side, wave),   // then the hunters (HUNTERS, below)
+    replace: (entries, side, wave) => withHunters(capBlack(replaceOf(entries, side, wave)), side, wave),   // then the hunters (HUNTERS, below)
+    // THE GUNSHIP'S THERMALS (owner, 2026-10-16: "have the hard-cores register more distinctly from the soft-cores"): a cored body runs hot (white emissive), a
+    // soft one stays cold, while the thermal view is on (src/fx/creature-pearl.js thermal)
+    thermal: (on) => bodies?.thermal?.(on),
     // THE REACH IS THE WEAK SPOT (owner, 2026-10-12, the boss lab; in the game for THE BOSS sector, 2026-10-15): a hit on a Cutis record is scaled
     // by its body's phase (src/domain/boss-sector.js phaseScale over CUTIS_HITS: full while it coils, reaches and grips, half at rest, none while
     // the body pours through the cup); every other record 1. damageEnemy multiplies by it before the damage is taken

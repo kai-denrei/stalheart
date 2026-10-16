@@ -173,10 +173,13 @@ const DIFFUSE_FLOOR = 0.22;   // how much of the hue survives in the body colour
 // emissive resolves to white — the earlier sky-blue full-health stop read as
 // "the lights are on", not "the lights are blue". Each channel also ramps one
 // way across the three stops, so no colour doubles back on its way down.
+// THE LIFT FIELD IS THE HULL'S GAUGE (owner, 2026-10-16: "full health = cyan, 3/4 = darker blue, 1/2 = orange, 1/4 = red"): the armour's share
 const HEALTH_STOPS = [
   [0.0, [1.00, 0.10, 0.04]],  // red
+  [0.25, [1.00, 0.10, 0.04]],  // red
   [0.5, [1.00, 0.45, 0.05]],  // orange
-  [1.0, [0.20, 0.70, 1.00]],  // blue
+  [0.75, [0.15, 0.40, 0.95]],  // darker blue
+  [1.0, [0.20, 0.95, 1.00]],  // cyan
 ];
 
 export function healthColor(frac) {

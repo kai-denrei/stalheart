@@ -4,11 +4,11 @@
 // The tune is src/content/tank.js SHELL_BLAST (radius in cells, scaled here by `cellSide`).
 import { splashDamage } from './gunship.js';
 
-export function shellHits(bodies, at, struck, { radius, peak }, cellSide, dist) {
+export function shellHits(bodies, at, struck, { radius, peak, floor = 0 }, cellSide, dist) {
   const r = radius * cellSide, hits = [];
   for (const e of bodies) {
     if (!e.alive) continue;
-    const dmg = e === struck ? peak : splashDamage(dist(at, e.pos), r, peak);
+    const d = dist(at, e.pos), dmg = e === struck ? peak : d < r ? Math.max(splashDamage(d, r, peak), floor * peak) : 0;   // `floor`: a share of the peak anywhere inside (2026-10-16)
     if (dmg > 0) hits.push({ e, dmg });
   }
   return hits;

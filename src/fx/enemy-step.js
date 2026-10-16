@@ -20,7 +20,8 @@ import { tierKeyOf } from '../domain/tune.js';   /* the tune panel's per-tier kn
 import { sub3, add3, scale3, dot3, norm3, dist3, tangentBasis } from '../vec3.js';
 import { makeDebris, makeDotBurst, makeDotEnemy } from '../units.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from '../enemyspec.js';
-import { PEARL_OF, PEARL_TIERS, pearlScaleOf } from '../content/pearl-enemies.js';   /* a blob at the lip takes the tier's skin; a soft tier's record smaller, a cored one's bigger (2026-10-16) */
+import { PEARL_OF, PEARL_TIERS, PEARL_HUNT, pearlScaleOf } from '../content/pearl-enemies.js';
+import { SQUADS } from '../content/sectors.js';   /* the squads unpacked under a count (2026-10-16) */   /* a blob at the lip takes the tier's skin; a soft tier's record smaller, a cored one's bigger (2026-10-16) */
 import { waveReset as shieldWaveReset, shoveVec, shoveMag } from '../shield.js';
 import { TOWER_ORDER } from '../towers.js';
 import { showContact } from './contact-card.js';
@@ -276,12 +277,34 @@ export function createEnemyStep(host) {
   let hunt = null, huntAt = -9, huntCur = -1;
   function huntField(tNow) {
     const cur = host.player?.cur;
-    if (!(cur >= 0) || host.playerDown() || !host.enemies.some((e) => e.alive && e.hunter)) { hunt = null; return; }
+    if (!(cur >= 0) || host.playerDown() || !host.enemies.some((e) => e.alive && (e.hunter || softHunter(e)))) { hunt = null; return; }
     if (hunt && huntCur === cur && tNow - huntAt < 1) return;
     hunt = bfsDist(host.graph().adj, [cur], (i) => host.dungeon().tags[i] !== BLOCKED); huntAt = tNow; huntCur = cur;
   }
+  // THE SOFT HUNT (PEARL_HUNT, owner 2026-10-16): an ivory or a lemon within `within` cells of the tank, and nearer the tank than the gate, walks at the tank
+  const softHunter = (e) => PEARL_HUNT.tiers.includes(PEARL_OF[e.type]);
+  function wantsTank(e) {
+    if (!softHunter(e) || !host.player?.pos || host.playerDown()) return false;
+    const dt = dist3(e.pos, host.player.pos); if (dt > PEARL_HUNT.within * host.cellSide()) return false;
+    const gc = host.story()?.gateCell >= 0 ? host.story().gateCell : host.dungeon().heart;
+    return dt < dist3(e.pos, host.graph().centers[gc]);
+  }
+  // THE SQUADS UNPACKED (SQUADS.unpackUnder, owner 2026-10-16: packs of five and three walking to the base looked odd once the mass was gone): with fewer bodies
+  // alive than the count, every squad record is set down as its members, singles at its cell
+  let unpackAt = -9;
+  function unpackSquads(tNow) {
+    if (!(SQUADS.unpackUnder > 0) || tNow - unpackAt < 1) return; unpackAt = tNow;
+    let alive = 0; for (const e of host.enemies) if (e.alive && !e.guard) alive += e.members || 1;
+    if (alive >= SQUADS.unpackUnder) return;
+    for (const e of host.enemies.slice()) {
+      if (!e.alive || !(e.members > 1)) continue;
+      const sp = { ci: e.cur, alive: true, obj: { userData: {} } };
+      for (let m = 0; m < e.members; m++) spawnOne({ type: e.type, sp, cell: e.cur, spread: 0.6, at: 0, pace: e.paceJitter, hunter: e.hunter });
+      killCreature(e, false);
+    }
+  }
   function updateEnemies(dt, tNow) {
-    huntField(tNow);
+    huntField(tNow); unpackSquads(tNow);
     releaseSpawns(dt);
     for (const e of host.enemies) {
       if (!e.alive) continue;
@@ -377,7 +400,7 @@ export function createEnemyStep(host) {
         // wobble left so the streams braid but visibly converge
         const exits = host.openNeighbors(e.cur).filter((c) => !host.story()?.sealed(c));   // a closed story gate is a wall to them
         let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, host.graph().centers, e.cur, e.scareFrom); if (away.length) pool = away; }
-        if (!pool && e.hunter && hunt) { const h = huntExits(exits, hunt, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js)
+        if (!pool && hunt && (e.hunter || wantsTank(e))) { const h = huntExits(exits, hunt, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js); a soft one too, when it is the nearer prey (PEARL_HUNT)
         if (!pool) pool = seekExits(exits, host.dungeon().distToHeart, e.cur, host.whim()(), WALK_BIAS);   // the walk leans on the heart (WALK_BIAS; owner, 2026-10-15: "a much stronger bias to head towards the base")
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (e.guard) pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull: host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, aggro: STORY_EXPEDITIONS.aggro }); else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }
@@ -452,8 +475,9 @@ export function createEnemyStep(host) {
           if (tw.hp <= 0) host.killWalker(tw);
         }
       }
-      if (!host.playerDown() && (dist3(spec.rammable ? groundAt(e) : e.pos, host.player.pos) < touchR || (e.bodyRam && spec.rammable))) {   // a soft body's own point where it has one (2026-10-15: the ram meets the body); a hard body's touch stays on its record: on its body it fired at every hull contact and its recoil kept the body ahead of a hull that should have stopped on it (--pearl-story's hull probe)   // or a light Pearl body the hull itself hit (round four, src/fx/creature-enemies.js)
-        if (spec.rammable) {
+      const rammable = spec.rammable || (spec.ramAt > 0 && (host.hullKmh?.() ?? 0) >= spec.ramAt);   // a Reed is rammable by a hull fast enough (CREATURE_TIERS ramAt, owner 2026-10-16)
+      if (!host.playerDown() && (dist3(rammable ? groundAt(e) : e.pos, host.player.pos) < touchR || (e.bodyRam && rammable))) {   // a soft body's own point where it has one (2026-10-15: the ram meets the body); a hard body's touch stays on its record: on its body it fired at every hull contact and its recoil kept the body ahead of a hull that should have stopped on it (--pearl-story's hull probe)   // or a light Pearl body the hull itself hit (round four, src/fx/creature-enemies.js)
+        if (rammable) {
           // run over: tinted splat under the treads + the weight bump
           const burst = makeDotBurst(CREATURE_TINTS[e.type], n);
           burst.scale.setScalar(host.cellSide() * 0.8);

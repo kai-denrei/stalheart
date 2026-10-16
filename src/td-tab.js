@@ -823,7 +823,7 @@ export function initTdTab(root) {
   let playerHP = 3;
   let hullArmour = HULL_ARMOUR.hits;   // the hull's dents left before it is lost (owner, 2026-10-16: four hits a hull; src/content/tank.js)
   const hullHits = () => tune.hull?.hits ?? HULL_ARMOUR.hits;   // the tune panel's knob over the content (src/fx/tune-knobs.js)
-  const hullHealth = () => (playerHP - 1 + hullArmour / hullHits()) / PLAYER_MAX;   // the drawn wear: the hulls left and this one's armour
+  const hullHealth = () => hullArmour / hullHits();   // the lift field's gauge: this hull's armour (owner, 2026-10-16: cyan, darker blue, orange, red)
   const PLAYER_MAX = 3;
   // A destroyed tank is DOWN, not merely invisible. Without this flag the
   // wreck kept its whole agency through the death hold — it drove (auto),
@@ -3001,6 +3001,7 @@ export function initTdTab(root) {
     enemies,
     scene,
     emerge: (o) => emergeBlobs.spawn(o),
+    hullKmh: () => hullConsole.kmh(),   // a Reed is rammable by a hull fast enough (2026-10-16)
     disposeObj,
     gameBreaches,
     spawnQueue,
@@ -6100,7 +6101,7 @@ export function initTdTab(root) {
       const near=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[tw.ci],graph.centers[a.ci])-chord(graph.centers[tw.ci],graph.centers[b.ci]))[0]; pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]); if(posts&&story?.missiles?.[key]){pilot.state.zoom=story.quiverZoom??2;pilotHost.zoom(pilot.state.zoom);}   // a guided mount opens through its long lens
     }
     pilot=createSentryPilot(root,pilotHost={
-      story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>thermalHeat.set(on),leave:()=>leavePilot(),gunship:gunshipRig.pilotBag(),
+      story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>{thermalHeat.set(on);creatureEnemies.thermal?.(on);},leave:()=>leavePilot(),gunship:gunshipRig.pilotBag(),
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),leave:()=>root.querySelector('#story-views [data-view="tank"]:not([disabled])')?.click(),pause:()=>{togglePause();pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body

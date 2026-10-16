@@ -16,7 +16,7 @@ export const SHELL_SPEED = 9, SHELL_REACH = 12;
 // nothing `cells` away (the shot itself already kicks the hull and the camera at the muzzle: the recoil, td-tab FEEL.recoil).
 // Was: 4 to the body struck, 2 within 1 cell, 1 within 2 cells, the 'tank.shell' burst (~4.5 m) and three small rings, blast_fire at 1.
 // The reload (3 s) and the rack (9) are unchanged.
-export const SHELL_BLAST = Object.freeze({ radius: 3, peak: 4.5, rate: 0.6,
+export const SHELL_BLAST = Object.freeze({ radius: 3, peak: 4.5, floor: 0.45, rate: 0.6,   /* floor: 0.45 of the peak anywhere inside the radius (owner, 2026-10-16: "the AOE should be more impactful, not just direct hits"); the peak stays short of a Thorus's 5 hp */
   rings: Object.freeze([Object.freeze([0xffb347, 0.95, 1.6]), Object.freeze([0xffffff, 0.5, 0.7])]), flash: true,
   kick: Object.freeze({ metres: 3.5, cells: 8 }) });
 // the hull's forward pace on top of the game's speed (operator, 2026-09-13: faster from the first moment, and ramping for a while so a

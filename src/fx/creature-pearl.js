@@ -361,6 +361,18 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
 
   // round four: the record's pace factor (the enemy loop's walk x this): it waits for its body (1 without the gait)
   const paceOf = (h) => (h && !h.dead && gait && !pace?.[h.p.id]?.glide ? h.wait ?? 1 : 1);   // a gliding blob never holds its record back
+  // THE THERMALS (owner, 2026-10-16): under the gunship's FLIR a cored tier's membrane and core run hot (a white emissive the pass reads as heat), a soft tier's
+  // stay cold; off again when the view leaves (the materials' own emissive put back)
+  function thermal(on) {
+    for (const [id, p] of pools) {
+      const cored = !!byId[id]?.cored;
+      for (const l of p.geo.levels ?? []) for (const m of [l.material, l.coreMaterial]) {
+        if (!m?.emissive) continue;
+        m.userData.cold ??= { c: m.emissive.clone(), i: m.emissiveIntensity };
+        if (on) { m.emissive.setRGB(cored ? 1 : 0, cored ? 1 : 0, cored ? 1 : 0); m.emissiveIntensity = cored ? 1.4 : 0; } else { m.emissive.copy(m.userData.cold.c); m.emissiveIntensity = m.userData.cold.i; }
+      }
+    }
+  }
 
   function kill(h, imp = null) {
     if (!h || h.dead) return;
@@ -419,7 +431,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   }
 
   return {
-    add, track, rehub, kill, recoil, free, step, setPlanet, paceOf, hullContact, hubs: { margin: tune.hubMargin ?? 0.03 },
+    add, track, rehub, kill, recoil, free, step, setPlanet, paceOf, hullContact, thermal, hubs: { margin: tune.hubMargin ?? 0.03 },
     // the body's drawn centre in its hub's plane, [x, 0, z] metres into `out` (its first live member; null without one): what the hull, the reticle
     // and the lance meet (owner, 2026-10-15: "aiming straight and it does nothing"; src/fx/creature-bodies.js point)
     point(h, out = [0, 0, 0]) { const slot = h?.slots?.[0]; if (!slot || h.dead) return null; const sw = h.p.swarm, i = slot.i; return sw.active[i] ? sw.positionInto(i, out) : null; },

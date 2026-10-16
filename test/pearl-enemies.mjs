@@ -22,14 +22,14 @@ assert.deepEqual(PEARL_TIERS.map((t) => t.id), ['white', 'yellow', 'orange', 'bl
 assert.deepEqual(PEARL_TIERS.map((t) => t.cored), [false, false, true, false, true, true, true, true], 'orange is the first pearl-cored tier (the owner\'s edit)');
 for (const t of PEARL_TIERS) {
   assert.equal(t.values.coreShape, t.cored ? 3 : 0, `${t.id}: a pearl or no core`); assert.equal(t.values.pearlVariant, 1);
-  assert.equal(t.values.membraneOpacity, t.cored ? 0.32 : 0.65, `${t.id}: tiers.ts's opacity rule`);
+  assert.equal(t.values.membraneOpacity, t.cored ? (['purple', 'brown', 'black'].includes(t.id) ? 0.5 : 0.32) : 0.65, `${t.id}: tiers.ts's opacity rule (the owner's edit of 2026-10-16: the three hard cores less transparent)`);
   assert.equal(t.values.coreTint, t.values.pulseTint);
 }
 const tier = Object.fromEntries(PEARL_TIERS.map((t) => [t.id, t]));
 assert.equal(tier.orange.values.coreSize, 0.28); assert.equal(tier.black.values.coreSize, 0.18); assert.equal(tier.purple.values.coreSize, 0.22);
 assert.equal(tier.black.values.coreTint, 0xff0000, 'black: the pure red core'); assert.equal(tier.black.values.veinTint, 0xbab6c1);
 assert.deepEqual(PEARL_TIERS.map((t) => t.values.seekCount), [1, 1, 2, 2, 2, 2, 3, 3]);
-assert.deepEqual(PEARL_TIERS.map((t) => t.values.cycleDuration), [6, 5.5, 5, 4.5, 4, 3.5, 3, 2.5]);
+assert.deepEqual(PEARL_TIERS.map((t) => t.values.cycleDuration), [6, 5.5, 5, 4.5, 4, 5, 4.5, 4], 'tiers.ts\'s cycles, the three hard cores longer (the owner\'s edit of 2026-10-16: seeking and feeling before moving)');
 assert.deepEqual(PEARL_TIERS.map((t) => t.values.reach), [8, 9, 10, 11, 12, 13, 14, 15]);
 assert.deepEqual(PEARL_TIERS.map((t) => t.values.transferAcceleration), [1.8, 1.8, 1.8, 1.8, 2.5, 2.5, 2.5, 2.5]);
 for (let k = 1; k < 8; k++) assert(PEARL_TIERS[k].labR0 > PEARL_TIERS[k - 1].labR0 && PEARL_TIERS[k].values.aggression > PEARL_TIERS[k - 1].values.aggression, 'the ladder grows');
@@ -59,6 +59,7 @@ for (const [type, b] of Object.entries(bodies)) {
     if (k === 'speed') close(s.speed, want, 1e-12, `${type}: the slowed speed`);
     else if (k === 'erratic' || k === 'jink') assert.equal(s[k], false, `${type}: no ${k}`);
     else if (k === 'hp') close(s.hp, v * (slow.hp ?? 1), 1e-12, `${type}: the tier's hit points over the spec's (2026-10-16: the soft tiers die faster)`);
+    else if (k === 'heartDmg') close(s.heartDmg, v * (slow.heart ?? 1), 1e-12, `${type}: the tier's bite on the heart over the spec's (2026-10-16: an ivory's a tenth)`);
     else assert.equal(s[k], v, `${type}: the spec keeps ${k}`);
   }
   assert(s.speed <= ENEMY_SPEC[type].speed * (slow.speed ?? 1) + 1e-12 && s.speed * PEARL_GAIT.sectorPace * 10 / b.r0 <= slow.radii + 1e-9, `${type}: at most ${slow.radii} radii a second, its tier's speed over the spec's`);

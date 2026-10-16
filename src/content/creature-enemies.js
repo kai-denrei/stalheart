@@ -48,7 +48,7 @@ export const CREATURE_TIERS = freeze({
   // big 3, the Nih-Dairia 10 (its leash 60 m); twelve small ones at 120 Hz 3.9 (2 re-placed in 15 s). Reeds cost: ~0.6 ms a solver step each (the boss
   // lab's probe, 2026-10-09), so a wave takes a low share of them (`count`).
   reed: {
-    small: { label: 'REED · SMALL', r0: 2, hp: 3, speed: 0.35, bounty: 14, count: { share: 0.2, max: 6 }, probeStep: 3, capacity: 400, variant: 'reed',
+    small: { label: 'REED · SMALL', r0: 2, hp: 3, speed: 0.35, bounty: 14, count: { share: 0.2, max: 6 }, probeStep: 3, capacity: 400, variant: 'reed', ramAt: 120,   /* rammable only by a hull at 120 km/h or more (owner, 2026-10-16: "the player must manoeuver to ram them") */
       motion: { speed: 5, pauseTime: 0.2, reachTime: 1.5 } },
     medium: { label: 'REED · MEDIUM', r0: 4, hp: 8, speed: 0.4, bounty: 28, count: { share: 0.15, max: 4 }, probeStep: 2, capacity: 200, variant: 'reed',
       motion: { speed: 4, pauseTime: 0.5, reachTime: 3 } },
@@ -117,7 +117,7 @@ export const CREATURE_DEATH = freeze({ deflate: CUTIS_DEATH.deflate, fade: 6, si
 // bodies' clocks slow (CREATURE_FAMILY). Measured on this machine (2026-10-12): ~0.6 ms a solver step a Reed at 240 Hz, so two are ~5 ms a frame
 // at 60 fps before the budget bites: the owner measures on his (?creatures=reed:small&ramp=1&fps=1). ?hunters=0 turns them off; count 0 too.
 // `mix` (2026-10-16): the hunters alternate through it, a pulse's batch at a time (the small Reed, then the Nih-Dairia pup, ...); `family`/`tier` stay the first
-export const HUNTERS = freeze({ from: 5, every: 3, count: 1, alive: 2, family: 'reed', tier: 'small', pace: 1, mix: [{ family: 'reed', tier: 'small' }, { family: 'reed', tier: 'pup' }] });
+export const HUNTERS = freeze({ from: 2, every: 3,   /* from sector 2 (owner, 2026-10-16; was 5) */ count: 1, alive: 2, family: 'reed', tier: 'small', pace: 1, mix: [{ family: 'reed', tier: 'small' }, { family: 'reed', tier: 'pup' }] });
 
 export const CREATURE_PROBE = freeze({
   hold: 4, settle: 1, span: 1, thresholdMs: 16.7, overSeconds: 3, hardCap: 2000, startDelay: 6, maxSeconds: 900, perFrame: 40, gapMs: 250,
