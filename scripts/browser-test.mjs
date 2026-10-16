@@ -2503,6 +2503,50 @@ try{
  assert.ok(moves>0,`the Reed guard moves at all (${moves} cell moves)`);
  assert.ok(best<reed0.cells-0.5||best<2,`the Reed closes on the hull in the nest (${reed0.cells.toFixed(2)} -> ${best.toFixed(2)} cells)`);
  current='nest-guards-chase';await finish();
+ } else if(args.includes('--arena-road')) {
+ // THE ROAD SOL CUTS (owner, 2026-10-16: 'have SOL shoot ahead of it here and there to open the maze'; ARENA.road, src/domain/arena.js roadAhead,
+ // src/fx/boss-run.js, td-tab's solRoad): on the arena's drive out, every ARENA.road.every seconds the first rock within ARENA.road.ahead cells on the hull's
+ // cheapest walk to the arena is burned by a SOL pass laid over it and the beam held ARENA.road.burn seconds, Isao saying arena_road once. --arena shortcuts
+ // the drive out (arenaNow), so the road had never run under a suite. Inside the base's clearing no rock is within reach, so the hull is put down along the
+ // open route to the arena, in stages, as a player drives out; at each stage the road must fire, burn rock and release (2026-10-16)
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),{SECTOR_DOOR,ARENA}=await import('../src/content/sectors.js');
+ await go('arena-road',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().boss.on && ${T}.state().boss.phase==='beacon'`,90000).catch(async()=>assert.fail(`the beacon phase (${JSON.stringify((await st()).boss)})`));
+ const s0=await st();console.log(`ARENA ROAD at the beacon: hull cell ${s0.playerCell}, arena ${JSON.stringify(s0.arena)}, SOL ${JSON.stringify({online:s0.laser.online,phase:s0.laser.phase,left:s0.laser.left,seated:s0.laser.seated,auto:s0.laser.auto})}, road ${JSON.stringify(s0.boss.road)}`);
+ assert.equal(s0.laser.online,true,`SOL is online on the arena's row (laser: ${s0.laser.online})`);assert.ok(s0.playerCell>=0,'the hull stands on a cell');assert.equal(s0.boss.road.wired,true,'the run has the road hooks');
+ await evaluate(`${T}.sectorQuiet(true)`);
+ // the open route out: the hull's cell to the arena's cell through open ground (showcase.route keeps clear of the buildings)
+ const route=await evaluate(`${T}.showcase.route(${s0.playerCell},${s0.arena.cell},true)`);assert.ok(route.length>20,`an open route to the arena (${route.length} cells)`);
+ const stages=[Math.min(12,route.length-2),Math.min(30,route.length-2),Math.min(60,route.length-2)].filter((v,i,a)=>a.indexOf(v)===i);
+ const every=ARENA.road.every,burn=ARENA.road.burn,{writeFileSync}=await import('node:fs');const trace=[],outcomes=[];let rocks=s0.laser.burned.rocks,saidAt=s0.boss.road.said?0:null;
+ await until(`!${T}.state().boss.road.burning`,(burn+5)*1000).catch(()=>{});   // the beacon's own first ask (the base's rim) burns and releases before the stages
+ for(const stage of stages){
+  const ci=route[stage].ci;await evaluate(`${T}.placeTank(${ci})`);await delay(300);
+  const asks0=(await st()).boss.road.asks,clock0=(await st()).shieldClock,t0=Date.now();let fired=null,rocks0=null,burning=0,released=null,firstBurn=null,laid=null;
+  while(Date.now()-t0<(every+burn+8)*1000){const s=await st();const row={stage,t:+((Date.now()-t0)/1000).toFixed(1),clock:+(s.shieldClock-clock0).toFixed(1),road:s.boss.road,phase:s.laser.phase,overhead:s.laser.overhead,left:s.laser.left,burning:s.laser.burning,road:s.laser.road,held:s.laser.held,friendM:s.laser.friendM,contact:!!s.laser.contact,energy:s.laser.energy,rocks:s.laser.burned.rocks,hull:s.playerCell,boss:s.boss.phase};trace.push(row);
+   if(s.boss.road.asks>asks0&&fired==null){fired={clock:row.clock,cell:s.boss.road.cell,laid:s.boss.road.laid};laid=s.boss.road.laid;rocks0=s.laser.burned.rocks;}   // this stage's own ask: the burn is measured from here
+   if(s.boss.road.said&&saidAt==null)saidAt=row.clock;
+   if(fired){if(s.laser.burning){burning++;firstBurn??=row.clock;}else if(firstBurn!=null&&released==null&&!s.boss.road.burning)released=+(row.clock-firstBurn).toFixed(1);rocks=Math.max(rocks,s.laser.burned.rocks);}
+   if(row.t%5<1)console.log('  road '+JSON.stringify(row));
+   if(s.boss.phase!=='beacon')break;
+   if(fired&&fired.cell<0)break;   // nothing within reach from this stage: the next stage
+   if(fired&&rocks>rocks0&&released!=null)break;
+   await delay(500);}
+  const o={stage,cell:ci,asked:fired,burning,firstBurn,released,rocks:rocks0==null?0:rocks-rocks0};outcomes.push(o);console.log(`ARENA ROAD stage ${stage} (hull at route cell ${ci}): ${JSON.stringify(o)}`);writeFileSync('artifacts/arena-road-trace.json',JSON.stringify(trace,null,0));   // the trace survives a failed stage
+  assert.ok(fired,`stage ${stage}: the road asked within ${every} s (asks ${asks0} -> ${(await st()).boss.road.asks})`);
+  if(fired.cell<0)continue;   // a stage may have no rock worth it within reach; one stage must (below)
+  assert.equal(laid,true,`stage ${stage}: SOL took the cell (laid ${laid}; SOL ${JSON.stringify({online:(await st()).laser.online,seated:(await st()).laser.seated,phase:(await st()).laser.phase})})`);
+  assert.ok(burning>0,`stage ${stage}: the beam burned (${burning} samples)`);
+  assert.ok(o.rocks>=1,`stage ${stage}: the road burned rock (${o.rocks} rock cells)`);
+  assert.ok(released!=null&&released<=burn+3,`stage ${stage}: the hold was released after the burn (${released} s, burn ${burn})`);
+ }
+ writeFileSync('artifacts/arena-road-trace.json',JSON.stringify(trace,null,0));
+ assert.ok(outcomes.some(o=>o.rocks>=1),`at least one stage of the drive out had SOL cut the road (${JSON.stringify(outcomes.map(o=>[o.stage,o.asked?.cell,o.rocks]))})`);
+ assert.ok(saidAt!=null,'Isao said the road once (boss.road.said)');
+ assert.equal((await st()).boss.phase,'beacon','the drive out held the beacon phase while the road ran');
+ console.log(`ARENA ROAD: ${outcomes.filter(o=>o.rocks>=1).length} of ${stages.length} stages cut; Isao's line at ${saidAt} s; rocks burned ${rocks-s0.laser.burned.rocks}; trace artifacts/arena-road-trace.json`);
+ current='arena-road-end';await finish();
  } else if(args.includes('--corridor-probe')) {
  // THE MÖRK THROUGH THE NARROW TILES (owner's twenty-seventh notes, 3: "there is STILL a problem going through narrow tiles with the
  // MÖRK" near the second site): a virtual driver takes the hull from the base along the shortest open route to a site (SITE, default
