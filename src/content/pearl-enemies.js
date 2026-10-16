@@ -124,8 +124,8 @@ export const PEARL_FOLLOW = freeze({
 // (PEARL_BODY.scale white 0.4, yellow 0.6, blue 0.8). A hopping body is held to about 1.2 radii a second (test/pearl-motion.mjs: past it the hops pop; bursts too),
 // so a small hopping body is a slow one in metres: THE BLOB (owner: "get rid of the appendages for the little ones for now, just have them be swarms of amoeba
 // like blobs that move fast"): white and yellow `glide` (src/fx/creature-pearl.js: no hop, the body slides onto its record's point, PEARL_GAIT.glideSeconds)
-// with no radii cap, so they walk at their records' full pace (x1.3 and x1.2).
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1 : 1, radii: id === 'white' || id === 'yellow' ? Infinity : id === 'blue' ? 0.9 : id === 'black' ? 0.8 : 0.9, glide: id === 'white' || id === 'yellow', erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
+// with caps in radii that read about 5.5 m/s on their small bodies (the swarm lab's bound is a few metres a second), twice the hopping pace they had.
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1 : 1, radii: id === 'white' ? 5 : id === 'yellow' ? 2.8 : id === 'blue' ? 0.9 : id === 'black' ? 0.8 : 0.9, glide: id === 'white' || id === 'yellow', erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a
