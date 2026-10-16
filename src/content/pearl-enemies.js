@@ -19,7 +19,7 @@ const ROWS = [
   ['white', 'Cutis-Soft Ivory', 0xf2efe5, 0x90979d, 0.12, 1, 6, 0.35, 0, 0, 15],
   ['yellow', 'Cutis-Soft Lemon', 0xe6cc53, 0x8c6021, 0.14, 1, 5.5, 0.6, 0, 0, 25],
   ['orange', 'Cutis-Core Pumpkin', 0xeb883e, 0x853b20, 0.16, 2, 5, 1, 3, 0, 40],
-  ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.8, 0, 0, 60],   // aggression 1.8 (was 1.4; owner, 2026-10-16: "more aggressive")
+  ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.7, 0, 0, 60],   // aggression 1.7 (was 1.4; owner, 2026-10-16: "more aggressive"; under green's 1.8, the ladder still grows)
   ['green', 'Cutis-Core Emerald', 0x76a76a, 0xc7e8a4, 0.21, 2, 4, 1.8, 3, 8, 100],
   ['purple', 'Cutis-Core Amethyst', 0xa879c5, 0xdfa9ff, 0.24, 2, 5, 2.3, 3, 14, 160],
   ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 3, 4.5, 3, 3, 22, 240],
