@@ -13,7 +13,7 @@ import { effective, tuneReport } from '../domain/tune.js';
 const REFRESH = 1;   // seconds between rebuilds of the enemies-on-screen list while the panel is open
 export function createTunePanel(root, c) {
   const el = document.createElement('aside'); el.id = 'tune-panel'; el.hidden = true;
-  el.innerHTML = '<header><b>TUNE</b> <span class="tp-ctx"></span><span class="tp-rev"></span><button type="button" class="tp-close" title="close (X or Esc)">×</button></header><div class="tp-body"></div><footer><button type="button" class="tp-record">RECORD</button><button type="button" class="tp-reset">RESET ALL</button><span class="tp-note"></span></footer>';
+  el.innerHTML = '<header><b>TUNE</b> <span class="tp-ctx"></span><span class="tp-rev"></span><button type="button" class="tp-vars" title="the VARS drawer (Z): the game knobs, the playtest page, the lab">VARS ▸</button><button type="button" class="tp-close" title="close (X or Esc)">×</button></header><div class="tp-body"></div><footer><button type="button" class="tp-record">RECORD</button><button type="button" class="tp-reset">RESET ALL</button><span class="tp-note"></span></footer>';
   root.append(el);
   const body = el.querySelector('.tp-body'), note = el.querySelector('.tp-note');
   let values = loadTune(c.storage), groups = [], keys = '', timer = null, lastRecord = null, records = 0;
@@ -40,7 +40,8 @@ export function createTunePanel(root, c) {
   }
   const paint = (row, k) => { row.classList.toggle('tp-changed', k.value !== k.default); const m = k.metres ? ` · r ${k.metres.toFixed(1)} m → ${(k.metres * k.value).toFixed(1)} m` : ''; row.querySelector('.tp-eff').textContent = `${k.kind === 'mul' ? `${k.base} → ${effective(k)}` : `default ${k.default}`}${m} · ${k.when ?? 'now'}`; };
   function refresh() { for (const g of groups) for (const k of g.knobs) { const row = body.querySelector(`[data-id="${CSS.escape(k.id)}"]`); if (row) paint(row, k); } }
-  function open() { if (!el.hidden) return; el.hidden = false; build(); document.body.classList.add('tune-open'); try { document.exitPointerLock?.(); } catch { /* none */ } timer = setInterval(build, REFRESH * 1000); }
+  const openers = [];   // told when the panel opens (the VARS drawer closes: the two take turns on the right edge, 2026-10-16)
+  function open() { if (!el.hidden) return; el.hidden = false; build(); document.body.classList.add('tune-open'); for (const f of openers) f(); try { document.exitPointerLock?.(); } catch { /* none */ } timer = setInterval(build, REFRESH * 1000); }
   function close() { if (el.hidden) return; el.hidden = true; document.body.classList.remove('tune-open'); clearInterval(timer); timer = null; }
   const toggle = () => (el.hidden ? open() : close());
   async function record() {
@@ -59,5 +60,6 @@ export function createTunePanel(root, c) {
   window.addEventListener('keydown', onKey, { capture: true });
   const blockKeys = (e) => { if (!el.hidden && editable(e.target)) e.stopPropagation(); };   // typing a number is not driving
   el.addEventListener('keydown', blockKeys); el.addEventListener('keyup', blockKeys);
-  return { toggle, open, close, isOpen: () => !el.hidden, record, reset, state: () => ({ open: !el.hidden, records, values: { ...values }, groups: groups.map((g) => ({ title: g.title, knobs: g.knobs.map((k) => k.id) })), lastRecord }), dispose() { close(); window.removeEventListener('keydown', onKey, { capture: true }); el.remove(); } };
+  el.querySelector('.tp-vars').addEventListener('click', () => { close(); document.body.classList.add('vars-open'); });
+  return { toggle, open, close, onOpen: (f) => openers.push(f), isOpen: () => !el.hidden, record, reset, state: () => ({ open: !el.hidden, records, values: { ...values }, groups: groups.map((g) => ({ title: g.title, knobs: g.knobs.map((k) => k.id) })), lastRecord }), dispose() { close(); window.removeEventListener('keydown', onKey, { capture: true }); el.remove(); } };
 }

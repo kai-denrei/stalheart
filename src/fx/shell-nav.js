@@ -10,6 +10,7 @@ import { downloadJSON } from '../diagnostics.js';
 import { DEFAULT_ENEMIES, finishJump, raiseEnemies } from './jump-to.js';
 
 const MODE_KEY = 'ssg.nav-mode', DEV_KEY = 'ssg.dev-face';
+const ROW_LABELS = { stages: 'stage', jumps: 'jump to', creatures: 'units & creatures', weapons: 'weapons', world: 'world & story' };   // a drawer row's heading (src/content/nav.js `row`)
 // where a backslash is typing, not a menu key
 const TYPING = 'input, textarea, select, [contenteditable=""], [contenteditable="true"], .lil-gui, dialog, [role="dialog"]';
 // the overlays this shell opens over a running page; while one is up it owns the keyboard (see the keydown listener)
@@ -43,7 +44,7 @@ export function mountShellNav({ navigate, buildText, query = new URLSearchParams
   const section = (m) => NAV_GROUPS.filter((g) => g.mode === m).map((g) => {
     const items = NAV_ENTRIES.filter((e) => e.mode === m && e.group === g.group);
     const rows = [...new Set(items.filter((e) => e.row).map((e) => e.row))].map((r) =>
-      `<div class="shell-row" data-row="${r}"><span>${r === 'stages' ? 'stage' : 'jump to'}</span>${items.filter((e) => e.row === r).map(button).join('')}</div>`).join('');
+      `<div class="shell-row" data-row="${r}"><span>${ROW_LABELS[r] ?? r}</span>${items.filter((e) => e.row === r).map(button).join('')}</div>`).join('');
     const count_ = g.group === 'tools'
       ? `<label class="shell-count" title="enemies a story jump raises, and per press of +">enemies <input type="number" min="0" max="500" step="10" data-count value="${count}"><button type="button" data-tool="raise" title="raise this many more enemies now">+</button></label>` : '';
     return `<div class="shell-group" data-group="${g.group}"${g.group === 'tuning' ? ' hidden' : ''}>${g.label ? `<h3>${g.label}</h3>` : ''}`

@@ -6,7 +6,7 @@
 // right-edge column. The lil-gui DOM is MOVED into #td-vars as pages — root
 // controls become the GAME page, each folder its own page — so nothing
 // about any control changes, only where it lives and how it is reached.
-export function buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt, sectorNow = () => 0, sectorName = () => null }) {
+export function buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt, sectorNow = () => 0, sectorName = () => null, tunePanel = () => null }) {
   // ENEMY SPEED x (owner, 2026-10-16: "for the purpose of fine-tuning the game, I also want an 'enemy speed' variable, where we could increase the
   // moving speed of all enemies while play-testing"): a root control, so it sits on the GAME page; every record's walk is multiplied by it
   // (src/fx/enemy-step.js, so the Pearl bodies that follow their records go with them); ?speed=N sets it at boot
@@ -79,7 +79,9 @@ export function buildVarsModal({ root, gui, lab, flags, params, skySeed, applySk
     f.open();
     pages.push({ title: f._title, el: page });
   }
+  const PAGE_KEY = 'stalheart.vars.page';   // the last page, remembered (owner, 2026-10-16: the modal came back on its first page every time)
   const show = (i) => {
+    try { localStorage.setItem(PAGE_KEY, pages[i]?.title ?? ''); } catch { /* no storage */ }
     pages.forEach((pg, j) => pg.el.classList.toggle('active', j === i));
     nav.querySelectorAll('button').forEach((b, j) => b.classList.toggle('active', j === i));
   };
@@ -98,7 +100,12 @@ export function buildVarsModal({ root, gui, lab, flags, params, skySeed, applySk
   const tg = root.querySelector('#vars-toggle');
   if (tg) tg.addEventListener('click', () => document.body.classList.toggle('vars-open'));
   modal.classList.remove('hidden');
-  show(0);
+  { let i = 0; try { const t = localStorage.getItem(PAGE_KEY); const j = pages.findIndex((pg) => pg.title === t); if (j >= 0) i = j; } catch { /* no storage */ } show(i); }
+  // Z TOGGLES IT (owner, 2026-10-16: 'cannot be easily recalled when dismissed'); the tune panel (X) and this drawer take turns on the right edge
+  const editable = (t) => !!t?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
+  const openVars = () => { tunePanel()?.close?.(); document.body.classList.add('vars-open'); };
+  globalThis.window?.addEventListener?.('keydown', (e) => { if (editable(e.target) || e.metaKey || e.ctrlKey || e.altKey) return; if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); if (document.body.classList.contains('vars-open')) document.body.classList.remove('vars-open'); else openVars(); } }, { capture: true });   // (globalThis: the node test builds the modal without a window)
+  tunePanel()?.onOpen?.(() => document.body.classList.remove('vars-open'));
   // ?vars=1 opens it; ?fps=1 turns the readout on — for screenshots and
   // for linking a state rather than describing it
   if (flags.vars === '1') document.body.classList.add('vars-open');

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-far-beats-as-jumps-labs-in-rows-satellite-lights-cave-bow",
+  "date": "2026-10-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "While the owner is away: the far beats as playtest jumps (canyon, canyon again, arena, descent), the labs in three rows of the dev drawer, navigation lights on the SOL-88 payload, the cave's shaft bowed fourteen metres, and the VARS modal docked as a right-edge drawer on Z with its page remembered",
+  "context": "Owner, 2026-10-16: 'go through our list of not-yet-done, I will be gone for several hours... focus on items that require less playtesting. perhaps some refactoring and re-arranging of the UI and the DEV UI, cleaning up of the labs.' From the list: 'the second SOL satellite launch should have glowing lights against the dark sky'; 'then the tunnel goes down to the queen, but with a little J curve, forcing the user to place flares thoughtfully'; and from the tune-panel round, that the VARS modal 'displays in the center, cannot be easily recalled when dismissed with x'.",
+  "outcome": "STORY_JUMPS (src/content/nav.js) gains CANYON (sector 3), CANYON AGAIN (the sector before the door), ARENA (the sector after the door with ?boss=1) and DESCENT (BOTH WALLS with ?descent=1): the PLAYTEST drawer's 'jump to' row. The dev drawer's Workshop lists the labs in three rows with headings (src/fx/shell-nav.js ROW_LABELS): units & creatures (units, swarm, boss, voice, audio), weapons (sentry / impact, orbital laser, gunship, beam, breach), world & story (story, metal, debrief, sim); nothing removed, the hashes unchanged. SOL-88's payload (src/fx/arc-launch.js) carries three additive sprites, red to port, green to starboard, a white strobe on top, breathing and flashing through the climb and growing a little as the bus recedes. The cave (stalheart-cave b3dda62, under below/): the shaft to the chamber bows SHAFT_BOW 14 m off the vertical at its middle, plumb at the drop turn and at the lip, so the top never lights the bottom; at 22 m the wall leaned under the flares' rest angle and a flare stuck to it mid-shaft, so 14 (more than the shaft's radius) is the number. VARS: docked at the right edge, its pages as a tab strip, Z toggles it (the controls card says so), the tune panel's header has a VARS button, the last page is remembered (stalheart.vars.page); opening one of the two drawers closes the other.",
+  "alternatives": [
+    "Retire labs from the drawer: without the owner, which labs are dead is his call; rows make the fourteen legible and keep every route.",
+    "A PointLight on the payload: a light recompiles every lit material in the scene; sprites cost nothing and read farther.",
+    "A true J (the shaft hooking sideways into the chamber): the chamber's aperture is on its top, so the route must end going down; a bow blocks the line of sight the same way."
+  ],
+  "evidence": [
+    "test/nav-content.mjs (the jumps, the labs as routes), the cave's 33 tests (the bow, the flare into the chamber), test/arc.mjs; --nav and --colony after",
+    "a screencast still of the launch for the lights (artifacts/browser/colony-*)"
+  ],
+  "supersedes": []
+}

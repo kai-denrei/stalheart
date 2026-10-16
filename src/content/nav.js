@@ -18,6 +18,11 @@ export const STORY_JUMPS = Object.freeze([
   { id: 'showcase', label: 'SHOWCASE', title: 'the intro montage: the core loop in twelve shots over a real run, ending on Isao asking "Are you ready?" (src/fx/showcase.js)', url: 'index.html?intro=1#td', wired: true },
   { id: 'skip', label: 'SKIP TUTORIAL', title: 'the player\'s own way past the opening: the finished base, the Relay and the Mortar earned, sector 1 on the lane', url: SKIP_TUTORIAL_URL, wired: true },
   { id: 'backdoor', label: 'BACK DOOR', title: 'the finished base straight into the back door: the mouth behind the bays falls, the feast, the scramble (SECTOR_DOOR)', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest}#td`, wired: true },
+  // THE FAR BEATS AS ENTRIES (owner, 2026-10-16: 'an easy way to play/replay a sector'): the canyon, the canyon again, the arena at once, the descent
+  { id: 'canyon', label: 'CANYON', title: 'sector 3, THE CANYON: the swarm rises at the antipode and SOL-82\'s pass is laid over it, the player in its seat', url: 'index.html?skip=defence&sector=3#td', wired: true },
+  { id: 'canyon-again', label: 'CANYON AGAIN', title: 'the held sector before the back door: the canyon re-cut and re-filled, SOL\'s pass again', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest - 1}#td`, wired: true },
+  { id: 'arena', label: 'ARENA', title: 'THE ARENA at once (?boss=1): the tremor far out, the drive, the small Reeds and the pups, the Nih-Dairia and the gunship', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest + 1}&boss=1#td`, wired: true },
+  { id: 'descent', label: 'DESCENT', title: 'BOTH WALLS with the cave six seconds in (?descent=1): the descent, then the ending', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest + 2}&descent=1#td`, wired: true },
 ].map(Object.freeze));
 
 export const NAV_DOCS = Object.freeze([
@@ -38,7 +43,11 @@ export const NAV_GROUPS = Object.freeze([
   { mode: 'dev', group: 'tools', label: 'Tools' },
 ].map(Object.freeze));
 
-const LABS = [['units', 'units'], ['swarm', 'swarm'], ['boss', 'boss'], ['beam', 'beam'], ['audio', 'audio'], ['metal', 'metal'], ['story', 'story'], ['sentry', 'sentry / impact'], ['portal', 'breach'], ['laser', 'orbital laser'], ['gunship', 'gunship'], ['debrief', 'debrief'], ['sim', 'sim'], ['voice', 'voice']];
+// THE LABS IN THREE ROWS (owner, 2026-10-16: 'cleaning up of the labs'): the units and the creatures, the weapons, the world and the story. The hash and
+// the label as before; `row` is the drawer's row (src/fx/shell-nav.js ROW_LABELS)
+const LABS = [['units', 'units', 'creatures'], ['swarm', 'swarm', 'creatures'], ['boss', 'boss', 'creatures'], ['voice', 'voice', 'creatures'], ['audio', 'audio', 'creatures'],
+  ['sentry', 'sentry / impact', 'weapons'], ['laser', 'orbital laser', 'weapons'], ['gunship', 'gunship', 'weapons'], ['beam', 'beam', 'weapons'], ['portal', 'breach', 'weapons'],
+  ['story', 'story', 'world'], ['metal', 'metal', 'world'], ['debrief', 'debrief', 'world'], ['sim', 'sim', 'world']];
 
 export const NAV_ENTRIES = Object.freeze([
   { id: 'story', label: 'Story', title: 'the story opening: land, print the Rotor, hold the gate', mode: 'playtest', group: 'story', target: { page: 'index.html', hash: 'td', params: { story: '1', grow: '1' } } },
@@ -48,7 +57,7 @@ export const NAV_ENTRIES = Object.freeze([
   { id: 'arrival', label: 'Arrival', title: 'the arrival cinematic: the SH02 lands and Isao comes out', mode: 'playtest', group: 'arrival', target: { page: 'labs.html', hash: 'story', params: { land: '1' } } },
   { id: 'record', label: 'Record', mode: 'playtest', group: 'footer', target: { page: 'index.html', hash: 'record', params: {} } },
   { id: 'settings', label: 'Settings', title: 'backup and import of records', mode: 'playtest', group: 'footer', target: { page: 'settings.html', hash: '', params: {} } },
-  ...LABS.map(([hash, label]) => ({ id: `lab-${hash}`, label, mode: 'dev', group: 'workshop', target: { page: 'labs.html', hash, params: {} } })),
+  ...LABS.map(([hash, label, row]) => ({ id: `lab-${hash}`, label, mode: 'dev', group: 'workshop', row, target: { page: 'labs.html', hash, params: {} } })),
   ...NAV_DOCS.map((d) => ({ id: `doc-${d.key}`, label: d.label, title: d.hint, mode: 'dev', group: 'docs', target: { doc: d.key } })),
   { id: 'tool-felt', label: 'Felt it', title: 'note a moment that was satisfying or needs work', mode: 'dev', group: 'tools', target: { tool: 'felt' } },
   { id: 'tool-link', label: 'Copy deep link', title: 'copy this board as a URL', mode: 'dev', group: 'tools', target: { tool: 'link' } },

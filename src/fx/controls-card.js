@@ -19,7 +19,7 @@ export const CONTROLS_PAGE = [
     ['Click', 'in a seat: locks the mouse, the mouse aims'], ['Space', 'in a seat: fire'],
     ['Esc', 'in a seat: frees the mouse · again: back to the tank'], ['P', 'in a seat: pause'], ['G', 'gunship briefing'],
   ]],
-  ['ANY TIME', [['Esc', 'pause, in the tank'], ['X', 'the tune panel: what is on screen, tweaked and recorded'], ['B', 'the terminal: the bestiary, over the paused game'], ['H / ?', 'this page']]],
+  ['ANY TIME', [['Esc', 'pause, in the tank'], ['X', 'the tune panel: what is on screen, tweaked and recorded'], ['Z', 'VARS: the game\'s knobs, the playtest page, the lab'], ['B', 'the terminal: the bestiary, over the paused game'], ['H / ?', 'this page']]],
 ];
 const PADS = [['#td-pad-fire', 'FIRE'], ['#td-pad-laser', 'LASER'], ['#td-pad-shield', 'SHIELD'], ['#td-pad-left', 'TURN'], ['#td-pad-right', 'TURN']];
 

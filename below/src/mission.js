@@ -39,8 +39,12 @@ export function center(s){
   if(s<upperStart){const a=(s-8)/12;return {x:0,y:throat-8-12*Math.sin(a),z:-12*(1-Math.cos(a))};}
   if(s<dropTurn)return pointOnCurve(upperRoute,s-upperStart);
   if(s<SHAFT_START){const a=(s-dropTurn)/12;return {x:0,y:throat-20-12*(1-Math.cos(a)),z:-67-12*Math.sin(a)};}
-  return {x:0,y:SHAFT_TOP-(s-SHAFT_START),z:-79};
+  // THE SHAFT BOWS (owner, 2026-10-16: 'then the tunnel goes down to the queen, but with a little J curve. Forcing the user to place flares thoughtfully'):
+  // the drop to the chamber's lip leaves the vertical by SHAFT_BOW metres at its middle and comes back over the lip, so no flare dropped at the top
+  // lights the bottom and the way down has to be lit in two throws. The ends stay where they were: the lip and the drop turn are unmoved
+  const d=s-SHAFT_START,L=SHAFT_TOP-CHAMBER_LIP;return {x:SHAFT_BOW*Math.sin(Math.PI*Math.max(0,Math.min(1,d/L))),y:SHAFT_TOP-d,z:-79};
 }
+export const SHAFT_BOW=14;   // 14 m: more than the shaft's radius, so the top never sees the bottom; at 22 the wall leaned under 65 degrees and a flare stuck to it mid-shaft (flare-physics.js rests on anything flatter)
 function normalize(p){const n=Math.hypot(p.x,p.y,p.z)||1;return {x:p.x/n,y:p.y/n,z:p.z/n};}
 export function frameAt(s,branch='main'){
   const a=branchCenter(branch,s-.05),b=branchCenter(branch,s+.05),t=normalize({x:b.x-a.x,y:b.y-a.y,z:b.z-a.z});

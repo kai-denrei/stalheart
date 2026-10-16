@@ -1230,6 +1230,8 @@ html, body {
 #tune-panel header { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(159, 220, 255, 0.2); letter-spacing: 0.1em; }
 #tune-panel header b { font-size: 14px; color: #9fdcff; } #tune-panel .tp-ctx { flex: 1; color: #b8ffca; } #tune-panel .tp-rev { color: #7d8a90; }
 #tune-panel .tp-close { background: none; border: 0; color: #dfe8ee; font-size: 18px; cursor: pointer; }
+#tune-panel .tp-vars { margin-left: auto; background: none; border: 1px solid rgba(0, 208, 255, 0.3); border-radius: 6px; color: #9fdcff; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; padding: 3px 8px; cursor: pointer; }
+#tune-panel .tp-vars:hover { color: #fff; border-color: #00d0ff; }
 #tune-panel .tp-body { flex: 1; overflow-y: auto; padding: 6px 12px; }
 #tune-panel h4 { margin: 12px 0 4px; font-size: 10px; letter-spacing: 0.18em; color: #9fdcff; }
 #tune-panel .tp-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 62px; gap: 4px 8px; align-items: center; padding: 3px 0; border-bottom: 1px dotted rgba(159, 220, 255, 0.12); }
@@ -3445,28 +3447,27 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
    behaviour is untouched. Opens from DEV · Tuning in the navigation shell, closes on ×
    or Esc, and — unlike the old column — is allowed to open while playing,
    because a toggle you cannot use mid-run is not a toggle. --- */
+/* VARS AS A DRAWER (owner, 2026-10-16: the centred modal 'displays in the center, cannot be easily recalled when dismissed with x'): docked at the right
+   edge like the tune panel (#tune-panel), its pages a tab strip on top, Z toggles it, the last page remembered (src/fx/vars-modal.js) */
 #td-vars {
   position: fixed;
-  inset: 0;
-  z-index: 62;
+  top: 48px; right: 0; bottom: 0;
+  z-index: 69;
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
-  width: min(760px, calc(100vw - 24px));
-  height: min(78vh, 640px);
-  margin: auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(440px, 92vw);
   background: rgba(10, 14, 22, 0.96);
-  border: 1px solid rgba(0, 208, 255, 0.35);
-  border-radius: 10px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  border-left: 1px solid rgba(0, 208, 255, 0.35);
+  box-shadow: -18px 0 60px rgba(0, 0, 0, 0.6);
   overflow: hidden;
   backdrop-filter: blur(4px);
 }
 #td-vars.hidden, body:not(.vars-open) #td-vars { display: none; }
 #td-vars .vars-nav {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 44px 8px 8px;
-  border-right: 1px solid rgba(0, 208, 255, 0.18);
-  overflow-y: auto;
+  display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px;
+  padding: 10px 48px 8px 10px;
+  border-bottom: 1px solid rgba(0, 208, 255, 0.18);
 }
 #td-vars .vars-nav button {
   text-align: left;
@@ -3486,7 +3487,7 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   background: rgba(0, 208, 255, 0.12);
   border-color: rgba(0, 208, 255, 0.45);
 }
-#td-vars .vars-body { overflow-y: auto; padding: 44px 12px 12px; }
+#td-vars .vars-body { overflow-y: auto; padding: 12px; }
 #td-vars .vars-page { display: none; }
 #td-vars .vars-page.active { display: block; }
 #td-vars .vars-close {

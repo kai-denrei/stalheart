@@ -5646,7 +5646,7 @@ export function initTdTab(root) {
   if (!storyMode && !debugging) showBriefing();
 
   perfCtl = gui.add({ get on() { return perfOverlay.on(); }, set on(v) { setPerfOverlay(v); } }, 'on').name('fps readout (`)');   /* a root control, so the VARS modal puts it on the game page */
-  buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt, sectorNow: () => story?.sectorN ?? 0, sectorName: (n) => sectorRun?.defOf?.(n)?.name ?? null });   /* the playtest page reads the sector and its names */   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
+  buildVarsModal({ root, gui, lab, flags, params, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt, sectorNow: () => story?.sectorN ?? 0, sectorName: (n) => sectorRun?.defOf?.(n)?.name ?? null , tunePanel: () => tunePanel });   /* the playtest page reads the sector and its names */   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }

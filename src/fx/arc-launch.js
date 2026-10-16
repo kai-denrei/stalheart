@@ -43,7 +43,17 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
   const sled = node('LAUNCH_SLED'), clamps = [[node('CLAMP_L'), -1], [node('CLAMP_R'), 1]], gates = node('PASSAGE_GATES'), lights = node('ACCELERATOR_LIGHTS');
   let t0 = null, sat = null, petals = [], plume = null, done = false, last = null, thrust = null, lastPhase = null;
   const up = new THREE.Vector3(0, 0.43, 0);
-  if (launcher) loadModelFixture(satellite).then((scene) => { if (done) return; sat = cloneFixture(scene); sat.name = 'sol88-payload'; launcher.add(sat); petals = [1, 2, 3, 4, 5, 6].map((i) => sat.getObjectByName(`PETAL_${i}_HINGE`)).filter(Boolean); plume = sat.getObjectByName('INSERTION_PLUME'); apply(last ?? launchState(0)); }, () => {});
+  // NAVIGATION LIGHTS (owner, 2026-10-16: 'the second SOL satellite launch should have glowing lights against the dark sky'): red to port, green to
+  // starboard, a white strobe on top, additive sprites on the bus's box; they ride the climb until the payload is gone
+  let navLights = [];
+  function dressLights(bus) {
+    const box = new THREE.Box3().setFromObject(bus), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3()); bus.worldToLocal(c);
+    const sprite = (hex, scale) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ color: hex, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); m.scale.setScalar(scale); m.name = 'nav light'; bus.add(m); return m; };
+    const r = Math.max(size.x, size.z) * 0.5 || 1, h = size.y * 0.5 || 0.5;
+    navLights = [{ m: sprite(0xff3b2f, 0.7), at: [c.x - r, c.y, c.z], kind: 'nav' }, { m: sprite(0x3bff6a, 0.7), at: [c.x + r, c.y, c.z], kind: 'nav' }, { m: sprite(0xffffff, 1.1), at: [c.x, c.y + h + 0.3, c.z], kind: 'strobe' }];
+    for (const l of navLights) l.m.position.fromArray(l.at);
+  }
+  if (launcher) loadModelFixture(satellite).then((scene) => { if (done) return; sat = cloneFixture(scene); sat.name = 'sol88-payload'; launcher.add(sat); petals = [1, 2, 3, 4, 5, 6].map((i) => sat.getObjectByName(`PETAL_${i}_HINGE`)).filter(Boolean); plume = sat.getObjectByName('INSERTION_PLUME'); dressLights(sat); apply(last ?? launchState(0)); }, () => {});
   function apply(s) {
     last = s;
     if (sled) { sled.position.fromArray(s.sled.position); sled.rotation.x = s.sled.pitch; }
@@ -54,6 +64,7 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
       for (const h of petals) h.rotation.x = (1 - s.deploy) * Math.PI / 2;
       if (plume) plume.scale.setScalar(s.burn ? 1 : 0);
       sat.visible = s.t < 26;   // past insertion the bus is a point in the sky: gone
+      for (const l of navLights) { const strobe = l.kind === 'strobe'; l.m.material.opacity = strobe ? ((s.t * 1.6) % 1 < 0.12 ? 1 : 0.08) : 0.55 + 0.35 * Math.sin(s.t * 5 + (l.at[0] > 0 ? 1.7 : 0)); l.m.scale.setScalar((strobe ? 1.1 : 0.7) * (1 + Math.max(0, s.t - RELEASE) * 0.08)); }   // the strobe flashes, the nav lights breathe; they grow a little with the climb so they still read as the bus recedes
     }
   }
   return {
