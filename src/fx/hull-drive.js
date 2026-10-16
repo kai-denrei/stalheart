@@ -20,6 +20,10 @@ import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, tangentDir } from
 export function createHullDrive(host) {
   // round four (the Pearl set, owner 2026-10-13: "the tank should never be able to 'go through' the enemy"): what a body's mass takes off the run-up
   const scrubBy = (share) => scrubDriveRamp(host.driveRamp, share, TANK_DRIVE), START = [0, 0, 0];   // and where the hull stood when the frame began
+  // WHY A STEP WAS REFUSED (the corridor probe, 2026-10-16): each branch of the manual frame that freeBlocked turned down, with the test
+  // that refused it (td-tab's freeBlocked names it: rock, container, pedestal, breach, depth, solid, gate, unit); `block` is the last frame's
+  let log = '', block = '';
+  const refused = (tag, p) => { if (!host.freeBlocked(p)) return false; log += ` ${tag}:${host.blockWhy()}`; return true; };
   // --- movement over the cell graph ---------------------------------------
   // the projection itself lives in vec3.js, so berths.js (pure, Node-tested)
   // and this file cannot drift apart; the wrapper just supplies `graph`
@@ -174,7 +178,7 @@ export function createHullDrive(host) {
         { const ahead = norm3(add3(host.player.pos, scale3(host.player.heading, host.cellSide() * TANK_KICK.ahead))), w = !steerRate && host.freeBlocked(ahead) ? host.nearestWall(ahead) : null; if (w) host.player.heading = glideHeading(host.player.pos, host.player.heading, norm3(sub3(w, host.player.pos)), dt, TANK_KICK); }   // THE HOVER GLIDE (src/domain/hover-kick.js), never against the player's own steer (it pinned the hull in bends)
         const step = scale3(host.player.heading, v * dt), before = host.player.pos;
         let cand = norm3(add3(host.player.pos, step));
-        if (host.freeBlocked(cand)) {
+        if (refused('step', cand)) {
           // slide: strip the into-wall component and try again; a building that stops the hull (solidAt) is the wall, its centre the way in
           const sid = host.storyBase()?.solidAt(cand), w = sid ? host.storyBase().structure(sid)?.holder?.getWorldPosition(new THREE.Vector3()).toArray() ?? host.nearestWall(cand) : host.nearestWall(cand);
           if (w) {
@@ -184,9 +188,9 @@ export function createHullDrive(host) {
             const slid = sub3(step, scale3(toWall, into)), share = into / (len3(step) || 1), kq = host.kick().cool > 0 ? null : planKick({ pos: host.player.pos, heading: host.player.heading, toWall, slid, share, cellSide: host.cellSide(), blocked: host.freeBlocked }, TANK_KICK);
             if (kq && startKick(host.kick(), { from: host.player.pos, ...kq }, TANK_KICK)) { scrubDriveRamp(host.driveRamp, 1 - TANK_KICK.keep, TANK_DRIVE); host.player.heading = kq.heading; }
             scrubDriveRamp(host.driveRamp, share * TANK_WALL.scrub * dt, TANK_DRIVE); if (len3(slid) > 1e-9) host.player.heading = norm3(add3(host.player.heading, scale3(norm3(slid), share * TANK_WALL.align * dt)));   // A WALL IS FRICTION, NOT A THUD (src/content/tank.js TANK_WALL)
-            cand = norm3(add3(host.player.pos, slid));
-            if (host.freeBlocked(cand)) cand = null;
-          } else { cand = null; for (const a of TANK_WALL.glance) { const n0 = norm3(host.player.pos), r = add3(scale3(step, Math.cos(a)), scale3(cross3(n0, step), Math.sin(a))), c2 = norm3(add3(host.player.pos, scale3(r, Math.cos(a)))); if (!host.freeBlocked(c2)) { cand = c2; break; } } }   // a building: glance off it
+            cand = norm3(add3(host.player.pos, slid)); log += sid ? ` wall:${sid}` : '';
+            if (refused('slide', cand)) cand = null;
+          } else { cand = null; for (const a of TANK_WALL.glance) { const n0 = norm3(host.player.pos), r = add3(scale3(step, Math.cos(a)), scale3(cross3(n0, step), Math.sin(a))), c2 = norm3(add3(host.player.pos, scale3(r, Math.cos(a)))); if (!refused('glance', c2)) { cand = c2; break; } } }   // a building: glance off it
           // wedged with nowhere to slide? creep toward the CURRENT cell's centre: open ground by definition, so it can always un-stick
           if (!cand) { scrubDriveRamp(host.driveRamp, 1, TANK_DRIVE);   // wedged: nothing built survives
             const home = host.graph().centers[host.player.cur];
@@ -195,8 +199,8 @@ export function createHullDrive(host) {
             if (l > 1e-6) {
               const creep = norm3(add3(host.player.pos,
                 scale3(toHome, Math.min(1, (v * dt) / l))));
-              if (!host.freeBlocked(creep)) cand = creep;
-            }
+              if (!refused('creep', creep)) cand = creep;
+            } else log += ' creep:centre';
           }
         }
         if (cand) {
@@ -206,11 +210,12 @@ export function createHullDrive(host) {
           if (ci !== -1 && ci !== host.player.cur) arriveAt(ci);
         }
         const k = stepStuck(host.stuck(), { driving: true, moved: dot3(sub3(host.player.pos, host.stuck().p ?? before), host.player.heading) * Math.sign(drive), expected: Math.abs(v) * dt, dt }, HULL_STUCK);   // wedged: eased to open ground; progress counts from where the last frame left it (creep, ease and cushion included)
+        if (k > 0) log += ` unstick:${k.toFixed(2)}`;
         if (k > 0) host.player.pos = unstick(host.player.pos, host.graph().centers[host.player.cur], k * HULL_STUCK.rate * host.cellSide() * dt);
       } else stepStuck(host.stuck(), { driving: false, moved: 0, expected: 0, dt }, HULL_STUCK);
       if (!kicking(host.kick())) host.player.pos = host.wallCushion(host.player.pos);
       host.bodyContact(START, host.player.pos, dt, scrubBy);   // the Pearl bodies, the last word on the hull's place: never inside one (round four, src/fx/creature-enemies.js bodyContact; moves it in place)
-      host.stuck().p = host.player.pos.slice();
+      host.stuck().p = host.player.pos.slice(); block = log; log = '';
       const nf = norm3(host.player.pos);
       host.player.heading = norm3(sub3(host.player.heading, scale3(nf, dot3(host.player.heading, nf))));
       updateSmoothDir(dt);
@@ -325,5 +330,5 @@ export function createHullDrive(host) {
     host.player.smoothDir = norm3(add3(scale3(s, c), scale3(nxs, si)));
   }
 
-  return { tangentDirTo, openNeighbors, chooseNext, arriveAt, advanceMotion, rotate, updateSmoothDir };
+  return { tangentDirTo, openNeighbors, chooseNext, arriveAt, advanceMotion, rotate, updateSmoothDir, block: () => block };
 }
