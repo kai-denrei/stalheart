@@ -32,6 +32,21 @@ Evidence:
 - test/seat-status.mjs, test/tower-aim.mjs (the servo, the body's point), test/emerge-climb.mjs, test/hull-console.mjs, test/pearl-motion.mjs (the audit at the new paces), test/pearl-enemies.mjs; node 265 green; browser --seats --laser-game --sinkhole --sectors --boss-start --descent --gunship-auto --canyon --skip-tutorial; the cave's 33 tests
 - scratchpad captures of the tank view before and after: the lever, the km/h and Isao's card in one corner; the console line over the radar and the lever beside it
 
+## 2026-10-16 — The one-frame grid flash on the first beacon was the Rotor's print ghost drawn once from the origin at planet scale: the worker added it to the scene a tick before placing it; it is placed first now, and a screencast probe with a per-draw WebGL instrument is the way such a frame is caught
+
+decision · accepted · 2026-10-16-the-grid-flash-was-the-print-ghost
+
+Owner, 2026-10-16, three times: 'one frame of a blue grid flashing on the first beacon from space', then a photo of it (the planet as a see-through wireframe), then 'the grey/blue grid flashing once is still there, maybe the first drawing of something in the background in space? part of the grid being built?' Headless it was never seen in a screenshot. A probe (the session's scratchpad flash-probe.mjs: Page.startScreencast at 60 frames a second, a brightness rating of every frame, a WebGL instrument wrapping the draw calls, the depth mask and the depth test per draw, and three's Object3D.prototype.onBeforeRender for the objects first drawn) caught it in every run at the same place: one frame, 3.4 s into the landers' tour, the canvas about twice as bright and grey-blue, with long straight white lines across the view. In that frame every scene draw and its depth state matched the frames either side; ten new draws of one freshly linked program (a wireframe MeshBasicMaterial) appeared and persisted; no scene object was first drawn in that window. The bloom chain off hid it (the bloom doubles white additive lines), the weights off did not move it, the beacons off did not move it, the landmark tiers' matrices did not move it. The ten draws were the Rotor's print ghost (src/fx/tower-print.js printGhost: the sentry's look in wireframe), which src/fx/isao-worker.js adds to the scene when Isao reaches the socket and places (host.placeTowerObj) only on the next tick's 'build' branch: for one frame a sentry-sized model sat at the origin with an identity transform, planet-sized, over everything. The owner's guess was right: it was the first drawing of something being built.
+
+src/fx/isao-worker.js places the ghost (placeTowerObj at the sentry's perch and size, the print plane at 0) before scene.add. test/isao-worker.mjs: a tower order's ghost is placed before the scene sees it. The probe hooks stay in the harness: postfxEnabled(v) and postfxTap('noWeights'); src/fx/program-warm.js makes its one-pixel canvas draw from the frame's tick rather than its timer (checked on the way; not the cause, but a draw in its own task is presented on its own). The screencast capture is recorded here as the method: a one-frame fault is invisible to screenshots and to per-frame state sampling; the screencast plus a per-draw diff against the neighbouring frames finds the frame and the draws, and onBeforeRender names the objects.
+
+Alternatives: Hide the ghost until its first placement (visible false then true): placing it before it is added is one line and leaves no frame to hide.; Keep hunting in the bloom chain: the chain only amplified the stray draw; the composite was innocent.
+
+Evidence:
+
+- the scratchpad's flash-probe.mjs captures before and after the fix: a spike of brightness 25 -> 51 at the tour's first stop in every run before, none after (threshold lowered to 6)
+- test/isao-worker.mjs, test/host-contracts.mjs; --chapters after the fix
+
 ## 2026-10-16 — The owner's ten notes on the by-size build: soft tiers hunt the nearest of tank or gate, small Reeds from sector 2 rammable only at 120 km/h, the cored tiers slower and more opaque with longer seeking appendages, the shell's blast with a floor, hard cores hot on the thermals, the hull's health on its levitator, a white does a tenth to the heart
 
 decision · accepted · 2026-10-16-ten-notes-hunt-reeds-armour-thermals

@@ -338,6 +338,9 @@ export function createIsaoWorker(host) {
           // nothing but a ring of points.
           const g = buildTowerLook(host.params.towerLook, w.order.def); printGhost(g, w.order.def.color);   // printed in wireframe (src/fx/tower-print.js)
           w.order.ghost = g;
+          // PLACED BEFORE IT IS SEEN (owner, 2026-10-16: 'one frame of a blue grid flashing on the first beacon from space'; a screencast caught it: the ghost
+          // was added here and placed on the next tick, so its first frame drew a sentry-sized wireframe at the origin, planet-sized, over everything)
+          host.placeTowerObj({ obj: g, ci: w.order.ci, tier: 0, def: w.order.def }); g.userData.print?.set(0);
           host.scene.add(g);
         }
       }

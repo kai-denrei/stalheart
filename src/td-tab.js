@@ -5951,6 +5951,7 @@ export function initTdTab(root) {
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(),   // THE ARENA's harness: the hull counted as at the beacon
+      postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)
       sectorKeepHolding: () => sectorRun?.test.keepHolding(),
       sectorQuiet: (on) => sectorRun?.test.quiet(on),
       sectorReport: () => sectorRun?.test.report() ?? null,

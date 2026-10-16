@@ -77,11 +77,9 @@ export function createProgramWarm(renderer, scene, camera, { perFrame = 4, resca
       // spot. When the background changes or new objects have arrived and been compiled, the whole scene is drawn once at one pixel of
       // the canvas under a scissor, exactly the monitor's draw; the next frame paints over it
       if (scene.background !== lastBg) { lastBg = scene.background; drawDue = true; }
-      // ...BUT INSIDE THE FRAME (owner, 2026-10-16: 'one frame of a blue grid flashing on the first beacon from space'; caught on a screencast: the
-      // frame after the landers' near tiers arrived was the whole canvas brighter and grey-blue with the planet's far side showing through). A
-      // draw made here, on the timer, is its own task: the browser presents the canvas at the end of it, and with preserveDrawingBuffer off what it
-      // presents is whatever the buffer holds, not the frame the game composed. tick() makes the draw from the frame's own call site instead, where
-      // the frame paints over its one pixel in the same task
+      // ...BUT INSIDE THE FRAME (2026-10-16): a draw made here, on the timer, is its own task, and a canvas drawn in a task of its own is presented on its own;
+      // tick() makes the draw from the frame's call site instead, where the frame paints over its one pixel in the same task. (Checked while hunting the
+      // one-frame flash of that day; it was not this, but the draw belongs in the frame.)
       if (drawDue && !queue.length) { drawDue = false; drawPending = true; }
       if (!queue.length) return;
       const batch = [];

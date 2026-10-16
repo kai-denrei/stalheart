@@ -41,3 +41,21 @@ const newLog = run((w) => { const host = { ...w.fixed }; for (const k of gets) h
 assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '01abcb50a8d07f4c', 'the worker behaves as the controller block did');
 assert.ok(newLog.some((x) => x[0] === 'printed') && newLog.some((x) => x[0] === 'repaired') && newLog.some((x) => x[0] === 'biomass' && x[2] === 'refund'));
 print('Isao worker: orders claimed, flown to, printed and finished, a cancel refunded, the drone flown by hand, as the controller block did.');
+
+// THE PRINT GHOST IS PLACED ON THE TICK IT IS ADDED (owner, 2026-10-16: 'one frame of a blue grid flashing on the first beacon from space'; a screencast
+// caught the sentry's print wireframe drawn once at the origin, planet-sized, before the next tick placed it): placeTowerObj for the ghost comes
+// before the scene sees it
+{
+  const log = [], w = world(log);
+  w.fixed.placeTowerObj = (o) => log.push(['place', o.obj?.type, o.ci]);
+  const host = { ...w.fixed }; for (const k of gets) host[k] = () => w.st[k]; host.setIsao = (v) => (w.st.isao = v); host.setAssistant = (v) => (w.st.assistant = v);
+  const k = createIsaoWorker(host);
+  w.st.isao = { obj: w.mkObj('isao'), dir: [0, 1, 0], state: 'idle', t: 0, dur: 0, order: null, loiter: [0, 1, 0], gleeT: 0 };
+  k.orders.push({ kind: 'tower', key: 'rotor', ci: 7, cost: 45, seconds: 30, def: { ...imps.TOWER_BY_KEY?.rotor, key: 'rotor', color: 0xffffff } });
+  for (let i = 0; i < 240 && !log.some((x) => x[0] === 'place'); i++) { w.st.t += 1 / 30; k.updateIsao(1 / 30); }
+  const iPlace = log.findIndex((x) => x[0] === 'place' && x[2] === 7);
+  assert.ok(iPlace >= 0, `the ghost is placed (${JSON.stringify(log.filter((x) => x[0] === 'scene.add' || x[0] === 'place'))})`);
+  const type = log[iPlace][1], iAdd = log.findIndex((x, i) => i > 0 && x[0] === 'scene.add' && x[1] === type);
+  assert.ok(iAdd > iPlace, `the ghost is placed before the scene sees it (place at ${iPlace}, add at ${iAdd}; ${type})`);
+  print('Isao worker: the print ghost is placed on the tick it is added, never drawn from the origin.');
+}

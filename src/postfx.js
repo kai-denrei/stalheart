@@ -70,7 +70,7 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
     scale: COARSE ? 0.5 : 1.0,
     ...opts,
   };
-  let enabled = o.enabled;
+  let enabled = o.enabled, tapNoWeights = false;
   const weights = { ...DEFAULT_BLOOM_WEIGHTS };
   let groupsFn = null;   // null => no weighting, i.e. the pre-change behaviour
   let warnedConflict = false;
@@ -182,9 +182,10 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
       const autoUpdate = scene.matrixWorldAutoUpdate;
       if (autoUpdate) { scene.updateMatrixWorld(); scene.matrixWorldAutoUpdate = false; }
       try {
-        if (groupsFn) applyWeights();
+        const weighted = groupsFn && !tapNoWeights;
+        if (weighted) applyWeights();
         bloomComposer.render();
-        if (groupsFn) restoreWeights();
+        if (weighted) restoreWeights();
         // the PURE bloom, taken before UnrealBloomPass's additive blend
         addPass.uniforms.tBloom.value = bloom.renderTargetsHorizontal[0].texture;
         finalComposer.render();
@@ -206,6 +207,9 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
     },
     setEnabled(v) { enabled = !!v; },
     get enabled() { return enabled; },
+    // a probe's split of the chain (2026-10-16, hunting a one-frame flash): 'normal', or 'noWeights' (pass A unweighted). The add pass cannot be switched off
+    // alone: the composer's buffers then alternate every other frame
+    tap(mode = 'normal') { tapNoWeights = mode === 'noWeights'; return mode; },
     // a pass AFTER the OutputPass, in display space (the cinematics' film
     // pass: letterbox, grain, titles). The composer renders its last
     // enabled pass to the screen, so appending is enough.
