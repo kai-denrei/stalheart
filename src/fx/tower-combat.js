@@ -133,7 +133,7 @@ export function createTowerCombat(host) {
     host.stepPlasmaBeams(tNow);
     host.stepTowerSeekers(dt, tNow);
     for (const tw of host.towers) {
-      const manual = host.pilotMode() && !host.automated(); if (manual && tw !== host.pilot()?.state.tower) {tw.cooldown=Math.max(0,tw.cooldown-dt);hushRotor(tw);continue;}   // only a HAND on a mount parks the others: past the handover every tower keeps working while the gunship is ridden
+      const manual = host.pilotMode() && !host.automated(); if (manual && tw !== host.pilot()?.state.tower && !host.autoTower?.(tw)) {tw.cooldown=Math.max(0,tw.cooldown-dt);hushRotor(tw);continue;}   // only a HAND on a mount parks the others: past the handover every tower keeps working while the gunship is ridden
       // idle first, aim second: the idle sets rotation.y unconditionally, and
       // a tracking head must have the last word on where it looks
       if (tw.obj.userData.tick) tw.obj.userData.tick(tNow + tw.ci);
@@ -143,7 +143,7 @@ export function createTowerCombat(host) {
       // DOES — the rocket, the sound, the model — is the board's.
       if (tw.a6 && !manual) { stepWalker(tw, dt, tNow); continue; }
       if (tw.key === 'rotor') { const h = SENTRY_HEAT.rotor; tw.heat = coolHeat(tw.heat ?? 0, dt, h); if (tw.overheated && tw.heat < h.resume) tw.overheated = false; paintBarrelHeat(tw.obj, tw.heat); }   // RED TO WHITE HOT: the barrels carry their heat, and a mount that ran too hot waits
-      if((tw.def.attack==='slowfield' && towerOffline(host.shield,tw.id,tNow)) || (host.storyMode() && !host.pilotMode() && !host.automated())){hushRotor(tw);continue;}   // story sentries: no auto-targeting until the manual override
+      if((tw.def.attack==='slowfield' && towerOffline(host.shield,tw.id,tNow)) || (host.storyMode() && !host.pilotMode() && !host.automated() && !host.autoTower?.(tw))){hushRotor(tw);continue;}   // story sentries: no auto-targeting until the manual override; Isao's own (autoTower: the Rotor, 2026-10-16) fires from the first wave
       host.aimTower(tw, dt);
       if(tw.key==='rotor'){
         const spin=manual ? !!host.pilot()?.state.held : !!pickTarget(host.graph().centers[tw.ci],host.effectiveStats(tw.def,tw.tier).range*host.cellSide(),host.enemies,host.chord);

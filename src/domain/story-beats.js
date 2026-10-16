@@ -34,7 +34,7 @@ export function makeStoryBeats({
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
   laneCell = null,          // (hops) => the lane cell that many cells in from the sinkhole toward the gate, or -1: the quiet breach's head start (fodderEmerge.headStart)
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [], calmMax = Infinity,
-  faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
+  faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed', rotorAuto = false,
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
   arrival = false,          // the landing plays in the game (src/fx/arrival.js): `landed` waits for its deploy(api)
@@ -45,6 +45,8 @@ export function makeStoryBeats({
   const fd = foundry ? makeFoundry(foundry) : null;
   let quiverOrdered = false, cWaves = 0, cSent = 0, studyDelay = quiver?.studyDelay ?? 3, upAt = null;
   // the beats pay for the Quiver and put it on Isao's book, once; a refused order is tried again at the override and at the clear
+  // THE ROTOR IS ISAO'S (owner, 2026-10-16; `rotorAuto`): it fires on its own from the first wave (api.autoTower) and the player watches; else the manual override
+  const takeRotor = (api) => { if (rotorAuto) api.autoTower?.(socket); else api.pilot?.(socket, lane); }, overrideLine = rotorAuto ? 'rotor_auto' : 'manual_override';
   const orderQuiver = (api) => { if (quiverOrdered || !quiver || quiverSocket < 0) return; api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); };
   // a construction wave: the next row of the table, from the sinkhole (reopened if a strike filled it), risen over `stagger` seconds
   const constructionWave = (api) => {
@@ -102,15 +104,15 @@ export function makeStoryBeats({
         api.grant(api.cost(key));
         if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }
-      else if (phase === 'rotor-ready' && opened) { if (gateAt === null && gateReady()) { gateAt = clock; orderQuiver(api); } if (!api.touring?.()) { api.brief?.('manual_override'); said.add('manual_override'); api.pilot?.(socket, lane); enter('piloting'); } }   // the tour over: straight into the Rotor
+      else if (phase === 'rotor-ready' && opened) { if (gateAt === null && gateReady()) { gateAt = clock; orderQuiver(api); } if (!api.touring?.()) { api.brief?.(overrideLine); said.add(overrideLine); takeRotor(api); enter('piloting'); } }   // the tour over: straight into the Rotor (or Isao's, rotorAuto)
       else if (phase === 'rotor-ready' && gated && gateAt === null) { if (gateReady()) { gateAt = clock; orderQuiver(api); } }   // THE TREMOR WAITS FOR THE GATE: no fodder before it stands; the Quiver goes on the book with it
       else if (phase === 'rotor-ready' && clock - Math.max(at, gateAt ?? at) >= (gated ? tremorDelay : controlDelay)) {
         if (gated) { api.tremor?.(fodder); api.brief?.('tremor'); enter('tremor'); }
-        else { api.pilot?.(socket, lane); enter('piloting'); nextSpawn = clock + fodderEvery; }
+        else { takeRotor(api); enter('piloting'); nextSpawn = clock + fodderEvery; }
       } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder, { quiet: true }); api.tremor?.(-1);   /* no cut-away to it: the opening dives straight to the Rotor (2026-10-04) */ enter('breach'); nextSpawn = clock + spawnDelay; }
       else if (phase === 'breach') { spawnTick(api); if (spawned > 0) enter('approach'); }
-      else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate, overrideCells)) { api.brief?.('manual_override'); said.add('manual_override'); enter('override'); } }
-      else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { api.pilot?.(socket, lane); enter('piloting'); orderQuiver(api); } }   // Isao prints the Quiver while the wave is fought (normally ordered with the gate already)
+      else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate, overrideCells)) { api.brief?.(overrideLine); said.add(overrideLine); enter('override'); } }
+      else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { takeRotor(api); enter('piloting'); orderQuiver(api); } }   // Isao prints the Quiver while the wave is fought (normally ordered with the gate already)
       else if (phase === 'piloting' && fodder >= 0) {
         spawnTick(api);
         if (gated && gateAt === null && gateReady()) { gateAt = clock; orderQuiver(api); }   // taken before the gate stood: the Quiver follows it
@@ -122,13 +124,13 @@ export function makeStoryBeats({
         if (!quiverOrdered && !api.built(quiverSocket)) { api.brief?.('quiver_intro'); if (!fd) api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); }
         if (api.built(quiverSocket)) {   // straight off the Rotor into the Quiver, the optic on the lane as the hard core rises
           if (api.sourceAlive && !api.sourceAlive()) api.breach?.(fodder);   // a strike may have filled the sinkhole: the hard cores need it open
-          if (quiverRise.length) { for (const ci of quiverRise) api.spawn(quiver.hardcore, ci, { here: true }); hardcores = quiverRise.length >= 2 ? 2 : 1; }   // on the ring, in sight
+          if (quiverRise.length) { quiverRise.forEach((ci, i) => api.spawn(i ? quiver.second ?? quiver.hardcore : quiver.hardcore, ci, i && quiver.second ? { here: true, pace: quiver.secondPace ?? 1 } : { here: true })); hardcores = quiverRise.length >= 2 ? 2 : 1; }   // on the ring, in sight; the second a black (2026-10-16)
           else { api.spawn(quiver.hardcore, fodder); hardcores = 1; }
           api.brief?.('quiver_override'); api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay;
         }
       }
       else if (phase === 'quiver-piloting') {
-        if (hardcores < 2 && clock >= nextSpawn) { api.spawn(quiver.hardcore, fodder); hardcores = 2; }
+        if (hardcores < 2 && clock >= nextSpawn) { if (quiver.second) api.spawn(quiver.second, fodder, { pace: quiver.secondPace ?? 1 }); else api.spawn(quiver.hardcore, fodder); hardcores = 2; }   // the second a black, slower (2026-10-16)
         if (hardcores >= 2 && api.enemies() === 0) {
           api.brief?.('quiver_cleared'); said.add('quiver_cleared');
           if (construction && api.stalheartStands && !api.stalheartStands()) { enter('construction'); api.gunshipArrive?.(); if (tankAfterNuke != null) api.gunshipSeat?.(); nukes0 = api.nukes?.() ?? 0; nextSpawn = clock + (construction.first ?? construction.every); }

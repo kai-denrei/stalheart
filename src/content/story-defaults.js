@@ -157,10 +157,12 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // coneDeg: the half-angle of the LOCK BOX drawn on the optic. Anything inside it is the target, it stays the target while it stays
 // inside (no flicker between bodies), a timer runs, and at full it is locked. No minimum or maximum range: on a 753 m planet the
 // horizon from a 4 m mount is about 80 m, so a 400 m reach is no limit at all, and the range test can never reset the timer.
+// THE SECOND IS A BLACK (owner, 2026-10-16: 'let's have one enemy be the purple one, and the second be a Black one, slightly bigger, moves with the 3 appendages,
+// slower, more menacing movement'): `second` is the type of the second hard core (the phantom: PEARL_OF black, the biggest tier, three stalks) at `secondPace` of its walk
 // rise: the lane hops (from the forward cell, seen from the Quiver) where its two hard cores come up, past the hold ring: on the horizon
 // as the optic opens, walking in to be held (owner, 2026-10-05: on the ring they were "much too close, making a long-range strike
 // somewhat useless"; from the sinkhole they had taken five seconds and more to show)
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore: 'barbed', secondDelay: 3, hold: [5, 9], rise: [10, 13], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, diveRate: 2.6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore: 'barbed', second: 'phantom', secondPace: 0.6, secondDelay: 3, hold: [5, 9], rise: [10, 13], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, diveRate: 2.6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
 
 // THE BEAT CLOCK (owner, 2026-09-18: "everything must feel faster"). Every wait in src/domain/story-beats.js that the player only
 // watches, gathered here as content. `faceDelays` are Isao's two landing lines; `rotorDelay` the pause before he deploys the AFR-01;
@@ -181,8 +183,11 @@ export const STORY_CALM = Object.freeze({ near: 8, calm: 3, maxHold: 120, heartH
 // enemies closer and already in-sight"): on a landing page the sinkhole opens, quiet, `earlyBreach` seconds into the beacons' tour
 // instead of after the gate, and the Rotor is taken the moment the tour ends (src/domain/story-beats.js). `tankAfterNuke`: the seconds
 // between sector 0's first MK-9 blast and the hull handed to the player (src/fx/hull-issue.js early)
+// ISAO MANS THE ROTOR (owner, 2026-10-16: 'The Rotor is not working, and I am tired of troubleshooting it endlessly. let's have Isao set-up the first two towers and
+// they shoot automatically'; then 'quiver, since we one-shot them with the quiver': the Quiver stays the player's first seat): `rotorAuto` true, the Rotor fires
+// on its own from the first wave (src/domain/story-beats.js autoTower; src/fx/tower-combat.js exempts it from the tutorial's hush) and the player watches the gate
 export const STORY_BEATS = Object.freeze({
-  rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
+  rotorAuto: true, rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
   tremorDelay: 0.6, breachDelay: 1.5, spawnDelay: 0.3, overrideDelay: 0.8, overrideCells: 99, earlyBreach: 0, tankAfterNuke: 1.6,
 });
 // THE NUKE'S TANK: the berth on the lane outside the gate it is handed on, `berth` [from, to] cells out from the forward cell along the
@@ -262,19 +267,20 @@ export const STORY_CHAPTER_END = Object.freeze({ id: 'sector-1', label: 'SECTOR 
 // part unlocks, the guard nest, and when a later site reveals (after N parts are home). The Rotor and Quiver are the base.
 // (2026-10-03, owner: "more low level enemies protecting the extra landing sites"; then "MORE soft bodies at the landing sites, and they try
 // to attack the tank") the nests' soft bodies x5 of the first count, phages among them; `aggro`: within that many nest radii the hull is chased
-// (src/domain/guard-aggro.js)
+// (src/domain/guard-aggro.js). A SMALL REED AT EACH NEST (owner, 2026-10-16: 'let's put a small Reed at each cargo spot too'): a guard entry with
+// `family` and `tier` is a creature tier (CREATURE_TIERS, src/content/creature-enemies.js), spawned in its kit by src/fx/expedition-glue.js
 export const STORY_EXPEDITIONS = Object.freeze({
   aggro: 3,
   clearBelow: 3,   // THE NEST IS CLEARED with fewer than this many guards left (owner, 2026-10-07: the first 'nest cleared' took 20 s+ as if an invisible enemy remained; 'the cargo becomes available once there are fewer than 3 enemies at a nest')
   base: Object.freeze(['rotor', 'quiver']),
   deliverCells: 3,   // how close to the landing (the foundry) a carried part counts as home, in cells
   sites: Object.freeze([
-    { id: 'rocket-a', tower: 'relay', part: 'field coil', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 40 }, { type: 'phage', count: 12 }] },
-    { id: 'rocket-b', tower: 'mortar', part: 'breech', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 48 }, { type: 'phage', count: 14 }] },
-    { id: 'wreck', tower: 'lancer', part: 'lens', reveal: null, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 60 }, { type: 'phage', count: 16 }] },
-    { id: 'rocket-c', tower: 'plasma', part: 'coil stack', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 64 }, { type: 'phage', count: 18 }] },
-    { id: 'rocket-d', tower: 'needle', part: 'optic', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 64 }, { type: 'phage', count: 18 }] },
-    { id: 'wreck-b', tower: 'heptapod', part: 'walker core', reveal: { after: 5 }, guards: [{ type: 'barbed', count: 4 }, { type: 'amoeba', count: 80 }, { type: 'phage', count: 20 }] },
+    { id: 'rocket-a', tower: 'relay', part: 'field coil', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 40 }, { type: 'phage', count: 12 }, { family: 'reed', tier: 'small', count: 1 }] },
+    { id: 'rocket-b', tower: 'mortar', part: 'breech', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 48 }, { type: 'phage', count: 14 }, { family: 'reed', tier: 'small', count: 1 }] },
+    { id: 'wreck', tower: 'lancer', part: 'lens', reveal: null, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 60 }, { type: 'phage', count: 16 }, { family: 'reed', tier: 'small', count: 1 }] },
+    { id: 'rocket-c', tower: 'plasma', part: 'coil stack', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 64 }, { type: 'phage', count: 18 }, { family: 'reed', tier: 'small', count: 1 }] },
+    { id: 'rocket-d', tower: 'needle', part: 'optic', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 64 }, { type: 'phage', count: 18 }, { family: 'reed', tier: 'small', count: 1 }] },
+    { id: 'wreck-b', tower: 'heptapod', part: 'walker core', reveal: { after: 5 }, guards: [{ type: 'barbed', count: 4 }, { type: 'amoeba', count: 80 }, { type: 'phage', count: 20 }, { family: 'reed', tier: 'small', count: 1 }] },
   ].map(Object.freeze)),
 });
 

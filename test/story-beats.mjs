@@ -12,7 +12,7 @@ function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
     tremor: (ci) => { log.push(['tremor', ci]); },
     breach: (ci) => { log.push(['breach', ci]); sealed = false; },
     near: () => firstSpawn !== null && clock - firstSpawn >= walk,
-    pilot: (ci, lane) => { log.push(['pilot', ci, lane]); },
+    pilot: (ci, lane) => { log.push(['pilot', ci, lane]); }, autoTower: (ci) => { log.push(['autoTower', ci]); },
     unlock: (what) => { log.push(['unlock', what]); },
     screen: (id) => { log.push(['screen', id]); },
     sourceAlive: () => sealed === false,
@@ -24,6 +24,18 @@ function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
 }
 const run = (beats, g, seconds) => { for (let t = 0; t < seconds - 1e-9; t += 0.1) { g.tick(0.1); beats.tick(0.1, g.api); } };
 const kinds = (g, k) => g.log.filter((l) => l[0] === k);
+
+// ISAO MANS THE ROTOR (owner, 2026-10-16; rotorAuto): the override is his line and his sentry, no seat for the player; the Quiver is still the player's
+{
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 2, fodderAlive: 3, fodderTotal: 5, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, rotorAuto: true,
+    quiverSocket: 4244, quiver: { key: 'quiver', delay: 0.3, hardcore: 'barbed', second: 'phantom', secondPace: 0.6, secondDelay: 3 } });
+  const g = fakeGame({ walk: 3 });
+  run(beats, g, 16); assert.equal(beats.state().phase, 'override'); assert.equal(kinds(g, 'brief').at(-1)[1], 'rotor_auto');
+  run(beats, g, 1.1); assert.equal(beats.state().phase, 'piloting'); assert.deepEqual(kinds(g, 'autoTower'), [['autoTower', 4242]]); assert.equal(kinds(g, 'pilot').length, 0, 'no seat for the player');
+  run(beats, g, 6); g.kill(3); run(beats, g, 10); g.kill(2); run(beats, g, 1); assert.ok(kinds(g, 'brief').some((l) => l[1] === 'wave_cleared'), 'the wave cleared');
+  assert.equal(beats.state().phase, 'quiver-piloting', JSON.stringify(beats.state())); assert.deepEqual(kinds(g, 'pilot'), [['pilot', 4244, 4243]], 'the Quiver is the player\'s first seat');
+  run(beats, g, 3.5); assert.deepEqual(kinds(g, 'spawn').at(-1), ['spawn', 'phantom', 4300, { pace: 0.6 }], 'the second hard core is a black, slower');
+}
 
 // gated world: tremor, breach, approach, override, then control; fodder capped
 {

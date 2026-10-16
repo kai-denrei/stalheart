@@ -121,6 +121,11 @@ export const BRIEFS = {
     id: 'manual_override', face: 'focused', title: 'MANUAL OVERRIDE',
     lines: ['The sentries are not ready for auto-targeting yet.', 'Manual override. The Rotor is yours.'],
   },
+  // ISAO MANS THE ROTOR (owner, 2026-10-16; STORY_BEATS.rotorAuto): the first wave is his to shoot and the player's to watch; the Quiver comes next
+  rotor_auto: {
+    id: 'rotor_auto', face: 'focused', title: 'ROTOR · AUTO',
+    lines: ['The Rotor is mine. Its targeting is rough, but it will hold.', 'Watch the gate. The next one is yours.'],
+  },
   // a throwaway, on the fifth kill: the seed of a much later story beat about
   // reverse-engineering their language
   alien_comms: {
