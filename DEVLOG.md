@@ -78,6 +78,22 @@ Evidence:
 - test/pearl-enemies.mjs (opacity, cycles, hp, heartDmg), test/shell-blast.mjs, test/hull-armour.mjs, test/body-footprint.mjs, test/enemy-step.mjs
 - commits f2f8a2dd, 06ca7531 on main; thermals and the levitator's colours verified headless
 
+## 2026-10-16 — Can a person see the tank is a platform module (src/platform/tank-sight.js)
+
+change · accepted · 2026-10-16-tank-sight-platform-module
+
+Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. tankSight and sightLine (47 lines) answer the view watchdog's and the diagnostics overlay's question; the overlay is their only reader, through td-tab's literal.
+
+src/platform/tank-sight.js exports tankSight(player, renderer, camera, playerMesh) and sightLine as the controller had them; the overlay's literal hands `tankSight: () => tankSight(player, renderer, camera, playerMesh)` (the hull read at call time, as before) and `sightLine`; the viewEdge import leaves td-tab. Putting them inside src/platform/diag-overlay.js was tried and dropped: the overlay's test feeds it a scripted sight sequence through its host, and passing the host on trips the host-contract rule. src/td-tab.js 5,596 -> 5,549 (-47).
+
+Alternatives: Inside the diagnostics overlay: see the outcome.
+
+Evidence:
+
+- side by side: 5,000 random poses (cameras, viewports, meshes with and without geometry, HUD stacks), results, elementsFromPoint calls and sight lines equal; why covered 888, tiny 1,668, ok 1,235, off-canvas 236, no tank 771, chrome 202; a mutant caught
+- test/tank-sight.mjs; test/diag-overlay.mjs unchanged and green; host contracts 65; npm test, check, build
+- browser suites from snapshot final-204924: --opening --seats --sectors --grow --chapters --waves --story-world pass, --defense and the default suite red at their steps on main dedce7e3
+
 ## 2026-10-16 — The Rotor back to the player's manual override (Isao's auto Rotor could not hit the first wave), the first wave lemon, the hard cores farther out, an enormous arena carved when the world is built, SOL cutting a road ahead of the hull on the drive out, and the one-frame grid flash caught on a screencast but not yet explained
 
 decision · accepted · 2026-10-16-rotor-back-to-manual-lemon-first-wave-enormous-arena-sol-road

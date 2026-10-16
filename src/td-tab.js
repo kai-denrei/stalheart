@@ -2,7 +2,7 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_WALL } from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, tourFrame, tourSeconds } from './domain/story-shots.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge } from './domain/view-edge.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; 
+import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; 
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { applyScare } from './domain/impact-scare.js'; import { createWaveClock } from './domain/wave-clock.js';
@@ -87,7 +87,7 @@ import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
   makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
-import { parseLabQuery } from './lab.js';
+import { parseLabQuery } from './lab.js'; import { tankSight, sightLine } from './platform/tank-sight.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js'; import { garrisonSites as pickGarrisonSites } from './domain/garrison.js';
@@ -1122,53 +1122,6 @@ export function initTdTab(root) {
     if (ev.key === 'Escape') document.body.classList.remove('vars-open');
   }, true);
   let ctlSwallowBarked = false;
-  // CAN A PERSON SEE THE TANK (not just: is it in the frustum). 'behind' / 'off-canvas' are pose faults the watchdog re-seats; 'chrome'
-  // (under iOS's URL bar or toolbar), 'covered' (a HUD element on it) and 'tiny' need the framing to change. Headless can only see
-  // 'ok' or a pose fault: it models neither the visual viewport nor env(safe-area-inset)
-  const tsV = new THREE.Vector3(), tsW = new THREE.Vector3();
-  function tankSight() {
-    if (!playerMesh || !player.pos) return { why: 'no tank', px: 0, frac: 0, x: 0, y: 0 };
-    const cv = renderer.domElement;
-    const r = cv.getBoundingClientRect();
-    camera.updateMatrixWorld();
-    tsV.set(player.pos[0], player.pos[1], player.pos[2]).project(camera);
-    const x = r.left + (tsV.x * 0.5 + 0.5) * r.width;
-    const y = r.top + (-tsV.y * 0.5 + 0.5) * r.height;
-    const short = Math.max(1, Math.min(r.width, r.height));
-    let px = 0;
-    {
-      const g = playerMesh.geometry;
-      let rad;
-      if (g) {
-        if (!g.boundingSphere) g.computeBoundingSphere();
-        rad = (g.boundingSphere ? g.boundingSphere.radius : 1) * playerMesh.scale.x;
-      } else {
-        rad = new THREE.Box3().setFromObject(playerMesh).getSize(tsW).length() * 0.5;
-      }
-      const d = camera.position.distanceTo(tsW.set(player.pos[0], player.pos[1], player.pos[2]));
-      const halfH = Math.tan((camera.fov * Math.PI) / 360) * d;
-      px = halfH > 0 ? (rad / halfH) * (r.height / 2) : 0;
-    }
-    const out = { px, frac: px / short, x, y, ndc: [tsV.x, tsV.y, tsV.z] };
-    if (tsV.z > 1) return { ...out, why: 'behind' };
-    if (x < r.left || x > r.right || y < r.top || y > r.bottom) return { ...out, why: 'off-canvas' };
-    if (viewEdge({ x, y }, window.visualViewport ?? { width: innerWidth, height: innerHeight, offsetLeft: 0, offsetTop: 0 }) !== 'inside') return { ...out, why: 'chrome' };
-    if (typeof document.elementsFromPoint === 'function') {
-      const stack = document.elementsFromPoint(Math.round(x), Math.round(y));
-      // the diagnostics panel is not game chrome — reporting that the thing
-      // you opened to find the tank is the thing hiding it is just noise
-      const on = stack.find((e) => e !== cv && e.id !== 'td-app' && e.id !== 'tab-td'
-        && e.id !== 'td-diag' && e.tagName !== 'BODY' && e.tagName !== 'HTML');
-      if (on) {
-        return { ...out, why: 'covered',
-          by: `${on.tagName.toLowerCase()}${on.id ? '#' + on.id : ''}` };
-      }
-    }
-    if (out.frac < 0.03) return { ...out, why: 'tiny' };
-    return { ...out, why: 'ok' };
-  }
-  const sightLine = (s2) => `${s2.why}${s2.by ? ' by ' + s2.by : ''}`
-    + ` ${s2.x.toFixed(0)},${s2.y.toFixed(0)} r${s2.px.toFixed(0)}px ${(s2.frac * 100).toFixed(1)}%`;
 
   // THE VIEW WATCHDOG AND THE DIAGNOSTICS OVERLAY (src/platform/diag-overlay.js): viewWatch and tick from the frame, html for captions
   const diagOverlay = createDiagOverlay(root, {
@@ -1179,7 +1132,7 @@ export function initTdTab(root) {
     camera,
     scene,
     keys,
-    tankSight,
+    tankSight: () => tankSight(player, renderer, camera, playerMesh),
     sightLine,
     setView,
     snapCamera,
