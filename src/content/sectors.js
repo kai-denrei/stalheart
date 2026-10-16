@@ -80,7 +80,7 @@ export const SECTORS = freeze([
 // of the wave, whichever is more, dealt among the squads in `runs` alternating runs. CLOSER AND STAGGERED ("their clusters should be
 // closer together and slightly staggered; otherwise how they move looks unnatural"): members `spacing` apart in two rows `stagger`
 // apart, each with its own wobble phase
-export const SQUADS = freeze({ over: 300, single: 60, share: 0.2, runs: 3, size: 5, dens: 0.6, spacing: 0.55, stagger: 0.7, reach: 1.6, area: ['strike', 'laser'] });
+export const SQUADS = freeze({ over: 600, single: 60,   /* over 600 (was 300; owner, 2026-10-16): squads only in huge waves, hidden among the mass */ share: 0.2, runs: 3, size: 5, dens: 0.6, spacing: 0.55, stagger: 0.7, reach: 1.6, area: ['strike', 'laser'] });
 export const CROWD_CAP = freeze({ start: 1500, min: 400, max: 3500, slowMs: 36, fastMs: 24, down: 0.85, up: 1.06, every: 1 });
 export const SECTOR_STAMPEDE = freeze({ every: 2, cores: 2, core: 'barbed', callout: 'STAMPEDE — RAM THEM', trickleGap: 1.3, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
 

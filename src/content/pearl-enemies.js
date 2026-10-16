@@ -124,8 +124,10 @@ export const PEARL_FOLLOW = freeze({
 // (PEARL_BODY.scale white 0.4, yellow 0.6, blue 0.8). A hopping body is held to about 1.2 radii a second (test/pearl-motion.mjs: past it the hops pop; bursts too),
 // so a small hopping body is a slow one in metres: THE BLOB (owner: "get rid of the appendages for the little ones for now, just have them be swarms of amoeba
 // like blobs that move fast"): white and yellow `glide` (src/fx/creature-pearl.js: no hop, the body slides onto its record's point, PEARL_GAIT.glideSeconds)
-// with caps in radii that read about 5.5 m/s on their small bodies (the swarm lab's bound is a few metres a second), twice the hopping pace they had.
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1 : 1, radii: id === 'white' ? 5 : id === 'yellow' ? 2.8 : id === 'blue' ? 0.9 : id === 'black' ? 0.8 : 0.9, glide: id === 'white' || id === 'yellow', erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
+// with caps in radii that read about 5.5 m/s on their small bodies (the swarm lab's bound is a few metres a second), twice the hopping pace they had (the
+// owner: "set it at 2 instead of 4, but it works"). Blue a bit faster (1 radius a second at x1.08: the audit's bound sits just past it). `hp` (owner: "larger
+// waves that die faster. feeling of swarm"): the soft tiers' hit points over the spec's, with PEARL_WAVES.crowd for the larger waves.
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1.08 : 1, radii: id === 'white' ? 5 : id === 'yellow' ? 2.8 : id === 'blue' ? 1 : id === 'black' ? 0.8 : 0.9, glide: id === 'white' || id === 'yellow', hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : 1, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a
@@ -161,7 +163,7 @@ export const PEARL_GAIT = freeze({
 // (CUTIS_LOD 70/12, PEARL_FOLLOW's cap 12), so the thinning that round four put in "to get the animation right" is not needed at the end of a
 // breach's climb: \`last\` is 1, every single body of the plan. The start stays few and slow (the build-up).
 // THE COUNT IS THE SECTOR'S (2026-10-15, sector shapes, src/content/sectors.js): `scale` is gone; the table sizes every wave, and the build-up is the pace alone.
-export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }) });
+export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd: 1.4 });   // crowd: every pulse's bodies x this (the swarm: larger waves that die faster, owner 2026-10-16)
 
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.

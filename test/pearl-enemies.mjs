@@ -58,6 +58,7 @@ for (const [type, b] of Object.entries(bodies)) {
   for (const [k, v] of Object.entries(ENEMY_SPEC[type])) {
     if (k === 'speed') close(s.speed, want, 1e-12, `${type}: the slowed speed`);
     else if (k === 'erratic' || k === 'jink') assert.equal(s[k], false, `${type}: no ${k}`);
+    else if (k === 'hp') close(s.hp, v * (slow.hp ?? 1), 1e-12, `${type}: the tier's hit points over the spec's (2026-10-16: the soft tiers die faster)`);
     else assert.equal(s[k], v, `${type}: the spec keeps ${k}`);
   }
   assert(s.speed <= ENEMY_SPEC[type].speed * (slow.speed ?? 1) + 1e-12 && s.speed * PEARL_GAIT.sectorPace * 10 / b.r0 <= slow.radii + 1e-9, `${type}: at most ${slow.radii} radii a second, its tier's speed over the spec's`);

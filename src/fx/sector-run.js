@@ -7,6 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
+import { PEARL_WAVES } from '../content/pearl-enemies.js';
 import { ARENA, SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
@@ -125,7 +126,7 @@ export function createSectorRun(h) {
     if (b.side === 'canyon') { const floor = canyon?.plan?.floor ?? [], column = floor.slice(0, Math.max(1, Math.round(floor.length * (CANYON.fill ?? 1)))); return { entries: sizeWave(computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * swell()).entries, ENEMY_SPEC, { bodies: Math.round((def.n <= SECTORS.length ? CANYON.bodies.first : CANYON.bodies.again) * swell()), coreShare: def.coreShare ?? 0 }), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens, column: column.length ? column : null }; }
     const flow = def.shape === 'flow', released = b.wavesReleased ?? 0;
     const plan = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * swell()).entries;
-    const entries = sizeWave(plan, ENEMY_SPEC, { bodies: Math.round((flow ? def.flow.burst : pulseBodies(def.bodies, released)) * swell()), coreShare: def.coreShare ?? 0 });
+    const entries = sizeWave(plan, ENEMY_SPEC, { bodies: Math.round((flow ? def.flow.burst : pulseBodies(def.bodies, released)) * swell() * (PEARL_WAVES.crowd ?? 1)), coreShare: def.coreShare ?? 0 });   /* the crowd (PEARL_WAVES.crowd, 2026-10-16) */
     // THE STAMPEDE (src/domain/stampede.js): in a pulse sector every second wave a mouth sends is a trickle or a flood with a few hard cores in it
     if (!flow && (b.side === 'gate' || b.side === 'back') && isStampede(released, SECTOR_STAMPEDE)) { const w = stampedeWave(entries, ENEMY_SPEC, SECTOR_STAMPEDE, { index: released }); return { entries: w.entries, gap: w.gap, pace: SECTOR_TIMING.pace, stampede: w.kind }; }
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
