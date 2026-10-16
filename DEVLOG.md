@@ -276,6 +276,22 @@ Evidence:
 
 Supersedes: 2026-10-15-boss-sector-first-version
 
+## 2026-10-16 — The ammo pickups are an fx module (src/fx/ammo-orbs.js)
+
+change · accepted · 2026-10-16-ammo-orbs-fx-module
+
+Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. clearOrbs, spawnOneOrb, spawnOrbAt, spawnOrbs, absorbOrb, nearestOrb and checkAbsorb (88 lines) are one subject over the orbs map, the seeded stream and the rack.
+
+createAmmoOrbs(host) holds the seven functions as they were and returns them; td-tab keeps orbMeshes, orbRng and ammo, builds the literal just below `player` (scene, sfx, params, player, orbMeshes, AMMO_MAX, Y_AXIS, tmpN, disposeObj, updateHud as values; look and orbRng as lazy calls; getters for graph, dungeon, cellSide, unitScale; ammo's getter and setter) and keeps hoisted one-liners for the four names called from outside (spawnOneOrb, spawnOrbs, nearestOrb, checkAbsorb). src/td-tab.js 5,659 -> 5,596 (-63).
+
+Alternatives: Move orbMeshes into the module: the frame ticks it and two hosts read it; it stays.
+
+Evidence:
+
+- side by side: 1,000 scenarios x 40 operations, 173,155 log and state entries equal (spawns, absorbs on and off contact, clears, ticks, reseeds); two mutants caught
+- test/ammo-orbs.mjs; undef-diff, tdz-check, comments-kept; host contracts 65; npm test, check, build
+- browser suites from snapshot final-204924: --opening --seats --sectors --grow --chapters --waves --story-world pass, --defense and the default suite red at their steps on main dedce7e3
+
 ## 2026-10-16 — THE BOSS sector, a first version (owner, 2026-10-15): the Cutis-Maku fight from the boss lab as the sector after the back door; Isao drives the tank as the lure on the hull's own avoid autopilot, the player takes the gunship by manual override after a two-button choice, a wave of twenty small Cutis then the boss hunt the tank, every hit on a Cutis body scaled by its phase (the reach is the weak spot), SECURE on the boss's death; BOTH WALLS moves to the sector after
 
 change · accepted · 2026-10-15-boss-sector-first-version

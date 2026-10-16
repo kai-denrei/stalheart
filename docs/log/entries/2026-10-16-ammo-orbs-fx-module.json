@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-ammo-orbs-fx-module",
+  "date": "2026-10-16",
+  "type": "change",
+  "status": "accepted",
+  "title": "The ammo pickups are an fx module (src/fx/ammo-orbs.js)",
+  "context": "Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. clearOrbs, spawnOneOrb, spawnOrbAt, spawnOrbs, absorbOrb, nearestOrb and checkAbsorb (88 lines) are one subject over the orbs map, the seeded stream and the rack.",
+  "outcome": "createAmmoOrbs(host) holds the seven functions as they were and returns them; td-tab keeps orbMeshes, orbRng and ammo, builds the literal just below `player` (scene, sfx, params, player, orbMeshes, AMMO_MAX, Y_AXIS, tmpN, disposeObj, updateHud as values; look and orbRng as lazy calls; getters for graph, dungeon, cellSide, unitScale; ammo's getter and setter) and keeps hoisted one-liners for the four names called from outside (spawnOneOrb, spawnOrbs, nearestOrb, checkAbsorb). src/td-tab.js 5,659 -> 5,596 (-63).",
+  "alternatives": [
+    "Move orbMeshes into the module: the frame ticks it and two hosts read it; it stays."
+  ],
+  "evidence": [
+    "side by side: 1,000 scenarios x 40 operations, 173,155 log and state entries equal (spawns, absorbs on and off contact, clears, ticks, reseeds); two mutants caught",
+    "test/ammo-orbs.mjs; undef-diff, tdz-check, comments-kept; host contracts 65; npm test, check, build",
+    "browser suites from snapshot final-204924: --opening --seats --sectors --grow --chapters --waves --story-world pass, --defense and the default suite red at their steps on main dedce7e3"
+  ],
+  "supersedes": []
+}

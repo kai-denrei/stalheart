@@ -72,7 +72,7 @@ import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned
   sanitiseRecord }
   from './achievements.js';
 import { applyFontPack, currentFontPack, loadTypeFeel } from './fonts.js';
-import { UNITS, buildUnit, buildCreature, preloadMork, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
+import { UNITS, buildUnit, buildCreature, preloadMork, makeBulletCloud, makeRewardSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
 import { LOOKS } from './looks.js'; import { createTowerPose } from './fx/tower-pose.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from './enemyspec.js';
@@ -96,7 +96,7 @@ import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
-import { makeBloom } from './postfx.js';
+import { makeBloom } from './postfx.js'; import { createAmmoOrbs } from './fx/ammo-orbs.js';
 import { TANK_FEEL, makeTankFeel, landTankFeel, fireTankFeel, applyTankHealth } from './tankfeel.js';
 import { FEEL } from './feelstore.js'; import { createBoardActors } from './fx/board-actors.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
@@ -889,94 +889,11 @@ export function initTdTab(root) {
     });
   }
 
-  function clearOrbs() {
-    for (const orb of orbMeshes.values()) {
-      scene.remove(orb);
-      disposeObj(orb);
-    }
-    orbMeshes.clear();
-  }
-
-  // ammo pickup: THREE half-dotted Braille shells standing side-by-side
-  // on a random open cell (never spawn/heart/occupied/under the creature).
-  // The set reads as what it gives: +3 bullets.
-  function spawnOneOrb() {
-    const open = [];
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] !== BLOCKED && i !== dungeon.spawn && i !== dungeon.heart
-        && i !== player.cur && !orbMeshes.has(i)) open.push(i);
-    }
-    if (open.length === 0) return false;
-    return spawnOrbAt(open[Math.floor(orbRng() * open.length)]);
-  }
-  function spawnOrbAt(ci) {
-    if (orbMeshes.has(ci)) return false;
-    const r = cellSide * 0.14;
-    const group = new THREE.Group();
-    const phase = orbRng() * 6.283;
-    const shells = [];
-    for (let k = -1; k <= 1; k++) {
-      const b = makeShellSolid({ body: look().orb.color, hi: 0xffffff });
-      b.scale.setScalar(r * 0.62);
-      b.position.set(k * r * 1.7, r * 1.1, 0); // side-by-side, noses up
-      group.add(b);
-      shells.push(b);
-    }
-    const c = graph.centers[ci];
-    const n = graph.normals[ci];
-    group.position.set(c[0], c[1], c[2]);
-    tmpN.set(n[0], n[1], n[2]);
-    group.quaternion.setFromUnitVectors(Y_AXIS, tmpN); // local +Y = surface normal
-    // transform-only idle: spin PURELY about the cell's normal. Euler trap: writing rotation.y would REPLACE the alignment
-    // quaternion above (they are two views of one rotation) and spin about world-Y — shells then tilt into the ground everywhere
-    // but the pole. Compose quaternions: base alignment × local-Y spin.
-    const baseQ = group.quaternion.clone();
-    const spinQ = new THREE.Quaternion();
-    group.userData.tick = (t) => {
-      spinQ.setFromAxisAngle(Y_AXIS, t * 0.9 + phase);
-      group.quaternion.copy(baseQ).multiply(spinQ);
-      for (let k = 0; k < 3; k++) {
-        shells[k].position.y = r * (1.1 + 0.25 * Math.sin(t * 2.2 + phase + k * 2.1));
-      }
-    };
-    scene.add(group);
-    orbMeshes.set(ci, group);
-    return true;
-  }
-
-  function spawnOrbs() {
-    clearOrbs();
-    for (let k = 0; k < params.orbs; k++) spawnOneOrb();
-  }
-
-  function absorbOrb(ci) {
-    const orb = orbMeshes.get(ci);
-    if (!orb) return;
-    scene.remove(orb);
-    disposeObj(orb);
-    orbMeshes.delete(ci);
-    ammo = Math.min(AMMO_MAX, ammo + 3); // a triad is three shells
-    sfx.play('tank_shells');
-    updateHud();
-  }
-
-  // nearest orb to the creature's position; absorb on contact
-  function nearestOrb() {
-    let bestCi = -1, bestD = Infinity;
-    for (const [ci, orb] of orbMeshes) {
-      const dx = orb.position.x - player.pos[0];
-      const dy = orb.position.y - player.pos[1];
-      const dz = orb.position.z - player.pos[2];
-      const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (d < bestD) { bestD = d; bestCi = ci; }
-    }
-    return { ci: bestCi, d: bestD };
-  }
-
-  function checkAbsorb() {
-    const { ci, d } = nearestOrb();
-    if (ci !== -1 && d < unitScale * 0.85 + cellSide * 0.16) absorbOrb(ci);
-  }
+  // THE AMMO PICKUPS (src/fx/ammo-orbs.js, made below the player): shell triads on open cells, absorbed by the hull on contact
+  function spawnOneOrb() { return ammoOrbs.spawnOneOrb(); }
+  function spawnOrbs() { return ammoOrbs.spawnOrbs(); }
+  function nearestOrb() { return ammoOrbs.nearestOrb(); }
+  function checkAbsorb() { return ammoOrbs.checkAbsorb(); }
 
   // The walker WANDERS on its own: it glides cell-to-cell continuously and
   // picks each next exit itself. `heading` is the STEERING INTENT (what A/D
@@ -997,6 +914,26 @@ export function initTdTab(root) {
     visited: new Set(),
     won: false,
   };
+  const ammoOrbs = createAmmoOrbs({
+    scene,
+    sfx,
+    params,
+    player,
+    orbMeshes,
+    AMMO_MAX,
+    Y_AXIS,
+    tmpN,
+    disposeObj,
+    updateHud,
+    look: () => look(),
+    orbRng: () => orbRng(),
+    graph: () => graph,
+    dungeon: () => dungeon,
+    cellSide: () => cellSide,
+    unitScale: () => unitScale,
+    ammo: () => ammo,
+    setAmmo: (v) => (ammo = v),
+  });
   let whim = mulberry32(1); // the walker's own randomness, reseeded per maze
   let cellIndex = () => -1; // voxel-hash nearest-cell lookup, built per board
   let unitBlocker = () => false; // per-tab solid units (tanks, structures)
