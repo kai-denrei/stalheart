@@ -66,13 +66,13 @@ import { createStrikeConsole } from './fx/strike-console.js'; import { createTer
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey } from './vec3.js';
-import { CREATURES, waveJelly } from './creatures.js';
+import { waveJelly } from './creatures.js';
 import { BRIEFS } from './isaobriefs.js'; import { createBriefQueue } from './fx/brief-queue.js'; import { createEngineAudio } from './fx/engine-audio.js'; import { createHullDeploy } from './fx/hull-deploy.js'; import { lookIsao } from './fx/isao-look.js';
 import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned,
   sanitiseRecord }
   from './achievements.js';
 import { applyFontPack, currentFontPack, loadTypeFeel } from './fonts.js';
-import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
+import { UNITS, buildUnit, buildCreature, preloadMork, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
 import { LOOKS } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from './enemyspec.js';
@@ -97,8 +97,8 @@ import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
-import { TANK_FEEL, makeTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
-import { FEEL } from './feelstore.js';
+import { TANK_FEEL, makeTankFeel, landTankFeel, fireTankFeel, applyTankHealth } from './tankfeel.js';
+import { FEEL } from './feelstore.js'; import { createBoardActors } from './fx/board-actors.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   stepFall, fallProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
@@ -1434,219 +1434,68 @@ export function initTdTab(root) {
   // --- heart & player objects ---------------------------------------------
 
 
-  function buildActors() {
-    for (const o of [heartSprite, playerMesh, markerMesh]) if (o) { o.userData.dispose?.(); scene.remove(o); }
-    for (const c of lifeContainers) scene.remove(c.obj);
-    if (!storyMode) lifeContainers = [];   // the story's bays outlive an actor rebuild (a tank model landing mid roll-out); the base's ready hands in fresh ones
-
-    // the Braille heart: dot-cloud cycling twinkle → breathe → jelly,
-    // flaring orange/red under Wave when hit
-    // the fallback is always the dot cloud: an async model must never leave
-    // the pole empty, and the Heart is the thing the whole board defends
-    const hl = heartLook();
-    const built = hl.make();          // null while an async model is still loading
-    heartSprite = built || makeHeartCloud(new THREE.Color(look().heart).getHex());
-    scene.add(heartSprite);
-    buildStationRing();
-    if (!built) {
-      // bytes not in yet — build the cloud now, swap when they land
-      const want = params.heartLook;
-      const hgen = ++heartGen;
-      hl.preload().then(() => {
-        if (hgen !== heartGen || want !== params.heartLook) return; // board moved on
-        const built = hl.make();
-        if (!built) return;
-        scene.remove(heartSprite);
-        heartSprite = built;
-        scene.add(heartSprite);
-        heartSprite.layers.enable(MAP_LAYER);
-        placeActors();
-      });
-    }
-    {
-      // THE LIFE CONTAINERS v2 (operator's staging): TWO containers, side by side on the EMPTIEST flank of the heart's chamber —
-      // adjacent open cells at distToHeart 2-3, the pair chosen for the fewest open neighbours (a wall-side berth, clear of the
-      // lanes). Two hull bays per container; the run's spare tanks rack there, and every spawn — first scene included — drives
-      // OUT of a container.
-      const cgen = ++containerGen;
-      Promise.all([storyMode || preloadContainer(), preloadMork()]).then(() => {   // the story never shows the old boxes, so it never fetches them
-        if (cgen !== containerGen || !dungeon) return; // board changed since
-        // the camp was chosen with the board; this only casts the boxes
-        if (berths.length !== 3 || storyMode) return;
-        for (let bi = 0; bi < berths.length; bi++) {
-          const ci = berths[bi].ci;
-          // THE DOORS FACE THE LANE THE HULL LEAVES BY. They used to face the Heart, which is only ever approximately the way
-          // out: the exit is a graph neighbour and can sit 40-odd degrees off that bearing, so the hull drove out on a diagonal
-          // and clipped its own door frame (operator, twice). Aim the box at the actual exit and the two are the same line by
-          // construction. Most-heartward escape wins, so the row still faces home. the exit is CARRIED, not re-derived here:
-          // computeBerths picked it, the doors point at it and DEPLOY drives at it, and those three must never disagree
-          const exitCi = berths[bi].exit;
-          const ec = graph.centers[exitCi];
-          const g = dressMetal(makeContainerFixture(bi + 1)); // painted 1-2-3, left to right
-          if (!g) break;
-          const c = graph.centers[ci];
-          const nrm2 = graph.normals[ci];
-          // SHALLOW: the full-length box hid its cargo in shadow (operator report). Depth squashed to 0.55 — one hull fits, and
-          // you can SEE it from the doors.
-          g.scale.set(cellSide * 0.9, cellSide * 0.9, cellSide * 0.9 * 0.55);
-          g.position.set(c[0], c[1], c[2]);
-          // doors onto the exit lane: the bays still face home, and now the
-          // hull's first metre is a straight line through its own doorway
-          tmpObj.position.copy(g.position);
-          tmpObj.up.set(nrm2[0], nrm2[1], nrm2[2]);
-          tmpObj.lookAt(ec[0], ec[1], ec[2]);
-          g.quaternion.copy(tmpObj.quaternion);
-          const tank = buildCreature(DEFAULT_TANK, look());   // the fielded unit
-          tank.scale.setScalar(0.32);
-          // counter-stretch: the parent's z-squash would flatten the hull
-          tank.scale.z /= 0.55;
-          // AT THE DOORS, not in the middle (operator, 2026-08-31: you could not see there was a hull in there). The fitted box
-          // runs z ±0.80 with the doors at +z and the hull is ~0.29 long in the same units, so 0.52 puts its nose on the door
-          // plane and its whole body in the light.
-          tank.position.set(0, 0.12, 0.52);
-          g.add(tank);
-          scene.add(g);
-          // the exit is CARRIED, not re-derived: the doors point at it and
-          // the respawn drives at it, and those two must never disagree
-          lifeContainers.push({ obj: g, tanks: [tank], ci, exit: exitCi });
-        }
-        syncLifeContainers();
-        // the FIRST SCENE: the opening hull drives out of its bay — if the player has not yet gone anywhere, restage them at the
-        // doors escapes=a,b,c is the invariant the operator's can't-get-out report turned into a rule: every berth must show at
-        // least 1, or auto-nav has nowhere to steer and the hull sits in the box forever
-        console.log(`CONTAINERS placed=${lifeContainers.length}`
-          + ` cells=${berths.map((b2) => b2.ci).join(',')}`
-          + ` spares=${Math.max(0, playerHP - 1)}`
-          + ` exits=${berths.map((b2) => b2.exit).join(',')}`);
-      });
-    }
-
-
-    // the main unit: dot-cloud creatures keep the full Wave×Jelly +
-    // phagocytosis path (creatureBase/creatureGeo); mesh units are static
-    // geometry with transform-only idle animation (userData.tick)
-    if ((UNITS[params.creature] || {}).kind === 'cloud') {
-      creatureBase = CREATURES[params.creature]();
-      creaturePos = new Float32Array(creatureBase.length * 3);
-      waveJelly(creatureBase, 0, creaturePos);
-      const cols = new Float32Array(creatureBase.length * 3);
-      const cBody = new THREE.Color(look().walker);
-      const cHi = new THREE.Color(look().walkerHi);
-      for (let i = 0; i < creatureBase.length; i++) {
-        const c = creatureBase[i][3] === 1 ? cHi : cBody;
-        cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
-      }
-      creatureGeo = new THREE.BufferGeometry();
-      creatureGeo.setAttribute('position', new THREE.BufferAttribute(creaturePos, 3));
-      creatureGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-      playerMesh = new THREE.Points(creatureGeo, new THREE.PointsMaterial({
-        size: 2.2, sizeAttenuation: false, vertexColors: true,
-        transparent: true, opacity: 0.95,
-      }));
-    } else {
-      creatureBase = null;
-      creaturePos = null;
-      creatureGeo = null;
-      playerMesh = dressMetal(buildCreature(params.creature, { walker: look().walker, walkerHi: look().walkerHi }));
-      // the PLAY size from the first frame, never the bare base: the base alone is ~27x the tank, and placeActors — which used to
-      // be the only place the unit scale was multiplied in — runs on events, so anything that skipped or threw between the two
-      // left an enormous tank on the board (operator, build f2a9aeca, desktop, mid-tutorial: "the tank got enormous … and now it
-      // seems fixed")
-      playerMesh.scale.setScalar(unitScale * (playerMesh.userData.baseScale ?? 1));
-    }
-    scene.add(playerMesh);
-
-    // minimap self-marker: a fat arrowhead nosing along the heading — the map is heading-up, so YOU are the big pulsing arrow
-    // pointing up. Sized against the SPHERE, not the cell: the map always frames the whole ball, so cell-relative sizes vanish on
-    // dense boards. Geometry pre-rotated so the cone's nose is +Z (lookAt convention). The radar draws YOU itself now. The arrow
-    // survives because placeActors drives its transform every frame — parked on the map layer, which nothing renders, so it stays
-    // invisible instead of suddenly appearing in the WORLD when the map renderer went away.
-    markerMesh = new THREE.Mesh(
-      new THREE.ConeGeometry(0.05, 0.115, 4).rotateX(Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: look().marker }),
-    );
-    markerMesh.layers.set(MAP_LAYER);
-    scene.add(markerMesh);
-    // Layer 1 is the map's world. Everything here is drawn in BOTH views;
-    // everything not here is main-view only, which is the whole saving.
-    // Layers are per-object and not inherited, so each one says so itself.
-    for (const o of [floorMesh, wallMesh, edgeMesh, topMesh, heartSprite]) {
-      if (o) o.layers.enable(MAP_LAYER);
-    }
-  }
-
-  function placeActors() {
-    const hc = graph.centers[dungeon.heart];
-    const hn = graph.normals[dungeon.heart];
-    const hlp = heartLook();
-    const hPos = add3(hc, scale3(hn, params.wallHeight * 0.6 + cellSide * hlp.lift));
-    heartSprite.position.set(hPos[0], hPos[1], hPos[2]);
-    heartSprite.userData.sizeScale = cellSide * hlp.scale;
-    // APPLY IT NOW, not on the next frame. Both looks only read sizeScale inside tick(), so a freshly built Stalheart stands at
-    // its raw model size until the frame loop reaches it — which for the Terraformer is 2 world units, about THIRTY cells across.
-    // One tick settles it before anything is drawn.
-    heartSprite.userData.setHealth?.(heartHP / HEART_MAX);
-    if (heartSprite.userData.tick) heartSprite.userData.tick(runContext.time);
-    tmpN.set(hn[0], hn[1], hn[2]);
-    heartSprite.quaternion.setFromUnitVectors(Y_AXIS, tmpN);
-
-    const n = norm3(player.pos);
-    // lift: the unit's own floor offset plus its hover profile
-    const prof = MOVES[params.creature];
-    const baseLift = creatureGeo ? 0.85 : (playerMesh.userData.lift ?? 0.05);
-    const lift = unitScale * (baseLift + (prof ? prof.hover(runContext.time) : 0));
-    let p = add3(player.pos, scale3(n, lift));
-    // recoil, reworked: the TURRET takes the kick — it slams back with a
-    // high-frequency shudder — while the hull only rocks (pitch below) and
-    // shifts a touch. Whole-body translation alone read as sliding, not
-    // firing. k scales everything through the 'shell recoil' dial.
-    const rf = recoilFactor();
-    const rk = params.recoil * rf * rf;
-    if (rf > 0) p = add3(p, scale3(player.smoothDir, -unitScale * 0.06 * rk));
-    playerMesh.position.set(p[0], p[1], p[2]);
-    playerMesh.scale.setScalar(unitScale * (playerMesh.userData.baseScale ?? 1));
-    // the energy shield rides the hull: positioned every frame, ticking
-    // its shimmer, gone the moment its clock runs out
-    if (shieldUp()) {
-      if (!shieldObj) {
-        shieldObj = makeShieldShell();
-        scene.add(shieldObj);
-      }
-      shieldObj.visible = true;
-      const sp2 = add3(player.pos, scale3(n, lift * 0.9));
-      shieldObj.position.set(sp2[0], sp2[1], sp2[2]);
-      shieldObj.quaternion.copy(playerMesh.quaternion);
-      // sized off the CELL, not unitScale — measured on screen, unitScale
-      // put the bubble five cells wide (the mkcx normalization rides it)
-      shieldObj.scale.setScalar(cellSide * 0.85);
-      shieldObj.userData.tick(t, shield.t / shieldTune.cap);
-    } else if (shieldObj) shieldObj.visible = false;
-    // marker floats above the wall tops so nothing on the map occludes it
-    const mp = scale3(player.pos, 1 + params.wallHeight * 1.6);
-    markerMesh.position.set(mp[0], mp[1], mp[2]);
-    // upright on the surface, facing the SMOOTHED direction (no snap)
-    const h = player.smoothDir;
-    tmpObj.position.copy(playerMesh.position);
-    tmpObj.up.set(n[0], n[1], n[2]);
-    tmpObj.lookAt(p[0] + h[0], p[1] + h[1], p[2] + h[2]);
-    playerMesh.quaternion.copy(tmpObj.quaternion);
-    // no extra rotation: lookAt with up=n already leaves body +Y ≈ normal
-    // — except the recoil rock: a nose-up pitch that eases back down
-    // Units with a hover body get their pitch from tankfeel (on the body, a
-    // child group, where writing rotation is safe). For the rest, compose it
-    // onto the unit — rotateX composes, an Euler write would REPLACE the
-    // lookAt quaternion set two lines above.
-    if (rf > 0 && !playerMesh.userData.hoverBody) playerMesh.rotateX(-0.05 * rk); ramJolt.hull(playerMesh);   // a Pearl body under the treads or against the hull (src/fx/ram-jolt.js)
-    // touchdown: a damped rock on two axes, ~0.9s. Two different frequencies
-    // so it reads as suspension settling rather than a single clean wobble.
-    // Hover, vibration and touchdown live on the BODY, not the unit — the
-    // hull lifts off a planted skirt. Applied here rather than in
-    // updateEngine so it survives every rebuild of playerMesh.
-    feel.recoil = recoilLeft;   // the game owns the clock; tankfeel draws it
-    applyTankFeel(playerMesh, feel, FEEL);
-    applyTankHealth(playerMesh, hullHealth());
-    markerMesh.quaternion.copy(tmpObj.quaternion); // arrow nose = heading
-  }
+  // THE BOARD'S ACTORS (src/fx/board-actors.js): the heart, the life containers, the hull and its map marker, built with the board
+  // and placed every frame; their state stays here and the module reads and writes it through this literal
+  const boardActors = createBoardActors({
+    scene,
+    params,
+    player,
+    look,
+    heartLook,
+    feel,
+    shield,
+    shieldTune,
+    shieldUp,
+    hullHealth,
+    runContext,
+    tmpObj,
+    tmpN,
+    Y_AXIS,
+    MAP_LAYER,
+    MOVES,
+    HEART_MAX,
+    dressMetal,
+    buildStationRing,
+    syncLifeContainers,
+    recoilFactor: () => recoilFactor(),
+    ramJolt: () => ramJolt,
+    storyMode: () => storyMode,
+    graph: () => graph,
+    dungeon: () => dungeon,
+    cellSide: () => cellSide,
+    unitScale: () => unitScale,
+    berths: () => berths,
+    heartHP: () => heartHP,
+    playerHP: () => playerHP,
+    recoilLeft: () => recoilLeft,
+    t: () => t,
+    floorMesh: () => floorMesh,
+    wallMesh: () => wallMesh,
+    edgeMesh: () => edgeMesh,
+    topMesh: () => topMesh,
+    heartSprite: () => heartSprite,
+    setHeartSprite: (v) => (heartSprite = v),
+    playerMesh: () => playerMesh,
+    setPlayerMesh: (v) => (playerMesh = v),
+    markerMesh: () => markerMesh,
+    setMarkerMesh: (v) => (markerMesh = v),
+    shieldObj: () => shieldObj,
+    setShieldObj: (v) => (shieldObj = v),
+    lifeContainers: () => lifeContainers,
+    setLifeContainers: (v) => (lifeContainers = v),
+    creatureBase: () => creatureBase,
+    setCreatureBase: (v) => (creatureBase = v),
+    creatureGeo: () => creatureGeo,
+    setCreatureGeo: (v) => (creatureGeo = v),
+    creaturePos: () => creaturePos,
+    setCreaturePos: (v) => (creaturePos = v),
+    heartGen: () => heartGen,
+    setHeartGen: (v) => (heartGen = v),
+    containerGen: () => containerGen,
+    setContainerGen: (v) => (containerGen = v),
+  });
+  function buildActors() { return boardActors.buildActors(); }
+  function placeActors() { return boardActors.placeActors(); }
 
   // --- trench / third-person camera ----------------------------------------
   // follows the interpolated position and the SMOOTHED direction
