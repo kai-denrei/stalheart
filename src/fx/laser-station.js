@@ -101,7 +101,8 @@ export function createLaserStation(root, scene, host) {
     passOver(o) { if (seat) leave(); arsenal.passOver(o); return sit(); },
     // THE ROAD SOL CUTS (src/fx/boss-run.js, 2026-10-16): a pass laid with nobody put in the seat, and the beam steered and held at a cell by the game's own hands (the harness's)
     layPass(o) { arsenal.passOver(o); },
-    aimCell(ci, on) { arsenal.steer(ci >= 0 ? host.centers()[ci] : null); arsenal.hold(!!on); },
+    aimCell(ci, on) { arsenal.road(ci >= 0 && on ? host.centers()[ci] : null); },
+    roadSafe: (p) => arsenal.safeAt(p),   // would the beam burn at this point (not within its safe distance of the hull, a building, a wall, a tower, the heart)   // THE ROAD SOL CUTS (2026-10-16): the unseated beam held on a cell (arsenal.road), released with -1; the harness hands (steer/hold) only burn with a seat
     // SOL AUTOMATED (src/domain/laser-auto.js): the passes the player flew, the switch the ARC-01's launch throws, the chip plant's clock
     manned: () => arsenal.manned(), setAuto: (on) => { arsenal.setAuto(on); host.views()?.sol82?.(arsenal.strip()); },   /* the strip renames at once, even under a held clock */ setPeriodScale: (k) => arsenal.setPeriodScale(k), setEnergyBonus: (s) => arsenal.setEnergyBonus(s), platform: () => arsenal.platform(),
     reset() { leave(); arsenal.reset(); },   // a new run: the seat goes, the scorch and the books with it

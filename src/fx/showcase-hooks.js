@@ -229,6 +229,10 @@ export function createShowcaseHooks(host) {
     deploying: () => !!host.deploy(),   // the bay's roll-out owns the camera and the hull's heading until it hands over: a look waits for it
     look: (dir) => { const n = norm3(player.pos), d = sub3(dir, scale3(n, dot3(dir, n))); if (Math.hypot(...d) > 1e-9) { player.heading = norm3(d); player.travelDir = player.heading.slice(); player.smoothDir = player.heading.slice(); } endShot(); setView('pov'); },
     drive: () => { const adj = host.graph().adj[player.cur].filter((nb) => host.dungeon().tags[nb] !== BLOCKED); return { pos: player.pos.slice(), heading: player.heading.slice(), cur: player.cur, open: adj.length, adj, block: host.hullBlock() }; },
+    // THE NESTS' GUARDS (--nest-guards; owner, 2026-10-16: a small Reed at each cargo nest): every live guard of a site, its type and tier, what its
+    // spec names as its body family (a creature body is made only for a record whose spec says so), its size and its distance to the hull in cells
+    guards: (id) => { const cs = host.cellSide(); return enemies.filter((e) => e.alive && e.guard?.site === id).map((e) => ({ type: e.type, tier: e.tier ?? null, tierKey: e.tierKey ?? null, body: e.spec?.body ?? null, size: e.size, hp: e.hp, cur: e.cur, cells: +(Math.hypot(e.pos[0] - player.pos[0], e.pos[1] - player.pos[1], e.pos[2] - player.pos[2]) / cs).toFixed(2), trail: e.guard.trail?.length ?? 0 })); },
+
   };
   return hooks;
 }

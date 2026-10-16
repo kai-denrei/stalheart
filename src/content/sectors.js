@@ -218,9 +218,10 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // boss rose the gunship seat is taken whether or not the gunship is over the arena yet (src/fx/boss-run.js, owner 2026-10-16: the drive out, then the forced hand-over)
 export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, waitMax: 150, seatWait: 45,
   // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
-  // `ahead` cells on the cheapest walk to the arena (a rock cell costs `rockCost` ground cells) is burned by SOL for `burn` seconds; a pass is laid over it
-  // (overhead, energy in seconds, radius in metres, slew m/s) when none is up
-  road: freeze({ every: 7, ahead: 7, burn: 2.5, rockCost: 4, overhead: 45, energy: 40, radius: 6, slew: 16 }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+  // `ahead` hops of the hull worth a shortcut of `saves` cells on the open walk to the arena (crossed up to `through` rocks deep), else with `flank` the first rock
+  // beside the route ahead, never within `clear` cells of the hull by the chord (the beam keeps LASER_AUTO.safeMetres off a friend: 25 m and its radius, 3.1 cells) (second version, 2026-10-16: the cheapest-walk rule fired at 2% of the route, all at the rim), is burned by SOL for `burn` seconds;
+  // a pass is laid over it (overhead, energy in seconds, radius in metres, slew m/s) when none is up
+  road: freeze({ every: 7, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 4, overhead: 45, energy: 40, radius: 6, slew: 16 }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

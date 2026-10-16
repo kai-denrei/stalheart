@@ -37,7 +37,7 @@ const REFILL = 5;       // seconds between calls for the gunship while it is off
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
   let phase = 'off', beganAt = 0, forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
-  let roadAt = -99, roadUntil = 0, roadSaid = false;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once
+  let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
   const bossRecord = () => c.enemies.find((e) => e.alive && e.hunter && e.tier === (def?.boss?.boss?.tier ?? 'huge')) ?? null;
@@ -52,7 +52,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false;
+    on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon'; beganAt = c.t();
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -70,8 +70,8 @@ export function createBossRun(c) {
     // first rock on the hull's cheapest walk to the arena (c.roadNext) is burned by SOL (c.solRoad: a pass laid over it when none is up, the beam held
     // ARENA.road.burn seconds); the first time Isao says so
     else if (phase === 'beacon' && c.roadNext && t - roadAt >= (ARENA.road?.every ?? 7) && c.hullNearArena?.() !== true) {
-      roadAt = t; const ci = c.roadNext();
-      if (ci >= 0 && c.solRoad?.(ci)) { roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
+      roadAt = t; const ci = c.roadNext(); roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
+      if (roadLaid) { roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
     }
     if (roadUntil && t >= roadUntil) { roadUntil = 0; c.solRoad?.(-1); }
     // A LONG SESSION (owner, 2026-10-16: "a longer gunship session"): off station the gunship is called again, so it keeps coming back over the arena until the sector ends
@@ -126,5 +126,5 @@ export function createBossRun(c) {
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
   return { begin, tick, end, rows, lure, arenaDue, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, road: { said: roadSaid, burning: roadUntil > 0 }, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, seated, bossSeen, hullHit, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, wired: !!c.roadNext }, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }
