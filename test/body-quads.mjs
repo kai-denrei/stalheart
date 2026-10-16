@@ -72,12 +72,13 @@ console.log('PASS the reach query against the drawn quads: a point is blocked by
 }
 console.log('PASS the clearance with the drawn quads: never more than the distance to the drawn rock, negative inside it, clearOf pushes a point out of it');
 
-// ---- a squad in the corridor (20 m wide, the squad's line ~29 m at 2.2 radii apart: the rule is tested at that spacing whatever PEARL_FOLLOW.squad
-// says now, 1.1 since 2026-10-15): its members file behind each other within the lane ----
+// ---- a squad in the corridor (20 m wide, the squad's line ~29 m: 2.2 of the white's 2026-10-15 radius of 2.8 m apart, whatever PEARL_FOLLOW.squad says now (1.1
+// since 2026-10-15) and whatever the white's radius is now (0.4 of it since 2026-10-16: a line of five at 2.2 radii would fit the lane and fold nothing)): its
+// members file behind each other within the lane ----
 {
   const hubs = { count: 1, quat: () => [0, 0, 0, 1], remap: (a, b, x, z) => [x, z], reach: (k, x, z, dx, dz, max, cell) => query(toSphere, x, z, dx, dz, max, cell >= 0 ? cell : nearest(x, z)),
     clear: (k, x, z, rho, cell, out, steps = 3) => clearOf((px, pz, max, o) => query.clearance(toSphere, px, pz, max, nearest(px, pz), o), x, z, rho, steps, out) };
-  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: { ...PEARL_FOLLOW, squad: { gap: 2.2, stagger: 2 } }, impact: PEARL_IMPACT, pace: PEARL_PACE, gait: PEARL_GAIT, hubs });
+  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: { ...PEARL_FOLLOW, squad: { gap: 2.2 * 2.8 / PEARL_BODIES.amoeba.r0, stagger: 2 } }, impact: PEARL_IMPACT, pace: PEARL_PACE, gait: PEARL_GAIT, hubs });
   const r = PEARL_BODIES.amoeba.r0, cell0 = nearest(-80, 0), h = fam.add('amoeba', { x: -80, z: 0, angle: 0, members: 5, speed: 2, cell: cell0 });
   assert.equal(h.slots.length, 5);
   for (let f = 0; f < 60; f++) { const x = -80 + f * 0.05; fam.track(h, { x, z: 0, ax: x + 4, az: 0, dt: 1 / 60, members: 5, speed: 2, cell: nearest(x, 0) }); fam.step(1 / 60); }
