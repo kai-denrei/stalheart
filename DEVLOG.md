@@ -17,6 +17,22 @@ Evidence:
 - test/tune.mjs, test/tune-store.mjs, test/host-contracts.mjs (57 factories), test/hull-drive.mjs (the wanderer's hash unchanged), test/sector-run.mjs, test/gunship-rig.mjs
 - a headless run on a side server: X opened the panel on sector 2 (Cutis-Soft Ivory x88, Lemon x28, Amethyst x3 listed), a knob moved, RECORD wrote feedback/tune-main-d0a4d62a-dirty.md with the block
 
+## 2026-10-16 — A tower's pose is an fx module (src/fx/tower-pose.js): TIER_BULK, TOWER_SCALE, perchOf and placeTowerObj leave the controller
+
+change · accepted · 2026-10-16-tower-pose-fx-module
+
+Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. placeTowerObj (57 lines) with its two tunables and perchOf is the one placement recipe for placement, upgrade, look-swap and the walkers; 10 closure names.
+
+createTowerPose(host) holds the region as it was (the ?towerscale= knob read from the flags at the same point of initTdTab) and returns { perchOf, placeTowerObj }; host: flags, params, tmpN, Y_AXIS as values, getters for graph, dungeon, mesh, story, cellSide, cellIndex. td-tab keeps `const perchOf = towerPose.perchOf` and a hoisted placeTowerObj one-liner; towerPerch and setTierPlate imports move. src/td-tab.js 5,749 -> 5,694 (-55).
+
+Alternatives: Fold it into src/fx/isao-worker.js, its busiest caller: rejected, the shop, the look swap and the take-control shot call it too.
+
+Evidence:
+
+- side by side over a 16-cell board with real three.js, towerPerch and setTierPlate stubbed for both: 500 scenarios x 30 operations, 26,566 log and pose entries equal (mounted, socketed and walking towers, tiers, ?towerscale= values, headings parallel to the normal); two mutants caught
+- test/tower-pose.mjs; undef-diff, tdz-check, comments-kept; host contracts 64; npm test, check, build
+- browser suites from snapshot final-204924: --opening --seats --sectors --grow --chapters --waves --story-world pass, --defense and the default suite red at their steps on main dedce7e3
+
 ## 2026-10-16 — The owner's third round on 4c442e95: a piloted gun's barrel follows the reticle at a servo rate and aims at the body the player sees, the reticle says why the gun is quiet; nothing is drawn over a sinkhole (a blob climbs the lip, the record starts past it); four hits a hull and a hard core pushed aside; one hull console over the radar; a VARS playtest page; soft Pearl tiers smaller and faster, cored bigger; the cave's drone hands
 
 decision · accepted · 2026-10-16-third-round-seat-lip-armour-console

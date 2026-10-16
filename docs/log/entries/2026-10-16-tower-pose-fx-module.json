@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-tower-pose-fx-module",
+  "date": "2026-10-16",
+  "type": "change",
+  "status": "accepted",
+  "title": "A tower's pose is an fx module (src/fx/tower-pose.js): TIER_BULK, TOWER_SCALE, perchOf and placeTowerObj leave the controller",
+  "context": "Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. placeTowerObj (57 lines) with its two tunables and perchOf is the one placement recipe for placement, upgrade, look-swap and the walkers; 10 closure names.",
+  "outcome": "createTowerPose(host) holds the region as it was (the ?towerscale= knob read from the flags at the same point of initTdTab) and returns { perchOf, placeTowerObj }; host: flags, params, tmpN, Y_AXIS as values, getters for graph, dungeon, mesh, story, cellSide, cellIndex. td-tab keeps `const perchOf = towerPose.perchOf` and a hoisted placeTowerObj one-liner; towerPerch and setTierPlate imports move. src/td-tab.js 5,749 -> 5,694 (-55).",
+  "alternatives": [
+    "Fold it into src/fx/isao-worker.js, its busiest caller: rejected, the shop, the look swap and the take-control shot call it too."
+  ],
+  "evidence": [
+    "side by side over a 16-cell board with real three.js, towerPerch and setTierPlate stubbed for both: 500 scenarios x 30 operations, 26,566 log and pose entries equal (mounted, socketed and walking towers, tiers, ?towerscale= values, headings parallel to the normal); two mutants caught",
+    "test/tower-pose.mjs; undef-diff, tdz-check, comments-kept; host contracts 64; npm test, check, build",
+    "browser suites from snapshot final-204924: --opening --seats --sectors --grow --chapters --waves --story-world pass, --defense and the default suite red at their steps on main dedce7e3"
+  ],
+  "supersedes": []
+}
