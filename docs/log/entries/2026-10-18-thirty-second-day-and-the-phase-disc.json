@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-10-18-thirty-second-day-and-the-phase-disc",
+  "date": "2026-10-18",
+  "type": "decision",
+  "status": "accepted",
+  "title": "A day is thirty seconds (about eighty days in a forty-minute run) and the HUD's day dial is a drawn moon-phase disc with the day's number; ?day=N opens at day N's dawn",
+  "context": "Owner, 2026-10-18: 'we have a method to indicate the passing of night/day, but it is not satisfying. I am picturing something like [the moon's phases]. I am in general against using emojis and unicode in UI, but perhaps this is helpful here.' 'I also want to accelerate the cycle so that a typical game is about 80 days ... Because I want to create a silly celebration after 42 days.' The old dial was a 16 px disc whose lightness followed the daylight with a 2 px tick round its rim: uniform, so it gave no sense of position in the day. The owner's two targets (80 days a game, 40 days in 30-40 minutes) conflicted; offered 30, 45 and 60 s, he chose 30 s so day 42 lands around minute 21, mid-run, where lulls exist.",
+  "outcome": "STORY_DAY.seconds 300 -> 30 (dayShare 0.6 and tilt 60 unchanged: 18 s of sun, 12 s of night, dawn and dusk about 3 s each side of the horizon, as the elevation ramps scale). The glyph is drawn by the game, not an emoji: a 26 px inline SVG in #day-dial (src/fx/daylight.js makeDial), a rim, a dark disc and a lit path whose terminator is a half-ellipse sweeping continuously with the sun's angle (src/core/daylight.js phaseGlyph: lit = (1 - cos sunAngle) / 2, so half-lit at dawn, full at noon, half at dusk, dark at midnight; waning after noon, the shadow on the right); the lit fill warms toward orange at the golden hour in RGB (an HSL hue lerp swept through green and yellow at every dawn and dusk); 'DAY N' under it in the HUD's own face. The rig counts days (createDaylight dayNo, day(), state().day; +1 at each wrap, set() keeps the count). The ?day= flag: below 1 a starting phase as before, 1 or more a day number (dayFlag; ?day=42 is the playtest entry). The lab rigs follow STORY_DAY.",
+  "alternatives": [
+    "The owner's emoji row: renders differently on Apple, Android and Windows, cannot be tinted to the HUD's palette, eight hard steps (one every 37 s at the old day, every 4 s now) and the only bitmap glyph in a drawn interface.",
+    "A horizon arc with a sun dot by day and a moon dot by night: more literal but needs about 40 x 20 px and the dots are tiny at that size.",
+    "Growing the old dial and giving the tick a real hand: still shows position only, not daylight.",
+    "The lit fraction from the daylight scalar: it saturates at 1 for most of the day and 0 for most of the night, so the terminator would stand still; the sun's angle gives a continuous sweep.",
+    "45 s a day (day 42 around minute 31, late; short runs never reach it) and 60 s (only long runs reach day 42)."
+  ],
+  "evidence": [
+    "test/daylight-day.mjs (dayFlag, phaseGlyph at dawn/noon/dusk/midnight, continuity and monotone rise, STORY_DAY.seconds 30), test/daylight-rig.mjs (the day count over wraps), test/daylight.mjs (the continuity bound now per 1/300 of a day)",
+    "headless screenshots at ?day=3.1, 3.3, 3.55, 3.8: gibbous with the shadow left in the morning, full at noon, half-lit with the shadow right at dusk, dark at night; the dusk fill warm after the RGB fix",
+    "docs/superpowers/specs/2026-10-18-day-42-design.md decisions 1-3; branch day-42"
+  ],
+  "supersedes": []
+}
