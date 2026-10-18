@@ -125,7 +125,12 @@ function host(o = {}) {
   for (let k = 0; k < 20; k++) { h.now += 0.25; run.tick(0.25); if (h.log.road.at(-1) >= 0) tags[h.log.road.at(-1)] = 1; }
   assert.ok(asked().includes(31), 'the flank\'s rock once it is in reach');
   assert.ok(!asked().includes(26), 'the last rock still beyond the reach');
-  assert.ok(run.state().road.leadMax <= reach, `the farthest ask after the first cut within the reach (${run.state().road.leadMax})`); }
+  assert.ok(run.state().road.leadMax <= reach, `the farthest ask after the first cut within the reach (${run.state().road.leadMax})`);
+  // a flank burn gives the beam up to a planned rock that comes into reach (probe r3-f: road rocks crossed the reach while the flank held the beam)
+  tags[31] = 0; flank.length = 0; flank.push(31); from = 20; h.now += ARENA.road.every; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 31, 'a flank burn on'); assert.equal(run.state().road.planned, false);
+  from = 21; h.now += 0.25; run.tick(0.25);
+  assert.deepEqual(h.log.road.slice(-2), [-1, 26], 'the planned rock in reach takes the beam at the next look'); assert.equal(run.state().road.planned, true); }
 
 // ISAO TAKES THE HULL OUT (review of note 6, 2026-10-18): a hull that never comes gets ARENA.remindMax reminders, then Isao's arena_drive and the hull on the
 // lure directive (no quarry in the beacon: it drives the arena's field); he only starts it, nothing re-asserts it; the arrival still opens the hole

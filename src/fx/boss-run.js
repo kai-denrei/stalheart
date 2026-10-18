@@ -126,20 +126,20 @@ export function createBossRun(c) {
     // never seen again ahead of the hull), so only the first cut still comes at once (the nearest planned rock, wherever it lies: Isao's arena_road with it);
     // after it SOL takes only cells within ARENA.road.aheadMetres of the hull (inLead): a planned rock the moment it comes into reach and the beam is free
     // (looked for every ROAD_LOOK s), the flank's on the `every` cadence; a hull standing still gets its 50 m cut and the beam waits
-    else if (phase === 'beacon' && c.roadNext && !roadUntil && c.hullNearArena?.() !== true && (t - roadAt >= (ARENA.road?.every ?? 7) || t - lookAt >= ROAD_LOOK)) {
-      const due = t - roadAt >= (ARENA.road?.every ?? 7), p = planned(); lookAt = t;
+    // A planned rock in reach takes the beam from a flank burn (2026-10-19, probe r3-f: with the flank holding the beam, road rocks crossed the reach unasked and
+    // the hull met them at its next cell three times in one drive)
+    else if (phase === 'beacon' && c.roadNext && c.hullNearArena?.() !== true && ((!roadUntil && t - roadAt >= (ARENA.road?.every ?? 7)) || (t - lookAt >= ROAD_LOOK && (!roadUntil || !roadPlanned)))) {
+      const due = !roadUntil && t - roadAt >= (ARENA.road?.every ?? 7), p = planned(); lookAt = t;
       const pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: roadCuts ? roadOk : (c.roadFar ?? (() => true)) }) : -1;
       const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
       if (pc >= 0 || due) {
+        if (roadUntil) release();
         roadAt = t; roadPlanned = pc >= 0; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
         if (roadLaid) { lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
       }
     }
     // the hold ends at ARENA.road.burn, or as soon as the rock is gone (2026-10-19: the beam is free for the next cell in reach at once)
-    if (roadUntil && (t >= roadUntil || (roadCell >= 0 && isOpen(roadCell)))) {
-      roadUntil = 0; c.solRoad?.(-1);
-      if (roadCell >= 0 && isOpen(roadCell)) { roadCuts++; if (roadCuts === 1) c.callout(ROAD_CUT, 'co-victory'); }   // the burn took the rock: a cut landed
-    }
+    if (roadUntil && (t >= roadUntil || (roadCell >= 0 && isOpen(roadCell)))) release();
     // THE ROAD READS (2026-10-18): the planned road's next cells ringed ahead of the hull every ARENA.road.markEvery seconds, the colour of the tap-to-go "here"
     if (phase === 'beacon' && c.roadMark && t - markAt >= (ARENA.road?.markEvery ?? Infinity)) {
       markAt = t; const p = planned();
@@ -197,6 +197,10 @@ export function createBossRun(c) {
       if (!on || !cardUp) return;   // the run ended under the card
       cardUp = false; taken = true; c.pause?.(false); forcedAt = c.t(); retryAt = -9;
     });
+  }
+  function release() {
+    roadUntil = 0; c.solRoad?.(-1);
+    if (roadCell >= 0 && isOpen(roadCell)) { roadCuts++; if (roadCuts === 1) c.callout(ROAD_CUT, 'co-victory'); }   // the burn took the rock: a cut landed
   }
   function isaoDrives() {
     drove = true; c.showBrief('arena_drive'); c.speak('arena_drive');
