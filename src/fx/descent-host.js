@@ -1,20 +1,21 @@
 // THE DESCENT'S HOST (owner, 2026-10-15: the cave game as the campaign's last mission; spec docs/superpowers/specs/2026-10-15-descent-mission-design.md;
 // DESCENT in src/content/descent.js, the rules src/domain/descent.js). The sector loop calls begin(then) as the final sector is secured, with `then`
-// the finale it would have played (src/fx/sector-run.js finish); this says Isao's brief, pauses the game, opens the cave's page (below/, vendored by
+// the finale it would have played (src/fx/sector-run.js finish); this says Isao's brief, lets it be read, pauses the game, opens the cave's page (below/, vendored by
 // scripts/import-below.mjs) in an iframe over the tab, and waits for the cave to post its outcome ({ below }); then the frame goes, the game runs
 // again, Isao's decoding joke is said (as his last transmission on a sacrifice) and `then` plays the ending. A lost descent keeps the frame: the
 // cave's own TRY AGAIN. Not due (a phone, DESCENT.mobileSkip): the brief alone, then `then` at once.
 //   createDescentHost(root, c) -> { begin(then) -> boolean (true: the handoff taken), report(outcome) (the harness's message), state(), dispose() }
-// `c`: pause(v), showBrief(id), speak(id), story() (the run's story object: `descent` is written on it), mobile (a phone), t(), look(cell) (the camera
-// to the arena's hole, DESCENT.lookHold s before the cave: the nest's mouth is a place on the planet, 2026-10-16).
+// `c`: pause(v), showBrief(id), speak(id), story() (the run's story object: `descent` is written on it), mobile (a phone), t() (game seconds), look(cell)
+// (the camera to the arena's hole, DESCENT.lookHold s before the cave: the nest's mouth is a place on the planet, 2026-10-16), briefing() (the brief id on
+// Isao's panel or waiting for it, null when quiet: the cave waits for it, the descent's own brief up DESCENT.briefCap game seconds at most, 2026-10-18).
 import { DESCENT } from '../content/descent.js';
-import { descentDue, descentResult, descentNext } from '../domain/descent.js';
+import { descentDue, descentResult, descentNext, descentOpenDue } from '../domain/descent.js';
 
 export function createDescentHost(root, c) {
-  let frame = null, onMsg = null, thenFn = null;
+  let frame = null, onMsg = null, thenFn = null, poll = null, briefFrom = null, openedAt = null;
   const said = [];   // the briefs asked, for the harness
   const say = (id) => { said.push(id); c.showBrief(id); c.speak(id); };
-  function cleanup() { if (onMsg) globalThis.removeEventListener?.('message', onMsg); onMsg = null; frame?.remove(); frame = null; }
+  function cleanup() { if (poll) clearTimeout(poll); poll = null; if (onMsg) globalThis.removeEventListener?.('message', onMsg); onMsg = null; frame?.remove(); frame = null; }
   function take(data) {
     const o = descentResult(data, DESCENT);
     if (!o || !frame) return false;
@@ -32,18 +33,28 @@ export function createDescentHost(root, c) {
       if (!descentDue({ outcome, final, mobile: !!c.mobile }, DESCENT)) { if (final && outcome === 'secure') c.showBrief(DESCENT.brief); then?.(); return false; }
       thenFn = then;
       say(DESCENT.brief);
-      const arena = c.story()?.arena?.cell ?? -1, hold = arena >= 0 && c.look ? (DESCENT.lookHold ?? 0) * 1000 : 0;
-      if (hold) c.look(arena);
-      frame = document.createElement('iframe'); frame.hidden = hold > 0;
-      setTimeout(() => { if (frame) { frame.hidden = false; c.pause(true); } }, hold);
-      if (!hold) c.pause(true); frame.className = 'descent-frame'; frame.title = 'BELOW'; frame.src = DESCENT.page; frame.setAttribute('allow', 'pointer-lock; autoplay; fullscreen');
+      const arena = c.story()?.arena?.cell ?? -1, min = arena >= 0 && c.look ? (DESCENT.lookHold ?? 0) : 0;
+      if (min) c.look(arena);
+      // the frame loads hidden at once; it shows (and the game pauses) when descentOpenDue says so, measured on GAME time (c.t() stands still while
+      // paused): the look at the arena's hole, and Isao's brief read to its end, up to DESCENT.briefCap (2026-10-18 review: the brief played behind the cave)
+      frame = document.createElement('iframe'); frame.hidden = true;
+      frame.className = 'descent-frame'; frame.title = 'BELOW'; frame.src = DESCENT.page; frame.setAttribute('allow', 'pointer-lock; autoplay; fullscreen');
       root.appendChild(frame);
+      const t0 = c.t(), cap = DESCENT.briefCap ?? 20; briefFrom = null; openedAt = null;
+      const open = () => {
+        poll = null; if (!frame) return;
+        const now = c.t(), b = c.briefing?.() ?? null;   // the brief on the panel (or waiting for it), null when Isao is quiet
+        if (b === DESCENT.brief && briefFrom == null) briefFrom = now;   // the cap runs from the descent's own brief, not a line said before it
+        if (!descentOpenDue({ waited: now - t0, min, briefing: !!b, briefWaited: now - (briefFrom ?? t0), cap })) { poll = setTimeout(open, 250); return; }
+        openedAt = now - t0; frame.hidden = false; c.pause(true);
+      };
+      poll = setTimeout(open, 0);
       onMsg = (e) => { take(e.data); };
       globalThis.addEventListener?.('message', onMsg);
       return true;
     },
     report: (outcome) => take({ below: outcome }),
-    state: () => ({ open: !!frame, src: frame?.src ?? null, outcome: c.story()?.descent?.outcome ?? null, said: said.slice() }),
+    state: () => ({ open: !!frame, shown: !!frame && !frame.hidden, openedAt, src: frame?.src ?? null, outcome: c.story()?.descent?.outcome ?? null, said: said.slice() }),
     dispose: cleanup,
   };
 }

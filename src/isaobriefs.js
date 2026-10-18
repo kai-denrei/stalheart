@@ -450,7 +450,10 @@ export const BRIEFS = {
   boss_dead: { id: 'boss_dead', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Target down. I need a car wash.'] },
   // THE DESCENT (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 17): the brief as the cave opens, the decoding joke on
   // his return, the same as his last transmission on a sacrifice
-  descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['The nest is under that hole in the arena. Somebody has to carry the charge down there, and the hull does not fit.', 'I do.'] },
+  // the brief ties the cave to the arena (owner, 2026-10-18: "we identify this far away large sinkhole, the exact same one from the Arena, as the
+  // entrance of the Cave"); his own words as the second and third lines: "The Tank is too big, not fit for subterranean", "I will do it! Though I do
+  // not know the way", "I will take the bomb to their Queen"
+  descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['That sinkhole out at the arena, the one the mother came out of: it is the way down to the nest.', 'The tank is too big. Not fit for subterranean.', 'I will do it, though I do not know the way. I will take the bomb to their Queen.'] },
   descent_back: { id: 'descent_back', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['I finally decoded their language. From what the Queen said when I set the charge in her nest: "My nest. You, out."', 'And then words that seem to mean... excrement.'] },
   descent_last: { id: 'descent_last', face: 'focused', title: 'LAST TRANSMISSION · ISAO', once: false, lines: ['I decoded their language. The Queen said: "My nest. You, out." And then words that seem to mean... excrement.', '...'] },
   // DAY 42 (owner, 2026-10-18): comic relief at the first lull on or after day 42, Isao's disco ball on the Stålheart's arm (src/fx/disco-party.js)

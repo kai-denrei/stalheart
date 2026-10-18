@@ -4,7 +4,7 @@ import { createAudio } from './audio.js';
 import {impactCue} from './audio-cues.js';
 import {createFlight,fly} from './flight.js';
 import { parseMode, endingAction, postOutcome } from './handoff.js';
-import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT } from './mission.js';
+import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE } from './mission.js';
 
 const $=id=>document.getElementById(id);
 const stalheart=parseMode(location.search);   // the campaign's last mission inside Stålheart's page (src/handoff.js)
@@ -21,6 +21,9 @@ function say(text,duration=6,speaker='ISAO',delay=0){
   audio.noteActivity(simulationTime,duration);
   $('speaker').textContent=speaker;$('dialogue').textContent=text;$('comms').classList.add('on');commsUntil=simulationTime+duration;
 }
+// PRESS Q (owner, 2026-10-18: "when the LIDAR becomes available, indicate 'Press Q' for lidar"): from 'lidar-ready' the alert line holds the hint
+// until the LiDAR is first used (Q, or a view key, which sends the first sweep through scan()), and only while the bomb is carried: extraction clears it
+const LIDAR_HINT='PRESS Q · LIDAR';
 function alert(text,duration=4){$('alert').textContent=text;alertUntil=simulationTime+duration;}
 function lock(){
   try{const promise=$('view').requestPointerLock();promise?.catch(()=>{alert('DRAG TO LOOK · ARROW KEYS ALSO AVAILABLE',5);});}catch{alert('DRAG TO LOOK · ARROW KEYS ALSO AVAILABLE',5);}
@@ -31,7 +34,7 @@ function start(){
   $('briefing').hidden=true;$('pause').hidden=true;$('ending').hidden=true;$('hud').hidden=false;$('countdown').hidden=true;$('interaction').hidden=true;$('isao-face').classList.remove('worried');
   $('alert').textContent='';alertUntil=0;mode='playing';audio.reset();audio.pause(false);audio.init().catch(()=>{});updateSoundLabel();lock();
   say('Work light’s on. Keep me clear of the walls.',6);
-  say('Ten flares. F to drop one. We’ll need to find our own way back.',7,'ISAO',7);
+  say('Fifteen flares. F to drop one. We’ll need to find our own way back.',7,'ISAO',7);
   say('Keep me clear of the walls. I’d like to come back.',6,'ISAO',16);
 }
 function pause(){if(!['playing','surface','detonation'].includes(mode))return;resumeMode=mode;mode='paused';keys.clear();velocity.set(0,0,0);$('pause').hidden=false;audio.pause(true);if(document.pointerLockElement)document.exitPointerLock();}
@@ -39,6 +42,7 @@ function resume(){if(mode!=='paused')return;mode=resumeMode;$('pause').hidden=tr
 function scan(){
   if(mode!=='playing')return;
   if(!mission.lidarAvailable){alert(mission.lidarProcessingAt?'PROCESSING LIDAR RETURNS':'LIDAR INFORMATION NOT YET PROCESSED',3);return;}
+  if(!seen.has('lidar-used')){seen.add('lidar-used');if($('alert').textContent===LIDAR_HINT){$('alert').textContent='';alertUntil=0;}}   // the hint's job is done
   if(simulationTime-lastScan<2.1){alert('SURVEY ARRAY RECHARGING',1);return;}
   if(!mission.lidar){mission.lidar=true;$('isao-face').classList.add('worried');say('Those aren’t cracks in the rock.',5,'ISAO',4);say('They’re moving.',4,'ISAO',10);}
   lastScan=simulationTime;world.scan(simulationTime);audio.tone(730,1.1,.09);alert('SURVEY PULSE / 170 m',1.5);
@@ -81,7 +85,7 @@ function event(type){
   } else if(type==='lidar-processing'){
     say('I’ll try processing the LiDAR information.',5,'ISAO',.6);
   } else if(type==='lidar-ready'){
-    say('LiDAR is ready. Choose a view. Q sends a wide sweep.',6);alert('LIDAR OPTIONS AVAILABLE',5);
+    say('LiDAR is ready. Choose a view. Q sends a wide sweep.',6);alert(LIDAR_HINT,6);
   } else if(type==='dead-end'){
     say('This passage is sealed. We have to turn back.',6);
   } else if(type==='shaft'){
@@ -92,12 +96,12 @@ function event(type){
     say('Place the bomb close to the Queen.',8,'ISAO',8);
   } else if(type==='armed'){
     audio.tone(360,.7,.16);dialogueQueue=[];say('Delivery complete. Now please get me out.',7);alert('PAYLOAD ARMED — GET BACK TO THE SURFACE',8);$('countdown').hidden=false;
-    say('Sixty-five seconds. Find the shaft. Get me out.',5,'ISAO',9);
+    say('One hundred seconds. Find the shaft. Get me out.',5,'ISAO',9);   // mission.js FUSE (100 s since 2026-10-18), spelled out like 'Thirty seconds.'; test/mission.test.mjs checks the words against FUSE
   } else if(type==='extracted'){
-    mode='surface';keys.clear();velocity.set(0,0,0);world.player.set(-17,2.5,22);if(document.pointerLockElement)document.exitPointerLock();
+    mode='surface';keys.clear();velocity.set(0,0,0);world.player.set(-17,2.5,22);if(document.pointerLockElement)document.exitPointerLock();$('alert').textContent='';alertUntil=0;   // no PRESS Q hint over the surface
     dialogueQueue=[];say('I’m out. The charge is still counting.',6);
   } else if(type==='signal-lost'){
-    mode='surface';keys.clear();velocity.set(0,0,0);if(document.pointerLockElement)document.exitPointerLock();say('ISAO — SIGNAL LOST',6,'CONTROL');
+    mode='surface';keys.clear();velocity.set(0,0,0);if(document.pointerLockElement)document.exitPointerLock();$('alert').textContent='';alertUntil=0;say('ISAO — SIGNAL LOST',6,'CONTROL');
   } else if(type==='detonated'){
     mode='detonation';detonationAt=simulationTime;world.startDetonation(simulationTime);keys.clear();velocity.set(0,0,0);
     if(document.pointerLockElement)document.exitPointerLock();audio.finish();audio.play('sinkhole_quake',.6);audio.play('blast_fire',.55);$('comms').classList.remove('on');$('alert').textContent='SUBSURFACE DETONATION';
@@ -137,7 +141,7 @@ function step(dt){
   dialogueQueue.sort((a,b)=>a.at-b.at);
   if(dialogueQueue.length&&dialogueQueue[0].at<=simulationTime){const line=dialogueQueue.shift();say(line.text,line.duration,line.speaker);}
   if(simulationTime>commsUntil)$('comms').classList.remove('on');
-  if(simulationTime>alertUntil)$('alert').textContent='';
+  if(simulationTime>alertUntil)$('alert').textContent=mission.payload&&mission.lidarAvailable&&!seen.has('lidar-used')?LIDAR_HINT:'';   // other alerts pass over it, then it is back; not on the escape (the bomb placed), and surface/detonation never come here
   impact=Math.max(0,impact-dt*.7);$('impact').style.opacity=String(impact);
   const route=nearestRoute(player);audio.update(velocity.length(),simulationTime,player.y<SINKHOLE_THROAT-1,!keys.has('KeyE')&&mission.fuse>10,route.s,route.branch);world.update(simulationTime,mission,false,{flight,dt,yaw,pitch,reducedMotion});updateHUD();
 }
@@ -202,7 +206,7 @@ window.addEventListener('resize',()=>world?.resize());
 try{
   world=await createWorld($('view'));
   $('begin').disabled=false;$('begin-label').textContent=stalheart?'TAKE THE FEED':'TAKE CONTROL OF ISAO';
-  if(stalheart){const w=document.querySelector('.wordmark');if(w)w.style.visibility='hidden';const c=document.querySelector('.brief-copy');if(c)c.innerHTML='The nest is under the sinkhole.<br>MÖRK cannot fit through the breach.<br>ISAO can.';}   // Stålheart's own card: no link out, the campaign's words
+  if(stalheart){const w=document.querySelector('.wordmark');if(w)w.style.visibility='hidden';const c=document.querySelector('.brief-copy');if(c)c.innerHTML='The arena’s sinkhole is the way down to the nest.<br>MÖRK is too big for it.<br>ISAO takes the bomb to their Queen.';}   // Stålheart's own card: no link out, the campaign's words (2026-10-18: the arena's hole, as Isao's brief over the game says it; that brief sits under this frame)
   function frame(now){
     const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;
     if(mode==='briefing'){

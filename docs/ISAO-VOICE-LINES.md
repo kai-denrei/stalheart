@@ -299,6 +299,14 @@ Caption only (not in the recording list):
 
 - `day_42_over` (focused, over the klaxon): "Party's over. They heard the bass."
 
+## 15. The descent (unrecorded; captions until these are taken)
+
+As the cave opens after BOTH WALLS the camera looks at the arena's sinkhole, the hole the mother came out of; Isao names it as the way
+down and takes the charge himself (owner, 2026-10-18). The full descent set (the return joke, the last transmission) is in the
+recording script's section 17.
+
+- `descent_brief` (determined): "That sinkhole out at the arena, the one the mother came out of: it is the way down to the nest." / "The tank is too big. Not fit for subterranean." / "I will do it, though I do not know the way. I will take the bomb to their Queen."
+
 ---
 
 ### Notes for recording
