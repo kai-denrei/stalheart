@@ -234,6 +234,8 @@ export const MEMBRANE_FRAG=`
 uniform float uTime,uPulse,uVeinWidth,uCore,uDebug,uLow;
 uniform vec3 uSkin,uVein,uGlow;
 uniform vec3 uHeat;
+// the glints' colour (white in the kit; the Pearl set's cored tiers tint theirs, owner 2026-10-18: "the membrane is almost opaque white")
+uniform vec3 uGlint;
 uniform float uOpacity;
 uniform float uMulticolored;
 // the Pearl set's death (owner, 2026-10-13): a dead body's brightness share (iLife.w below zero: how far into the dark it has gone)
@@ -275,10 +277,10 @@ void main(){
   float diffuse=max(0.,(dot(N,L)+.45)/1.45);
   float back=pow(max(0.,dot(V,-L)),3.)*(1.-thick);
   float spec=pow(max(0.,dot(N,normalize(L+V))),100.);
-  color*=.12+diffuse*.45;color+=skin*back*.32+vec3(1.,.91,.8)*spec*.95+rim*.17;
+  color*=.12+diffuse*.45;color+=skin*back*.32+(vec3(1.,.91,.8)*spec*.95+rim*.17)*uGlint;
   vec3 reflected=reflect(-V,N);
   float window=pow(max(0.,dot(reflected,normalize(vec3(-.4,1.,.7)))),32.);
-  color+=vec3(.85,.93,1.)*window*.9+glow*pulse*gate*vein*.7;
+  color+=vec3(.85,.93,1.)*uGlint*window*.9+glow*pulse*gate*vein*.7;
   float alpha=(mix(.25,.85,thick)+rim*.19)*(gl_FrontFacing?.75:.4);
   // A puddle is a thin skin: let the dark core show through.
   if(uCore<.5)alpha*=mix(1.,.7,max(0.,vLife.x));
