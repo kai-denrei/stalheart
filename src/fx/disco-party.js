@@ -15,7 +15,7 @@
 //
 // The host: scene, camera, metres() (world units a metre), sfx (src/audio.js), startShot, snapCamera, showBrief, callout(text, cls), armWave,
 // daylight(), sectorRun(), base() (the story base: structure(id)), shotActive, seated, card, warning (the board's wave warning counting
-// down: no party over it), alive, won, isaoBusy; loadGlb for a test.
+// down: no party over it), alive, won, isaoBusy; loadGlb and now (the wall clock in ms, performance.now by default) for a test.
 import * as THREE from '../../vendor/three.module.js';
 import { loadGlb } from '../glbmodels.js';
 import { DAY_42 } from '../content/day-42.js';
@@ -31,11 +31,17 @@ const target = (p) => ({ gantryZ: p.gantryZ, carriageX: p.carriageX, liftY: p.li
 const POD = { r: 2.05, y: -0.16, at: Math.PI / 4 }, APERTURE = { r: 1.48 };
 // the floodlights fall off linearly, `intensity` the light a metre out (decay 2 in world units left them a glow at the ground, 2026-10-18)
 const DECAY = 1;
+// THE WALL GAP (final review, 2026-10-18): the track plays on the audio clock and the party counts the frame's dt; the host does not tick the
+// party while paused (P, the pause card, the bestiary terminal, a hidden tab) and ticks it with 0 under a non-live shot, and nothing suspends
+// the audio, so past 44 s the loop voice restarts and the klaxon no longer lands on the track's end. Wall time a tick did not account for
+// (dt is clamped at 0.1 s) beyond this many seconds while the music plays ends the party at its alarm instead of letting it drift
+const GAP = 0.3;
 const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
 
 export function createDiscoParty(h) {
   const clock = createPartyClock(DAY_42), load = h.loadGlb ?? loadGlb;
-  let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [];
+  let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [], lastWall = null;
+  const wallNow = h.now ?? (() => performance.now());
   const tip = new THREE.Vector3(), up = new THREE.Vector3(), base = new THREE.Vector3(), m4 = new THREE.Matrix4();
   const metres = () => h.metres?.() ?? 1;
   const node = (root, name) => root?.getObjectByName(name) ?? null;
@@ -175,6 +181,13 @@ export function createDiscoParty(h) {
         card: !ball || h.card() || !!h.warning?.(), alive: h.alive(), boss: !!sr?.defNow?.()?.boss, won: h.won(), isaoBusy: h.isaoBusy() };   // the board's wave warning is a card: no party over its rings
       const was = clock.state().phase, events = clock.tick(dt, cond);
       if (was === 'party' && events.length === 0 && (!cond.alive || cond.won)) events.push(...clock.over().map((e) => (e === 'over' ? 'cut' : e)));
+      // the wall gap: measured between ticks that advance, so a run of zero-dt ticks under a non-live shot counts whole; the music stopped
+      // now, the duck left to restore itself, and the party over at its alarm on this first tick back (end() rings it)
+      const wall = wallNow();
+      if (dt > 0) {
+        if (music && lastWall !== null && (wall - lastWall) / 1000 - dt > GAP && clock.state().phase === 'party') { music.stop(0.15); music = null; events.push(...clock.over()); }
+        lastWall = wall;
+      }
       for (const ev of events) {
         if (ev === 'start') begin();
         else if (ev === 'shot') shot();

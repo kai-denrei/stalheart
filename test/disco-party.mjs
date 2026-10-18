@@ -85,4 +85,14 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
   assert.equal(p.state().phase, 'party'); assert.equal(p.state().music, false, 'not decoded: no music yet'); tickTo(p, 3);
   assert.ok(log.primed.length > 2, `asked to decode again while it waits (${log.primed.length})`); assert.ok(3 < DAY_42.music.retry, 'the test sits inside the retry window');
   decoded = true; p.tick(0.1); assert.equal(p.state().music, true, 'started at 3 s, after the cut'); assert.deepEqual(log.played, [DAY_42.music.key]); }
+// the wall gap (final review, 2026-10-18): the host stops ticking the party while paused and the track plays on; a 2 s gap between ticks
+// stops the music and ends the party at its alarm on the next tick; a non-live shot (zero-dt ticks) counts the same; steady frames do not
+{ let wall = 0; const { h, log } = host(); h.now = () => wall; const p = createDiscoParty(h); const step = (dt) => { wall += dt * 1000; p.tick(dt); };
+  step(0.1); await new Promise((r) => setTimeout(r, 5)); step(0.1); for (let k = 0; k < 50; k++) step(0.1);
+  assert.equal(p.state().phase, 'party', 'steady frames: still the party'); assert.equal(p.state().music, true); assert.equal(log.stopped, 0);
+  wall += 2000; step(0.1); assert.equal(log.stopped, 1, 'the music stopped'); assert.equal(p.state().phase, 'over', 'over on the first tick back');
+  assert.equal(p.state().music, false); assert.ok(log.played.includes('danger_alert'), 'at its alarm'); assert.equal(log.armed, 1); assert.equal(p.holding(), false); }
+{ let wall = 0; const { h, log } = host(); h.now = () => wall; const p = createDiscoParty(h); const step = (dt, adv = dt) => { wall += adv * 1000; p.tick(dt); };
+  step(0.1); await new Promise((r) => setTimeout(r, 5)); step(0.1); for (let k = 0; k < 20; k++) step(0.1);
+  for (let k = 0; k < 60; k++) step(0, 1 / 60); assert.equal(p.state().phase, 'party', 'frozen ticks advance nothing'); step(0.1); assert.equal(p.state().phase, 'over', 'a second of frozen frames: over'); assert.equal(log.stopped, 1); }
 console.log('disco-party ok');
