@@ -170,13 +170,15 @@ export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flo
 // THE DRIVE OUT, THEN THE HAND-OVER (owner, 2026-10-16, third version: "a message to go investigate a different tremor somewhere far… we reach the beacon
 // with the tank… it opens up, phase 1 the player controls the tank as the gunship helps with the reeds, then phase 2 the monster is too enormous…
 // Being bait is the only way… Now we FORCE the player to take the gunship. Isao quips 'I am the better driver, I'll lure it'"): the brief sends the
-// player to a tremor at the arena, its breach opens when the hull arrives (ARENA.reachCells, or ARENA.waitMax), the player drives and shoots the small
+// player to a tremor at the arena, its breach opens when the hull arrives (ARENA.reachCells; since 2026-10-18 only then, no clock), the player drives and shoots the small
 // waves with the gunship on its own autopilot overhead, and as the mother rises Isao takes the hull as the lure (the `lure` directive) and the player is
 // put in the gunship's seat (src/fx/boss-run.js). The choice card of 2026-10-15 is gone.
 export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: [12, 6, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { arena: 1 }, waves: 3, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 120, points: 1200 },
   boss: { family: 'reed', waves: [{ count: 12, tier: 'small', hp: 4, pace: 1 }, { count: 6, tier: 'pup', hp: 6, pace: 1 }], boss: { tier: 'huge', hp: 180, pace: 1 } },
   gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a boss',
-  brief: ['A tremor, as far out as the ground goes. Nothing on the sensors but a beacon.', 'Take the hull out there and look. I will put the gunship over you.'] });
+  // THE MESSAGE (owner, 2026-10-18, note 6: "sector 9, it's not quite clear what we must do. We should message it better ... 'Go investigate that area, I'll clear a
+  // way there'"): the sector's brief is Isao's order, `arena_go` (src/isaobriefs.js, src/fx/sector-run.js briefOf), and the debrief's next-sector page reads the same
+  brief: ['Something big is moving out there. Go and investigate that tremor. I\'ll clear a way.'] });
 export const BOSS_SECTOR = ARENA_SECTOR;   // the arc's boss row, by its old name
 
 // PAST BOTH WALLS the sectors are generated from it: its flags carry over, `new` is null. With `past` the sectors after BOTH WALLS
@@ -214,13 +216,26 @@ export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scrambl
 export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, rimCells: 10 });
 // THE ARENA'S PLACE (owner, 2026-10-16: "a giant opening very far from the base"; src/domain/arena.js, src/platform/story-world.js story.arena): the
 // farthest reachable cell outside the walls within `farHops` of the farthest; its opening `craterCells` wide (the sinkhole scaled, src/game-breaches.js)
-// reachCells: the hull this near the arena's cell opens it (the drive out to the beacon); waitMax: seconds after the sector's start it opens anyway; seatWait: seconds after the
+// reachCells: the hull this near the arena's cell opens it (the drive out to the beacon), and nothing else does: the waitMax fallback (150 s after the start) is gone
+// (owner, 2026-10-18, note 6: "waiting for the tank to be physically there, is what triggers the Boss"; it opened the hole with the hull at the base); seatWait: seconds after the
 // boss rose the gunship seat is taken whether or not the gunship is over the arena yet (src/fx/boss-run.js, owner 2026-10-16: the drive out, then the forced hand-over)
-export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, waitMax: 150, seatWait: 45,
+// seatAfter: the least seconds after the boss rose before the seat is forced, and only once Isao's panel is free (arena_force read first; 2026-10-18)
+// remind: seconds between INVESTIGATE THE TREMOR callouts while the hull has not reached it (owner, 2026-10-18, note 6: "not quite clear what we must do"), and only
+// when the hull's road distance has not dropped since the last one (a driving player is not nagged; review, 2026-10-18)
+// remindMax: after this many reminders Isao drives the hull out himself on the lure directive (`arena_drive`; review of note 6, 2026-10-18): with no clock, a
+// hull that never came (a wedge, the player's own walls, AUTO on another order) hung the sector for good; the arrival stays the trigger, about 120 s at remind 40
+export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3,
   // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
-  // `ahead` cells on the cheapest walk to the arena (a rock cell costs `rockCost` ground cells) is burned by SOL for `burn` seconds; a pass is laid over it
-  // (overhead, energy in seconds, radius in metres, slew m/s) when none is up
-  road: freeze({ every: 7, ahead: 7, burn: 2.5, rockCost: 4, overhead: 45, energy: 40, radius: 6, slew: 16 }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+  // `ahead` hops of the hull worth a shortcut of `saves` cells on the open walk to the arena (crossed up to `through` rocks deep), else with `flank` the first rock
+  // beside the route ahead, never within `clear` cells of the hull by the chord (the beam keeps LASER_AUTO.safeMetres off a friend: 25 m and its radius, 3.1 cells) (second version, 2026-10-16: the cheapest-walk rule fired at 2% of the route, all at the rim), is burned by SOL for `burn` seconds;
+  // a pass is laid over it (overhead, energy in seconds, radius in metres, slew m/s) when none is up
+  // THE PLANNED ROAD (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)"; src/domain/arena.js roadField/roadRock, src/fx/boss-run.js): the road
+  // planned from the arena with a rock cell at `rockCost` (on the shipped planet 214 cells and three rocks, against 282 open), its rocks SOL's first cuts from
+  // the sector's start within `plan` cells of road; `every` 7 -> 4 (a simulated drive at the hull's 1.6 cells/s reached the first planned rock before a 7 s
+  // cadence had cut it; 4 cut all three ahead of it); its cells `marks` ahead of the hull ringed every `markEvery` seconds
+  // overhead 45 -> 3.5, the burn and a second (review of note 6, 2026-10-18): a road pass is a special pass, which the automated aim never takes, and the last one
+  // laid on the drive out stayed overhead up to 45 s after the hole opened, so SOL never fired on the small Reeds; each ask lays its own pass anyway
+  road: freeze({ every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 4, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

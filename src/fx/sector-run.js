@@ -102,7 +102,7 @@ export function createSectorRun(h) {
   const defOf = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arc());
   // EVERYTHING UNLOCKED: every landing site's part is home and Isao's programme is printed but for the back gate (which needs the door)
   const unlocked = () => { const sites = story.expeditions?.sites ?? [], owed = story.programme ? programmeSnapshot(story.programme).owed : []; return sites.length > 0 && sites.every((x) => x.state === 'delivered') && owed.length === 0; };   // the back gate and the launcher are passable: never owed
-  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'sector_boss' : doorAt !== null && n === bothAt() ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
+  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'arena_go' : doorAt !== null && n === bothAt() ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
@@ -193,8 +193,8 @@ export function createSectorRun(h) {
     (h.refill ?? api.refillArrays)?.(); api.setLaserOnline?.(!!def.laser);   // the solar array's reserve refills at every sector start
     if (def.backDoor && backOpenedAt === null) { api.openBackDoor?.(); backOpenedAt = now(); }
     const doorNow = backOpenedAt !== null && now() - backOpenedAt < 1;   // the mouth fell this very sector start
-    const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : side === 'side' ? 'BY THE WALL' : 'ON THE GATE SIDE'}`).join(' · ') + (def.canyon ? ' · A SWARM IN THE CANYON' : '');
-    card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);
+    const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : side === 'side' ? 'BY THE WALL' : side === 'arena' ? 'FAR OUT, AT THE TREMOR' : 'ON THE GATE SIDE'}`).join(' · ') + (def.canyon ? ' · A SWARM IN THE CANYON' : '');
+    card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, def.breaches.arena ? 'INVESTIGATE THE TREMOR' : 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);   /* the arena's card names it (owner, 2026-10-18, note 6: "not quite clear what we must do") */
     // the collapse carries its own line (the feast); Isao's queue is one deep, so the sector's line would only push it out
     if (!doorNow) h.brief(briefOf(n));
     h.calm?.();   // a calm moment: a briefing put off mid-fight shows now

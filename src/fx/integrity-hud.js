@@ -7,7 +7,7 @@
 // the first hit, half and the last three. A gate being worn down says UNDER ATTACK while its bar drops, and Isao warns at half
 // and at a quarter. The panel's text stays for the numbers; this is the alarm.
 //
-// Pure DOM over the host's numbers: tick(read) every frame with { heart: { hp, max } | null, gates: [{ id, name, hp, max, broken }],
+// Pure DOM over the host's numbers: tick(read) every frame with { heart: { hp, max } | null, gates: [{ id, name, hp, max, broken, quiet }] (quiet: no gate lines),
 // hidden }. The host owns the hit points; this only compares them with the last frame. `reset()` for a new run.
 // ON A PHONE the strip is not shown (styles.css; the owner's open complaint is a cluttered phone HUD, and the strip had no free slot
 // in either orientation): the stats panel already carries the hearts and GATE %, so a hit flashes that panel instead (`ih-panel-hit`).
@@ -53,6 +53,8 @@ export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
       row.innerHTML = `<span class="ih-lbl">${g.name}</span><span class="ih-bar"><i></i></span><span class="ih-num"></span>`;
       gatesEl.append(row); gateRows.set(g.id, row);
     }
+    // A ROW'S NAME FOLLOWS ITS PHASE (2026-10-18, the arena's one row: TREMOR · FAR OUT, then the wave, then the boss; it kept its first name)
+    if (row.dataset.name !== g.name) { row.dataset.name = g.name; row.querySelector('.ih-lbl').textContent = g.name; }
     const share = g.max > 0 ? Math.max(0, g.hp / g.max) : 1, pct = Math.round(share * 100), was = gateWas.get(g.id);
     if (row.dataset.pct !== String(pct) || row.dataset.broken !== String(g.broken)) {
       row.dataset.pct = pct; row.dataset.broken = g.broken;
@@ -63,7 +65,9 @@ export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
     if (was !== undefined && g.hp < was - 1e-6) {
       wake = true; if (!worn.get(g.id)) { flash(row); panelFlash(); }
       worn.set(g.id, WORN);
-      for (const [at, id] of GATE_LINES) if (share <= at && was / g.max > at && say(`${id}:${g.id}`, id) && id === 'gate_failing') sfx?.play('danger_alert', { dist: 0 });
+      // NOT A GATE, NO GATE LINES (owner, 2026-10-18, note 6: "not quite clear what we must do"): a `quiet` row (the arena's wave count and boss, src/fx/boss-run.js)
+      // falling is the player winning, and Isao said "The gate is at half" as the small Reeds died
+      if (!g.quiet) for (const [at, id] of GATE_LINES) if (share <= at && was / g.max > at && say(`${id}:${g.id}`, id) && id === 'gate_failing') sfx?.play('danger_alert', { dist: 0 });
     } else worn.set(g.id, Math.max(0, (worn.get(g.id) ?? 0) - dt));
     row.classList.toggle('ih-worn', worn.get(g.id) > 0 && !g.broken);
     if (share >= 0.99) for (const [, id] of GATE_LINES) said.delete(`${id}:${g.id}`);   // mended: the warnings may come again
