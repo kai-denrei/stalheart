@@ -2579,9 +2579,10 @@ try{
  // THE DRIVE OUT, DRIVEN (owner, 2026-10-18, note 6: "waiting for the tank to be physically there, is what triggers the Boss"; review): --arena shortcuts the drive
  // with arenaNow(), so this step drives it. A virtual WASD driver (--corridor-probe's) follows the planned road's next cells (state().boss.road.path, the rings
  // a player follows) from the base; the hole must stay shut while the hull has never come within ARENA.reachCells, open once it has, and the small Reeds rise.
- // The jump's leftover bodies are culled once before the drive (a drive, not a fight; the sector is not held quiet, or the arena's waves would never release)
+ // intro=0 as the drawer's ARENA entry. The driver backs out of a cell that holds it STUCK_S (3) seconds, as a player would (without it the hull pressed a corner
+ // two cells out of the base for the whole run). The jump's leftover bodies are culled before and every 5 s during the drive (a drive, not a fight; the sector is not held quiet, or the arena's waves would never release)
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),{SECTOR_DOOR,ARENA}=await import('../src/content/sectors.js'),secs=+(process.env.SECS||150);
- await go('arena-drive',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+ await go('arena-drive',`index.html?sw=0&acceptance=1&cine=0&intro=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().boss.on && ${T}.state().boss.phase==='beacon'`,90000).catch(async()=>assert.fail(`the beacon phase (${JSON.stringify((await st()).boss)})`));
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")');
@@ -2591,24 +2592,26 @@ try{
  console.log(`ARENA DRIVE from cell ${s0.playerCell}, ${s0.boss.hullCells} cells from the arena (reach ${ARENA.reachCells})`);
  const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
  await evaluate(`${T}.showcase.aimHull(${s0.boss.road.path[0]})`);await delay(200);await K('keyDown','w','KeyW',87);
- let turning=null,backing=0,behind=0,minCells=Infinity,openedAt=null,openCells=null,early=null,last=null;const t0=Date.now();
+ let turning=null,backing=0,behind=0,cellWas=-1,cellSince=Date.now(),backs=0,cullAt=Date.now(),stuckS=+(process.env.STUCK_S||3),minCells=Infinity,openedAt=null,openCells=null,early=null,last=null;const t0=Date.now();
  while(Date.now()-t0<secs*1000){
   const s=await st(),d=await evaluate(`${T}.showcase.drive()`),t=+((Date.now()-t0)/1000).toFixed(1);
   if(Number.isFinite(s.boss.hullCells))minCells=Math.min(minCells,s.boss.hullCells);
-  last={t,cell:d.cur,hullCells:s.boss.hullCells,min:minCells,phase:s.boss.phase,due:s.boss.due,cuts:s.boss.roadCuts,reminders:s.boss.reminders,drove:s.boss.drove,hp:s.playerHP};
+  last={t,cell:d.cur,hullCells:s.boss.hullCells,min:minCells,phase:s.boss.phase,due:s.boss.due,cuts:s.boss.roadCuts,reminders:s.boss.reminders,drove:s.boss.drove,hulls:s.hulls,alive:s.performance?.enemies};
+  if(Date.now()-cullAt>5000){cullAt=Date.now();await evaluate(`${T}.sectorCull(999)`);}   // the jump's leftovers still emerging at the first cull
   if(arenaOpen(s)){openedAt=t;openCells=s.boss.hullCells;if(minCells>ARENA.reachCells)early=last;break;}
-  if(Math.round(t*10)%100===0)console.log('  drive '+JSON.stringify(last));
   const path=s.boss.road.path??[],ids=[d.cur,...path];if(ids.length<2){await delay(100);continue;}
   const idx=ids.indexOf(d.cur),next=ids[Math.min(ids.length-1,idx+1)],b=await evaluate(`${T}.showcase.bearing(${next})`);
-  behind=Math.abs(b)>2.2?behind+0.1:0;
-  if(backing<=0&&behind>=1){backing=1.2;behind=0;await K('keyUp','w','KeyW',87);await K('keyDown','s','KeyS',83);}
+  if(Math.round(t*10)%(process.env.DRIVE_LOG?10:100)===0)console.log('  drive '+JSON.stringify({...last,next,b:+b.toFixed(2),turning,backing:+backing.toFixed(1),paused:s.paused,deploying:s.deploying,pos:d.pos.map(v=>+v.toFixed(4))}));
+  behind=Math.abs(b)>2.2?behind+0.1:0;if(d.cur!==cellWas){cellWas=d.cur;cellSince=Date.now();}
+  // backed out, as a player would: the target behind for a second, or the hull held in one cell for STUCK_S (3) seconds against a corner
+  if(backing<=0&&(behind>=1||Date.now()-cellSince>stuckS*1000)){backing=1.2;behind=0;cellSince=Date.now();backs++;await K('keyUp','w','KeyW',87);await K('keyDown','s','KeyS',83);}
   if(backing>0){backing-=0.1;if(backing<=0){await K('keyUp','s','KeyS',83);await K('keyDown','w','KeyW',87);}}
   const fwd=backing<=0,want=b>0.12?(fwd?'a':'d'):b<-0.12?(fwd?'d':'a'):null;
   if(want!==turning){if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);if(want)await K('keyDown',want,want==='a'?'KeyA':'KeyD',want==='a'?65:68);turning=want;}
   await delay(100);
  }
  if(backing>0)await K('keyUp','s','KeyS',83);if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);await K('keyUp','w','KeyW',87);
- console.log(`ARENA DRIVE: ${openedAt!=null?`the hole opened at ${openedAt} s with the hull ${openCells} cells out (nearest ${minCells})`:'never opened'}; last ${JSON.stringify(last)}`);
+ console.log(`ARENA DRIVE: backed out ${backs} times; ${openedAt!=null?`the hole opened at ${openedAt} s with the hull ${openCells} cells out (nearest ${minCells})`:'never opened'}; last ${JSON.stringify(last)}`);
  assert.equal(early,null,`the hole stayed shut while the hull had never come within ${ARENA.reachCells} cells (${JSON.stringify(early)})`);
  assert.ok(openedAt!=null,`the hull reached the arena and the hole opened within ${secs} s (${JSON.stringify(last)})`);
  current='arena-drive-open';await finish();
