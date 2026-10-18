@@ -379,8 +379,10 @@ export function createEnemyStep(host) {
       // carries on from exactly where it was rather than restarting a cell.
       if (tNow < (e.stagUntil ?? -1)) pace = 0;
       // THE MOTHER WALKS ON THE SINKHOLE (owner, 2026-10-18, note 8c; src/domain/boss-sector.js groundPhase): a record with a `ground` (THE ARENA's boss, src/fx/boss-run.js)
-      // stands on its cell, the crater's centre, while its lip offset eases away, then hunts
-      const ground = e.ground ? groundPhase(tNow - (e.groundAt ??= tNow), e.ground) : null; if (ground && !ground.walk) pace = 0; if (ground?.walk) { e.ground = null; e.emergeOff = null; }
+      // stands on its cell, the crater's centre, while its lip offset eases away, then hunts; its clock starts once it has risen (emergeAge >= riseDur; review,
+      // 2026-10-19), so no part of the cross is spent under the ground (the emergence branch above already skips this walk while it climbs: this keeps it so)
+      const risen = !e.breachSource || (e.emergeAge ?? 1.2) >= (e.riseDur ?? 1.2);
+      const ground = e.ground ? (risen ? groundPhase(tNow - (e.groundAt ??= tNow), e.ground) : { walk: false, off: 1 }) : null; if (ground && !ground.walk) pace = 0; if (ground?.walk) { e.ground = null; e.emergeOff = null; }
       // cloaked (phantom): optical camo. A haze most of the time — the
       // cloud sits near-invisible — with a brief shimmer of presence every
       // ~6s. The radar shares the same decloak window: no window, no blip.
