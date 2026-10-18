@@ -2,7 +2,7 @@
 // each with its own programme of `waves` waves sized by the computeWavePlan ladder at the sector's `threat`. First
 // numbers, tuning later. Pure data: the rules live in src/domain/sectors.js and src/domain/sector-stats.js.
 import { SENTRY_ORDER } from './sentries.js';
-import { GUNSHIP_GUN_ORDER } from './gunship.js';
+import { GUNSHIP_GUN_ORDER, GUNSHIP_SEAT_HINT } from './gunship.js';
 import { BOSS_FIGHT } from './boss-fight.js';
 
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
@@ -241,10 +241,9 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // hull that never came (a wedge, the player's own walls, AUTO on another order) hung the sector for good; the arrival stays the trigger, about 120 s at remind 40
 // THE MOTHER (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene explaining that we need to manually control the gunship while Isao plays Lure
 // with the tank"): the card over the paused game as the NIH-DAIRIA rises (src/fx/boss-run.js, src/fx/choice-card.js): this title, Isao's arena_force lines, the
-// seat's own controls (quoted from its footer, src/sentry-pilot.js: the gunship flies its own track, the player aims and fires) and one button into the seat
+// seat's own controls (the seat footer's aim part, GUNSHIP_SEAT_HINT, src/sentry-pilot.js: the gunship flies its own track, the player aims and fires) and one button into the seat
 export const ARENA_HANDOVER = freeze({ title: 'THE MOTHER', take: 'TAKE THE GUN',
-  hint: 'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 mini nuke (paint, then release)',
-  hintTouch: 'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: paint, then release' });
+  hint: GUNSHIP_SEAT_HINT.aim, hintTouch: GUNSHIP_SEAT_HINT.aimTouch });
 // decodedCap: seconds after boss_dead before arena_decoded clears a panel other lines keep busy and is shown (review, 2026-10-19: it waited on a free panel, and the
 // boss sector's debrief waits on it, up to STORY_CALM.maxHold, 120 s; src/fx/boss-run.js sayDecoded)
 export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3, decodedCap: 20,

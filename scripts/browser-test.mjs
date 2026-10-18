@@ -2667,7 +2667,7 @@ try{
  assert.ok(openedAt!=null,`the hull reached the arena and the hole opened within ${secs} s (${JSON.stringify(last)})`);
  // THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "always 50m ahead of the tank clearing the path"): after the first cut no ask lay farther
  // than ARENA.road.aheadMetres (and a cell, the hull's own) from the hull (state().boss.road.leadMax, the chord in cells at each ask)
- {const r=(await st()).boss,reach=ARENA.road.aheadMetres/10;console.log(`ARENA DRIVE: the beam's lead ${JSON.stringify({cuts:r.roadCuts,asks:r.road.asks,leadMax:r.road.leadMax,reach})}`);
+ {const r=(await st()).boss,{METRES_PER_CELL}=await import('../src/core/stage-units.js'),reach=ARENA.road.aheadMetres/METRES_PER_CELL;console.log(`ARENA DRIVE: the beam's lead ${JSON.stringify({cuts:r.roadCuts,asks:r.road.asks,leadMax:r.road.leadMax,reach})}`);
   assert.ok(r.road.leadMax<=reach+1,`no cut farther than ${ARENA.road.aheadMetres} m and a cell ahead of the hull after the first (${r.road.leadMax} cells)`);}
  current='arena-drive-open';await finish();
  {const w0=Date.now();let s=null;while(Date.now()-w0<60000){s=await st();if((s.boss.wave??0)>=4)break;await delay(1000);}

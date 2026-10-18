@@ -6,6 +6,7 @@ import { ARENA, ARENA_SECTOR, ARENA_HANDOVER } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 import { METRES_PER_CELL } from '../src/core/stage-units.js';
+import { GUNSHIP_SEAT_HINT } from '../src/content/gunship.js';
 
 function host(o = {}) {
   const log = { briefs: [], callouts: [], tremor: [], road: [], over: [], pause: [] };
@@ -100,7 +101,7 @@ function host(o = {}) {
 // always 50m ahead of the tank clearing the path"): a chain 0..29 to the arena at 29 with planned rocks at 12, 13, 20 and 26, the chord from the hull |ci - hull|
 // cells. The first cut comes at once, on the nearest rock wherever it lies; after it nothing beyond ARENA.road.aheadMetres (5 cells) is asked for, the parked
 // hull's beam waits, and as the hull drives each rock is asked for the moment it comes into reach (not on the `every` cadence); the flank is held to it too
-{ const reach = ARENA.road.aheadMetres / 10; assert.equal(ARENA.road.aheadMetres, 50, 'fifty metres'); assert.equal(reach, 5, 'five cells of ten metres');
+{ const reach = ARENA.road.aheadMetres / METRES_PER_CELL; assert.equal(ARENA.road.aheadMetres, 50, 'fifty metres'); assert.equal(reach, 5, 'five cells of METRES_PER_CELL');
   const adj = Array.from({ length: 32 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 29; i++) link(i, i + 1);
   link(4, 30); link(18, 31);   // the flank's rocks: 30 beside the road's cell 4, 31 beside 18
   const tags = new Int8Array(32).fill(1); for (const r of [12, 13, 20, 26, 30, 31]) tags[r] = 0;
@@ -207,6 +208,7 @@ function host(o = {}) {
   const shown = h.choiceCard.shown[0];
   assert.equal(shown.title, 'THE MOTHER'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
   assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.equal(shown.hint, ARENA_HANDOVER.hint);
+  assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aim, 'the seat footer\'s own aim text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimTouch);
   assert.match(shown.hint, /move it to aim/); assert.match(shown.hint, /Space or the button fires/); assert.match(shown.hint, /MK-9/);
   assert.ok(!h.log.briefs.includes('arena_force'), 'the card says it, not the panel');
   assert.equal(h.params().directive, 'lure', 'Isao has the hull as the lure');
