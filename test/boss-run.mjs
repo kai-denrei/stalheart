@@ -68,6 +68,7 @@ function host(o = {}) {
   assert.deepEqual(h.log.road, [3], 'the first ask, at the start, is the planned road\'s first rock');
   assert.equal(run.state().road.planned, true); assert.ok(h.log.briefs.includes('arena_road'), 'Isao says the road once SOL takes it');
   assert.deepEqual(marks, [4, 8], 'the road\'s cells ARENA.road.marks ahead of the hull are ringed');
+  assert.deepEqual(run.state().road.path, [1, 2, 3, 4, 5, 6, 7, 8, 9], 'the harness reads the planned road ahead of the hull');
   tags[3] = 1;   // the beam took the rock
   h.now = ARENA.road.burn + 0.1; run.tick(0.1);
   assert.equal(run.state().roadCuts, 1, 'the cut landed'); assert.deepEqual(h.log.callouts.filter((x) => x === 'SOL CUTS THE ROAD'), ['SOL CUTS THE ROAD'], 'called as the first cut lands');
