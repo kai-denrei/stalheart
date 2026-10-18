@@ -137,8 +137,10 @@ export function useFlare(m){if(m.outcome||m.extracted||m.signalLost||m.flares<=0
 // fail again for good a bit later"): strong while whole; after the second hit LAMP.flicker seconds of flicker, back (dimmer) for LAMP.back seconds, then out
 // FLARES STICK TO SLOPES (owner, 2026-10-18: "the flares need to STICK to sloped areas better, although they must fall with gravity"; flare-physics.js):
 // on contact the rock grips (friction, coefficient `friction`, against gravity's push into the surface), and a flare slower than `restSpeed` on rock no
-// steeper than `restSlope` degrees comes to rest and stays (rest is static: nothing restarts a resting flare). Steeper than that it slides on; tan(50)
-// is 1.19, above the grip, so a flare on a wall or on the bowed shaft's 67-degree lean never hangs; in the air nothing changes
+// steeper than `restSlope` degrees comes to rest. Two numbers: with mu 1, gravity's pull along the slope beats the grip from 45 degrees (tan 45 = 1), so
+// from there a flare speeds up rather than slows; the rest threshold is 50 degrees, so between 45 and 50 a flare still rests if it is already slow, and
+// above 50 it slides on (the bowed shaft's 67-degree lean never holds one). "Static friction" here means only that a resting flare never wakes: stepFlare
+// returns at once for a resting flare and nothing in the cave pushes flares. In the air nothing changes
 export const FLARE_STICK={restSlope:50,restSpeed:.9,friction:1};
 export const LAMP={strong:1.25,flicker:6,back:25,dim:.8};
 export function lampStrength(m){
