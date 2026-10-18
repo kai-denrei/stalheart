@@ -307,6 +307,15 @@ recording script's section 17.
 
 - `descent_brief` (determined): "That sinkhole out at the arena, the one the mother came out of: it is the way down to the nest." / "The tank is too big. Not fit for subterranean." / "I will do it, though I do not know the way. I will take the bomb to their Queen."
 
+## 16. The arena (unrecorded; captions until these are taken)
+
+THE ARENA, sector 9 on the drawer's entry: the order as the sector begins, Isao's line as SOL's first cut lands on the road out
+(owner, 2026-10-19, third round, note 7; his words). The rest of the arena set (`arena_open`, `arena_force`, `arena_lure`,
+`boss_hit_me`, `boss_dead`) is in the recording script's section 16.
+
+- `arena_go` (focused), as the sector begins: "Other side of the planet. You must check it out." / "Seems big."
+- `arena_road` (focused), the first cut on the road out: "Let me clear a path for you."
+
 ---
 
 ### Notes for recording

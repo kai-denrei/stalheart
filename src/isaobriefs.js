@@ -437,14 +437,15 @@ export const BRIEFS = {
   ...Object.fromEntries(SECTORS.map((s) => [`sector_${s.n}`, { id: `sector_${s.n}`, face: s.n === 1 ? 'determined' : 'focused', title: `SECTOR ${s.n} · ${s.name}`, lines: [...s.brief] }])),
   sector_hold: { id: 'sector_hold', face: 'focused', title: 'THE NEXT SECTOR', lines: [...SECTOR_HOLD.brief] },
   sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
-  // THE ARENA'S ORDER (owner, 2026-10-18, note 6: "Go investigate that area, I'll clear a way there"): the sector's own brief as it begins (it was
+  // THE ARENA'S ORDER (owner, 2026-10-18, note 6: "Go investigate that area, I'll clear a way there"; since 2026-10-19, note 7, his own words: "other side of the
+  // planet, you must check it out.", "seems big", ARENA_SECTOR.brief): the sector's own brief as it begins (it was
   // `sector_boss`, "a tremor ... nothing on the sensors but a beacon", which never said what to do), with the callout and the tremor on the radar (src/fx/boss-run.js)
   arena_go: { id: 'arena_go', face: 'focused', title: BOSS_SECTOR.name, once: false, lines: [...BOSS_SECTOR.brief] },
   // THE BOSS's own lines (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 16): the two replies to the choice, the boss up,
   // the hull touched, the boss dead
   // THE ARENA (owner, 2026-10-16, third version; src/fx/boss-run.js): `arena_open` as the ground opens at the beacon the hull drove out to, `arena_force` as the
   // mother rises and Isao takes the hull while the player is put in the gunship (the choice card's lines of 2026-10-15 are gone with it)
-  arena_road: { id: 'arena_road', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['SOL is cutting you a road. Follow the glass.'] },   // the first burn ahead of the hull on the drive out (ARENA.road)
+  arena_road: { id: 'arena_road', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Let me clear a path for you.'] },   // the first burn ahead of the hull on the drive out (ARENA.road); the owner's words (2026-10-19, note 7b: "Isao voice : 'let me clear a path for you'")
   arena_drive: { id: 'arena_drive', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['Fine. I\'ll drive. Keep your eyes on the tremor.'] },   // the hull never came out: after ARENA.remindMax reminders he takes it there (2026-10-18)
   arena_open: { id: 'arena_open', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['There it goes. Small ones first.', 'Keep the hull moving and keep shooting. The gunship is on you.'] },
   arena_force: { id: 'arena_force', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave. That is the nest\'s mother. Too big for the shells, and it must never reach the base.', 'Bait is the only play, and I am the better driver. I take the hull. You take the gun.'] },

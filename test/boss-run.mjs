@@ -26,8 +26,9 @@ function host(o = {}) {
 // THE ORDER: Isao's arena_go is the sector's brief (sector-run's briefOf), its line is the owner's, and the run calls the job out and marks the tremor
 { assert.ok(BRIEFS.arena_go, 'the arena_go brief exists');
   assert.equal(BRIEFS.arena_go.face, 'focused');
-  assert.match(BRIEFS.arena_go.lines.join(' '), /investigate that tremor/i, 'it says what to do');
-  assert.match(BRIEFS.arena_go.lines.join(' '), /clear a way/i, 'and that Isao clears the way');
+  // the owner's words (2026-10-19, third round, note 7: "'other side of the planet, you must check it out.', 'seems big'")
+  assert.deepEqual(BRIEFS.arena_go.lines, ['Other side of the planet. You must check it out.', 'Seems big.'], 'it says what to do, in the owner\'s words');
+  assert.deepEqual(BRIEFS.arena_road.lines, ['Let me clear a path for you.'], 'and Isao clears the way as the first cut lands (note 7b)');
   assert.deepEqual(BRIEFS.arena_go.lines, [...ARENA_SECTOR.brief], 'the debrief\'s next-sector page reads the same order');
   assert.equal(BRIEFS.sector_boss, undefined, 'the old "nothing on the sensors" brief is gone');
   const h = host(), run = createBossRun(h);
@@ -81,7 +82,7 @@ function host(o = {}) {
   assert.equal(h.log.road.at(-1), 4, 'the next ask: the next rock on the same road');
   h.now += ARENA.road.burn + 0.1; run.tick(0.1);
   assert.equal(run.state().roadCuts, 1, 'a burn that left the rock standing is no cut');
-  tags[4] = 1; h.now = 2 * ARENA.road.every + 0.02; run.tick(0.1);
+  tags[4] = 1; tags[17] = 0; h.now = 2 * ARENA.road.every + 0.02; run.tick(0.1);   // 17: a rock beside the road (released at once were it open)
   assert.equal(h.log.road.at(-1), 17, 'the road open: the second version\'s shortcut and flank (roadNext)'); assert.equal(run.state().road.planned, false);
   h.now += ARENA.road.burn + 0.1; tags[17] = 1; run.tick(0.1);
   assert.equal(h.log.callouts.filter((x) => x === 'SOL CUTS THE ROAD').length, 1, 'the callout once only'); }
@@ -91,6 +92,38 @@ function host(o = {}) {
   const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: 0, to: 9 }), roadFar: (ci) => ci !== 2 }); h.story().arena.cell = 9;
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
   assert.deepEqual(h.log.road, [6], 'the near rock left to a later ask, the far one cut now'); }
+
+// THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "SOL should be destroying the paths much ahead, so that the path is already clear, should be
+// always 50m ahead of the tank clearing the path"): a chain 0..29 to the arena at 29 with planned rocks at 12, 13, 20 and 26, the chord from the hull |ci - hull|
+// cells. The first cut comes at once, on the nearest rock wherever it lies; after it nothing beyond ARENA.road.aheadMetres (5 cells) is asked for, the parked
+// hull's beam waits, and as the hull drives each rock is asked for the moment it comes into reach (not on the `every` cadence); the flank is held to it too
+{ const reach = ARENA.road.aheadMetres / 10; assert.equal(ARENA.road.aheadMetres, 50, 'fifty metres'); assert.equal(reach, 5, 'five cells of ten metres');
+  const adj = Array.from({ length: 32 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 29; i++) link(i, i + 1);
+  link(4, 30); link(18, 31);   // the flank's rocks: 30 beside the road's cell 4, 31 beside 18
+  const tags = new Int8Array(32).fill(1); for (const r of [12, 13, 20, 26, 30, 31]) tags[r] = 0;
+  let from = 0; const flank = [31, 30], at = (ci) => (ci === 30 ? 4 : ci === 31 ? 18 : ci);
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from, to: 29 }), roadFar: (ci) => Math.abs(at(ci) - from) >= 2, fromHull: (ci) => Math.abs(at(ci) - from), roadNext: (far) => flank.find((ci) => tags[ci] === 0 && far(ci)) ?? -1 });
+  h.story().arena.cell = 29;
+  const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(h.log.road, [12], 'the first cut at once: the nearest planned rock, 120 m out'); assert.ok(h.log.briefs.includes('arena_road'), 'Isao: let me clear a path');
+  tags[12] = 1; h.now = 0.3; run.tick(0.1);
+  assert.equal(run.state().roadCuts, 1, 'released as soon as the rock is gone, before ARENA.road.burn'); assert.equal(h.log.road.at(-1), -1);
+  const asked = () => h.log.road.filter((ci) => ci >= 0);
+  for (let k = 1; k <= 120; k++) { h.now = 0.3 + k * 0.25; run.tick(0.25); if (h.log.road.at(-1) >= 0) { tags[h.log.road.at(-1)] = 1; } }
+  assert.deepEqual(asked(), [12, 30], 'the hull parked at the base: only the flank\'s rock 40 m out; 13, 20 and the flank\'s 31 wait beyond the reach');
+  assert.ok(asked().slice(1).every((ci) => Math.abs(at(ci) - from) <= reach), 'nothing farther than the reach after the first cut');
+  from = 8; const t0 = h.now; h.now += 0.25; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 13, 'the hull 50 m from the next rock: asked for at the next look'); assert.ok(h.now - t0 < ARENA.road.every, 'not on the every cadence');
+  assert.equal(run.state().road.lead, 5, 'the beam 5 cells ahead of the hull');
+  tags[13] = 1; h.now += 0.25; run.tick(0.25);
+  for (let k = 0; k < 40; k++) { h.now += 0.25; run.tick(0.25); }
+  assert.ok(!asked().includes(20) && !asked().includes(31), 'parked at 8: 20 and the flank\'s 31 are not taken yet');
+  from = 15; h.now += 0.25; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 20, 'driven on: the next planned rock in reach'); tags[20] = 1; h.now += 0.25; run.tick(0.25);
+  for (let k = 0; k < 20; k++) { h.now += 0.25; run.tick(0.25); if (h.log.road.at(-1) >= 0) tags[h.log.road.at(-1)] = 1; }
+  assert.ok(asked().includes(31), 'the flank\'s rock once it is in reach');
+  assert.ok(!asked().includes(26), 'the last rock still beyond the reach');
+  assert.ok(run.state().road.leadMax <= reach, `the farthest ask after the first cut within the reach (${run.state().road.leadMax})`); }
 
 // ISAO TAKES THE HULL OUT (review of note 6, 2026-10-18): a hull that never comes gets ARENA.remindMax reminders, then Isao's arena_drive and the hull on the
 // lure directive (no quarry in the beacon: it drives the arena's field); he only starts it, nothing re-asserts it; the arrival still opens the hole
@@ -163,4 +196,4 @@ function host(o = {}) {
   assert.deepEqual([run.state().fear.frights, run.state().fear.stuns, run.state().fear.stunned], [1, 1, true]);
   run.end('secure'); assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'the run over: nothing heard'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line.');
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line.');

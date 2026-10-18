@@ -181,7 +181,9 @@ export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: 
   gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a boss',
   // THE MESSAGE (owner, 2026-10-18, note 6: "sector 9, it's not quite clear what we must do. We should message it better ... 'Go investigate that area, I'll clear a
   // way there'"): the sector's brief is Isao's order, `arena_go` (src/isaobriefs.js, src/fx/sector-run.js briefOf), and the debrief's next-sector page reads the same
-  brief: ['Something big is moving out there. Go and investigate that tremor. I\'ll clear a way.'] });
+  // THE OWNER'S WORDS (2026-10-19, third round, note 7: "sector 9, we need a voice by Isao to announce : 'other side of the planet, you must check it out.', 'seems
+  // big'"): the order is his two lines now; the callout INVESTIGATE THE TREMOR still names the job on screen (src/fx/boss-run.js)
+  brief: ['Other side of the planet. You must check it out.', 'Seems big.'] });
 export const BOSS_SECTOR = ARENA_SECTOR;   // the arc's boss row, by its old name
 
 // PAST BOTH WALLS the sectors are generated from it: its flags carry over, `new` is null. With `past` the sectors after BOTH WALLS
@@ -238,7 +240,11 @@ export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatC
   // cadence had cut it; 4 cut all three ahead of it); its cells `marks` ahead of the hull ringed every `markEvery` seconds
   // overhead 45 -> 3.5, the burn and a second (review of note 6, 2026-10-18): a road pass is a special pass, which the automated aim never takes, and the last one
   // laid on the drive out stayed overhead up to 45 s after the hole opened, so SOL never fired on the small Reeds; each ask lays its own pass anyway
-  road: freeze({ every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 4, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+  // aheadMetres: THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "SOL should be destroying the paths much ahead, so that the path is already clear,
+  // should be always 50m ahead of the tank clearing the path"): after the first cut (at once, the nearest rock on the planned road, wherever it lies) SOL only takes
+  // the cells within aheadMetres of the hull (METRES_PER_CELL, the chord), so the beam is seen working down the road in front of the hull as it drives instead
+  // of the whole road burned in the first ten seconds; a planned rock inside that reach is asked for the moment the beam is free, the flank on the `every` cadence
+  road: freeze({ aheadMetres: 50, every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 4, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)
