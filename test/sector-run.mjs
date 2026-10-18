@@ -387,9 +387,10 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   held = false; w.step(1);
   assert.equal(w.run.state().phase, 'secure', 'let go: secured');
 }
-// THE CLOCK HELD (2026-10-18, DAY 42: the party is a lull the sector may not end): while the host holds it, the sector's clock, its gates and its
-// releases stand, pulseGap reads Infinity so the board's own between-waves clock never arms, and no stall is counted; breathing() reads the
-// pulse's breath (the field under breath.at of the last pulse) and is false right after a release
+// THE CLOCK HELD (2026-10-18, DAY 42: the party is a lull the sector may not end): while the host holds it the sector's clock stands,
+// pulseGap reads Infinity so the board's own between-waves clock never arms, and no stall is counted (asserted here: the clock, pulseGap and
+// the stall; the gates and releases skipped with the tick body are not). breathing() reads the pulse's breath (the field under breath.at of
+// the last pulse) and is false right after a release
 {
   let held = false; const w = world({ clockHeld: () => held });
   w.step(0.5); assert.equal(w.run.state().phase, 'fighting');
@@ -402,5 +403,23 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(w.run.state().clock, c0, 'the clock stands while held'); assert.equal(w.run.pulseGap(), Infinity, 'no pulse arms while held');
   held = false; w.step(1); assert.ok(w.run.state().clock > c0, 'and runs again'); assert.equal(w.run.pulseGap(), SECTORS[0].pulse);
   assert.equal(w.run.state().phase, 'fighting', 'thirty held seconds were not a stall');
+}
+// breathing()'s two shapes (final review, 2026-10-18): a flow sector breathes with the lane under a quarter of its target (THE PRESS, no crowd
+// cap in node, no swell); a pulse sector at its own breath.at of the last pulse, not the 0.25 default
+{
+  const w = world({ firstSector: 4 }); w.step(0.5);
+  const def = w.run.defNow(); assert.equal(def.shape, 'flow'); assert.equal(w.run.state().phase, 'fighting');
+  const target = def.flow.alive, body = () => ({ alive: true, guard: null, breachSource: w.opened[0]?.obj ?? null });
+  w.enemies.push(...Array.from({ length: Math.round(target * 0.9) }, body));
+  assert.equal(w.run.breathing(), false, `the lane near its target (${w.enemies.length}/${target}): not a breath`);
+  for (const e of w.enemies.slice(Math.floor(target * 0.25) - 1)) e.alive = false;
+  assert.equal(w.run.breathing(), true, `under a quarter of the target (${w.enemies.filter((e) => e.alive).length}/${target}): a breath`);
+}
+{
+  const w = world(); w.step(0.5); w.run.defNow().breath = { at: 0.6, max: 60 };
+  const q = w.run.release(w.t); w.spawn(q); const n = w.enemies.length;
+  for (const e of w.enemies.slice(0, Math.floor(n * 0.5))) e.alive = false;   // half left: above 0.25, under 0.6
+  assert.equal(w.run.breathing(), true, `${n - Math.floor(n * 0.5)} of ${n} alive, at or under breath.at 0.6: a breath`);
+  w.run.defNow().breath = { at: 0.25, max: 60 }; assert.equal(w.run.breathing(), false, 'the same field over breath.at 0.25: not a breath');
 }
 console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');
