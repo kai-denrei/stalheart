@@ -16,6 +16,7 @@ import { guardExits } from '../domain/guard-aggro.js';
 import * as THREE from '../../vendor/three.module.js';
 import { BLOCKED, bfsDist } from '../dungeon.js';
 import { huntExits } from '../domain/hunters.js';
+import { groundPhase } from '../domain/boss-sector.js';
 import { tierKeyOf } from '../domain/tune.js';   /* the tune panel's per-tier knobs (2026-10-16) */
 import { sub3, add3, scale3, dot3, norm3, dist3, tangentBasis } from '../vec3.js';
 import { makeDebris, makeDotBurst, makeDotEnemy } from '../units.js';
@@ -324,7 +325,7 @@ export function createEnemyStep(host) {
         e.obj.userData.s0 = sv;
       }
       let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1) * (host.params.enemySpeed ?? 1) * (host.params.tune?.tier?.[e.tierKey]?.speed ?? 1);   // ENEMY SPEED x: the playtest knob over every walk, and the tune panel's per-tier walk (owner, 2026-10-16)
-      if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
+      if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S, e.flight ?? undefined); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
       if (e.bodyPace != null) pace *= e.bodyPace;   // a Pearl record waits for its body (round four, src/fx/creature-pearl.js paceOf: the body leads)
       // the slow READS for its full duration: the whole cloud tints ice —
@@ -377,6 +378,9 @@ export function createEnemyStep(host) {
       // `e.prog` is deliberate — the path is untouched, so when it recovers it
       // carries on from exactly where it was rather than restarting a cell.
       if (tNow < (e.stagUntil ?? -1)) pace = 0;
+      // THE MOTHER WALKS ON THE SINKHOLE (owner, 2026-10-18, note 8c; src/domain/boss-sector.js groundPhase): a record with a `ground` (THE ARENA's boss, src/fx/boss-run.js)
+      // stands on its cell, the crater's centre, while its lip offset eases away, then hunts
+      const ground = e.ground ? groundPhase(tNow - (e.groundAt ??= tNow), e.ground) : null; if (ground && !ground.walk) pace = 0; if (ground?.walk) { e.ground = null; e.emergeOff = null; }
       // cloaked (phantom): optical camo. A haze most of the time — the
       // cloud sits near-invisible — with a brief shimmer of presence every
       // ~6s. The radar shares the same decloak window: no window, no blip.
@@ -413,7 +417,7 @@ export function createEnemyStep(host) {
       // FROM THE LIP ONTO THE PATH (2026-10-15): a body rose at the crater's rim (emergeOff, EMERGENCE.rim); its record glides from there onto its
       // cell path over EMERGENCE.settle seconds, an offset that decays like the shove's, instead of snapping the moment the rise ends (the snap
       // left a Pearl body a leash behind its record, and the body was put back: the motion audit's pops)
-      if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
+      if (ground && e.emergeOff) e.pos = norm3(add3(e.pos, scale3(e.emergeOff, ground.off)));   /* the ground phase: from the lip to the centre, over the hole */ else if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
       // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
       // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
       // slides back into its own lane.

@@ -112,7 +112,7 @@ export function createGunshipRig(host) {
     select: (k) => selectGun(gunship, k, GUNSHIP_GUNS),
     step: (dt, held) => stepGun(gunship, dt, held, GUNSHIP_GUNS),
     fire: (g, p, travel) => fireRound(gunship, g, p, travel),
-    landed: () => stepRounds(gunship),
+    landed: () => { const out = stepRounds(gunship); for (const r of out) host.roundLanded?.(r.gun, r.point); return out; },   // THE ARENA hears every shell (2026-10-18, note 8c: "more scare of 40mm"; src/fx/boss-run.js landed)
     aim: aimOnSphere,
     splash: splashDamage,
     // the danger report's bodies: walls cached per pass, the rest live
@@ -123,7 +123,7 @@ export function createGunshipRig(host) {
       ...(host.isao() ? [{ kind: 'isao', pos: host.isao().obj.position.toArray() }] : []),
     ],
     danger: (p, r) => dangerReport(p, r, host.pilotHost().gunship.bodies()),
-    blast: (ci) => { if (ci >= 0) { executeStrike(ci, host.t(), 'gunship.nuke', GUNSHIP_GUNS.heavy.blastCells); host.story()?.nukes?.push(ci); } },   // the story counts them: its first hands over the tank
+    blast: (ci) => { if (ci >= 0) { host.roundLanded?.('heavy', host.graph().centers[ci]); executeStrike(ci, host.t(), 'gunship.nuke', GUNSHIP_GUNS.heavy.blastCells); host.story()?.nukes?.push(ci); } },   // the MK-9 heard before its blast: the stun takes a boss the blast leaves alive   // the story counts them: its first hands over the tank
     drop: { release: (from, to, up, vel) => !!drop?.release(from, to, up, vel), steer: (to) => drop?.steer(to) },
     vel: () => track ? scale3(track.heading, track.speed * host.cellSide()) : [0, 0, 0],
     explode: (use, p) => explode(use, p),

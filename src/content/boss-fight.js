@@ -18,6 +18,15 @@ export const BOSS_FIGHT = freeze({
   sol: { every: 8, aim: 1.5, burn: 6, dps: 10, radius: 8 },   // a strike every 8 s: the pointer, then a burn of 6 s (was 2); the footprint and dps are the fight's own
   fear: { reach: 8, bofors: 1.2, after: 0.8, flee: 20, cooldown: 1, weight: { sol: 2, bofors: 1 } },   // what frightens it (next-round spec, section 2): a landing within radius + reach of a foot frightens it 1.2 s, a SOL beam keeps it running until 0.8 s after; it flees 20 m, SOL twice a Bofors landing; a new fright disturbs the kit at most once a second
   hull: { radius: 4.2 },   // the tank's hull for the rings and the creature's capture
+  // THE ARENA'S NIH-DAIRIA IN THE GAME (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out. More aggro towards the tank, and more
+  // scare of 40mm. Gameplay = push her to a side 40mm, launch big nuke, time it."; src/fx/boss-run.js, the rules src/domain/boss-sector.js groundPhase and
+  // src/domain/boss-fear.js frightRecord / stunRecord). `ground`: out of the hole she walks from the lip onto the crater's floor over `cross` s and stands on the
+  // sinkhole `hold` s before the hunt. `pace`: her walk x the tier's 0.35 cells a second (was 1; 1.4 is about 4.9 m/s, under the hull's lure speed, so Isao still
+  // kites her): more aggro. `weight.bofors`: the lab's 40 mm fright (`fear.bofors` s, + `fear.after`) counts twice here (the lab's tank mode weighs it 1 against
+  // SOL's 2): 3.2 s of flight from a 40 mm landing within her radius + `fear.reach` m (+ the shell's blast) of her drawn point, at `flee` x her walk easing to
+  // `trail` (the generic scare's 2.4 and 1.3): about 35 m, the lab's 40 mm flight, so the 40 mm pushes her aside; a fright running is re-aimed at the newest
+  // shell and extended, never restarted. The MK-9 within its blast holds her still `nuke.stun` s (1.5, the lab's): the window to time the big one
+  arenaBoss: { ground: { cross: 4, hold: 2 }, pace: 1.4, weight: { bofors: 2 }, flee: 3, trail: 1.6 },
   bait: {                  // bait mode (2026-10-09-boss-bait-mode-design.md): Isao the drone flies on autopilot as the creature's prey, the player in the gunship
     health: 12,            // his hit points
     keep: 20,              // he keeps this far outside the creature's reach toward himself (the outermost body node, arms included, when the lab gives the nodes; else the floor contacts' front edge)

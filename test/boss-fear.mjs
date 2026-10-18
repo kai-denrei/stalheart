@@ -2,7 +2,8 @@
 // what landed within reach, a fright's flee point, renewals and the disturb cooldown, the stun and its overlap with a fright.
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
-import { makeFear, inReach, frighten, stun, fearNow, clearFear } from '../src/domain/boss-fear.js';
+import { makeFear, inReach, frighten, stun, fearNow, clearFear, frightRecord, stunRecord, arenaFrightSeconds } from '../src/domain/boss-fear.js';
+import { isScared, scarePace, awayExits } from '../src/domain/impact-scare.js';
 
 const EPS = 1e-9;
 const near = (a, b, msg) => assert.ok(Math.abs(a[0] - b[0]) < EPS && Math.abs(a[1] - b[1]) < EPS, `${msg}: ${a} vs ${b}`);
@@ -100,5 +101,28 @@ assert.ok(Object.isFrozen(T.fear) && Object.isFrozen(T.fear.weight), 'the fear b
   assert.equal(f.threats.size, 0); assert.equal(fearNow(f, 0.1, C, U, T).mode, 'hunt', 'cleared: hunting again');
   assert.equal(f.frights, 1); assert.equal(f.stuns, 1, 'the counts are the run\'s record, not cleared');
 }
+
+// THE ARENA'S FRIGHT (owner, 2026-10-18, note 8c: "more scare of 40mm. Gameplay = push her to a side 40mm, launch big nuke, time it"): the game's record
+// takes a 40 mm landing within reach as a flight away from the impact (the walk's scare fields), re-aimed and extended by the next, never restarted; the MK-9 stuns it
+{ const A = T.arenaBoss, secs = arenaFrightSeconds(T);
+  assert.ok(Math.abs(secs - (T.fear.bofors * A.weight.bofors + T.fear.after)) < 1e-9, `the fright lasts the lab's 40 mm fright x the arena's weight + after (${secs})`);
+  assert.ok(A.weight.bofors > T.fear.weight.bofors, 'the 40 mm weighs more in the arena than the lab\'s tank mode (more scare)');
+  const rec = { alive: true, pos: [0, 0, 1] }, at = [0, 0, 1];
+  assert.equal(frightRecord(rec, at, [0.5, 0, 1], 0.2, secs, 10, A), false, 'a landing out of reach does nothing');
+  assert.equal(rec.scareFrom, undefined);
+  assert.equal(frightRecord(rec, at, [0.1, 0, 1], 0.2, secs, 10, A), true, 'a landing within reach frightens');
+  assert.deepEqual(rec.scareFrom, [0.1, 0, 1], 'from the impact'); assert.equal(rec.scareAt, 10); assert.ok(isScared(rec, 10 + secs - 0.01) && !isScared(rec, 10 + secs + 0.01), 'for the fright\'s seconds');
+  assert.ok(scarePace(rec, 11, 0.12, rec.flight) > 2.4, `a faster flight than the generic scare's 2.4 (${scarePace(rec, 11, 0.12, rec.flight)})`);
+  // the flight leads away: of a cell's exits the ones farther from the impact (the walk's own rule, src/fx/enemy-step.js)
+  const centers = [[0, 0, 1], [0.2, 0, 1], [-0.2, 0, 1], [0, 0.2, 1]];
+  assert.deepEqual(awayExits([1, 2, 3], centers, 0, rec.scareFrom), [2, 3], 'pushed to the side away from the 40 mm');
+  // a second shell mid-flight: re-aimed at the newest impact, extended, the stumble not played again
+  assert.equal(frightRecord(rec, at, [-0.1, 0, 1], 0.2, secs, 12, A), true);
+  assert.deepEqual(rec.scareFrom, [-0.1, 0, 1], 're-aimed'); assert.equal(rec.scareAt, 10, 'not restarted'); assert.ok(Math.abs(rec.scareUntil - (12 + secs)) < 1e-9, 'extended to the newest end');
+  assert.ok(isScared(rec, 12 + secs - 0.01));
+  // the MK-9: held where it stands (the walk's stagger) for nuke.stun seconds
+  assert.equal(stunRecord(rec, at, [0.4, 0, 1], 0.2, T.nuke.stun, 20), false, 'an MK-9 out of its blast does not stun');
+  assert.equal(stunRecord(rec, at, [0.1, 0, 1], 0.2, T.nuke.stun, 20), true); assert.equal(rec.stagUntil, 20 + T.nuke.stun, 'stunned nuke.stun seconds');
+  stunRecord(rec, at, at, 0.2, 0.5, 20.1); assert.equal(rec.stagUntil, 20 + T.nuke.stun, 'a shorter stun never cuts a longer one'); }
 
 console.log('boss-fear.mjs: the reach, the flee point and weights, renewals, the disturb cooldown, the stun and its overlap, the reset');

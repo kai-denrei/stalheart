@@ -31,6 +31,10 @@ import { CREATURE_TIERS } from '../content/creature-enemies.js';
 import { ARENA } from '../content/sectors.js';
 import { groundAt } from './lance-follow.js';
 import { roadField, roadPath, roadRock } from '../domain/arena.js';
+import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
+import { isScared } from '../domain/impact-scare.js';
+import { BOSS_FIGHT } from '../content/boss-fight.js';
+import { GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../content/gunship.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
@@ -44,6 +48,7 @@ export function createBossRun(c) {
   let remindAt = 0, reminders = 0, remindDist = Infinity, drove = false;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind), how many fired, the hull's road distance then, Isao took the wheel (ARENA.remindMax)
   let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
+  let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
   const bossRecord = () => c.enemies.find((e) => e.alive && e.hunter && e.tier === (def?.boss?.boss?.tier ?? 'huge')) ?? null;
@@ -63,7 +68,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; frights = 0; stuns = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -123,6 +128,9 @@ export function createBossRun(c) {
       if (c.pilotMode() && c.storyViews()?.now?.() !== 'gunship') c.leavePilot();
       retryAt = -9;
     }
+    // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss): the first frame she is seen, her record walks onto the sinkhole before the hunt
+    // (`ground`, src/fx/enemy-step.js) and takes the guns by her own rule (`ownFear`: the generic impact scare leaves her alone; landed() below)
+    { const b = bossRecord(); if (b && !b.ownFear) { b.ownFear = true; b.ground = { ...BOSS_FIGHT.arenaBoss.ground }; } }
     if (phase === 'boss') {
       // ISAO KEEPS THE WHEEL: a seat's entry and any drive input put the hull back on manual (src/fx/hull-drive.js, src/platform/tank-input.js);
       // while the boss is up the hull is his, so the autopilot is re-asserted every frame
@@ -147,6 +155,18 @@ export function createBossRun(c) {
   function isaoDrives() {
     drove = true; c.showBrief('arena_drive'); c.speak('arena_drive');
     c.params().directive = 'lure'; c.setAutoMode(true);
+  }
+  // A SHELL LANDED (src/fx/gunship-rig.js, the seat's and the autopilot's alike; owner, 2026-10-18, note 8c: "more scare of 40mm. Gameplay = push her to a side
+  // 40mm, launch big nuke, time it"): a 40 mm within her radius + BOSS_FIGHT.fear.reach m (+ the shell's blast) of her drawn point frightens her away from it
+  // (src/domain/boss-fear.js frightRecord, arenaFrightSeconds), an MK-9 within its blast holds her still BOSS_FIGHT.nuke.stun s (stunRecord)
+  function landed(gun, point) {
+    const b = on ? bossRecord() : null;
+    if (!b || !point || (gun !== 'bofors' && gun !== 'heavy') || (gun === 'bofors' && b.ground)) return false;   // on the sinkhole (the ground phase) she stands: no flight off it
+    const at = groundAt(b), m = GUNSHIP_PLATFORM.metresPerCell, r0 = CREATURE_TIERS[def.boss.family]?.[def.boss.boss.tier]?.r0 ?? 20, g = GUNSHIP_GUNS[gun];
+    const reach = ((r0 + BOSS_FIGHT.fear.reach) / m + (g?.blastCells ?? 0)) * c.cellSide();
+    const took = gun === 'bofors' ? frightRecord(b, at, point, reach, arenaFrightSeconds(BOSS_FIGHT), c.t(), BOSS_FIGHT.arenaBoss) : stunRecord(b, at, point, (g?.blastCells ?? 0) * c.cellSide() + r0 / m * c.cellSide(), BOSS_FIGHT.nuke.stun, c.t());
+    if (took) { if (gun === 'bofors') frights++; else stuns++; }
+    return took;
   }
   function end(outcome) {
     if (!on) return;
@@ -174,6 +194,7 @@ export function createBossRun(c) {
     const q = phase === 'beacon' ? null : (bossRecord() ?? nearestHunter());   // the drive out (isaoDrives): no quarry, the arena's field
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
-  return { begin, tick, end, rows, lure, arenaDue, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells() }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+  const fearState = () => { const b = bossRecord(); return { frights, stuns, scared: !!b && isScared(b, c.t()), stunned: !!b && c.t() < (b.stagUntil ?? -1), ground: b?.ground ? 'ground' : b ? 'hunt' : null }; };
+  return { begin, tick, end, rows, lure, arenaDue, landed, force: () => { dueNow = true; }, on: () => on,
+    state: () => ({ on, phase, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells() }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

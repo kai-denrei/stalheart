@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createBossRun } from '../src/fx/boss-run.js';
 import { ARENA, ARENA_SECTOR } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
+import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 
 function host(o = {}) {
   const log = { briefs: [], callouts: [], tremor: [], road: [], over: [] };
@@ -141,5 +142,25 @@ function host(o = {}) {
   h2.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h2.now = 2; run2.tick(0.1);
   for (let k = 1; k <= ARENA.seatWait + 1; k++) { h2.now = 2 + k; run2.tick(0.1); }
   assert.equal(clicks2[0], 2 + ARENA.seatWait, 'a panel that never frees: the seat at seatWait'); }
+
+// THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out ... more scare of 40mm. Gameplay = push her to a
+// side 40mm, launch big nuke, time it"): seen, she is given the ground phase and her own fear; a 40 mm near her frightens her (not while she stands on the
+// sinkhole), one far off does not, the 25 mm does not, the MK-9 stuns her
+{ const h = host({ enemies: [] }), run = createBossRun(h);
+  run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1);
+  assert.equal(b.ownFear, true, 'the generic impact scare leaves her alone');
+  assert.deepEqual(b.ground, BOSS_FIGHT.arenaBoss.ground, 'she walks onto the sinkhole first');
+  assert.equal(run.state().fear.ground, 'ground');
+  assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'on the sinkhole she stands: no flight off it');
+  b.ground = null;
+  assert.equal(run.landed('rotary', [0.01, 0, 1]), false, 'the 25 mm does not push her');
+  assert.equal(run.landed('bofors', [0.3, 0, 1]), false, 'a 40 mm far off does not either');
+  assert.equal(run.landed('bofors', [0.03, 0, 1]), true, 'a 40 mm within her radius + reach + the blast frightens her');
+  assert.deepEqual(b.scareFrom, [0.03, 0, 1], 'away from the shell'); assert.equal(b.flight.flee, BOSS_FIGHT.arenaBoss.flee);
+  assert.equal(run.state().fear.scared, true);
+  assert.equal(run.landed('heavy', [0.02, 0, 1]), true, 'the MK-9 in its blast'); assert.equal(b.stagUntil, h.now + BOSS_FIGHT.nuke.stun, 'holds her still nuke.stun seconds');
+  assert.deepEqual([run.state().fear.frights, run.state().fear.stuns, run.state().fear.stunned], [1, 1, true]);
+  run.end('secure'); assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'the run over: nothing heard'); }
 
 console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line.');

@@ -93,6 +93,29 @@ export function scare(fear, gun, at, now, tune) {
   return { level, fresh: !live, escalated: live && !keep && RANK[level] > RANK[f.level], disturb };
 }
 
+// THE ARENA'S FRIGHT IN THE GAME (owner, 2026-10-18, note 8c: "more scare of 40mm. Gameplay = push her to a side 40mm, launch big nuke, time it"): the game's
+// boss is a record walking the cell graph (src/fx/enemy-step.js), so the fright is written into the walk's own scare fields (src/domain/impact-scare.js:
+// `scareFrom`, `scareAt`, `scareUntil`, `scareSeconds`; the walk turns from `scareFrom` and takes exits leading away) with its own flight (`flight`: { flee,
+// trail }, the pace the walk reads). A landing at `impact` within `reach` of the body's point `at` (unit-sphere arrays, the caller's units) frightens it for
+// `seconds`; one running is re-aimed at the newest impact and extended to the later end, its stumble not played again. -> whether it took
+export function frightRecord(rec, at, impact, reach, seconds, now, arena = {}) {
+  if (!rec || !at || !impact || Math.hypot(at[0] - impact[0], at[1] - impact[1], at[2] - impact[2]) > reach) return false;
+  const live = !!rec.scareFrom && rec.scareAt != null && now < rec.scareUntil;
+  rec.scareFrom = [impact[0], impact[1], impact[2]];
+  rec.flight = { flee: arena.flee ?? 2.4, trail: arena.trail ?? 1.3 };
+  if (live) { rec.scareUntil = Math.max(rec.scareUntil, now + seconds); rec.scareSeconds = rec.scareUntil - rec.scareAt; }
+  else { rec.scareAt = now; rec.scareUntil = now + seconds; rec.scareSeconds = seconds; }
+  return true;
+}
+// the MK-9 landing within `reach`: the record held where it stands (the walk's stagger, `stagUntil`) `seconds`; a shorter stun never cuts a longer one
+export function stunRecord(rec, at, impact, reach, seconds, now) {
+  if (!rec || !at || !impact || Math.hypot(at[0] - impact[0], at[1] - impact[1], at[2] - impact[2]) > reach) return false;
+  rec.stagUntil = Math.max(rec.stagUntil ?? -Infinity, now + seconds);
+  return true;
+}
+// the arena's 40 mm fright in seconds: the lab's (`fear.bofors` + `fear.after`) with the arena's weight on the shell (`arenaBoss.weight.bofors`)
+export const arenaFrightSeconds = (tune) => tune.fear.bofors * (tune.arenaBoss?.weight?.bofors ?? tune.fear.weight.bofors) + tune.fear.after;
+
 // What the creature does now in the bait mode: 'stun', 'flee' (the flight's point `flee` metres from the centre `c` straight away from its impact; on the
 // impact itself away from the bait, -`u`) or 'hunt'. `flight` is the running flight ({ level, flee, speed, erratic, at, since, until }) or null.
 export function flightNow(fear, now, c, u) {

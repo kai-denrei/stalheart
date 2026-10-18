@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { bossWaves, phaseScale, bossAlive, bossLeft } from '../src/domain/boss-sector.js';
+import { bossWaves, phaseScale, bossAlive, bossLeft, groundPhase } from '../src/domain/boss-sector.js';
 import { BOSS_SECTOR } from '../src/content/sectors.js';
 import { CUTIS_HITS } from '../src/content/cutis-maku.js';
 
@@ -28,4 +28,11 @@ assert.equal(bossLeft([{ alive: false, hunter: true, tier: 'huge' }, { alive: tr
 assert.equal(bossLeft([], [{ hunter: true, tier: 'huge' }, { hunter: true, tier: 'small' }]), 1, 'the mother still queued at the breach: one');
 assert.equal(bossLeft(null, null), 0);
 assert.equal(bossLeft([{ alive: true, hunter: true, tier: 'big' }], [], 'big'), 1, 'another tier as the boss');
+// THE GROUND (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out"): from the lip onto the crater's floor over `cross`, then `hold` on it, then the hunt
+{ const G = { cross: 4, hold: 2 };
+  assert.deepEqual(groundPhase(0, G), { phase: 'cross', off: 1, walk: false }, 'out of the hole: at the lip, not walking');
+  assert.deepEqual(groundPhase(2, G), { phase: 'cross', off: 0.5, walk: false }, 'half way to the crater\'s centre');
+  assert.deepEqual(groundPhase(5, G), { phase: 'ground', off: 0, walk: false }, 'standing on the sinkhole');
+  assert.deepEqual(groundPhase(6, G), { phase: 'hunt', off: 0, walk: true }, 'then the hunt');
+  assert.deepEqual(groundPhase(0, { cross: 0, hold: 0 }), { phase: 'hunt', off: 0, walk: true }, 'no ground: the hunt at once'); }
 console.log('Boss sector: the wave and the boss as hunter plans, the phase scale (the reach full, rest half, the transfer none), the count alive.');

@@ -7,6 +7,8 @@
 //                                  full, REST and SETTLE half, TRANSFER none); 1 for a body with no phase
 //   bossAlive(enemies)             { wave, boss, tiers }: the live hunters of the waves' tiers (together, and by tier) and of the boss's
 //   bossLeft(enemies, queue, tier) the boss's records alive and its entries still queued: THE ARENA is held once none is left (2026-10-18, note 10)
+//   groundPhase(age, ground)       the boss out of the hole `age` s: 'cross' (from the lip onto the crater's floor, `off` the lip offset left), 'ground' (standing
+//                                  on it), then 'hunt' (`walk` true); `ground` { cross, hold } seconds (2026-10-18, note 8c)
 export function bossWaves(row, { tierSpec }) {
   const b = row?.boss;
   if (!b) return [[], []];
@@ -31,6 +33,14 @@ export function bossLeft(enemies, queue, bossTier = 'huge') {
   for (const e of enemies ?? []) if (e?.alive && e.hunter && e.tier === bossTier) n++;
   for (const q of queue ?? []) if (q?.hunter && q.tier === bossTier) n++;
   return n;
+}
+
+// THE MOTHER WALKS ON THE SINKHOLE (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out"): every body comes up at the lip and
+// is never drawn over the hole (EMERGENCE); the boss's record instead eases from the lip to the crater's centre and stands there before the hunt
+export function groundPhase(age, { cross = 0, hold = 0 } = {}) {
+  if (age < cross) return { phase: 'cross', off: 1 - age / cross, walk: false };
+  if (age < cross + hold) return { phase: 'ground', off: 0, walk: false };
+  return { phase: 'hunt', off: 0, walk: true };
 }
 
 export function bossAlive(enemies, { waveTier = 'small', waveTiers = null, bossTier = 'huge' } = {}) {
