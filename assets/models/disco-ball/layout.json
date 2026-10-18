@@ -1,0 +1,468 @@
+{
+  "schema": "stalheart-disco/diorama-v1",
+  "family": "stalheart_disco_diorama",
+  "label": "Stålheart / Celebration Disco Gantry Diorama",
+  "status": "diorama_candidate_pending_game_review",
+  "derived_composition": true,
+  "plain_glb_source_of_truth": true,
+  "credit": "Models by jelaludo",
+  "units": "meters",
+  "up": "+Y",
+  "forward": "+Z",
+  "plot_m": [
+    48,
+    56
+  ],
+  "source_of_truth": "Canonical plain GLBs in assets/terraformer/ and assets/disco-ball/; this diorama composes them by reference without mutating or duplicating source binaries.",
+  "attachment": {
+    "parent_module": "terraformer_3000",
+    "parent_node": "EXTRUSION_TIP",
+    "child_module": "disco_ball",
+    "child_socket": "SOCKET_GANTRY_HOOK",
+    "child_socket_local_m": [
+      0,
+      6.2,
+      0
+    ],
+    "rest_hook_world_m": [
+      0.0528,
+      11.6288,
+      2.6
+    ],
+    "rest_ball_center_world_m": [
+      0.0528,
+      8.4288,
+      2.6
+    ],
+    "hidden_child_nodes": [
+      "STANDALONE_CRADLE"
+    ]
+  },
+  "guests": {
+    "mork": {
+      "position": [
+        -6.2,
+        0.31,
+        -4.2
+      ],
+      "yaw": 0.42,
+      "role": "optional_scale_and_celebration_guest"
+    },
+    "isao": {
+      "position": [
+        5.6,
+        0,
+        -3.2
+      ],
+      "yaw": -0.6,
+      "role": "optional_scale_and_celebration_guest"
+    }
+  },
+  "runtime": {
+    "adapter": "runtime.js",
+    "demonstration": {
+      "name": "Stalheart_Celebration_Cycle",
+      "duration_s": 16,
+      "loop": true
+    },
+    "lod_selection": {
+      "initial": 2,
+      "approach_distance_m": 150,
+      "hysteresis_m": 20
+    }
+  },
+  "tiers": [
+    {
+      "lod": 0,
+      "quality": "detailed",
+      "static": false,
+      "files": {
+        "stalheart_plain": "../terraformer/terraformer_3000_d0.glb",
+        "stalheart_meshopt": "../terraformer/terraformer_3000_d0.glb",
+        "disco_plain": "../disco-ball/lod0/disco_ball_d0_lod0.glb",
+        "disco_meshopt": "../disco-ball/derived/meshopt/lod0/disco_ball_d0_lod0.meshopt.glb",
+        "mork_guest": "../hover-tank/mork_hover_tank_low_d0.glb",
+        "isao_guest": "../isao-birudoron/isao_birudoron_lod1.glb"
+      },
+      "core_diorama": {
+        "triangles": 170788,
+        "exported_triangles": 171280,
+        "draw_calls": 789,
+        "exported_draw_calls": 790,
+        "plain_bytes": 11732328,
+        "meshopt_bytes": 11293580,
+        "stalheart_triangles": 165404,
+        "stalheart_draws": 782,
+        "disco_active_triangles": 5384,
+        "disco_active_draws": 7
+      },
+      "with_guests": {
+        "triangles": 194794,
+        "draw_calls": 907,
+        "plain_bytes": 13762352
+      }
+    },
+    {
+      "lod": 1,
+      "quality": "game",
+      "static": false,
+      "files": {
+        "stalheart_plain": "../terraformer/terraformer_3000_d0_lod1.glb",
+        "stalheart_meshopt": "../terraformer/terraformer_3000_d0_lod1.meshopt.glb",
+        "disco_plain": "../disco-ball/lod1/disco_ball_d0_lod1.glb",
+        "disco_meshopt": "../disco-ball/derived/meshopt/lod1/disco_ball_d0_lod1.meshopt.glb",
+        "mork_guest": "../hover-tank/mork_hover_tank_low_d0.glb",
+        "isao_guest": "../isao-birudoron/isao_birudoron_lod1.glb"
+      },
+      "core_diorama": {
+        "triangles": 10222,
+        "exported_triangles": 10586,
+        "draw_calls": 17,
+        "exported_draw_calls": 18,
+        "plain_bytes": 690940,
+        "meshopt_bytes": 213924,
+        "stalheart_triangles": 7342,
+        "stalheart_draws": 10,
+        "disco_active_triangles": 2880,
+        "disco_active_draws": 7
+      },
+      "with_guests": {
+        "triangles": 34228,
+        "draw_calls": 135,
+        "plain_bytes": 2720964
+      }
+    },
+    {
+      "lod": 2,
+      "quality": "distance",
+      "static": true,
+      "files": {
+        "stalheart_plain": "../terraformer/terraformer_3000_d0_lod2.glb",
+        "stalheart_meshopt": "../terraformer/terraformer_3000_d0_lod2.meshopt.glb",
+        "disco_plain": "../disco-ball/lod2/disco_ball_d0_lod2.glb",
+        "disco_meshopt": "../disco-ball/derived/meshopt/lod2/disco_ball_d0_lod2.meshopt.glb",
+        "mork_guest": "../hover-tank/mork_hover_tank_d0_lod2.glb",
+        "isao_guest": "../isao-birudoron/isao_birudoron_lod2.glb"
+      },
+      "core_diorama": {
+        "triangles": 4417,
+        "exported_triangles": 4417,
+        "draw_calls": 2,
+        "exported_draw_calls": 2,
+        "plain_bytes": 322812,
+        "meshopt_bytes": 103292,
+        "stalheart_triangles": 2173,
+        "stalheart_draws": 1,
+        "disco_active_triangles": 2244,
+        "disco_active_draws": 1
+      },
+      "with_guests": {
+        "triangles": 7923,
+        "draw_calls": 4,
+        "plain_bytes": 722636
+      }
+    }
+  ],
+  "reference_files": {
+    "../terraformer/terraformer_3000_d0.glb": {
+      "bytes": 11086528,
+      "sha256": "72ec3c06fcfdce3e6a4be87db0437de062158413eeb299da56a1abb36f42744e",
+      "triangles": 165404,
+      "draw_calls": 782,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -21.043,
+          0,
+          -25.3
+        ],
+        "max": [
+          21.043,
+          35.96,
+          25.3
+        ]
+      }
+    },
+    "../disco-ball/lod0/disco_ball_d0_lod0.glb": {
+      "bytes": 645800,
+      "sha256": "536575b955fac81232fdd8200cb7790c1394d75645f7b05cf85595aae848034f",
+      "triangles": 5876,
+      "draw_calls": 8,
+      "cradle_triangles": 492,
+      "cradle_draws": 1,
+      "bounds": {
+        "min": [
+          -4.9482,
+          0,
+          -4.9599
+        ],
+        "max": [
+          4.9482,
+          6.31,
+          4.9599
+        ]
+      }
+    },
+    "../disco-ball/derived/meshopt/lod0/disco_ball_d0_lod0.meshopt.glb": {
+      "bytes": 207052,
+      "sha256": "371785c16238c957a9127397a85476a864d25b1d1742816577f03b856b67c0b0",
+      "triangles": 5876,
+      "draw_calls": 8,
+      "cradle_triangles": 492,
+      "cradle_draws": 1,
+      "bounds": {
+        "min": [
+          -4.9482,
+          0,
+          -4.9599
+        ],
+        "max": [
+          4.9482,
+          6.31,
+          4.9599
+        ]
+      }
+    },
+    "../hover-tank/mork_hover_tank_low_d0.glb": {
+      "bytes": 459080,
+      "sha256": "213fc574e953bb71ca87f7fb86c511280b552646407da4d173d39689ad6d300c",
+      "triangles": 6742,
+      "draw_calls": 69,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -2.9092,
+          0.0054,
+          -4.6262
+        ],
+        "max": [
+          2.9099,
+          3.016,
+          8.6411
+        ]
+      }
+    },
+    "../isao-birudoron/isao_birudoron_lod1.glb": {
+      "bytes": 1570944,
+      "sha256": "2e9a389a4729f625fa9a7fd018bad8b78db86ac3254ebdcff9df230fba344088",
+      "triangles": 17264,
+      "draw_calls": 49,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -1.0226,
+          0,
+          -0.7812
+        ],
+        "max": [
+          1.0352,
+          1.665,
+          0.7905
+        ]
+      }
+    },
+    "../terraformer/terraformer_3000_d0_lod1.glb": {
+      "bytes": 329364,
+      "sha256": "4886dd497382b50c39cc7455906fcc92e5ef22e0d2fef5907a0372ff2e6410ee",
+      "triangles": 7342,
+      "draw_calls": 10,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.2927
+        ],
+        "max": [
+          21.0416,
+          35.96,
+          25.3
+        ]
+      }
+    },
+    "../terraformer/terraformer_3000_d0_lod1.meshopt.glb": {
+      "bytes": 91772,
+      "sha256": "5e39a3d1aec1dd883d693b7207ceb8fb0a1e099101efea514fb566da01499af3",
+      "triangles": 7342,
+      "draw_calls": 10,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.2927
+        ],
+        "max": [
+          21.0416,
+          35.96,
+          25.3
+        ]
+      }
+    },
+    "../disco-ball/lod1/disco_ball_d0_lod1.glb": {
+      "bytes": 361576,
+      "sha256": "d24a0d50377f187bf72c11e68846ad0ebf988db51cca7e27917e40fd30d68526",
+      "triangles": 3244,
+      "draw_calls": 8,
+      "cradle_triangles": 364,
+      "cradle_draws": 1,
+      "bounds": {
+        "min": [
+          -4.9278,
+          0,
+          -4.9599
+        ],
+        "max": [
+          4.9278,
+          6.31,
+          4.9599
+        ]
+      }
+    },
+    "../disco-ball/derived/meshopt/lod1/disco_ball_d0_lod1.meshopt.glb": {
+      "bytes": 122152,
+      "sha256": "001b286774705396a3ec68b3c795cbcdd986455b916a55124917fdbdb48c6fef",
+      "triangles": 3244,
+      "draw_calls": 8,
+      "cradle_triangles": 364,
+      "cradle_draws": 1,
+      "bounds": {
+        "min": [
+          -4.9278,
+          0,
+          -4.9599
+        ],
+        "max": [
+          4.9278,
+          6.31,
+          4.9599
+        ]
+      }
+    },
+    "../terraformer/terraformer_3000_d0_lod2.glb": {
+      "bytes": 75836,
+      "sha256": "311820b3b58c53e920b8d6e6699a6fa088c2da279f10b23aa3376293e40f648c",
+      "triangles": 2173,
+      "draw_calls": 1,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.2927
+        ],
+        "max": [
+          21.0418,
+          35.96,
+          25.2927
+        ]
+      }
+    },
+    "../terraformer/terraformer_3000_d0_lod2.meshopt.glb": {
+      "bytes": 26420,
+      "sha256": "e0c1ec32dd6ec96ad41d67a1e3828fa73c15ec2b3b4a6cd539f7c4eccdc620f5",
+      "triangles": 2173,
+      "draw_calls": 1,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.2927
+        ],
+        "max": [
+          21.0418,
+          35.96,
+          25.2927
+        ]
+      }
+    },
+    "../disco-ball/lod2/disco_ball_d0_lod2.glb": {
+      "bytes": 246976,
+      "sha256": "d37bf2c4ff1da5e19dfb2264a91a3191b5a3a50029b5154cf8fb2834fcca7086",
+      "triangles": 2244,
+      "draw_calls": 1,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -2.95,
+          0,
+          -2.95
+        ],
+        "max": [
+          2.95,
+          6.31,
+          2.95
+        ]
+      }
+    },
+    "../disco-ball/derived/meshopt/lod2/disco_ball_d0_lod2.meshopt.glb": {
+      "bytes": 76872,
+      "sha256": "a4ab35dc687cd84b775cdc9f8311c7543b948c1508f9b3c22a395297b9d8be4f",
+      "triangles": 2244,
+      "draw_calls": 1,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -2.95,
+          0,
+          -2.95
+        ],
+        "max": [
+          2.95,
+          6.31,
+          2.95
+        ]
+      }
+    },
+    "../hover-tank/mork_hover_tank_d0_lod2.glb": {
+      "bytes": 222796,
+      "sha256": "24795982205a78acd53cfa716303e89ea874b063c16779713a28eeda00498935",
+      "triangles": 1706,
+      "draw_calls": 1,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -2.9092,
+          0.0197,
+          -4.6262
+        ],
+        "max": [
+          2.9099,
+          2.8383,
+          8.6411
+        ]
+      }
+    },
+    "../isao-birudoron/isao_birudoron_lod2.glb": {
+      "bytes": 177028,
+      "sha256": "f486b8f3e267bb8a6c333cf629872178a3c70e2a8517aa3ebb8c6081376f9baf",
+      "triangles": 1800,
+      "draw_calls": 1,
+      "cradle_triangles": 0,
+      "cradle_draws": 0,
+      "bounds": {
+        "min": [
+          -0.879,
+          0,
+          -0.6328
+        ],
+        "max": [
+          0.879,
+          1.665,
+          0.6328
+        ]
+      }
+    }
+  }
+}

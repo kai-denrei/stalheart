@@ -16,7 +16,7 @@
 // upgraded tower is never gated -- it only bites when several towers of
 // the same kind fire together, which is exactly the pile-up worth culling.
 
-export const BUSES = ['towers', 'tank', 'enemies', 'ui', 'voice', 'ambient'];   // voice: Isao's recorded lines (src/fx/isao-voice.js)
+export const BUSES = ['towers', 'tank', 'enemies', 'ui', 'voice', 'ambient', 'music'];   // voice: Isao's recorded lines (src/fx/isao-voice.js); music: DAY 42's track (src/fx/disco-party.js)
 
 const A = 'assets/audio';
 
@@ -103,6 +103,9 @@ export const SOUNDS = {
   enemy_die_a: { file: `${A}/enemy_die_a.mp3`, bus: 'enemies', gain: 0.60, maxVoices: 3, minInterval: 0.04, rateJitter: 0.12 },
   enemy_die_b: { file: `${A}/enemy_die_b.mp3`, bus: 'enemies', gain: 0.60, maxVoices: 3, minInterval: 0.04, rateJitter: 0.12 },
   enemy_die_c: { file: `${A}/enemy_die_c.mp3`, bus: 'enemies', gain: 0.60, maxVoices: 3, minInterval: 0.04, rateJitter: 0.12 },
+  // --- music ---------------------------------------------------------------
+  // DAY 42 (owner, 2026-10-18): the 44 s retro synth-wave track, played through the loop handle so the party can stop it (before the loop point)
+  day_42_music: { file: `${A}/day_42_music.mp3`, bus: 'music', gain: 0.8, maxVoices: 1, minInterval: 10, rateJitter: 0 },
 };
 
 export const DEATH_KEYS = ['enemy_die_a', 'enemy_die_b', 'enemy_die_c'];
@@ -117,7 +120,7 @@ export const DISTANCE_K = 0.9;
 
 // bus defaults; overridden by whatever the player last left in the mixer
 // voice at full (owner, 2026-10-04: "Isao voice is too low compared to ambient sound"): his lines sat on ui at 0.4
-export const DEFAULT_LEVELS = { master: 0.7, towers: 0.5, tank: 0.8, enemies: 0.6, ui: 0.4, voice: 1, ambient: 0.5 };   // ambient: the gust in the quiet (src/fx/ambient-gust.js)
+export const DEFAULT_LEVELS = { master: 0.7, towers: 0.5, tank: 0.8, enemies: 0.6, ui: 0.4, voice: 1, ambient: 0.5, music: 0.8 };   // ambient: the gust in the quiet (src/fx/ambient-gust.js); music: DAY 42's track
 
 // Cue identities are per Sentry; shared sample files do not couple their tuning.
 SOUNDS.sentry_rotor = { ...SOUNDS.minigun_fire };

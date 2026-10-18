@@ -1,0 +1,36 @@
+{
+  "source": "https://jelaludo.github.io/SentryTowers_A6/stalheart-disco/",
+  "credit": "Models by jelaludo (the owner's own)",
+  "fetchedAt": "2026-10-18T08:42:44.552Z",
+  "files": {
+    "disco_ball_d0_lod1.glb": {
+      "url": "https://jelaludo.github.io/SentryTowers_A6/assets/disco-ball/lod1/disco_ball_d0_lod1.glb",
+      "bytes": 361576,
+      "sha256": "d24a0d50377f187bf72c11e68846ad0ebf988db51cca7e27917e40fd30d68526",
+      "nodes": [
+        "DISCO_BALL_ROOT",
+        "DISCO_PENDULUM_PIVOT",
+        "DISCO_SPHERE_SPIN",
+        "LIGHT_HALO_YAW",
+        "LASER_RING_YAW",
+        "STANDALONE_CRADLE"
+      ],
+      "meshes": 8
+    },
+    "runtime-upstream.js": {
+      "url": "https://jelaludo.github.io/SentryTowers_A6/assets/stalheart-disco/runtime.js",
+      "bytes": 2811,
+      "sha256": "9afe842ffd0e8ad68b96ca864950e367ff494ea5a0ba8d36e98572684bc93b09"
+    },
+    "layout.json": {
+      "url": "https://jelaludo.github.io/SentryTowers_A6/assets/stalheart-disco/layout.json",
+      "bytes": 11610,
+      "sha256": "c0cc671d199908b44c4000a7495a7bb38459bb791c83b0145fe2930c0492cf97"
+    },
+    "README-upstream.md": {
+      "url": "https://jelaludo.github.io/SentryTowers_A6/assets/stalheart-disco/README.md",
+      "bytes": 3329,
+      "sha256": "ccf83c8056404d7e2434dd77d5fa8cfbce277ec4995504e0071b20df6305901b"
+    }
+  }
+}
