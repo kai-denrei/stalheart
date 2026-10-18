@@ -36,15 +36,24 @@ const ROWS = [
 // where the core is pale (green, purple, brown: their cores mixed in would whiten the skin, the opposite of the note). The soft tiers are untouched: .65 and
 // white glints. Black's glints are its red in full (enemyspec's RULE: a dark alarm body may not highlight in white). test/pearl-enemies.mjs: every cored
 // membrane under every soft one, every cored tint share above zero.
+// DRAWN OVER THE SOFT ONES (owner, 2026-10-18, round three, note 4: "at least wave 5/sector 5 and the cargo nests still have the purple enemies with
+// outside bodies looking really white"). Measured first (.superpowers/sdd/r3-a-before-*.png, daylight): close up the purple membrane is purple, but in
+// sector 5's last waves the purple pearls sat inside the yellow ghosts' glossy skins, and at the nests among the white amoeba. Every membrane is drawn
+// without depth at the kit's one render order, so the pools draw in the order they were made: the purple pool is made at the load (the nests' barbed
+// guards) and every soft pool made after it painted its pale, white-glinting skin over the purple bodies, in front of them or not. `order` is the
+// membranes' render order: the cored tiers' after the soft tiers' (the kit's 2), so a warning body is never painted over by a harmless one (the pearls are
+// drawn before both and write depth, as before). And purple and brown keep enemyspec's dark-body rule like black: their glints, the rim with them
+// (src/fx/cutis-maku/shaders.js: specular, window and rim all take uGlint), are their tint in full, not 40 % white; their skin 60 % of the way to it
+// (was 40 %); their membrane .45 (r2-c's .4 read faint in a crowd; its report named .45 as the first knob, under the owner's .5 of 2026-10-16).
 export const PEARL_MEMBRANE = freeze({
-  white: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0 },
-  yellow: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0 },
-  blue: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0 },
-  orange: { opacity: 0.26, tint: 0x853b20, share: 0.4, glint: 0.6 },
-  green: { opacity: 0.26, tint: 0x3fbf5a, share: 0.4, glint: 0.6 },
-  purple: { opacity: 0.4, tint: 0xb44bff, share: 0.4, glint: 0.6 },
-  brown: { opacity: 0.4, tint: 0x8a5a2b, share: 0.4, glint: 0.6 },
-  black: { opacity: 0.4, tint: 0xff0000, share: 0.3, glint: 1 },
+  white: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
+  yellow: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
+  blue: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
+  orange: { opacity: 0.26, tint: 0x853b20, share: 0.4, glint: 0.6, order: 3 },
+  green: { opacity: 0.26, tint: 0x3fbf5a, share: 0.4, glint: 0.6, order: 3 },
+  purple: { opacity: 0.45, tint: 0xb44bff, share: 0.6, glint: 1, order: 3 },   // was .4, .4, .6 (2026-10-18, round three)
+  brown: { opacity: 0.45, tint: 0x8a5a2b, share: 0.6, glint: 1, order: 3 },   // was .4, .4, .6 (2026-10-18, round three)
+  black: { opacity: 0.4, tint: 0xff0000, share: 0.3, glint: 1, order: 3 },
 });
 // a tier: `values` is the kit config's Pearl part (over src/fx/cutis-maku/config.js DEFAULT_CONFIG; r0 is set per body by the game's size)
 // THE NAMES (owner, 2026-10-14, from the bestiary: "Cutis-Soft Ivory, Cutis-Soft Lemon, Cutis-Soft Sky, etc. for all the colors, then Cutis-Core Pumpkin for
@@ -54,7 +63,7 @@ export const PEARL_TIERS = freeze(ROWS.map(([id, name, skin, core, labR0, seekCo
   values: {
     seekCount, cycleDuration, aggression, skinTint: skin, veinTint: id === 'black' ? 0xbab6c1 : 0x45404b, pulseTint: core, coreTint: core, coreShape,
     coreSize: id === 'black' ? 0.18 : id === 'purple' ? 0.22 : 0.28, contactDamage, health,
-    membraneOpacity: PEARL_MEMBRANE[id].opacity, membraneTint: PEARL_MEMBRANE[id].share, membraneTintTo: PEARL_MEMBRANE[id].tint, glintShare: PEARL_MEMBRANE[id].glint,   // THE CORED READ, above
+    membraneOpacity: PEARL_MEMBRANE[id].opacity, membraneTint: PEARL_MEMBRANE[id].share, membraneTintTo: PEARL_MEMBRANE[id].tint, glintShare: PEARL_MEMBRANE[id].glint, membraneOrder: PEARL_MEMBRANE[id].order,   // THE CORED READ, above
     transferAcceleration: rank < 4 ? 1.8 : 2.5, reach: rank < 4 ? 8 + rank : 12 + (rank - 4), noiseAmp: 0.15, veinWidth: 0.035, pearlVariant: 1,
   },
 })));
