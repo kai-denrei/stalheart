@@ -43,7 +43,7 @@ const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
 
 export function createDiscoParty(h) {
   const clock = createPartyClock(DAY_42), load = h.loadGlb ?? loadGlb;
-  let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [], lastWall = null, shrinkFrom = 1;
+  let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [], lastWall = null, shrinkFrom = 1, warmLeft = 0;
   const wallNow = h.now ?? (() => performance.now());
   const tip = new THREE.Vector3(), up = new THREE.Vector3(), base = new THREE.Vector3(), m4 = new THREE.Matrix4();
   const metres = () => h.metres?.() ?? 1;
@@ -64,7 +64,7 @@ export function createDiscoParty(h) {
       ball = (scene.name === 'DISCO_BALL_ROOT' ? scene : node(scene, 'DISCO_BALL_ROOT') ?? scene).clone();
       const cradle = node(ball, 'STANDALONE_CRADLE'); if (cradle) cradle.visible = false;   // hung, never standing
       parts = { pivot: node(ball, 'DISCO_PENDULUM_PIVOT'), spin: node(ball, 'DISCO_SPHERE_SPIN'), halo: node(ball, 'LIGHT_HALO_YAW'), ring: node(ball, 'LASER_RING_YAW') };
-      rig(); h.warm?.compile?.(ball);   // the floodlights parked dark and the ball's programs linked with them, two days ahead (rig())
+      rig(); warmLeft = 2;   // the floodlights built, not hung; the next two ticks put them in the scene for one rendered frame (warmSpots())
     }, (e) => fail(e?.message ?? e));
   }
 
@@ -99,24 +99,37 @@ export function createDiscoParty(h) {
     return true;
   }
 
-  // THE RIG BUILT AHEAD (final review, 2026-10-18, measured headless at sector 4: the party's first frames ran to 117 ms with three over
-  // 40 ms and 22 programs linked at 'start'; the four SpotLights change every lit material's light count, so every one relinks, and the ball's
-  // own materials link on their first draw). So the rig is built when the ball arrives (day 40): the floodlights parked in the scene at
-  // intensity 0, which links the scene's programs for four spots then, off the party, and the ball and its lasers compiled against them
-  // through the host's warmer; begin() hangs the same four lights from the halo, so the light count does not change on the cut. Built again
-  // at begin() for a party after restore() (dropLights() disposed it)
+  // THE RIG BUILT AHEAD, THE FLOODLIGHTS ONLY FOR THE PARTY (final review and lag measure, 2026-10-18). Measured headless at sector 4: the
+  // party's first frames ran to 117 ms with 22 programs linked at 'start' (the four SpotLights change every lit material's light count, so
+  // every one relinks, and the ball's own materials link on their first draw). The first answer parked the four spots dark in the scene from
+  // the ball's load (day 40) to the party's end; the lag measure then found that three.js counts every visible light into the lit shaders
+  // whatever its intensity, so four dark spots cost 9-11 % GPU (2 ms at DSF 2) for the twenty minutes to the party and through the
+  // countdown, and each change of the light count relinks every lit program (35 programs, 67-150 ms the first time). So now: when the ball
+  // arrives the spots are built and put in the scene for ONE rendered frame (warmSpots(): added in one tick, removed in the next, the frame
+  // between renders them) with the ball and its lasers compiled against them through the host's warmer, which leaves the four-spot variants
+  // in three's program cache; begin() hangs the same four lights from the halo, which relinks only about 5 programs (33-50 ms, under the cut,
+  // against 67-150 ms cold); dropLights() takes them out at the alarm. Built again at begin() for a party after restore() (dropLights()
+  // disposed it)
   function rig() {
     const L = DAY_42.light, { halo, ring } = parts, needSpots = !spots.length, needLasers = !lasers.length;
     for (let k = 0; halo && needSpots && k < 4; k++) {
       const s = new THREE.SpotLight(PARTY_COLORS[k], 0, L.distance * metres(), L.angle, L.penumbra, DECAY);
       const yaw = POD.at + k * Math.PI / 2; s.position.set(Math.cos(yaw) * POD.r, POD.y, -Math.sin(yaw) * POD.r); s.castShadow = false; s.userData.yaw = yaw;
-      s.add(s.target); h.scene.add(s); spots.push(s);
+      s.add(s.target); spots.push(s);   // in no scene until warmSpots() or begin()
     }
     for (let k = 0; ring && needLasers && k < 4; k++) {
       const geo = new THREE.PlaneGeometry(DAY_42.laser.length, DAY_42.laser.width); geo.translate(DAY_42.laser.length / 2 + APERTURE.r, 0, 0); geo.rotateX(-Math.PI / 2);   // flat, out along +x from the aperture
       const mat = new THREE.MeshBasicMaterial({ color: PARTY_COLORS[(k + 1) % 4], transparent: true, opacity: DAY_42.laser.opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
       const beam = new THREE.Mesh(geo, mat); beam.userData.yaw = k * Math.PI / 2; ring.add(beam); lasers.push(beam);
     }
+  }
+  // the warm's two ticks: the tick before the render adds the spots and compiles the ball against them, the next one (the frame between
+  // has been drawn with four spots) takes them out; a party that began first (force()) hangs them itself and skips the warm
+  function warmSpots() {
+    if (!warmLeft) return;
+    const hung = parts.halo && spots.some((s) => s.parent === parts.halo);
+    if (--warmLeft === 1 && !hung) { for (const s of spots) h.scene.add(s); h.warm?.compile?.(ball); }
+    else { warmLeft = 0; if (!hung) for (const s of spots) s.removeFromParent(); }
   }
   function addLights() { rig(); for (const s of spots) parts.halo.add(s); }   // hung from the halo, lit by hang()'s pulse
   function dropLights() {
@@ -201,13 +214,14 @@ export function createDiscoParty(h) {
     for (const r of tiers) r.from = r.last ?? r.rest;   // lowered from wherever the arm is now, mid-hoist or mid-loop
   }
   function finish() {   // 'done' and restore(): nothing of the party left in the yard
-    dropLights(); ball?.removeFromParent(); release(); music?.stop(0.15); music = null; appear = 0; t = 0; overAt = 0;
+    warmLeft = 0; dropLights(); ball?.removeFromParent(); release(); music?.stop(0.15); music = null; appear = 0; t = 0; overAt = 0;
   }
 
   return {
     tick(dt) {
       const sr = h.sectorRun?.() ?? null, phase = sr?.state?.().phase, day = h.daylight?.()?.day?.() ?? 0;
       if (day >= DAY_42.day - DAY_42.loadAhead) fetchBall();
+      warmSpots();
       const cond = { day, fighting: phase === 'fighting', secure: phase === 'secure', breathing: !!sr?.breathing?.(), shot: h.shotActive(), seated: h.seated(),
         card: !ball || structure()?.holder?.visible === false || h.card() || !!h.warning?.(), alive: h.alive(), boss: !!sr?.defNow?.()?.boss, won: h.won(), isaoBusy: h.isaoBusy() };   // the board's wave warning is a card: no party over its rings; nor
       // with the Stålheart's holder hidden (final review, 2026-10-18: SOL can burn it; the ball would hang from nothing)

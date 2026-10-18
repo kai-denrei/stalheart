@@ -118,17 +118,32 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
 { const { h, scene } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 1);
   const s1 = scene.getObjectByName('DISCO_BALL_ROOT').scale.x; assert.ok(s1 > 0 && s1 < 0.2, `a quarter into the hoist the ball is small (${s1})`);
   tickTo(p, DAY_42.hoist); assert.ok(Math.abs(scene.getObjectByName('DISCO_BALL_ROOT').scale.x - 1) < 1e-6, 'whole at the pose'); }
-// the rig built ahead (final review, 2026-10-18, the start measured at 117 ms): at the ball's load the four floodlights are in the scene at
-// intensity 0 and the ball is compiled through the host's warmer; the party hangs the same four from the halo (the light count never changes
-// on the cut); a party after restore() in the same page builds them again
-{ let day = 40; const warmed = []; const { h, scene } = host(); h.daylight = () => ({ day: () => day }); h.warm = { compile: (r) => { warmed.push(r); return Promise.resolve(); } };
+// the rig built ahead, the floodlights only for the party (final review and lag measure, 2026-10-18: four dark spots from day 40 cost 9-11 % GPU
+// for minutes and every change of the light count relinks the lit programs): at the ball's load the spots are in the scene for ONE rendered
+// frame (added in one tick, removed in the next) with the ball compiled against them through the host's warmer, then out of the scene until
+// the party's start, four hung from the halo and lit during it, none after the alarm; a party after restore() in the same page builds them again
+{ let day = 40; const warmed = [], seen = []; const { h, scene } = host(); h.daylight = () => ({ day: () => day });
   const lights = () => { const out = []; scene.traverse((o) => { if (o.isSpotLight) out.push(o); }); return out; };
-  const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
-  assert.equal(p.state().phase, 'idle'); assert.equal(lights().length, 4, 'four floodlights parked at the load'); assert.ok(lights().every((l) => l.intensity === 0 && l.parent === scene), 'dark, in the scene');
+  h.warm = { compile: (r) => { warmed.push(r); seen.push(lights().length); return Promise.resolve(); } };
+  const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5));
+  assert.equal(lights().length, 0, 'loaded, but not in the scene until the next tick');
+  p.tick(0.1);   // the frame after this tick renders with the four spots
+  assert.equal(p.state().phase, 'idle'); assert.equal(lights().length, 4, 'four floodlights in the scene for the warm frame'); assert.ok(lights().every((l) => l.intensity === 0 && l.parent === scene), 'dark, in the scene');
   assert.equal(warmed.length, 1); assert.equal(warmed[0].name, 'DISCO_BALL_ROOT', 'the ball compiled through the warmer'); assert.equal(warmed[0].getObjectByName('LASER_RING_YAW').children.length, 4, 'with its lasers');
-  day = 42; p.tick(0.1); countdown(p); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(lights().length, 4, 'the same four, not eight');
+  assert.deepEqual(seen, [4], 'compiled while the four spots were in the scene');
+  assert.equal(p.state().lights, 0);
+  p.tick(0.1); assert.equal(lights().length, 0, 'out of the scene after the one frame'); assert.equal(p.state().lights, 0);
+  tickTo(p, 5); assert.equal(lights().length, 0, 'none through the day until the party'); assert.equal(warmed.length, 1, 'the warm ran once');
+  day = 42; p.tick(0.1); assert.equal(lights().length, 0, 'none in the countdown'); countdown(p); assert.equal(p.state().phase, 'party'); tickTo(p, 2);
+  assert.equal(lights().length, 4, 'the same four, not eight'); assert.equal(warmed.length, 1, 'no second warm');
   assert.ok(lights().every((l) => l.parent.name === 'LIGHT_HALO_YAW' && l.intensity > 0), 'hung from the halo and lit'); assert.equal(p.state().lights, 4);
-  p.restore(); assert.equal(lights().length, 0, 'restore() leaves none'); p.tick(0.1); countdown(p); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(p.state().lights, 4, 'built again for a second party'); }
+  tickTo(p, DAY_42.seconds); assert.equal(p.state().phase, 'over'); assert.equal(lights().length, 0, 'gone at the alarm'); assert.equal(p.state().lights, 0);
+  p.restore(); assert.equal(lights().length, 0, 'restore() leaves none'); p.tick(0.1); countdown(p); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(p.state().lights, 4, 'built again for a second party'); assert.equal(lights().length, 4); }
+// a party forced before the warm's second tick hangs the lights itself and the warm leaves them alone; restore() mid-warm leaves none
+{ const { h, scene } = host(); const lights = () => { let n = 0; scene.traverse((o) => { if (o.isSpotLight) n++; }); return n; };
+  const p = createDiscoParty(h); p.force(); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); assert.equal(lights(), 4); countdown(p); p.tick(0.1); assert.equal(lights(), 4, 'hung, not removed by the warm'); assert.equal(p.state().lights, 4); }
+{ const { h, scene } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); p.restore();
+  let n = 0; scene.traverse((o) => { if (o.isSpotLight) n++; }); assert.equal(n, 0, 'restore() mid-warm leaves none'); p.tick(0.1); p.tick(0.1); }
 // the countdown's guards (owner, 2026-10-18 round 2): the hull lost in the countdown cancels it quietly (no party, no music, no klaxon, no
 // ball, the hold released, never again this run); a seat in the countdown does not (the invitation stands, the cut asks the seat again)
 { let alive = true; const { h, log, scene } = host(); h.alive = () => alive; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
