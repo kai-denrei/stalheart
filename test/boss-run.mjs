@@ -35,6 +35,7 @@ function host(o = {}) {
   assert.deepEqual(h.log.callouts, ['INVESTIGATE THE TREMOR'], 'the callout names the job as the sector begins');
   assert.equal(h.story().gsStage, 7, 'the gunship\'s stage is the arena (it circles there)'); assert.deepEqual(h.log.over, [7], 'and its track takes station over it');
   assert.ok(!h.log.briefs.includes('arena_open'), 'arena_open waits for the hole');
+  assert.deepEqual(run.rows().map((r) => [r.name, r.quiet]), [['TREMOR · FAR OUT', true]], 'the strip\'s row: the tremor, quiet (no gate lines)');
   // the order again every ARENA.remind seconds while the hull is not there
   for (let i = 1; i <= 2 * ARENA.remind; i++) { h.now = i; run.tick(1); }
   assert.equal(h.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length, 3, `again at ${ARENA.remind} s and ${2 * ARENA.remind} s`);

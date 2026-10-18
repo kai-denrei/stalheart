@@ -139,13 +139,14 @@ export function createBossRun(c) {
     if (outcome === 'secure' && !done) { done = true; c.showBrief('boss_dead'); c.speak('boss_dead'); }
     seated = false; def = null; was = null;
   }
-  // the integrity strip's row while the sector runs: the beacon, then the wave's count, then the boss's hit points (src/fx/integrity-hud.js gate rows)
+  // the integrity strip's row while the sector runs: the beacon, then the wave's count, then the boss's hit points (src/fx/integrity-hud.js gate rows); `quiet`:
+  // not a gate, so no "the gate is at half" as it falls (2026-10-18)
   function rows() {
     if (!on || !def) return [];
     const h = hunters(), b = bossRecord();
-    if (b) return [{ id: 'boss', name: bossName(), hp: Math.max(0, b.hp), max: def.boss.boss.hp, broken: false }];
-    if (phase === 'beacon') return [{ id: 'boss', name: 'TREMOR · FAR OUT', hp: 1, max: 1, broken: false }];
-    if (!bossSeen) return [{ id: 'boss', name: `WAVE · ${bossName().split(' ')[0]}`, hp: h.wave, max: wavesOf().reduce((a, w) => a + w.count, 0), broken: false }];
+    if (b) return [{ id: 'boss', name: bossName(), hp: Math.max(0, b.hp), max: def.boss.boss.hp, broken: false, quiet: true }];
+    if (phase === 'beacon') return [{ id: 'boss', name: 'TREMOR · FAR OUT', hp: 1, max: 1, broken: false, quiet: true }];
+    if (!bossSeen) return [{ id: 'boss', name: `WAVE · ${bossName().split(' ')[0]}`, hp: h.wave, max: wavesOf().reduce((a, w) => a + w.count, 0), broken: false, quiet: true }];
     return [];
   }
   // THE LURE'S READ (src/fx/hull-drive.js `lure` directive): the arena's cell and its walking field, the quarry's drawn point, the danger points
