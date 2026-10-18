@@ -61,7 +61,7 @@ import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } fro
 import { ARENA } from './content/sectors.js';   /* the arena's seat distance (2026-10-16) */ import { roadAhead } from './domain/arena.js';   /* the road SOL cuts to the arena (2026-10-16) */ import { groundAt } from './fx/lance-follow.js';   /* a body's drawn point (2026-10-16: the seekers steer at it) */ import { createEmergeBlobs } from './fx/emerge-blob.js';
 import { createTunePanel } from './fx/tune-panel.js'; import { tuneKnobs, applyTune } from './fx/tune-knobs.js'; import { recordTune } from './platform/tune-store.js'; import { screenTiers } from './domain/tune.js'; import { PEARL_OF } from './content/pearl-enemies.js';   /* THE TUNE PANEL (X; owner, 2026-10-16) */
 import { createCanyonRun } from './fx/canyon-run.js'; import { createHullConsole } from './fx/hull-console.js'; import { createBossRun } from './fx/boss-run.js'; import { createDescentHost } from './fx/descent-host.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
-import { createHullRepair } from './fx/hull-repair.js';   // the hull mends under the Stålheart (owner, 2026-10-18)
+import { createHullRepair } from './fx/hull-repair.js'; import { repairSpot } from './domain/hull-repair.js'; import { HULL_REPAIR } from './content/tank.js';   // the hull mends under the Stålheart (owner, 2026-10-18)
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
 import { createStrikeConsole } from './fx/strike-console.js'; import { createTerraformerYard } from './fx/terraformer-yard.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
@@ -825,7 +825,8 @@ export function initTdTab(root) {
   let hullArmour = HULL_ARMOUR.hits;   // the hull's dents left before it is lost (owner, 2026-10-16: four hits a hull; src/content/tank.js)
   const hullHits = () => tune.hull?.hits ?? HULL_ARMOUR.hits;   // the tune panel's knob over the content (src/fx/tune-knobs.js)
   const hullHealth = () => hullArmour / hullHits();   // the lift field's gauge: this hull's armour (owner, 2026-10-16: cyan, darker blue, orange, red)
-  const hullRepair = createHullRepair({ pos: () => player.pos, under: (p) => !!storyBase?.inside?.('stalheart', p), armour: () => hullArmour, setArmour: (n) => { hullArmour = n; if (playerMesh) applyTankHealth(playerMesh, hullHealth()); updateHud(); }, hits: hullHits, metres: () => METRES_PER_CELL / cellSide, alive: () => !playerDown && playerHP > 0, callout: (x, c) => showCallout(x, c) });   /* THE HULL MENDS UNDER THE STÅLHEART (owner, 2026-10-18; src/fx/hull-repair.js) */
+  const hullRepair = createHullRepair({ pos: () => player.pos, under: (p) => repairSpot(HULL_REPAIR.spots, (id) => !!storyBase?.inside?.(id, p), p),   // the Stålheart or the garage (owner, 2026-10-18, third round)
+    armour: () => hullArmour, setArmour: (n) => { hullArmour = n; if (playerMesh) applyTankHealth(playerMesh, hullHealth()); updateHud(); }, hits: hullHits, metres: () => METRES_PER_CELL / cellSide, alive: () => !playerDown && playerHP > 0, callout: (x, c) => showCallout(x, c) });   /* THE HULL MENDS UNDER THE STÅLHEART (owner, 2026-10-18; src/fx/hull-repair.js) */
   const PLAYER_MAX = 3;
   // A destroyed tank is DOWN, not merely invisible. Without this flag the
   // wreck kept its whole agency through the death hold — it drove (auto),
@@ -2789,7 +2790,7 @@ export function initTdTab(root) {
     // the story planet has a day
     daylight?.restore();
     daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, ...(({ phase, day }) => ({ phase, dayNo: day }))(dayFlag(flags.day)), dial: root }) : null;
-    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide), daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveIn >= 0,   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
+    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide), daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveIn >= 0, boards: () => story?.boards ?? [],   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen(), alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefQ, warm: warmShaders }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
@@ -5920,7 +5921,7 @@ export function initTdTab(root) {
       placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
       killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); },
       hitTank: (whole = true) => { if (playerHP > 1 || (!whole && hullArmour > 1)) playerHit(null, null, whole); },   /* a hull lost whole (the suites' hull-loss steps), or hitTank(false): one dent */
-      parkHull: () => { const at = storyBase?.structure('stalheart')?.holder?.getWorldPosition(new THREE.Vector3()).normalize().toArray(); let best = -1, d = Infinity; if (at) graph.centers.forEach((c, ci) => { const k = a6Arc(c, at); if (k < d && dungeon.tags[ci] !== BLOCKED && storyBase.inside('stalheart', c)) { d = k; best = ci; } }); if (best >= 0) gameHooks.placeTank(best); return best; },   /* the hull parked under the Stålheart, nearest its holder (it mends there, 2026-10-18) */
+      parkHull: (id = 'stalheart') => { const at = storyBase?.structure(id)?.holder?.getWorldPosition(new THREE.Vector3()).normalize().toArray(); let best = -1, d = Infinity; if (at) graph.centers.forEach((c, ci) => { const k = a6Arc(c, at); if (k < d && dungeon.tags[ci] !== BLOCKED && storyBase.inside(id, c)) { d = k; best = ci; } }); if (best >= 0) gameHooks.placeTank(best); return best; },   /* the hull parked under the Stålheart, nearest its holder (it mends there, 2026-10-18) */
       cargoView: (k, id) => {
         endShot();
         if (!k || k === 'tank') snapCamera();

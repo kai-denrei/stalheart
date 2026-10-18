@@ -4,6 +4,8 @@
 // with blank leading zeros, animated transitions and celebrate(), driven through the asset's own runtime. The player stands on the
 // seven-segment beacon, Isao on the split-flap (his 0 -> 1 clatters). The player's board carries the pilot's rank badge (src/ranks.js) on
 // a flag beside it in the tier's colour; a celebration also throws bursts of dots from the board's SOCKET_FX.
+// override(lines, colours) lays a lit face over the rows (the 42nd day's message, 2026-10-18) and override(null) takes it off: the asset's own
+// runtime is locked, so the face is a canvas plane laid in front of its glyphs.
 import * as THREE from '../../vendor/three.module.js';
 import { badgeSVG, rankLabel, rankToTierLevel } from '../ranks.js';
 import { makeDotBurst } from '../units.js';
@@ -12,6 +14,10 @@ import { attachRivalryDisplay } from '../../assets/models/scoreboards/runtime.js
 
 const TIER = ['#b08d57', '#c9ccd1', '#e8c04c'];
 const DIR = 'assets/models/scoreboards/';
+// THE LIT FACE (owner, 2026-10-18, third round: "the boards with the score could temporarily show : '42 days Survived!' And 'CONGRATS! VENI VIDI
+// KICK ASS!'"): where the glyphs sit in the board's own frame (the GLB's nodes, metres): the face's z by variant, the rows' span, and the plane
+// laid `lift` in front of the glyphs (they stand 0.055 off the face)
+const FACE = { z: { beacon_rivalry: 0.635, splitflap_rivalry: 0.715 }, lift: 0.09, w: 6.3, h: 2.9, cy: 2.68, px: [1024, 471] };
 let manifest = null;
 const loadManifest = () => (manifest ??= fetch(DIR + 'manifest.json').then((r) => r.json()));
 
@@ -56,6 +62,27 @@ export function createScoreboard(scene, { at, up, facing, metres = 1, title = 'Y
     img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   }
   drawFlag({ rank: 0 });
+  // the lit face: one canvas plane, drawn only when the lines or colours change, shown only while a message is up
+  const faceCanvas = document.createElement('canvas'); faceCanvas.width = FACE.px[0]; faceCanvas.height = FACE.px[1];
+  const faceTex = new THREE.CanvasTexture(faceCanvas); faceTex.colorSpace = THREE.SRGBColorSpace;
+  const faceMesh = new THREE.Mesh(new THREE.PlaneGeometry(FACE.w, FACE.h), new THREE.MeshBasicMaterial({ map: faceTex, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  faceMesh.position.set(0, FACE.cy, (FACE.z[variant] ?? 0.7) + FACE.lift); faceMesh.visible = false; faceMesh.name = 'PARTY_FACE'; group.add(faceMesh);
+  let faceKey = '', faceLines = null;
+  function drawFace(lines, colours) {
+    const ctx = faceCanvas.getContext('2d'), [W, H] = FACE.px, n = lines.length, pad = 36, gap = 14, mono = '700 {px}px ui-monospace, Menlo, Consolas, monospace';
+    ctx.fillStyle = '#04080c'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = colours[0]; ctx.lineWidth = 6; ctx.strokeRect(10, 10, W - 20, H - 20);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // the title a touch larger than the body, every line fitted to the width by its own length, the lines sharing the height
+    const rowH = (H - pad * 2 - gap * (n - 1)) / n;
+    lines.forEach((text, i) => {
+      let px = Math.min(i === 0 ? rowH * 0.95 : rowH * 0.85, 140); ctx.font = mono.replace('{px}', px);
+      const w = ctx.measureText(text).width, room = W - pad * 2; if (w > room) { px *= room / w; ctx.font = mono.replace('{px}', px); }
+      const y = pad + rowH / 2 + i * (rowH + gap);
+      ctx.shadowColor = colours[i % colours.length]; ctx.shadowBlur = 18; ctx.fillStyle = colours[i % colours.length]; ctx.fillText(text, W / 2, y); ctx.shadowBlur = 0;
+    });
+    faceTex.needsUpdate = true;
+  }
   return {
     group,
     // rows: [[label, n], ...] in KILLS, GATHERED, USED order; rank: the pilot's (the flag); duration: the board's transition
@@ -82,8 +109,16 @@ export function createScoreboard(scene, { at, up, facing, metres = 1, title = 'Y
       }
       for (let i = bursts.length - 1; i >= 0; i--) { if (bursts[i].userData.tick?.(dt) === false) { group.remove(bursts[i]); bursts.splice(i, 1); } }
     },
+    // lines: [title, ...body] (null takes the face off); colours: CSS strings, line i takes colours[i % length]. Painted on a change only
+    override(lines, colours = ['#ffd27a']) {
+      const on = Array.isArray(lines) && lines.length > 0;
+      if (!on) { if (faceLines) { faceMesh.visible = false; faceLines = null; faceKey = ''; } return; }
+      const k = lines.join('\n') + '|' + colours.join(',');
+      if (k !== faceKey) { faceKey = k; drawFace(lines, colours); }
+      faceLines = lines; faceMesh.visible = true;
+    },
     celebrating: () => party > 0,
-    state: () => ({ ...shown, ready: !!live, scores: live ? live.scores : null, label: live?.label ?? null }),
-    dispose() { live?.dispose(); scene.remove(group); group.traverse((o) => { o.geometry?.dispose(); }); },
+    state: () => ({ ...shown, ready: !!live, scores: live ? live.scores : null, label: live?.label ?? null, face: faceLines ? [...faceLines] : null }),
+    dispose() { live?.dispose(); faceTex.dispose(); faceMesh.material.dispose(); scene.remove(group); group.traverse((o) => { o.geometry?.dispose(); }); },
   };
 }

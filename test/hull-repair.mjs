@@ -1,7 +1,8 @@
 // THE HULL MENDS UNDER THE STÅLHEART (owner, 2026-10-18: "when the Mork is damaged, sitting under the Stalheart should repair it, same repair
 // time as the shield recharge"): src/domain/hull-repair.js repairStep over 30 s for four dents, a dent every 7.5 s while under and still.
 import assert from 'node:assert/strict';
-import { repairStep } from '../src/domain/hull-repair.js';
+import { repairStep, repairSpot } from '../src/domain/hull-repair.js';
+import { createHullRepair } from '../src/fx/hull-repair.js';
 import { HULL_REPAIR, HULL_ARMOUR } from '../src/content/tank.js';
 import { SHIELD_ARRAY } from '../src/content/shield-array.js';
 
@@ -40,4 +41,17 @@ assert.ok(HULL_REPAIR.maxSpeed > 0 && HULL_REPAIR.keep === 5);
   assert.equal(repairStep({ ...base, dents: 2, progress: 0.5, away: 0, hit: true, dt: 1 }).mending, false); }
 // a frozen frame changes nothing
 { const r = repairStep({ ...base, dents: 2, progress: 0.4, away: 2, dt: 0 }); assert.equal(r.dents, 2); assert.equal(r.progress, 0.4); assert.equal(r.away, 2); }
+// THE TWO SPOTS (owner, 2026-10-18, third round: "either standing under the stalheart, or the paint-job garage")
+{ assert.deepEqual([...HULL_REPAIR.spots], ['stalheart', 'garage'], 'the content names the two landmarks');
+  const at = (ids) => (id) => ids.includes(id);
+  assert.equal(repairSpot(HULL_REPAIR.spots, at(['stalheart']), [0, 0, 0]), 'stalheart'); assert.equal(repairSpot(HULL_REPAIR.spots, at(['garage']), [0, 0, 0]), 'garage');
+  assert.equal(repairSpot(HULL_REPAIR.spots, at(['stalheart', 'garage']), [0, 0, 0]), 'stalheart', 'first match wins');
+  assert.equal(repairSpot(HULL_REPAIR.spots, at([]), [0, 0, 0]), null, 'nowhere: null'); assert.equal(repairSpot(undefined, at(['garage']), [0, 0, 0]), null);
+  // through the fx module: a hull parked at the garage mends at the same rate and says where; off both spots it does not
+  let armour = 2, where = 'garage', done = [];
+  const fx = createHullRepair({ pos: () => [0, 0, 0], under: () => where && repairSpot(HULL_REPAIR.spots, (id) => id === where, [0, 0, 0]), armour: () => armour, setArmour: (n) => { armour = n; }, hits: () => 4, metres: () => 1, alive: () => true, callout: (t) => done.push(t) });
+  for (let k = 0; k < 74; k++) fx.tick(0.1); assert.equal(armour, 2, 'no dent before 7.5 s at the garage'); assert.equal(fx.state().where, 'garage'); assert.equal(fx.state().under, true); assert.equal(fx.mending(), true);
+  for (let k = 0; k < 3; k++) fx.tick(0.1); assert.equal(armour, 3, 'a dent at 7.5 s, as under the Stålheart');
+  where = 'stalheart'; fx.tick(0.1); assert.equal(fx.state().where, 'stalheart');
+  where = null; fx.tick(0.1); assert.equal(fx.state().where, null); assert.equal(fx.state().under, false); assert.equal(fx.mending(), false); }
 console.log('hull-repair: ok');
