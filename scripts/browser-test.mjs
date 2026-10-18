@@ -1539,6 +1539,52 @@ try{
  {const s=await st();assert.equal(s.boss.on,false,'the run is over');assert.equal(s.boss.auto,false,'the hull is the player\'s again');assert.equal(s.gunship.seat,false,'the seat left');
   }
  current='boss-dead';await finish();
+ } else if(args.includes('--day-42')) {
+ // DAY 42 (owner, 2026-10-18; spec docs/superpowers/specs/2026-10-18-day-42-design.md): sector 4 opened on day 42; the field culled to a breath, the party:
+ // Isao's line, the live cut round the Stålheart, the ball hung under the tip with its four lights, the track on the music bus, the sector clock held; at
+ // the track's end the klaxon, the second line, the ball and the lights gone, the sector clock running and the next wave out. The HUD's phase disc and its
+ // day figure. A real key arms the page's audio (the context waits for a gesture) so the track can be heard as a loop voice; the day turns every 30 s, so
+ // the figure is read against the day the rig reports, not against 42
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {DAY_42}=await import('../src/content/day-42.js');
+ const released=s=>(s.sector?.breaches??[]).reduce((n,b)=>n+(b.wavesReleased??0),0), planned=s=>(s.sector?.breaches??[]).reduce((n,b)=>n+(b.wavesPlanned??0),0);
+ await go('day-42-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&day=42#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
+ {const s=await st();assert.ok(s.day>=42,`the run opened on day 42 (${s.day})`);assert.equal(s.daylight?.day,s.day,'the rig and the harness agree on the day');assert.equal(s.party?.phase,'idle',`no party before the sector fights (${JSON.stringify(s.party)})`);}
+ await until(`${T}.state().sector?.phase==='fighting'`,120000).catch(async()=>assert.fail(`sector 4 fights (${JSON.stringify((await st()).sector)})`));
+ {const s=await st(),hud=await evaluate(`({svg:!!document.querySelector('#day-dial svg'),fig:document.querySelector('#day-dial b')?.textContent,day:${T}.state().day})`);
+  assert.equal(hud.svg,true,'the phase disc is drawn');assert.equal(hud.fig,`DAY ${hud.day}`,`the day figure (${JSON.stringify(hud)})`);assert.ok(s.day>=42&&s.day<DAY_42.day+DAY_42.patience,`still inside the party's patience (${s.day})`);}
+ current='day-42-fighting';await finish();
+ // a breath: the field culled until the sector's last pulse is down to its breath; the party arms on its own (no partyNow)
+ let atStart=null;
+ {const w0=Date.now();let k=0;while(Date.now()-w0<200000){await evaluate(`${T}.sectorCull(999)`);const s=await st();if(s.party?.phase!=='idle'){atStart=s;break;}
+   if(k++%10===0)console.log(`  day-42 t+${((Date.now()-w0)/1000).toFixed(0)}s ${JSON.stringify({day:s.day,party:s.party,sector:{phase:s.sector.phase,clock:s.sector.clock,released:released(s),planned:planned(s)},alive:s.performance?.enemies,shot:s.shot})}`);await delay(1000);}
+  const s=atStart??await st();assert.equal(s.party?.phase,'party',`the party arms on the breath (${JSON.stringify({day:s.day,party:s.party,sector:{phase:s.sector.phase,clock:s.sector.clock},shot:s.shot})})`);
+  console.log(`  day-42 armed on day ${s.day}, waves ${released(s)}/${planned(s)}`);}
+ assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/Forty-two days/,'Isao\'s line');
+ await until(`${T}.state().shot==='${DAY_42.shot.id}'`,8000).catch(async()=>assert.fail(`the reveal cut (${JSON.stringify((await st()).party)})`));
+ {const s=await st();assert.equal(s.paused,false,'a live cut: the world runs');
+  const c0=s.sector.clock;await delay(3000);const s2=await st();assert.equal(s2.party.phase,'party');assert.equal(s2.sector.clock,c0,`the sector clock holds through the party (${c0} -> ${s2.sector.clock})`);}
+ await until(`${T}.state().party.hanging===true && ${T}.state().party.lights===4`,10000).catch(async()=>assert.fail(`the ball hangs and the lights are on (${JSON.stringify((await st()).party)})`));
+ // the track: a loop voice once it has decoded (asked again until the cut, src/fx/disco-party.js)
+ {const s=await st();assert.equal(s.party.music,true,`the track plays (${JSON.stringify({party:s.party,loopVoices:s.loopVoices})})`);assert.ok((s.loopVoices||[]).includes(DAY_42.music.key),`the music voice is live (${JSON.stringify(s.loopVoices)})`);}
+ current='day-42-party';await finish();
+ await until(`${T}.state().shot!=='${DAY_42.shot.id}'`,20000);
+ {const s=await st();assert.equal(s.party.phase,'party','the party goes on after the cut');assert.equal(s.party.hanging,true,'the ball still hangs');}
+ current='day-42-after-cut';await finish();
+ await until(`${T}.state().party.phase!=='party'`,60000).catch(async()=>assert.fail(`the alarm at the track's end (${JSON.stringify((await st()).party)})`));
+ {const s=await st();assert.equal(s.party.phase,'over',`the track ran out: over (${JSON.stringify(s.party)})`);assert.equal(s.party.music,false,'the music stopped');assert.ok((s.sounds?.danger_alert??0)>0,`the klaxon rang (${JSON.stringify(s.sounds)})`);
+  assert.ok(!(s.loopVoices||[]).includes(DAY_42.music.key),`no music voice left (${JSON.stringify(s.loopVoices)})`);assert.equal(s.party.lights,0,'the lights went with the alarm');
+  assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/Party's over/,'Isao\'s second line');}
+ current='day-42-over';await finish();
+ await until(`${T}.state().party.phase==='done'`,10000).catch(async()=>assert.fail(`the ball lowered and gone (${JSON.stringify((await st()).party)})`));
+ {const s=await st();assert.equal(s.party.lights,0,'the lights are gone');assert.equal(s.party.hanging,false,'the ball is gone');
+  if(s.sector.phase==='fighting'){const c0=s.sector.clock;await delay(2000);assert.ok((await st()).sector.clock>c0,`the sector clock runs again (${c0})`);}}
+ // the next wave: the one armed at the alarm, or the sector's next pulse now its clock runs; only when the sector had waves left at the party's start
+ if(atStart.sector.phase==='fighting'&&released(atStart)<planned(atStart)){
+  await until(`(${T}.state().sector.breaches||[]).reduce((n,b)=>n+(b.wavesReleased||0),0)>${released(atStart)}`,45000).catch(async()=>assert.fail(`a wave is out after the party (${released(atStart)}/${planned(atStart)} at the start; ${JSON.stringify((await st()).sector.breaches)})`));
+ } else console.log(`  day-42: every wave was out before the party (${released(atStart)}/${planned(atStart)}), no next wave to see`);
+ current='day-42-done';await finish();
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see
