@@ -5417,7 +5417,7 @@ export function initTdTab(root) {
     knobs: () => tuneKnobs({ tune, params, enemies, sector: sectorRun?.defNow() ?? null, seat: pilot?.gunship ? 'gunship' : pilot?.state?.tower?.key ?? null, arena: !!sectorRun?.defNow()?.boss }),
     context: () => ({ rev: document.querySelector('meta[name="rev"]')?.content ?? '', url: location.href, sector: sectorRun?.defNow() ? `${sectorRun.defNow().n} · ${sectorRun.defNow().name}` : '', screen: screenTiers(enemies, PEARL_OF) }),
     record: (name, text) => recordTune({ base: location.pathname.replace(/[^/]*$/, ''), name, text, download: (n, t) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/markdown' })); a.download = n; a.click(); } }) });   /* THE TUNE PANEL (X): what is on screen, tweaked and recorded (owner, 2026-10-16) */
-  const descentHost = createDescentHost(root, { pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t, briefing: () => !!briefQ || !!briefPending,
+  const descentHost = createDescentHost(root, { pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t, briefing: () => briefQ?.id ?? briefPending ?? null,
     look: (ci) => { endShot(); startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...norm3(graph.centers[ci])), { id: 'descentLook', hold: 600, fromCamera: true, dive: { height: 7, back: 9, diveSeconds: 0.6 } }); } });   /* the arena's hole before the cave (2026-10-16) */
   const canyonRun = createCanyonRun({
     breachQueue,

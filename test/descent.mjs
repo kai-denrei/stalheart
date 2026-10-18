@@ -25,5 +25,7 @@ assert.equal(due(DESCENT.lookHold, false), true, 'after the look and no brief: o
 assert.equal(due(DESCENT.lookHold + 5, true), false, 'Isao still speaking: wait'); assert.equal(due(DESCENT.briefCap - 0.1, true), false, 'waits up to the cap');
 assert.equal(due(DESCENT.briefCap, true), true, 'after the cap: open even if the panel is stuck');
 assert.equal(descentOpenDue({ waited: 0, min: 0, briefing: false, cap: 22 }), true, 'no arena to look at and nothing said: at once');
+assert.equal(descentOpenDue({ waited: 30, min: 2.5, briefing: true, briefWaited: 10, cap: 22 }), false, 'a line said before the brief does not eat its cap');
+assert.equal(descentOpenDue({ waited: 30, min: 2.5, briefing: true, briefWaited: 22, cap: 22 }), true, 'the brief up for the cap: open');
 { const b = brief(DESCENT.brief), dwell = b.lines.reduce((a, _, i) => a + lineDwell(b, i), 0); assert.ok(DESCENT.briefCap >= dwell + 2, `the cap covers the brief's dwell (${dwell} s) with a margin`); }
 console.log('Descent: due after the final sector, the cave\'s outcome validated, the ending or a retry.');

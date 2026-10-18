@@ -6,13 +6,13 @@
 // cave's own TRY AGAIN. Not due (a phone, DESCENT.mobileSkip): the brief alone, then `then` at once.
 //   createDescentHost(root, c) -> { begin(then) -> boolean (true: the handoff taken), report(outcome) (the harness's message), state(), dispose() }
 // `c`: pause(v), showBrief(id), speak(id), story() (the run's story object: `descent` is written on it), mobile (a phone), t() (game seconds), look(cell)
-// (the camera to the arena's hole, DESCENT.lookHold s before the cave: the nest's mouth is a place on the planet, 2026-10-16), briefing() (Isao's panel
-// busy: the cave waits for it, up to DESCENT.briefCap game seconds, 2026-10-18).
+// (the camera to the arena's hole, DESCENT.lookHold s before the cave: the nest's mouth is a place on the planet, 2026-10-16), briefing() (the brief id on
+// Isao's panel or waiting for it, null when quiet: the cave waits for it, the descent's own brief up DESCENT.briefCap game seconds at most, 2026-10-18).
 import { DESCENT } from '../content/descent.js';
 import { descentDue, descentResult, descentNext, descentOpenDue } from '../domain/descent.js';
 
 export function createDescentHost(root, c) {
-  let frame = null, onMsg = null, thenFn = null, poll = null;
+  let frame = null, onMsg = null, thenFn = null, poll = null, briefFrom = null, openedAt = null;
   const said = [];   // the briefs asked, for the harness
   const say = (id) => { said.push(id); c.showBrief(id); c.speak(id); };
   function cleanup() { if (poll) clearTimeout(poll); poll = null; if (onMsg) globalThis.removeEventListener?.('message', onMsg); onMsg = null; frame?.remove(); frame = null; }
@@ -40,11 +40,13 @@ export function createDescentHost(root, c) {
       frame = document.createElement('iframe'); frame.hidden = true;
       frame.className = 'descent-frame'; frame.title = 'BELOW'; frame.src = DESCENT.page; frame.setAttribute('allow', 'pointer-lock; autoplay; fullscreen');
       root.appendChild(frame);
-      const t0 = c.t(), cap = DESCENT.briefCap ?? 20;
+      const t0 = c.t(), cap = DESCENT.briefCap ?? 20; briefFrom = null; openedAt = null;
       const open = () => {
         poll = null; if (!frame) return;
-        if (!descentOpenDue({ waited: c.t() - t0, min, briefing: !!c.briefing?.(), cap })) { poll = setTimeout(open, 250); return; }
-        frame.hidden = false; c.pause(true);
+        const now = c.t(), b = c.briefing?.() ?? null;   // the brief on the panel (or waiting for it), null when Isao is quiet
+        if (b === DESCENT.brief && briefFrom == null) briefFrom = now;   // the cap runs from the descent's own brief, not a line said before it
+        if (!descentOpenDue({ waited: now - t0, min, briefing: !!b, briefWaited: now - (briefFrom ?? t0), cap })) { poll = setTimeout(open, 250); return; }
+        openedAt = now - t0; frame.hidden = false; c.pause(true);
       };
       poll = setTimeout(open, 0);
       onMsg = (e) => { take(e.data); };
@@ -52,7 +54,7 @@ export function createDescentHost(root, c) {
       return true;
     },
     report: (outcome) => take({ below: outcome }),
-    state: () => ({ open: !!frame, shown: !!frame && !frame.hidden, src: frame?.src ?? null, outcome: c.story()?.descent?.outcome ?? null, said: said.slice() }),
+    state: () => ({ open: !!frame, shown: !!frame && !frame.hidden, openedAt, src: frame?.src ?? null, outcome: c.story()?.descent?.outcome ?? null, said: said.slice() }),
     dispose: cleanup,
   };
 }
