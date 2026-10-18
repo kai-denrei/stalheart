@@ -284,6 +284,14 @@ Target length: under two seconds for announcements, under four for spoken lines.
 - "Every kilo of biomass is a kilo of planet."
 - "Somewhere out there, the sphere is waiting."
 
+## 14. Day 42 (unrecorded; captions until these are taken)
+
+Comic relief: at the first lull on or after the forty-second day Isao hoists a disco ball from the Stålheart's arm and a synth-wave track
+plays for forty-four seconds; the klaxon and a wave end it.
+
+- `day_42` (glee): "Forty-two days surviving on this planet. Arthur would have been proud of us." / "Bring your towel. Let's party!"
+- `day_42_over` (focused, over the klaxon): "Party's over. They heard the bass."
+
 ---
 
 ### Notes for recording

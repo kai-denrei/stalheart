@@ -453,6 +453,9 @@ export const BRIEFS = {
   descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['The nest is under that hole in the arena. Somebody has to carry the charge down there, and the hull does not fit.', 'I do.'] },
   descent_back: { id: 'descent_back', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['I finally decoded their language. From what the Queen said when I set the charge in her nest: "My nest. You, out."', 'And then words that seem to mean... excrement.'] },
   descent_last: { id: 'descent_last', face: 'focused', title: 'LAST TRANSMISSION · ISAO', once: false, lines: ['I decoded their language. The Queen said: "My nest. You, out." And then words that seem to mean... excrement.', '...'] },
+  // DAY 42 (owner, 2026-10-18): comic relief at the first lull on or after day 42, Isao's disco ball on the Stålheart's arm (src/fx/disco-party.js)
+  day_42: { id: 'day_42', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Forty-two days surviving on this planet. Arthur would have been proud of us.', 'Bring your towel. Let\'s party!'] },
+  day_42_over: { id: 'day_42_over', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Party\'s over. They heard the bass.'] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
   sector_canyon_again: { id: 'sector_canyon_again', face: 'focused', title: SECTOR_CANYON_AGAIN.name, lines: [...SECTOR_CANYON_AGAIN.brief] },
