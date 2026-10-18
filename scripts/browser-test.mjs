@@ -1544,7 +1544,8 @@ try{
  // Isao's line, the live cut round the Stålheart, the ball hung under the tip with its four lights, the track on the music bus, the sector clock held; at
  // the track's end the klaxon, the second line, the ball and the lights gone, the sector clock running and the next wave out. The HUD's phase disc and its
  // day figure. A real key arms the page's audio (the context waits for a gesture) so the track can be heard as a loop voice; the day turns every 30 s, so
- // the figure is read against the day the rig reports, not against 42
+ // the figure is read against the day the rig reports, not against 42. THE COUNTDOWN (owner, 2026-10-18 round 2): the party is announced thirty seconds
+ // ahead, Isao's "we need to celebrate" with the sector clock already standing, "come back to the base" twenty seconds in, then the party as before
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {DAY_42}=await import('../src/content/day-42.js');
  const released=s=>(s.sector?.breaches??[]).reduce((n,b)=>n+(b.wavesReleased??0),0), planned=s=>(s.sector?.breaches??[]).reduce((n,b)=>n+(b.wavesPlanned??0),0);
  await go('day-42-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&day=42#td`);
@@ -1559,9 +1560,15 @@ try{
  let atStart=null;
  {const w0=Date.now();let k=0;while(Date.now()-w0<200000){await evaluate(`${T}.sectorCull(999)`);const s=await st();if(s.party?.phase!=='idle'){atStart=s;break;}
    if(k++%10===0)console.log(`  day-42 t+${((Date.now()-w0)/1000).toFixed(0)}s ${JSON.stringify({day:s.day,party:s.party,sector:{phase:s.sector.phase,clock:s.sector.clock,released:released(s),planned:planned(s)},alive:s.performance?.enemies,shot:s.shot})}`);await delay(1000);}
-  const s=atStart??await st();assert.equal(s.party?.phase,'party',`the party arms on the breath (${JSON.stringify({day:s.day,party:s.party,sector:{phase:s.sector.phase,clock:s.sector.clock},shot:s.shot})})`);
+  const s=atStart??await st();assert.equal(s.party?.phase,'countdown',`the party arms on the breath: its countdown first (${JSON.stringify({day:s.day,party:s.party,sector:{phase:s.sector.phase,clock:s.sector.clock},shot:s.shot})})`);
   console.log(`  day-42 armed on day ${s.day}, waves ${released(s)}/${planned(s)}`);}
- assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/Forty-two days/,'Isao\'s line');
+ assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/we need to celebrate/,'Isao\'s announcement');
+ {const c0=(await st()).sector.clock;await delay(3000);const s=await st();assert.equal(s.party.phase,'countdown','still the countdown');assert.equal(s.sector.clock,c0,`the sector clock stands from the announcement (${c0} -> ${s.sector.clock})`);}
+ current='day-42-countdown';await finish();
+ await until(`/I have a surprise/.test(document.querySelector('#td-brief')?.textContent||'')`,45000).catch(async()=>assert.fail(`"come back to the base" in the countdown (${JSON.stringify((await st()).party)})`));
+ {const s=await st();assert.equal(s.party.phase,'countdown',`the second line comes inside the countdown (${JSON.stringify(s.party)})`);assert.ok(s.party.t>=DAY_42.back-0.5,`at ${DAY_42.back} s in (${s.party.t})`);assert.equal(s.party.music,false,'no music in the countdown');assert.equal(s.party.hanging,false,'no ball in the countdown');}
+ await until(`${T}.state().party.phase==='party'`,30000).catch(async()=>assert.fail(`the party after the countdown (${JSON.stringify((await st()).party)})`));
+ await until(`/survived forty-two days/.test(document.querySelector('#td-brief')?.textContent||'')`,15000).catch(async()=>assert.fail(`Isao's line as the party starts (${JSON.stringify(await evaluate(`document.querySelector('#td-brief')?.textContent||''`))})`));
  await until(`${T}.state().shot==='${DAY_42.shot.id}'`,8000).catch(async()=>assert.fail(`the reveal cut (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.paused,false,'a live cut: the world runs');
   const c0=s.sector.clock;await delay(3000);const s2=await st();assert.equal(s2.party.phase,'party');assert.equal(s2.sector.clock,c0,`the sector clock holds through the party (${c0} -> ${s2.sector.clock})`);}
@@ -1575,7 +1582,9 @@ try{
  await until(`${T}.state().party.phase!=='party'`,60000).catch(async()=>assert.fail(`the alarm at the track's end (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.party.phase,'over',`the track ran out: over (${JSON.stringify(s.party)})`);assert.equal(s.party.music,false,'the music stopped');assert.ok((s.sounds?.danger_alert??0)>(atStart.sounds?.danger_alert??0),`the party's klaxon rang: danger_alert rose since the party armed (${atStart.sounds?.danger_alert??0} -> ${s.sounds?.danger_alert??0}; the wave's first contact and the integrity HUD ring it too, so a count above zero proves nothing)`);
   assert.ok(!(s.loopVoices||[]).includes(DAY_42.music.key),`no music voice left (${JSON.stringify(s.loopVoices)})`);assert.equal(s.party.lights,0,'the lights went with the alarm');
-  assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/Party's over/,'Isao\'s second line');}
+  // waited for, not read on the tick (2026-10-18 round 2: with the countdown's thirty seconds SOL-82's first pass, on its own clock, can put its once
+  // brief up just before the alarm; the party holds its line until Isao's panel is free, src/fx/disco-party.js say())
+  await until(`/Party's over/.test(document.querySelector('#td-brief')?.textContent||'')`,40000).catch(async()=>assert.fail(`Isao's second line (${JSON.stringify(await evaluate(`document.querySelector('#td-brief')?.textContent||''`))})`));}
  current='day-42-over';await finish();
  await until(`${T}.state().party.phase==='done'`,10000).catch(async()=>assert.fail(`the ball lowered and gone (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.party.lights,0,'the lights are gone');assert.equal(s.party.hanging,false,'the ball is gone');

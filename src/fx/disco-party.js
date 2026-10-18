@@ -5,6 +5,9 @@
 // sector clock held by the host through holding(), a live ten-second cut round the Stålheart as its arm rises into the crane-hook pose and
 // the ball appears at the tip, the loop (pendulum, spin, halo, laser ring, four floodlights in the party's colours), then at the track's end
 // the klaxon, the callout, the second line, the ball lowered and shrunk away, the Terraforming loop resumed and the next pulse armed.
+// THE COUNTDOWN (owner, 2026-10-18 round 2: "let's record voices for Isao to announce the party"): thirty seconds of words first, the sector
+// clock already held: "I know it's weird, but we need to celebrate" as it arms, "Come back to the base, I have a surprise" ten seconds before,
+// "We survived 42 days!!! Congratulations!" as the party starts. Only Isao's words in the countdown: no music, no lights, the ball not up.
 //
 // THE ARM IS POSED ABSOLUTELY, as the diorama's runtime does (measured 2026-10-18 on terraformer_3000_d0_game.glb and the far tier: the same
 // node frames; the diorama's lift 1.87 m with the clip's carriage puts the tip at (0.05, 11.63, 2.6), its rest hook, where the Terraforming
@@ -167,16 +170,31 @@ export function createDiscoParty(h) {
     if (!music) h.sfx?.prime?.(DAY_42.music.key);
   }
 
+  // THE PARTY'S LATER LINES WAIT FOR ISAO (2026-10-18 round 2, the --day-42 step: the countdown's thirty seconds put the alarm where SOL-82's
+  // first pass can hold the panel with its own two lines, and the panel keeps one line pending and drops the rest, so "Party's over" was lost).
+  // So the back line, the party's line and the over line are held while Isao's panel is busy and shown on its first free frame, in order;
+  // a line held longer than `sayWait` (game seconds) is dropped. The announcement needs none: the clock only arms with Isao free
+  let held = [];
+  function say(id) { if (!held.length && !h.isaoBusy()) h.showBrief(id); else held.push({ id, left: DAY_42.sayWait }); }
+  function sayHeld(dt) {
+    if (!held.length) return;
+    if (!h.isaoBusy()) { h.showBrief(held.shift().id); return; }
+    for (const l of held) l.left -= dt;
+    held = held.filter((l) => l.left > 0);
+  }
+
   function begin() {
-    h.showBrief(DAY_42.briefs.start);
+    held = held.filter((l) => l.id !== DAY_42.briefs.back);   // "come back to the base" is stale once the party starts: shown after the ball was up it would sit ahead of the party's own line
+    say(DAY_42.briefs.start);
     startMusic();
     h.sfx?.duck(DAY_42.music.duck.buses, DAY_42.music.duck.depth, DAY_42.seconds);
     t = 0; overAt = 0; appear = 0; tiers = []; gather(); addLights();
   }
   function end(alarm, sr) {   // the track's end (alarm) or the party cut short by the hull or the win
     music?.stop(0.15); music = null; h.sfx?.duck(DAY_42.music.duck.buses, 1, 0);   // the duck lifted
+    if (!alarm) held = [];   // the hull lost or the win: no party line after it
     if (alarm) {
-      h.sfx?.play('danger_alert'); h.callout(DAY_42.callout, 'co-victory'); h.showBrief(DAY_42.briefs.over);
+      h.sfx?.play('danger_alert'); h.callout(DAY_42.callout, 'co-victory'); say(DAY_42.briefs.over);
       if (sr?.state?.().phase === 'fighting') h.armWave();
     }
     dropLights(); overAt = t; shrinkFrom = appear;
@@ -203,11 +221,15 @@ export function createDiscoParty(h) {
         lastWall = wall;
       }
       for (const ev of events) {
-        if (ev === 'start') begin();
+        if (ev === 'announce') h.showBrief(DAY_42.briefs.soon);
+        else if (ev === 'back') say(DAY_42.briefs.back);
+        else if (ev === 'start') begin();
         else if (ev === 'shot') shot();
         else if (ev === 'over' || ev === 'cut') end(ev === 'over', sr);
         else if (ev === 'done') finish();
+        else if (ev === 'cancel') held = [];   // the hull lost or the win in the countdown: nothing of the party was up, nothing more to say
       }
+      sayHeld(dt);
       const now = clock.state().phase;
       if (now !== 'party' && now !== 'over') return;
       if (!events.includes('start')) t += dt;   // the party's own time from its first frame; the loop keeps turning as the ball goes down
@@ -226,7 +248,7 @@ export function createDiscoParty(h) {
     },
     holding: () => clock.holding(),
     force() { clock.force(); fetchBall(); },
-    state: () => ({ ...clock.state(), t: +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music }),
-    restore() { finish(); clock.reset(); },
+    state: () => { const c = clock.state(); return { ...c, t: c.phase === 'countdown' ? c.t : +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music }; },   // the countdown's t is the clock's own
+    restore() { finish(); clock.reset(); held = []; },
   };
 }

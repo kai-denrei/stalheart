@@ -454,7 +454,11 @@ export const BRIEFS = {
   descent_back: { id: 'descent_back', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['I finally decoded their language. From what the Queen said when I set the charge in her nest: "My nest. You, out."', 'And then words that seem to mean... excrement.'] },
   descent_last: { id: 'descent_last', face: 'focused', title: 'LAST TRANSMISSION · ISAO', once: false, lines: ['I decoded their language. The Queen said: "My nest. You, out." And then words that seem to mean... excrement.', '...'] },
   // DAY 42 (owner, 2026-10-18): comic relief at the first lull on or after day 42, Isao's disco ball on the Stålheart's arm (src/fx/disco-party.js)
-  day_42: { id: 'day_42', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Forty-two days surviving on this planet. Arthur would have been proud of us.', 'Bring your towel. Let\'s party!'] },
+  // the countdown (owner, 2026-10-18 round 2: "let's record voices for Isao to announce the party"): a+b as it arms, thirty seconds before; c ten
+  // seconds before; d the party's own line ("We survived 42 days!!! Congratulations!", in words for the recording)
+  day_42_soon: { id: 'day_42_soon', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['I know it\'s weird, but we need to celebrate.', 'It\'s day number forty-two. Arthur would be proud.'] },
+  day_42_back: { id: 'day_42_back', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Come back to the base. I have a surprise.'] },
+  day_42: { id: 'day_42', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['We survived forty-two days! Congratulations!'] },
   day_42_over: { id: 'day_42_over', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Party\'s over. They heard the bass.'] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },

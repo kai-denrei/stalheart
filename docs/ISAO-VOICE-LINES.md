@@ -286,10 +286,17 @@ Target length: under two seconds for announcements, under four for spoken lines.
 
 ## 14. Day 42 (unrecorded; captions until these are taken)
 
-Comic relief: at the first lull on or after the forty-second day Isao hoists a disco ball from the Stålheart's arm and a synth-wave track
-plays for forty-four seconds; the klaxon and a wave end it.
+Comic relief: at the first lull on or after the forty-second day Isao announces a party, thirty seconds ahead (the sector clock already
+stands), then hoists a disco ball from the Stålheart's arm and a synth-wave track plays for forty-four seconds; the klaxon and a wave end it.
+The four lines to record, in the owner's order (2026-10-18, second round):
 
-- `day_42` (glee): "Forty-two days surviving on this planet. Arthur would have been proud of us." / "Bring your towel. Let's party!"
+- a) `day_42_soon` (glee), thirty seconds before the party: "I know it's weird, but we need to celebrate."
+- b) `day_42_soon` (glee), its second line: "It's day number forty-two. Arthur would be proud."
+- c) `day_42_back` (focused), ten seconds before: "Come back to the base. I have a surprise."
+- d) `day_42` (glee), as the party starts: "We survived forty-two days! Congratulations!"
+
+Caption only (not in the recording list):
+
 - `day_42_over` (focused, over the klaxon): "Party's over. They heard the bass."
 
 ---
