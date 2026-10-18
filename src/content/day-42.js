@@ -16,4 +16,8 @@ export const DAY_42 = Object.freeze({
   music: Object.freeze({ key: 'day_42_music', retry: 6, duck: Object.freeze({ buses: ['towers', 'tank'], depth: 0.6 }) }),
   briefs: Object.freeze({ soon: 'day_42_soon', back: 'day_42_back', start: 'day_42', over: 'day_42_over' }), callout: 'ALARM · CONTACT',
   ball: 'assets/models/disco-ball/disco_ball_d0_lod1.glb', landmark: 'stalheart',
+  // THE BOARDS' PARTY FACE (owner, 2026-10-18, third round: "the boards with the score could temporarily show : '42 days Survived!' And
+  // 'CONGRATS! VENI VIDI KICK ASS!'"): from the party's start to its done the two scoreboards show `title` over `body` (wrapped to `wrap`
+  // characters a line, the boards' own uppercase), the lines in the party's colours moving on one every `cycle` seconds
+  boards: Object.freeze({ title: '42 DAYS SURVIVED!', body: 'CONGRATS! VENI VIDI KICK ASS!', wrap: 11, cycle: 2 }),
 });

@@ -2790,7 +2790,7 @@ export function initTdTab(root) {
     // the story planet has a day
     daylight?.restore();
     daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, ...(({ phase, day }) => ({ phase, dayNo: day }))(dayFlag(flags.day)), dial: root }) : null;
-    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide), daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveIn >= 0,   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
+    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide), daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveIn >= 0, boards: () => story?.boards ?? [],   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen(), alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefQ, warm: warmShaders }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
