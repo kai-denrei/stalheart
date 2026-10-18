@@ -66,4 +66,17 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
 { const { h, scene } = host(); h.loadGlb = async () => { const g = new THREE.Group(); g.add(ball()); return g; }; let day = 41; h.daylight = () => ({ day: () => day }); const p = createDiscoParty(h);
   p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); assert.equal(p.state().phase, 'idle'); assert.equal(p.state().hanging, false, 'loaded, not hanging');
   day = 42; p.tick(0.1); p.tick(0.1); assert.equal(p.state().phase, 'party'); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT')?.parent, scene, 'the ball hangs in the world'); }
+// loadGlb caches one scene per URL for the page's life: a second party in the same page (the harness restart, the dev GUI's regenerate) is handed
+// the SAME group and must still get the whole ball and its four lights; the cached group is left as it was found
+{ const cached = new THREE.Group(); cached.add(ball());
+  const run = async () => { const { h, scene } = host(); h.loadGlb = async () => cached; const p = createDiscoParty(h);
+    p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); tickTo(p, 5); return { p, scene }; };
+  const a = await run(); assert.equal(a.p.state().hanging, true, 'the first party hangs'); assert.equal(a.p.state().lights, 4);
+  a.p.restore(); assert.equal(cached.getObjectByName('DISCO_BALL_ROOT')?.parent, cached, 'the cached scene keeps its ball'); assert.equal(cached.getObjectByName('STANDALONE_CRADLE').visible, true, 'the cached cradle is untouched');
+  const b = await run(); assert.equal(b.p.state().hanging, true, 'the second party hangs'); assert.equal(b.p.state().lights, 4, 'the second party has its four lights');
+  assert.ok(b.scene.getObjectByName('DISCO_BALL_ROOT'), 'DISCO_BALL_ROOT is in the second scene'); assert.equal(b.p.state().failed, false); }
+// a failed load is diagnosable: one warning, failed in state()
+{ const { h } = host(); h.loadGlb = async () => null; let warns = 0; const w = console.warn; console.warn = () => { warns++; };
+  const p = createDiscoParty(h); try { p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); p.tick(0.1); } finally { console.warn = w; }
+  assert.equal(p.state().failed, true); assert.equal(p.state().loaded, false); assert.equal(warns, 1, 'one warning, not one a frame'); }
 console.log('disco-party ok');

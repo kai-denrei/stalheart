@@ -35,25 +35,28 @@ const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
 
 export function createDiscoParty(h) {
   const clock = createPartyClock(DAY_42), load = h.loadGlb ?? loadGlb;
-  let ball = null, loading = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [];
+  let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [];
   const tip = new THREE.Vector3(), up = new THREE.Vector3(), base = new THREE.Vector3(), m4 = new THREE.Matrix4();
   const metres = () => h.metres?.() ?? 1;
   const node = (root, name) => root?.getObjectByName(name) ?? null;
 
   function fetchBall() {
-    if (ball || loading) return; loading = true;
+    if (ball || loading || failed) return; loading = true;
+    const fail = (why) => { loading = false; if (!failed) console.warn(`disco party: the ball did not load (${why})`); failed = true; };   // once; state().failed
     Promise.resolve(load(DAY_42.ball)).then((res) => {
-      const scene = res?.isObject3D ? res : res?.scene; if (!scene) { loading = false; return; }
-      ball = scene.name === 'DISCO_BALL_ROOT' ? scene : node(scene, 'DISCO_BALL_ROOT') ?? scene;
-      ball.removeFromParent();   // out of the glTF's own scene group: in the world only while it hangs
+      const scene = res?.isObject3D ? res : res?.scene; if (!scene) return fail('no scene');
+      // a per-instance copy: loadGlb caches one scene per URL for the page's life, so the party never detaches or hides anything of the cached
+      // one (a second party after a regenerate gets the whole ball back); geometry and materials stay shared, so nothing is disposed
+      ball = (scene.name === 'DISCO_BALL_ROOT' ? scene : node(scene, 'DISCO_BALL_ROOT') ?? scene).clone();
       const cradle = node(ball, 'STANDALONE_CRADLE'); if (cradle) cradle.visible = false;   // hung, never standing
-    }, () => { loading = false; });
+    }, (e) => fail(e?.message ?? e));
   }
 
   const structure = () => h.base?.()?.structure?.(DAY_42.landmark) ?? null;
   // every tier of the Stålheart there is now (the near one can arrive mid-party): its joints' rest and its Terraforming clip paused
   function gather() {
     const st = structure(); if (!st) return null;
+    if (tiers.length && tiers.some((r) => r.root === (st.near ?? st.root))) return st.near ?? st.root;   // the near tier is in: every frame after is a pose, no allocation
     for (const root of new Set([st.near, st.far, st.root].filter(Boolean))) {
       if (tiers.some((r) => r.root === root)) continue;
       const nodes = {}, rest = {};
@@ -130,7 +133,7 @@ export function createDiscoParty(h) {
       e1.crossVectors(n, Math.abs(n.y) < 0.9 ? Y : X).normalize(); e2.crossVectors(n, e1);
       const a = -0.3 + u * Math.PI / 2, R = S.radius * m;
       eye.copy(tip).addScaledVector(e1, Math.cos(a) * R).addScaledVector(e2, Math.sin(a) * R).addScaledVector(n, S.height * m);
-      look.copy(tip).addScaledVector(n, -3 * m);
+      look.copy(tip).addScaledVector(n, -HOOK_LOCAL_OFFSET[1] / 2 * m);   // halfway down the hang: the arm's tip and the ball both in frame
       m4.lookAt(eye, look, n); q.setFromRotationMatrix(m4);
       const k = Math.min(1, u * S.seconds / S.easeIn), e = k * k * (3 - 2 * k);
       out.pos.lerpVectors(start.pos, eye, e); out.quat.slerpQuaternions(start.quat, q, e);
@@ -187,7 +190,7 @@ export function createDiscoParty(h) {
     },
     holding: () => clock.holding(),
     force() { clock.force(); fetchBall(); },
-    state: () => ({ ...clock.state(), t: +t.toFixed(2), loaded: !!ball, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent).length : 0, music: !!music }),
+    state: () => ({ ...clock.state(), t: +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent).length : 0, music: !!music }),
     restore() { finish(); clock.reset(); },
   };
 }
