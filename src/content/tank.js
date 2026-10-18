@@ -1,3 +1,4 @@
+import { SHIELD_ARRAY } from './shield-array.js';
 // Default presentation shared by gameplay, fixtures and Workshop stages.
 export const DEFAULT_TANK = 'mork';
 // the idle turret sweep: the authored Turret_Aim clip swings almost 180 degrees; the hull shows this share of it (owner: 90)
@@ -30,6 +31,12 @@ export const TANK_DRIVE = Object.freeze({ base: 1.35, top: 3.2, tau: 6, turn: 0.
 // hardcore pushes it out of the way and damages the tank"): a hard core's touch dents the armour by one, the hull is lost on the `hits`-th; a killer
 // in `whole` (the MK-9's burn) takes the hull in one. A new hull comes out with its armour whole (src/td-tab.js playerHit, hullArmour).
 export const HULL_ARMOUR = Object.freeze({ hits: 4, whole: Object.freeze(['laser']) });
+// THE HULL MENDS UNDER THE STÅLHEART (owner, 2026-10-18: "when the Mork is damaged, sitting under the Stalheart should repair it, same repair time as
+// the shield recharge"; src/domain/hull-repair.js, src/fx/hull-repair.js): a hull parked under the Stålheart's gantry (the box the terminal's console
+// uses, src/fx/story-base.js inside) gets a whole armour back in `seconds`, the shield array's recharge (ARRAY 30s, SHIELD_ARRAY.reserve), so a dent
+// every seconds / hits (7.5 s at four). Parked: slower than `maxSpeed` m/s (the array pad's own rest). The next dent's fraction is kept `keep` s off
+// the spot, then dropped; a dent taken holds the mend `hitHold` s and drops the fraction.
+export const HULL_REPAIR = Object.freeze({ seconds: SHIELD_ARRAY.reserve, maxSpeed: SHIELD_ARRAY.maxSpeed, keep: 5, hitHold: 1 });
 // THE LURE (owner, 2026-10-16, THE ARENA: Isao drives the hull as bait "avoiding both the monster and friendly fire"; src/domain/lure.js, the drive's `lure`
 // directive in src/fx/hull-drive.js): the quarry kept between `near` and `far` hops (nearer: kite away; farther: close in; between: circle), and no
 // exit within `blast` cells of a danger point (a painted or falling MK-9 cell, SOL's burn, a Bofors shell's target) while another remains
