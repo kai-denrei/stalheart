@@ -6,8 +6,9 @@ import { SENTRY_FX as WEAPONS } from './weapon-defaults.js';
 import { SOUNDS } from './audio-defaults.js';
 import { IMPACT_KNOBS, IMPACT_FAMILIES, IMPACT_RECIPES } from './impact-schema.js';
 export const PRESET_BASE = 'stalheart-fx-8';
-// the sound keys version 8 added (the Rotor's own firing from its optic, the gunship's 40 mm): a version 7 package gains them at the baseline
-const V8_SOUNDS = ['rotor_pov_fire', 'gunship_bofors_fire', 'gunship_rotary_fire'];
+// the sound keys version 8 added (the Rotor's own firing from its optic, the gunship's 40 mm, and DAY 42's track on 2026-10-18): a package
+// from before one of them gains it at the baseline, so the shipped package and every saved one load without a version bump
+const V8_SOUNDS = ['rotor_pov_fire', 'gunship_bofors_fire', 'gunship_rotary_fire', 'day_42_music'];
 export const AUDIO_KNOBS = Object.freeze([
   { key:'gain', min:0, max:2, step:.01 },
   { key:'maxVoices', min:1, max:32, step:1 },
