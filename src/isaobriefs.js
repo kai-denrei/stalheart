@@ -437,7 +437,9 @@ export const BRIEFS = {
   ...Object.fromEntries(SECTORS.map((s) => [`sector_${s.n}`, { id: `sector_${s.n}`, face: s.n === 1 ? 'determined' : 'focused', title: `SECTOR ${s.n} · ${s.name}`, lines: [...s.brief] }])),
   sector_hold: { id: 'sector_hold', face: 'focused', title: 'THE NEXT SECTOR', lines: [...SECTOR_HOLD.brief] },
   sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
-  sector_boss: { id: 'sector_boss', face: 'surprised', title: BOSS_SECTOR.name, lines: [...BOSS_SECTOR.brief] },
+  // THE ARENA'S ORDER (owner, 2026-10-18, note 6: "Go investigate that area, I'll clear a way there"): the sector's own brief as it begins (it was
+  // `sector_boss`, "a tremor ... nothing on the sensors but a beacon", which never said what to do), with the callout and the tremor on the radar (src/fx/boss-run.js)
+  arena_go: { id: 'arena_go', face: 'focused', title: BOSS_SECTOR.name, once: false, lines: [...BOSS_SECTOR.brief] },
   // THE BOSS's own lines (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 16): the two replies to the choice, the boss up,
   // the hull touched, the boss dead
   // THE ARENA (owner, 2026-10-16, third version; src/fx/boss-run.js): `arena_open` as the ground opens at the beacon the hull drove out to, `arena_force` as the

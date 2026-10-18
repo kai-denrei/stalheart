@@ -33,10 +33,12 @@ import { groundAt } from './lance-follow.js';
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
 const REFILL = 5;       // seconds between calls for the gunship while it is off station (the arena's long session, 2026-10-16)
+const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
 
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
   let phase = 'off', beganAt = 0, forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
+  let remindAt = 0;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind)
   let roadAt = -99, roadUntil = 0, roadSaid = false;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
@@ -56,6 +58,9 @@ export function createBossRun(c) {
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon'; beganAt = c.t();
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
+    // THE ORDER (owner, 2026-10-18, note 6: "it's not quite clear what we must do. We should message it better"): the sector's brief is Isao's `arena_go`
+    // (src/fx/sector-run.js briefOf), the callout names the job, and it comes back every ARENA.remind seconds while the hull has not reached the tremor
+    c.callout(INVESTIGATE, 'co-victory'); remindAt = c.t();
     if (c.story()) c.story().gsAuto = true;   // the gunship flies itself over the fight while the player drives
     c.fillCall(); refillAt = c.t(); retryAt = -9;
     return true;
@@ -74,6 +79,7 @@ export function createBossRun(c) {
       if (ci >= 0 && c.solRoad?.(ci)) { roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
     }
     if (roadUntil && t >= roadUntil) { roadUntil = 0; c.solRoad?.(-1); }
+    if (phase === 'beacon' && ARENA.remind && t - remindAt >= ARENA.remind) { remindAt = t; c.callout(INVESTIGATE, 'co-victory'); }   // the order again, while the hull is not there
     // A LONG SESSION (owner, 2026-10-16: "a longer gunship session"): off station the gunship is called again, so it keeps coming back over the arena until the sector ends
     if (t - refillAt >= REFILL && c.station && !c.station()) { refillAt = t; c.fillCall(); seated = false; }
     const h = hunters();
