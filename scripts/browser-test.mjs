@@ -1564,6 +1564,12 @@ try{
  await until(`!${T}.state().boss.on`,30000).catch(async()=>assert.fail(`the run ends with the sector's finish (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss})})`));
  {const s=await st();assert.equal(s.boss.on,false,'the run is over');assert.equal(s.boss.auto,false,'the hull is the player\'s again');assert.equal(s.gunship.seat,false,'the seat left');
   }
+ // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): boss_dead, then arena_decoded on the panel;
+ // the debrief pauses the game and the panel's clock with it, so the step continues the debrief if the line is still to come
+ {const {BRIEFS}=await import('../src/isaobriefs.js'),first=BRIEFS.arena_decoded.lines[0],w0=Date.now();let seen=null;
+  while(Date.now()-w0<40000){seen=await evaluate('window.__seen');if(seen.briefs.some(t=>t.includes(first)))break;if((await st()).sector.debriefOpen)await evaluate(`${T}.sectorContinue()`);await delay(500);}
+  const iD=seen.briefs.findIndex(t=>t.includes(BRIEFS.boss_dead.lines[0])),iC=seen.briefs.findIndex(t=>t.includes(first));console.log(`  after the mother: ${JSON.stringify(seen.briefs.slice(-6))}`);
+  assert.ok(iC>=0,`arena_decoded on the panel after the boss died (${JSON.stringify(seen.briefs.slice(-8))})`);assert.ok(iD>=0&&iD<iC,`after boss_dead (${iD}, ${iC})`);}
  current='boss-dead';await finish();
  } else if(args.includes('--day-42')) {
  // DAY 42 (owner, 2026-10-18; spec docs/superpowers/specs/2026-10-18-day-42-design.md): sector 4 opened on day 42; the field culled to a breath, the party:

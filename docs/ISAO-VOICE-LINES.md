@@ -310,11 +310,12 @@ recording script's section 17.
 ## 16. The arena (unrecorded; captions until these are taken)
 
 THE ARENA, sector 9 on the drawer's entry: the order as the sector begins, Isao's line as SOL's first cut lands on the road out
-(owner, 2026-10-19, third round, note 7; his words). The rest of the arena set (`arena_open`, `arena_force`, `arena_lure`,
+(owner, 2026-10-19, third round, note 7; his words), and the four lines after the mother dies (note 9; his words). The rest of the arena set (`arena_open`, `arena_force`, `arena_lure`,
 `boss_hit_me`, `boss_dead`) is in the recording script's section 16.
 
 - `arena_go` (focused), as the sector begins: "Other side of the planet. You must check it out." / "Seems big."
 - `arena_road` (focused), the first cut on the road out: "Let me clear a path for you."
+- `arena_decoded` (focused), after `boss_dead` (owner, 2026-10-19, note 9): "I have decoded some of their messages." / "They have a nest and a Queen down there." / "Someone must go there." / "I am a poet and a builder, not a warrior."
 
 ---
 

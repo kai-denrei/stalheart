@@ -208,4 +208,30 @@ function host(o = {}) {
   assert.deepEqual([run.state().fear.frights, run.state().fear.stuns, run.state().fear.stunned], [1, 1, true]);
   run.end('secure'); assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'the run over: nothing heard'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN.');
+// THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in. Isao : 'I have decoded some of their messages'.
+// 'They have a Nest and a Queen down there'. 'Someone must go there'. 'I am a poet and a builder, not a warrior'"): boss_dead the frame she dies, arena_decoded
+// held for the panel's first free frame after it (the panel keeps one beat pending), once; end('secure') without the death seen says both; a lost run neither
+{ assert.deepEqual(BRIEFS.arena_decoded.lines, ['I have decoded some of their messages.', 'They have a nest and a Queen down there.', 'Someone must go there.', 'I am a poet and a builder, not a warrior.']);
+  assert.equal(BRIEFS.arena_decoded.face, 'focused');
+  let busy = true, cleared = 0, pilot = false, left = 0; const h = host({ briefing: () => busy, clearBriefs: () => { cleared++; }, pilotMode: () => pilot, storyViews: () => ({ now: () => (pilot ? 'gunship' : 'tank') }), leavePilot: () => { pilot = false; left++; } }), run = createBossRun(h); run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1); await h.choiceCard.take(); await null;
+  pilot = true; h.now = 2.5; run.tick(0.1); assert.equal(run.state().seated, true, 'in the gunship\'s seat');
+  b.alive = false; h.now = 3; run.tick(0.1);
+  assert.equal(left, 1, 'the seat left as she dies: the panel is not drawn in the seat');
+  assert.deepEqual(h.log.briefs.filter((x) => x === 'boss_dead'), ['boss_dead'], 'boss_dead the frame she dies'); assert.equal(cleared, 1, 'the panel cleared for it');
+  assert.ok(!h.log.briefs.includes('arena_decoded'), 'arena_decoded waits while the panel is busy'); assert.equal(run.state().decoded, true);
+  assert.equal(run.talking(), true, 'the debrief held for it (src/fx/sector-run.js)');
+  busy = false; h.now = 4; run.tick(0.1);
+  assert.equal(h.log.briefs.at(-1), 'arena_decoded', 'then on its first free frame'); assert.equal(run.state().decoded, false);
+  busy = true; h.now = 10; assert.equal(run.talking(), true, 'still held while its four lines are read'); h.now = 30; assert.equal(run.talking(), false, 'and let go once they are');
+  h.now = 5; busy = false; assert.equal(run.talking(), false, 'or as soon as the panel is free (the player tapped through)'); busy = true;
+  run.end('secure'); for (let k = 0; k < 3; k++) run.tick(0.1);
+  assert.equal(h.log.briefs.filter((x) => x === 'boss_dead').length, 1, 'not again at the end'); assert.equal(h.log.briefs.filter((x) => x === 'arena_decoded').length, 1, 'said once');
+  // the end before the death was seen: both from end(), the decoded line after it once the panel frees, the run over
+  let busy2 = true; const h2 = host({ briefing: () => busy2 }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); run2.end('secure');
+  assert.ok(h2.log.briefs.includes('boss_dead')); assert.ok(!h2.log.briefs.includes('arena_decoded'));
+  busy2 = false; run2.tick(0.1); assert.equal(h2.log.briefs.at(-1), 'arena_decoded', 'after boss_dead, the run over');
+  const h3 = host({ briefing: () => false }), run3 = createBossRun(h3); run3.begin(ARENA_SECTOR); run3.end('lost'); run3.tick(0.1);
+  assert.ok(!h3.log.briefs.includes('boss_dead') && !h3.log.briefs.includes('arena_decoded'), 'a lost run: neither'); }
+
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; arena_decoded after boss_dead.');

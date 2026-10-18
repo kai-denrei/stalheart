@@ -32,7 +32,7 @@ import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
 import { ARENA, ARENA_HANDOVER } from '../content/sectors.js';
 import { createChoiceCard } from './choice-card.js';
-import { brief } from '../isaobriefs.js';
+import { brief, lineDwell } from '../isaobriefs.js';
 import { groundAt } from './lance-follow.js';
 import { roadField, roadPath, roadRock } from '../domain/arena.js';
 import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
@@ -56,7 +56,8 @@ export function createBossRun(c) {
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   let lookAt = -99, lead = null, leadMax = 0;   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
   let frights = 0, stuns = 0;
-  let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
+  let card = null, cardUp = false, taken = false;
+  let decoded = false, talkUntil = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
   const bossRecord = () => c.enemies.find((e) => e.alive && e.hunter && e.tier === (def?.boss?.boss?.tier ?? 'huge')) ?? null;
@@ -79,7 +80,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; cardUp = false; taken = false; frights = 0; stuns = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; frights = 0; stuns = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -96,7 +97,18 @@ export function createBossRun(c) {
   }
   // the sector loop's read (src/fx/sector-run.js): the arena's breach opens once this is true
   const arenaDue = () => on && phase === 'beacon' && (dueNow || c.hullNearArena?.() === true);   // the hull there, nothing else (2026-10-18: the clock's fallback is gone)
+  // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): the panel keeps one beat pending and
+  // drops the rest, and the next sector's brief comes as the debrief closes, so arena_decoded is held here and shown on the panel's first free frame after
+  // boss_dead (the wait the party's lines use, src/fx/disco-party.js say), the run over or not
+  function sayDecoded() { if (decoded && !(c.briefing?.() ?? false)) { decoded = false; c.showBrief('arena_decoded'); c.speak('arena_decoded'); const b = brief('arena_decoded'); talkUntil = c.t() + (b?.lines ?? []).reduce((a, _, i) => a + lineDwell(b, i), 0); } }
+  // the sector loop holds the boss sector's debrief while this is true (src/fx/sector-run.js; STORY_CALM.maxHold caps it): the decoded line still to come, or on the panel
+  const talking = () => on && (decoded || (c.t() < talkUntil && (c.briefing?.() ?? false)));
+  // the panel cleared first: in the --arena run the gunship seat's own two-line briefing held it with a beat already pending, so boss_dead was dropped and the
+  // debrief froze the panel on the seat's tip (2026-10-19); with the mother down nothing on it still matters
+  // and the seat left with her (the hand-over is over): Isao's panel is not drawn in the gunship's seat, so a seated player read none of it (probe r3-f, 2026-10-19)
+  const dead = () => { if (done) return; done = true; if (on && seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot(); c.clearBriefs?.(); c.showBrief('boss_dead'); c.speak('boss_dead'); decoded = true; };
   function tick(dt) {
+    sayDecoded();
     if (!on) return;
     const t = c.t();
     if (phase === 'beacon' && c.arenaOpen?.()) {
@@ -152,6 +164,9 @@ export function createBossRun(c) {
     // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss): the first frame she is seen, her record walks onto the sinkhole before the hunt
     // (`ground`, src/fx/enemy-step.js) and takes the guns by her own rule (`ownFear`: the generic impact scare leaves her alone; landed() below)
     { const b = bossRecord(); if (b && !b.ownFear) { b.ownFear = true; b.ground = { ...BOSS_FIGHT.arenaBoss.ground }; } }
+    // THE MOTHER DOWN (2026-10-19, note 9): boss_dead the frame she dies (SECURE follows at once, src/domain/boss-sector.js bossLeft), so it and arena_decoded
+    // are read through the secure pause before the debrief pauses the game (end() says them if she was never seen dying)
+    if (phase === 'boss' && bossSeen && !bossRecord()) dead();
     if (phase === 'boss') {
       // ISAO KEEPS THE WHEEL: a seat's entry and any drive input put the hull back on manual (src/fx/hull-drive.js, src/platform/tank-input.js);
       // while the boss is up the hull is his, so the autopilot is re-asserted every frame
@@ -163,7 +178,7 @@ export function createBossRun(c) {
       // briefing took the panel, so the hand-over was never said (probe r2-d); over the arena it now waits for the panel to be free (c.briefing)
       // THE CARD FIRST (2026-10-19, note 8a): no seat while THE MOTHER is up; its lines were read there, so once taken the panel is not waited for
       const overArena = (c.gunshipNearArena?.() ?? true) && (taken || !(c.briefing?.() ?? false)) && t - forcedAt >= (ARENA.seatAfter ?? 0);
-      if (!seated && !cardUp && !c.pilotMode() && t - retryAt >= RETRY && (overArena || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
+      if (!seated && !cardUp && !done && !c.pilotMode() && t - retryAt >= RETRY && (overArena || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
       if (!seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') seated = true;
       if (seated && !shotSaid && (c.shots?.() ?? 0) > 0) { shotSaid = true; c.showBrief('arena_lure'); c.speak('arena_lure'); }   // the first round from the seat: keep them off the hull
       const hp = c.playerHP();
@@ -205,7 +220,7 @@ export function createBossRun(c) {
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
     if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; if (c.story().gsStage >= 0) c.gunshipOver?.(c.heartCell?.() ?? -1); c.story().gsStage = -1; } }   // the gunship home at once: it crawled back across the planet after SECURE (2026-10-18)
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
-    if (outcome === 'secure' && !done) { done = true; c.showBrief('boss_dead'); c.speak('boss_dead'); }
+    if (outcome === 'secure') dead(); else decoded = false;
     seated = false; def = null; was = null;
   }
   // the integrity strip's row while the sector runs: the beacon, then the wave's count, then the boss's hit points (src/fx/integrity-hud.js gate rows); `quiet`:
@@ -226,6 +241,6 @@ export function createBossRun(c) {
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
   const fearState = () => { const b = bossRecord(); return { frights, stuns, scared: !!b && isScared(b, c.t()), stunned: !!b && c.t() < (b.stagUntil ?? -1), ground: b?.ground ? 'ground' : b ? 'hunt' : null }; };
-  return { begin, tick, end, rows, lure, arenaDue, landed, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, card: cardUp, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+  return { begin, tick, end, rows, lure, arenaDue, landed, talking, force: () => { dueNow = true; }, on: () => on,
+    state: () => ({ on, phase, card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

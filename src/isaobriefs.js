@@ -452,6 +452,10 @@ export const BRIEFS = {
   arena_lure: { id: 'arena_lure', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['I\'ll take it for a drive. Keep your rounds off the hull.'] },
   boss_hit_me: { id: 'boss_hit_me', face: 'worried', title: 'COMMS · ISAO', once: false, lines: ['It has a hold of the hull!'] },
   boss_dead: { id: 'boss_dead', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Target down. I need a car wash.'] },
+  // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in. Isao : 'I have decoded some of their messages'.
+  // 'They have a Nest and a Queen down there'. 'Someone must go there'. 'I am a poet and a builder, not a warrior'"): after boss_dead, on the panel's first free
+  // frame (src/fx/boss-run.js); descent_back's "I finally decoded their language" is the end of the same thread
+  arena_decoded: { id: 'arena_decoded', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['I have decoded some of their messages.', 'They have a nest and a Queen down there.', 'Someone must go there.', 'I am a poet and a builder, not a warrior.'] },
   // THE DESCENT (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 17): the brief as the cave opens, the decoding joke on
   // his return, the same as his last transmission on a sacrifice
   // the brief ties the cave to the arena (owner, 2026-10-18: "we identify this far away large sinkhole, the exact same one from the Arena, as the
