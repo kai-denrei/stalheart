@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { lightLevels, sequenceSeconds, arcIndex } from '../src/domain/light-sequence.js';
 import { LAUNCHER_LIGHTS } from '../src/content/orbital-works.js';
+import { LAUNCH } from '../src/fx/arc-launch.js';
 
 const { magnets, step, ramp } = LAUNCHER_LIGHTS;
 assert.deepEqual([magnets, step, ramp], [16, 0.25, 0.15]);
@@ -12,7 +13,8 @@ const near = (a, b) => Math.abs(a - b) < 1e-9;
 // before the sequence every light is dark, after it every light is full
 assert.ok(lightLevels(-0.01, magnets, step, ramp).every((v) => v === 0), 'dark before the start');
 assert.ok(lightLevels(sequenceSeconds(magnets, step, ramp) + 1e-9, magnets, step, ramp).every((v) => v === 1), 'all full at the end');   // + 1e-9: 3.9 - 3.75 is not 0.15 in binary
-assert.ok(near(sequenceSeconds(magnets, step, ramp), 3.9), 'sixteen at 0.25 s with a 0.15 s ramp: 3.9 s, inside the 4 s charge');
+assert.ok(near(sequenceSeconds(magnets, step, ramp), 3.9), 'sixteen at 0.25 s with a 0.15 s ramp: 3.9 s');
+assert.ok(sequenceSeconds(magnets, step, ramp) <= LAUNCH.start - LAUNCH.chargeAt, `all sixteen magnets are lit before the release: the sequence (${sequenceSeconds(magnets, step, ramp)} s) fits the charge window (${LAUNCH.start - LAUNCH.chargeAt} s, LAUNCH.chargeAt to LAUNCH.start)`);
 assert.equal(sequenceSeconds(1, step, ramp), ramp);
 // ONE BY ONE: light i starts at i*step and is full ramp seconds later; the next one has not started yet when it is full
 { const at = (t) => lightLevels(t, magnets, step, ramp);

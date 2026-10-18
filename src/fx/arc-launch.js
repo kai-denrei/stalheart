@@ -11,9 +11,8 @@ import { loadModelFixture, cloneFixture } from './model-fixture.js';
 import { LAUNCHER_LIGHTS } from '../content/orbital-works.js';
 import { lightLevels, arcIndex } from '../domain/light-sequence.js';
 
-export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, start: 8, seconds: 0.4, climb: 6, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
+export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, chargeAt: 4, start: 8, seconds: 0.4, climb: 6, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
 const RELEASE = LAUNCH.start + LAUNCH.seconds;
-const CHARGE_AT = 4;   // launchState's 'charging' phase begins here: the magnets' sequence is its beat
 const RAIL_CENTRE = [2.6 + LAUNCH.radius, -20];   // the centre [y, z] of railPose's arc, in the launcher's frame
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const ease = (t, a, b) => { const u = clamp((t - a) / (b - a)); return u * u * (3 - 2 * u); };
@@ -34,8 +33,8 @@ export function launchState(seconds) {
   // rail's kick the payload accelerates on along the tangent at LAUNCH.climb m/s² until it is gone, hundreds of metres up
   const away = Math.max(0, t - RELEASE - 1 / 3);
   const payload = t < RELEASE ? { position: [...sled.position], pitch: sled.pitch } : extensionPose(35 * (1 - (1 - clamp((t - RELEASE) / (1 / 3))) ** 2) + 0.5 * LAUNCH.climb * away * away);
-  const phase = t < 4 ? 'loading' : t < LAUNCH.start ? 'charging' : t < RELEASE ? 'accelerating' : t < 17 ? 'released' : t < 21 ? 'unfolding' : t < 26 ? 'insertion' : 'reset';
-  return { t, sled, payload, phase, charge: t < LAUNCH.start ? ease(t, 4, LAUNCH.start) : t < RELEASE ? 1 : 1 - ease(t, RELEASE, RELEASE + 2), clamp: 1 - ease(t, RELEASE - 0.04, RELEASE), deploy: ease(t, 17, 21), burn: t >= 21 && t < 26, done: t >= LAUNCH.duration };
+  const phase = t < LAUNCH.chargeAt ? 'loading' : t < LAUNCH.start ? 'charging' : t < RELEASE ? 'accelerating' : t < 17 ? 'released' : t < 21 ? 'unfolding' : t < 26 ? 'insertion' : 'reset';
+  return { t, sled, payload, phase, charge: t < LAUNCH.start ? ease(t, LAUNCH.chargeAt, LAUNCH.start) : t < RELEASE ? 1 : 1 - ease(t, RELEASE, RELEASE + 2), clamp: 1 - ease(t, RELEASE - 0.04, RELEASE), deploy: ease(t, 17, 21), burn: t >= 21 && t < 26, done: t >= LAUNCH.duration };
 }
 
 // THE MAGNETS ONE BY ONE (owner, 2026-10-19, third round, note 5: "small change, stage 7 the launcher; the magnets should light up in cyan one
@@ -62,7 +61,7 @@ function perMagnet(mesh, count) {
   mesh.geometry = g; mesh.material = mats;
   return {
     mats, worn: () => mesh.material === mats,   // something else may have swapped the material since: then the merged path lights it as before
-    restore() { if (mesh.material === mats) { mesh.geometry = was.geometry; mesh.material = was.material; } g.dispose(); for (const m of mats) m.dispose(); },
+    restore() { if (mesh.material === mats) { mesh.geometry = was.geometry; mesh.material = was.material; g.dispose(); } for (const m of mats) m.dispose(); },   // the copy goes only where the original is back: a swapped material leaves the mesh its geometry
   };
 }
 
@@ -96,7 +95,7 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
     // through the charge each magnet rises on its own beat, from the breech up the rail (LAUNCHER_LIGHTS); after the release they fall with
     // the charge together, and once it is spent they are one mesh again
     if (s.t >= RELEASE + 2) merge();
-    const lit = s.t < RELEASE ? lightLevels(s.t - CHARGE_AT, LAUNCHER_LIGHTS.magnets, LAUNCHER_LIGHTS.step, LAUNCHER_LIGHTS.ramp, levels) : null;
+    const lit = s.t < RELEASE ? lightLevels(s.t - LAUNCH.chargeAt, LAUNCHER_LIGHTS.magnets, LAUNCHER_LIGHTS.step, LAUNCHER_LIGHTS.ramp, levels) : null;
     for (const [m, split] of magnets) {
       if (split?.worn()) split.mats.forEach((mat, i) => { mat.emissive.set(0x00eaff); mat.emissiveIntensity = 0.25 + 2 * (lit ? lit[i] : s.charge); });
       else if (m?.material?.emissive) { m.material.emissive.set(0x00eaff); m.material.emissiveIntensity = 0.25 + s.charge * 2; }
