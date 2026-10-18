@@ -23,6 +23,7 @@ export const STORY_JUMPS = Object.freeze([
   { id: 'canyon-again', label: 'CANYON AGAIN', title: 'the held sector before the back door: the canyon re-cut and re-filled, SOL\'s pass again', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest - 1}#td`, wired: true },
   { id: 'arena', label: 'ARENA', title: 'THE ARENA at once (?boss=1): the tremor far out, the drive, the small Reeds and the pups, the Nih-Dairia and the gunship', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest + 1}&boss=1#td`, wired: true },
   { id: 'descent', label: 'DESCENT', title: 'BOTH WALLS with the cave six seconds in (?descent=1): the descent, then the ending', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest + 2}&descent=1#td`, wired: true },
+  { id: 'day-42', label: 'DAY 42', title: 'sector 4 at the dawn of day 42 (?day=42): the first breath brings Isao\'s disco ball, the track, the klaxon and a wave', url: 'index.html?skip=defence&sector=4&day=42#td', wired: true },
 ].map(Object.freeze));
 
 export const NAV_DOCS = Object.freeze([
