@@ -249,7 +249,7 @@ export function createEnemyStep(host) {
       if (atHole && emergeOff) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),tierKey,sizeMul:grow,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),tierKey,sizeMul:grow,ownSize:entry.sizeMul??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
         cur: ci, prev: -1,
         next,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],

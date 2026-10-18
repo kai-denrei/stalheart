@@ -298,7 +298,9 @@ export function createCreatureEnemies(host) {
     rammed, touched, bodyContact,
     // THE TUNE PANEL'S RETUNE (owner, 2026-10-16: "all instances of it, even those already on screen, should be re-spawned with the new stats"): a live record takes
     // the tier's size (its body eases to it, its reach and box with it) and hit points (its share kept) in place, no respawn
-    retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1; if (size !== os) { e.sizeMul = size; e.size = e.size * size / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },
+    // THE ENTRY'S OWN SCALE STAYS (review of note 8b, 2026-10-19): the panel's size is over the record's `ownSize` (THE ARENA's small Reeds x3, src/fx/enemy-step.js
+    // spawnOne), so an apply during the arena does not put them back to 1x
+    retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1, ns = size * (e.ownSize ?? 1); if (ns !== os) { e.sizeMul = ns; e.size = e.size * ns / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
     step(dt) {
       standGarrison();
