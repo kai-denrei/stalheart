@@ -91,4 +91,21 @@ function host(o = {}) {
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
   assert.deepEqual(h.log.road, [6], 'the near rock left to a later ask, the far one cut now'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed.');
+// THE HAND-OVER IS SAID FIRST (2026-10-18): the gunship circles the arena from the start, so it is over the arena the moment the mother rises; the seat waits
+// ARENA.seatAfter and for Isao's panel to be free (arena_force read), or ARENA.seatWait at the latest
+{ const clicks = [], h = host({ briefingNow: true, gunshipNearArena: () => true }); h.briefing = () => h.briefingNow;
+  h.root = { querySelector: () => ({ click: () => clicks.push(h.now) }) };
+  const run = createBossRun(h); run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  h.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h.now = 2; run.tick(0.1);
+  assert.equal(run.state().phase, 'boss'); assert.ok(h.log.briefs.includes('arena_force'), 'Isao\'s hand-over line');
+  for (let k = 1; k <= 8; k++) { h.now = 2 + k; run.tick(0.1); }
+  assert.deepEqual(clicks, [], 'the gunship over the arena, but the panel busy: no seat yet');
+  h.briefingNow = false; h.now = 10.5; run.tick(0.1);
+  assert.deepEqual(clicks, [10.5], 'the panel free: the seat');
+  const clicks2 = [], h2 = host({ gunshipNearArena: () => true }); h2.briefing = () => true; h2.root = { querySelector: () => ({ click: () => clicks2.push(h2.now) }) };
+  const run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
+  h2.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h2.now = 2; run2.tick(0.1);
+  for (let k = 1; k <= ARENA.seatWait + 1; k++) { h2.now = 2 + k; run2.tick(0.1); }
+  assert.equal(clicks2[0], 2 + ARENA.seatWait, 'a panel that never frees: the seat at seatWait'); }
+
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; the seat after Isao\'s hand-over line.');

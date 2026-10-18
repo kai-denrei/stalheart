@@ -219,8 +219,9 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // reachCells: the hull this near the arena's cell opens it (the drive out to the beacon), and nothing else does: the waitMax fallback (150 s after the start) is gone
 // (owner, 2026-10-18, note 6: "waiting for the tank to be physically there, is what triggers the Boss"; it opened the hole with the hull at the base); seatWait: seconds after the
 // boss rose the gunship seat is taken whether or not the gunship is over the arena yet (src/fx/boss-run.js, owner 2026-10-16: the drive out, then the forced hand-over)
+// seatAfter: the least seconds after the boss rose before the seat is forced, and only once Isao's panel is free (arena_force read first; 2026-10-18)
 // remind: seconds between INVESTIGATE THE TREMOR callouts while the hull has not reached it (owner, 2026-10-18, note 6: "not quite clear what we must do")
-export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, remind: 40,
+export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40,
   // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
   // `ahead` hops of the hull worth a shortcut of `saves` cells on the open walk to the arena (crossed up to `through` rocks deep), else with `flank` the first rock
   // beside the route ahead, never within `clear` cells of the hull by the chord (the beam keeps LASER_AUTO.safeMetres off a friend: 25 m and its radius, 3.1 cells) (second version, 2026-10-16: the cheapest-walk rule fired at 2% of the route, all at the rim), is burned by SOL for `burn` seconds;

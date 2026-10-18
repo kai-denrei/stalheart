@@ -122,7 +122,10 @@ export function createBossRun(c) {
       dock();
       // THE SEAT OPENS OVER THE ARENA (owner, 2026-10-16: "after picking, the gunship just shows empty grounds below"): the strip's button is clicked once the
       // gunship's track is within ARENA.seatCells of the arena (it has been flying out since the beacon), or ARENA.seatWait seconds after the boss rose
-      if (!seated && !c.pilotMode() && t - retryAt >= RETRY && ((c.gunshipNearArena?.() ?? true) || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
+      // ISAO'S LINE FIRST (2026-10-18): with the gunship circling the arena from the start the seat came the same frame as arena_force and the seat's own
+      // briefing took the panel, so the hand-over was never said (probe r2-d); over the arena it now waits for the panel to be free (c.briefing)
+      const overArena = (c.gunshipNearArena?.() ?? true) && !(c.briefing?.() ?? false) && t - forcedAt >= (ARENA.seatAfter ?? 0);
+      if (!seated && !c.pilotMode() && t - retryAt >= RETRY && (overArena || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
       if (!seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') seated = true;
       if (seated && !shotSaid && (c.shots?.() ?? 0) > 0) { shotSaid = true; c.showBrief('arena_lure'); c.speak('arena_lure'); }   // the first round from the seat: keep them off the hull
       const hp = c.playerHP();
