@@ -1577,6 +1577,8 @@ try{
   // boss_dead at her death, the panel free before the kill; the debrief now waits for Isao's decoded lines behind it (the step below), not the fight's +6 s
   // (merge of r3-g's fix round under r3-f's messaging, 2026-10-19: src/fx/sector-run.js holds the boss sector's debrief while src/fx/boss-run.js talking())
   await until(`(window.__seen?.briefs||[]).some(t=>t.includes(${JSON.stringify(BRIEFS.boss_dead.lines[0])}))`,4000).catch(async()=>assert.fail(`boss_dead on the panel at her death (${JSON.stringify({phase:(await st()).sector.phase,briefs:(await evaluate('window.__seen')).briefs.slice(-4),alive:await alive()})})`));
+  // the wheel back at her death (review, 2026-10-19): the boss phase is over and Isao's lure autopilot no longer holds the hull through his lines
+  {const sb=(await st()).boss;assert.ok(['over','off'].includes(sb.phase)&&sb.directive!=='lure',`the hull no longer on Isao's lure after her death (${JSON.stringify({phase:sb.phase,auto:sb.auto,directive:sb.directive})})`);}
   console.log(`  boss killed: SECURE at +${secAt} ms, the brood dead at +${broodAt} ms, boss_dead at +${Date.now()-b0} ms (game clock ${c0} -> ${(await st()).sector.clock}); alive at SECURE ${JSON.stringify(atSecure)}`);}
  {const s=await st();assert.ok(['secure','finale','debrief','campaign'].includes(s.sector.phase),`the boss dead: SECURE (${JSON.stringify({phase:s.sector.phase,boss:s.boss})})`);
   const ab=s.sector.breaches?.find(b=>b.side==='arena');assert.ok(ab&&ab.hole===true,`the arena's hole stays open after SECURE: the nest's mouth (${JSON.stringify(s.sector.breaches)})`);}

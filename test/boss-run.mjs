@@ -239,6 +239,32 @@ function host(o = {}) {
   const h3 = host({ briefing: () => false }), run3 = createBossRun(h3); run3.begin(ARENA_SECTOR); run3.end('lost'); run3.tick(0.1);
   assert.ok(!h3.log.briefs.includes('boss_dead') && !h3.log.briefs.includes('arena_decoded'), 'a lost run: neither'); }
 
+// THE WHEEL BACK AT HER DEATH (review, 2026-10-19): the boss phase re-asserted Isao's lure autopilot every frame until end(), so the player (out of the seat at the
+// kill) sat in a hull they could not drive for the ~16 s of Isao's lines, and boss_hit_me / arena_lure could fire after "Target down". At her death the phase
+// is `over`, the directive and the autopilot are put back, nothing re-asserts them, and no boss-phase line is said; a panel other lines keep busy is cleared
+// for arena_decoded ARENA.decodedCap seconds after boss_dead (it held the debrief up to STORY_CALM.maxHold)
+{ assert.equal(ARENA.decodedCap, 20);
+  let auto = false, hp = 10, shots = 0, pilot = false, cleared = 0;
+  const h = host({ setAutoMode: (v) => { auto = !!v; }, autoMode: () => auto, playerHP: () => hp, shots: () => shots, briefing: () => true, clearBriefs: () => { cleared++; }, pilotMode: () => pilot, storyViews: () => ({ now: () => (pilot ? 'gunship' : 'tank') }), leavePilot: () => { pilot = false; } });
+  const run = createBossRun(h); h.params().directive = 'wander'; run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1); await h.choiceCard.take(); await null;
+  pilot = true; h.now = 2.5; run.tick(0.1); assert.equal(run.state().seated, true);
+  assert.deepEqual([h.params().directive, auto], ['lure', true], 'Isao has the hull while she is up');
+  b.alive = false; h.now = 3; run.tick(0.1);
+  assert.equal(run.state().phase, 'over', 'her death ends the boss phase');
+  assert.deepEqual([h.params().directive, auto], ['wander', false], 'the directive and the autopilot put back at her death');
+  for (let k = 1; k <= 20; k++) { h.now = 3 + k * 0.1; run.tick(0.1); }
+  assert.deepEqual([h.params().directive, auto], ['wander', false], 'and not re-asserted after it');
+  hp = 4; shots = 5; pilot = true; h.now = 5.2; run.tick(0.1); h.now = 5.3; run.tick(0.1);
+  assert.ok(!h.log.briefs.includes('boss_hit_me'), 'the hull hurt after her death: no boss_hit_me'); assert.ok(!h.log.briefs.includes('arena_lure'), 'nor arena_lure');
+  assert.equal(h.log.briefs.at(-1), 'boss_dead');
+  // the panel never frees: arena_decoded waits, then ARENA.decodedCap after boss_dead the panel is cleared for it
+  const c0 = cleared; h.now = 3 + ARENA.decodedCap - 0.1; run.tick(0.1);
+  assert.ok(!h.log.briefs.includes('arena_decoded'), 'still waiting just short of the cap'); assert.equal(run.talking(), true);
+  h.now = 3 + ARENA.decodedCap; run.tick(0.1);
+  assert.equal(h.log.briefs.at(-1), 'arena_decoded', 'shown at the cap'); assert.equal(cleared, c0 + 1, 'the panel cleared for it');
+  run.end('secure'); assert.equal(h.log.briefs.filter((x) => x === 'arena_decoded').length, 1, 'once'); assert.deepEqual([h.params().directive, auto], ['wander', false]); }
+
 // THE BROOD DIES WITH THE MOTHER (review of note 10, 2026-10-19; the mother is the fight): three of the wave's hunters alive at her death die after her,
 // BROOD_STAGGER (0.1 s) apart, deflating, within a second; a body that is not the arena's brood (no hunter, or another tier) is left alone
 { const kills = [], h = host({ kill: (e, fx) => { e.alive = false; kills.push([e.id, fx, +h.now.toFixed(2)]); } }), run = createBossRun(h);
@@ -266,4 +292,4 @@ function host(o = {}) {
   h2.enemies.push(b2, ...r); h2.now = 2; run2.tick(0.1); b2.alive = false; h2.now = 2.1; run2.tick(0.1);
   assert.ok(r.some((e) => e.alive), 'mid-stagger'); run2.end('secure'); assert.ok(r.every((e) => !e.alive), 'end(secure) takes the rest'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother; arena_decoded after boss_dead.');
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');

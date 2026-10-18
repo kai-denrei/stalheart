@@ -245,7 +245,9 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 export const ARENA_HANDOVER = freeze({ title: 'THE MOTHER', take: 'TAKE THE GUN',
   hint: 'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 mini nuke (paint, then release)',
   hintTouch: 'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: paint, then release' });
-export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3,
+// decodedCap: seconds after boss_dead before arena_decoded clears a panel other lines keep busy and is shown (review, 2026-10-19: it waited on a free panel, and the
+// boss sector's debrief waits on it, up to STORY_CALM.maxHold, 120 s; src/fx/boss-run.js sayDecoded)
+export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3, decodedCap: 20,
   // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
   // `ahead` hops of the hull worth a shortcut of `saves` cells on the open walk to the arena (crossed up to `through` rocks deep), else with `flank` the first rock
   // beside the route ahead, never within `clear` cells of the hull by the chord (the beam keeps LASER_AUTO.safeMetres off a friend: 25 m and its radius, 3.1 cells) (second version, 2026-10-16: the cheapest-walk rule fired at 2% of the route, all at the rim), is burned by SOL for `burn` seconds;

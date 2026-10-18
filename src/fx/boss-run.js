@@ -51,14 +51,14 @@ const ROAD_LOOK = 0.25;   // seconds between looks for a planned rock inside the
 
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
-  let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
+  let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss | over (the mother dead, the sector not ended yet)
   let remindAt = 0, reminders = 0, remindDist = Infinity, drove = false;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind), how many fired, the hull's road distance then, Isao took the wheel (ARENA.remindMax)
   let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   let lookAt = -99, lead = null, leadMax = 0;   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
   let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
   let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken
-  let decoded = false, talkUntil = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead
+  let decoded = false, talkUntil = 0, deadAt = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead (said at deadAt)
   let brood = null, broodAt = 0, broodI = 0;   // THE BROOD DIES WITH THE MOTHER (tick below): the wave's hunters alive at her death, when she died, how many have gone
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
@@ -82,7 +82,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -101,14 +101,17 @@ export function createBossRun(c) {
   const arenaDue = () => on && phase === 'beacon' && (dueNow || c.hullNearArena?.() === true);   // the hull there, nothing else (2026-10-18: the clock's fallback is gone)
   // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): the panel keeps one beat pending and
   // drops the rest, and the next sector's brief comes as the debrief closes, so arena_decoded is held here and shown on the panel's first free frame after
-  // boss_dead (the wait the party's lines use, src/fx/disco-party.js say), the run over or not
-  function sayDecoded() { if (decoded && !(c.briefing?.() ?? false)) { decoded = false; c.showBrief('arena_decoded'); c.speak('arena_decoded'); const b = brief('arena_decoded'); talkUntil = c.t() + (b?.lines ?? []).reduce((a, _, i) => a + lineDwell(b, i), 0); } }
+  // boss_dead (the wait the party's lines use, src/fx/disco-party.js say), the run over or not; a panel other lines keep refilling is cleared for it ARENA.decodedCap
+  // seconds after boss_dead (review, 2026-10-19: else it held the debrief up to STORY_CALM.maxHold, 120 s)
+  function sayDecoded() { const cap = c.t() - deadAt >= (ARENA.decodedCap ?? Infinity); if (decoded && (cap || !(c.briefing?.() ?? false))) { decoded = false; if (cap) c.clearBriefs?.(); c.showBrief('arena_decoded'); c.speak('arena_decoded'); const b = brief('arena_decoded'); talkUntil = c.t() + (b?.lines ?? []).reduce((a, _, i) => a + lineDwell(b, i), 0); } }
   // the sector loop holds the boss sector's debrief while this is true (src/fx/sector-run.js; STORY_CALM.maxHold caps it): the decoded line still to come, or on the panel
   const talking = () => on && (decoded || (c.t() < talkUntil && (c.briefing?.() ?? false)));
   // the panel cleared first: in the --arena run the gunship seat's own two-line briefing held it with a beat already pending, so boss_dead was dropped and the
   // debrief froze the panel on the seat's tip (2026-10-19); with the mother down nothing on it still matters
   // and the seat left with her (the hand-over is over): Isao's panel is not drawn in the gunship's seat, so a seated player read none of it (probe r3-f, 2026-10-19)
-  const dead = () => { if (done) return; done = true; if (on && seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot(); c.clearBriefs?.(); c.showBrief('boss_dead'); c.speak('boss_dead'); decoded = true; };
+  // THE WHEEL BACK AT HER DEATH (review, 2026-10-19): the boss phase re-asserted the lure autopilot every frame until end(), about 16 s with the debrief waiting on
+  // Isao, so the player sat in a hull they could not drive and boss_hit_me / arena_lure could take the panel after "Target down"; the phase is `over` now
+  const dead = () => { if (done) return; done = true; if (on) { phase = 'over'; if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); } } if (on && seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot(); c.clearBriefs?.(); c.showBrief('boss_dead'); c.speak('boss_dead'); decoded = true; deadAt = c.t(); };
   function tick(dt) {
     sayDecoded();
     if (!on) return;
