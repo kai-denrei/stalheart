@@ -1,7 +1,11 @@
 import {rimRadius, bowlHeight, SINKHOLE_INNER, SINKHOLE_DEPTH} from './stalheart/sinkhole-shape.js';
 
 // Metres and seconds. The same geometry contract drives rendering and flight.
-export const FUSE=65, FLARE_COUNT=15, EGG_COUNT=1600, HOLE_SCALE=24;
+// THE ESCAPE CLOCK (owner, 2026-10-18: "the maze is longer now, I think ISAO might need more time to be able to get out"): 65 s was set before the maze's
+// bends and the shaft's bow. Measured on the cave's own route autopilot (scripts/browser-test.mjs, queen to p.y > 2 by the main route): 56.6 s turning
+// instantly, 74.3 s turning at 2.5 rad/s and only flying once facing the way (a mouse pilot, the reasonable run), 101.9 s on the A/D keys alone (1.3 rad/s).
+// 100 s is the reasonable run plus about a third; 65 left it eight seconds on the perfect line and none on the reasonable one
+export const FUSE=100, FLARE_COUNT=15, EGG_COUNT=1600, HOLE_SCALE=24;
 export const CHAMBER={x:0,y:-208,z:-79,r:90,ry:58,opening:.1};
 export const QUEEN={x:0,y:-219,z:-101,scale:620,baseY:-254};
 export const START={x:0,y:11,z:23};
@@ -131,6 +135,11 @@ export function recordImpact(m){
 export function useFlare(m){if(m.outcome||m.extracted||m.signalLost||m.flares<=0)return false;m.flares--;return true;}
 // THE WORK LIGHT (the owner, 2026-10-16: "the lamp should not fail right away... it should start stronger, then start to fail with flickers... come back...
 // fail again for good a bit later"): strong while whole; after the second hit LAMP.flicker seconds of flicker, back (dimmer) for LAMP.back seconds, then out
+// FLARES STICK TO SLOPES (owner, 2026-10-18: "the flares need to STICK to sloped areas better, although they must fall with gravity"; flare-physics.js):
+// on contact the rock grips (friction, coefficient `friction`, against gravity's push into the surface), and a flare slower than `restSpeed` on rock no
+// steeper than `restSlope` degrees comes to rest and stays (rest is static: nothing restarts a resting flare). Steeper than that it slides on; tan(50)
+// is 1.19, above the grip, so a flare on a wall or on the bowed shaft's 67-degree lean never hangs; in the air nothing changes
+export const FLARE_STICK={restSlope:50,restSpeed:.9,friction:1};
 export const LAMP={strong:1.25,flicker:6,back:25,dim:.8};
 export function lampStrength(m){
   if(m.lampState==='failed')return 0;
