@@ -1573,14 +1573,15 @@ try{
  {const s=await st();assert.equal(s.party.phase,'party','the party goes on after the cut');assert.equal(s.party.hanging,true,'the ball still hangs');}
  current='day-42-after-cut';await finish();
  await until(`${T}.state().party.phase!=='party'`,60000).catch(async()=>assert.fail(`the alarm at the track's end (${JSON.stringify((await st()).party)})`));
- {const s=await st();assert.equal(s.party.phase,'over',`the track ran out: over (${JSON.stringify(s.party)})`);assert.equal(s.party.music,false,'the music stopped');assert.ok((s.sounds?.danger_alert??0)>0,`the klaxon rang (${JSON.stringify(s.sounds)})`);
+ {const s=await st();assert.equal(s.party.phase,'over',`the track ran out: over (${JSON.stringify(s.party)})`);assert.equal(s.party.music,false,'the music stopped');assert.ok((s.sounds?.danger_alert??0)>(atStart.sounds?.danger_alert??0),`the party's klaxon rang: danger_alert rose since the party armed (${atStart.sounds?.danger_alert??0} -> ${s.sounds?.danger_alert??0}; the wave's first contact and the integrity HUD ring it too, so a count above zero proves nothing)`);
   assert.ok(!(s.loopVoices||[]).includes(DAY_42.music.key),`no music voice left (${JSON.stringify(s.loopVoices)})`);assert.equal(s.party.lights,0,'the lights went with the alarm');
   assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/Party's over/,'Isao\'s second line');}
  current='day-42-over';await finish();
  await until(`${T}.state().party.phase==='done'`,10000).catch(async()=>assert.fail(`the ball lowered and gone (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.party.lights,0,'the lights are gone');assert.equal(s.party.hanging,false,'the ball is gone');
   if(s.sector.phase==='fighting'){const c0=s.sector.clock;await delay(2000);assert.ok((await st()).sector.clock>c0,`the sector clock runs again (${c0})`);}}
- // the next wave: the one armed at the alarm, or the sector's next pulse now its clock runs; only when the sector had waves left at the party's start
+ // the next wave: a wave follows the party. This does NOT prove the party armed it: once the sector clock runs again the sector's own next pulse can raise the
+ // released count inside the window even if armWave() never fired. Only when the sector had waves left at the party's start
  if(atStart.sector.phase==='fighting'&&released(atStart)<planned(atStart)){
   await until(`(${T}.state().sector.breaches||[]).reduce((n,b)=>n+(b.wavesReleased||0),0)>${released(atStart)}`,45000).catch(async()=>assert.fail(`a wave is out after the party (${released(atStart)}/${planned(atStart)} at the start; ${JSON.stringify((await st()).sector.breaches)})`));
  } else console.log(`  day-42: every wave was out before the party (${released(atStart)}/${planned(atStart)}), no next wave to see`);
