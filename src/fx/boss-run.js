@@ -116,6 +116,11 @@ export function createBossRun(c) {
     sayDecoded();
     if (!on) return;
     const t = c.t();
+    // THE LOOK DURING A PLANNED BURN (review of note 7b, 2026-10-19): a burn holds the beam up to ARENA.road.burn (2.5 s), ~7 cells at the hull's top speed, so a
+    // second planned rock 4-7 cells past the first crossed the reach unasked, and once inside `clear` nothing asks for it; the look runs again once the hull is
+    // within `clear` + 1 cells of the held rock, past it (a next one in reach takes the beam); a refused ask (SOL seated or offline) backs the look off to `every`
+    const held = roadUntil > 0 && roadPlanned, heldNear = held && roadCell >= 0 && c.fromHull?.(roadCell) < (ARENA.road?.clear ?? 0) + 1;
+    const lookGap = roadLaid === false ? (ARENA.road?.every ?? 7) : ROAD_LOOK;
     if (phase === 'beacon' && c.arenaOpen?.()) {
       phase = 'waves'; c.tremor?.(-1); c.showBrief('arena_open'); c.speak('arena_open');
       if (drove && was && c.autoMode() && c.params().directive === 'lure') { c.params().directive = was.directive; c.setAutoMode(was.auto); }   // Isao drove it out: the wheel back to the player for the waves
@@ -133,9 +138,9 @@ export function createBossRun(c) {
     // (looked for every ROAD_LOOK s), the flank's on the `every` cadence; a hull standing still gets its 50 m cut and the beam waits
     // A planned rock in reach takes the beam from a flank burn (2026-10-19, probe r3-f: with the flank holding the beam, road rocks crossed the reach unasked and
     // the hull met them at its next cell three times in one drive)
-    else if (phase === 'beacon' && c.roadNext && c.hullNearArena?.() !== true && ((!roadUntil && t - roadAt >= (ARENA.road?.every ?? 7)) || (t - lookAt >= ROAD_LOOK && (!roadUntil || !roadPlanned)))) {
+    else if (phase === 'beacon' && c.roadNext && c.hullNearArena?.() !== true && ((!roadUntil && t - roadAt >= (ARENA.road?.every ?? 7)) || (t - lookAt >= lookGap && (!held || heldNear)))) {
       const due = !roadUntil && t - roadAt >= (ARENA.road?.every ?? 7), p = planned(); lookAt = t;
-      const pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: roadCuts ? roadOk : (c.roadFar ?? (() => true)) }) : -1;
+      const far = roadCuts ? roadOk : (c.roadFar ?? (() => true)), pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: held ? (ci) => ci !== roadCell && far(ci) : far }) : -1;
       const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
       if (pc >= 0 || due) {
         if (roadUntil) release();

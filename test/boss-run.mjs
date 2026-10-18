@@ -5,6 +5,7 @@ import { createBossRun } from '../src/fx/boss-run.js';
 import { ARENA, ARENA_SECTOR, ARENA_HANDOVER } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
+import { METRES_PER_CELL } from '../src/core/stage-units.js';
 
 function host(o = {}) {
   const log = { briefs: [], callouts: [], tremor: [], road: [], over: [], pause: [] };
@@ -131,6 +132,34 @@ function host(o = {}) {
   assert.equal(h.log.road.at(-1), 31, 'a flank burn on'); assert.equal(run.state().road.planned, false);
   from = 21; h.now += 0.25; run.tick(0.25);
   assert.deepEqual(h.log.road.slice(-2), [-1, 26], 'the planned rock in reach takes the beam at the next look'); assert.equal(run.state().road.planned, true); }
+
+// THE LOOK DURING A PLANNED BURN (review of note 7b, 2026-10-19): a burn holds the beam up to ARENA.road.burn (2.5 s), ~7 cells at the hull's top speed (2.8
+// cells/s), so a second planned rock 4 cells past the first crossed the reach unasked and, once inside `clear`, was never asked for. The chain 0..40 to the arena
+// at 40, planned rocks at 5 (the first cut), 14 and 18; the beam cuts nothing after the first (the worst case: every burn holds its whole 2.5 s); the hull drives
+// 2.8 cells/s from 0: both 14 and 18 are asked for while still at least `clear` cells ahead of the hull
+{ const adj = Array.from({ length: 41 }, () => []); for (let i = 0; i < 40; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(41).fill(1); for (const r of [5, 14, 18]) tags[r] = 0;
+  let x = 0; const asks = [], speed = 2.8, clear = ARENA.road.clear;
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(x), to: 40 }), roadFar: (ci) => Math.abs(ci - x) >= clear, fromHull: (ci) => Math.abs(ci - x), roadNext: () => -1,
+    solRoad: (ci) => { if (ci >= 0) asks.push([ci, +x.toFixed(2)]); return ci >= 0; } });
+  h.story().arena.cell = 40;
+  const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(asks.map((a) => a[0]), [5], 'the first cut'); tags[5] = 1; h.now = 0.05; run.tick(0.05); assert.equal(run.state().roadCuts, 1);
+  for (let k = 2; x < 20; k++) { h.now = k * 0.05; x += speed * 0.05; run.tick(0.05); }
+  const at = (ci) => asks.find((a) => a[0] === ci);
+  assert.ok(at(14) && at(18), `both planned rocks asked for (${JSON.stringify(asks)})`);
+  for (const ci of [14, 18]) assert.ok(ci - at(ci)[1] >= clear, `${ci} asked with the hull ${(ci - at(ci)[1]).toFixed(2)} cells short of it, outside clear`);
+  assert.ok(run.state().road.leadMax <= ARENA.road.aheadMetres / METRES_PER_CELL, 'and within the reach'); }
+// a refused ask (SOL seated or offline: solRoad false) backs the look off to `every` instead of asking every ROAD_LOOK s
+{ const adj = Array.from({ length: 10 }, () => []); for (let i = 0; i < 9; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(10).fill(1); tags[4] = 0; const times = [];
+  const h = host({ solTakes: false, roadGraph: () => ({ adj, tags, blocked: 0, from: 0, to: 9 }), roadFar: () => true, fromHull: (ci) => ci, roadNext: () => -1 });
+  h.story().arena.cell = 9; const sol = h.solRoad; h.solRoad = (ci) => { if (ci >= 0) times.push(h.now); return sol(ci); };
+  const run = createBossRun(h); run.begin(ARENA_SECTOR);
+  for (let k = 0; k <= 200; k++) { h.now = k * 0.05; run.tick(0.05); }
+  assert.equal(run.state().road.laid, false, 'refused');
+  assert.ok(times.length >= 2 && times.length <= Math.floor(10 / ARENA.road.every) + 1, `asked ${times.length} times in 10 s, not every ${0.25} s`);
+  for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= ARENA.road.every - 1e-9, `the asks ARENA.road.every apart (${times})`); }
 
 // ISAO TAKES THE HULL OUT (review of note 6, 2026-10-18): a hull that never comes gets ARENA.remindMax reminders, then Isao's arena_drive and the hull on the
 // lure directive (no quarry in the beacon: it drives the arena's field); he only starts it, nothing re-asserts it; the arrival still opens the hole
@@ -292,4 +321,4 @@ function host(o = {}) {
   h2.enemies.push(b2, ...r); h2.now = 2; run2.tick(0.1); b2.alive = false; h2.now = 2.1; run2.tick(0.1);
   assert.ok(r.some((e) => e.alive), 'mid-stagger'); run2.end('secure'); assert.ok(r.every((e) => !e.alive), 'end(secure) takes the rest'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');
