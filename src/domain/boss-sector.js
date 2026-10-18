@@ -6,6 +6,7 @@
 //   phaseScale(phase, hits)        the damage multiplier by the body's phase (the lab's CUTIS_HITS: the reach is the weak spot: COIL, EXTEND and ANCHOR
 //                                  full, REST and SETTLE half, TRANSFER none); 1 for a body with no phase
 //   bossAlive(enemies)             { wave, boss, tiers }: the live hunters of the waves' tiers (together, and by tier) and of the boss's
+//   bossLeft(enemies, queue, tier) the boss's records alive and its entries still queued: THE ARENA is held once none is left (2026-10-18, note 10)
 export function bossWaves(row, { tierSpec }) {
   const b = row?.boss;
   if (!b) return [[], []];
@@ -21,6 +22,15 @@ export function phaseScale(phase, hits) {
   if (REST.has(phase)) return hits.rest ?? 1;
   if (phase === 'TRANSFER') return hits.transfer ?? 1;
   return 1;
+}
+
+// THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"): the boss sector's count is the boss,
+// alive or still in the breach's queue, and nothing else on the planet (src/fx/sector-run.js)
+export function bossLeft(enemies, queue, bossTier = 'huge') {
+  let n = 0;
+  for (const e of enemies ?? []) if (e?.alive && e.hunter && e.tier === bossTier) n++;
+  for (const q of queue ?? []) if (q?.hunter && q.tier === bossTier) n++;
+  return n;
 }
 
 export function bossAlive(enemies, { waveTier = 'small', waveTiers = null, bossTier = 'huge' } = {}) {

@@ -309,7 +309,7 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   const debrief = { show: () => log.push(['report', run.state().n]), showCampaign: () => log.push(['campaign']), hide: () => {}, isOpen: () => false };
   let hand = null;
   // the same world with a finale and a fake card: rebuilt through its own hooks
-  const api = { openBackDoor: () => {}, backBreachCandidates: () => [], sideBreachCandidates: () => [], canyonPlan: () => null, finale: (then) => { log.push(['finale']); hand = then; return true; } };
+  const api = { openBackDoor: () => {}, backBreachCandidates: () => [], sideBreachCandidates: () => [], canyonPlan: () => null, finale: (then) => { log.push(['finale']); hand = then; return true; }, engaged: () => !!ww.engaged };
   const { createSectorRun: make } = await import('../src/fx/sector-run.js');
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
@@ -354,8 +354,15 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
       step(0.5); ww.enemies.push(...ww.queue.splice(0).map(dead)); if (!boss) step(SECTOR_TIMING.stall + 1); }
     assert.ok(boss, 'the three waves released');
     step(SECTOR_TIMING.stall + 5); assert.equal(run.state().phase, 'fighting', `the mother alive holds the arena open (${run.state().phase})`);
-    boss.alive = false; step(1); }
-  hold();
+    // THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"; probe r3-g): the stragglers the door
+    // sector left alive (50 in the probe, walking or stuck by the base), a small Reed and a pup that walked off, and a fight round the hull do not hold the arena open
+    const left = [{ alive: true, guard: null, type: 'gslime' }, { alive: true, guard: null, type: 'ghost' }, { alive: true, guard: null, hunter: true, tier: 'small', type: 'reed' }, { alive: true, guard: null, hunter: true, tier: 'pup', type: 'reed' }];
+    ww.enemies.push(...left); ww.engaged = true;
+    step(SECTOR_TIMING.stall + 5); assert.equal(run.state().phase, 'fighting', `the mother alive still holds it (${run.state().phase})`);
+    boss.alive = false; step(0.5); assert.equal(run.state().phase, 'secure', `the mother dead: SECURE with four bodies alive elsewhere (${run.state().phase})`);
+    step(SECTOR_TIMING.securePause + 0.5); assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'and the report at once: a fight round the hull does not hold the boss sector\'s debrief');
+    for (const e of left) e.alive = false; ww.engaged = false; }
+  if (run.state().phase === 'fighting') hold();
   assert.equal(ww.opened.at(-1).alive, true, 'the arena\'s hole is spent, not sealed: the nest\'s mouth stays open');
   assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'the boss sector held: its report, no finale');
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'BOTH WALLS'); assert.equal(run.state().name, 'BOTH WALLS');
