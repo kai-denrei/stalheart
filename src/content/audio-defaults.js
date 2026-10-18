@@ -104,8 +104,10 @@ export const SOUNDS = {
   enemy_die_b: { file: `${A}/enemy_die_b.mp3`, bus: 'enemies', gain: 0.60, maxVoices: 3, minInterval: 0.04, rateJitter: 0.12 },
   enemy_die_c: { file: `${A}/enemy_die_c.mp3`, bus: 'enemies', gain: 0.60, maxVoices: 3, minInterval: 0.04, rateJitter: 0.12 },
   // --- music ---------------------------------------------------------------
-  // DAY 42 (owner, 2026-10-18): the 44 s retro synth-wave track, played through the loop handle so the party can stop it (before the loop point)
-  day_42_music: { file: `${A}/day_42_music.mp3`, bus: 'music', gain: 0.8, maxVoices: 1, minInterval: 10, rateJitter: 0 },
+  // DAY 42 (owner, 2026-10-18): the 44 s retro synth-wave track, played through the loop handle so the party can stop it (before the loop point).
+  // Lazy (final review, 2026-10-18): 1.4 MB of mp3 is ~15 MB of PCM decoded up front on every page for a party most runs never reach; the
+  // party primes it two days ahead with the ball (src/fx/disco-party.js fetchBall) and asks again while it waits
+  day_42_music: { file: `${A}/day_42_music.mp3`, bus: 'music', gain: 0.8, maxVoices: 1, minInterval: 10, rateJitter: 0, lazy: true },
 };
 
 export const DEATH_KEYS = ['enemy_die_a', 'enemy_die_b', 'enemy_die_c'];

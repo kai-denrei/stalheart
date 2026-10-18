@@ -42,6 +42,7 @@ export function createDiscoParty(h) {
 
   function fetchBall() {
     if (ball || loading || failed) return; loading = true;
+    h.sfx?.prime?.(DAY_42.music.key);   // the track is a lazy sound (2026-10-18): decoded with the ball's fetch, two days ahead, not at page load
     const fail = (why) => { loading = false; if (!failed) console.warn(`disco party: the ball did not load (${why})`); failed = true; };   // once; state().failed
     Promise.resolve(load(DAY_42.ball)).then((res) => {
       const scene = res?.isObject3D ? res : res?.scene; if (!scene) return fail('no scene');
@@ -140,9 +141,16 @@ export function createDiscoParty(h) {
     } });
   }
 
+  // the track: null until it has decoded (src/audio.js loop); asked to decode again then, because a prime before the page's first gesture
+  // has no context to decode with and is not retried by the audio engine (final review, 2026-10-18)
+  function startMusic() {
+    music = h.sfx?.loop(DAY_42.music.key) ?? null;
+    if (!music) h.sfx?.prime?.(DAY_42.music.key);
+  }
+
   function begin() {
     h.showBrief(DAY_42.briefs.start);
-    music = h.sfx?.loop(DAY_42.music.key) ?? null;
+    startMusic();
     h.sfx?.duck(DAY_42.music.duck.buses, DAY_42.music.duck.depth, DAY_42.seconds);
     t = 0; overAt = 0; appear = 0; tiers = []; gather(); addLights();
   }
@@ -179,7 +187,7 @@ export function createDiscoParty(h) {
       const root = gather(), p = celebrationPose(t, DAY_42.loop);
       if (now === 'party') {
         appear = Math.min(1, t);
-        if (!music && t < DAY_42.shot.at) music = h.sfx?.loop(DAY_42.music.key) ?? null;   // null until the track has decoded: asked again (src/audio.js)
+        if (!music && t < DAY_42.music.retry) startMusic();   // a slow decode still starts within the first seconds (2026-10-18: was the cut's 1.5 s)
         const k = Math.min(1, t / DAY_42.hoist);
         for (const r of tiers) pose(r, hoistBlend(k, r.rest, target(p)));
       } else {

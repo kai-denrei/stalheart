@@ -6,11 +6,11 @@ import { DAY_42 } from '../src/content/day-42.js';
 function gantry() { const names = ['GANTRY_TRAVEL_Y', 'CARRIAGE_TRAVEL_X', 'TOOL_LIFT_Z', 'J1_BASE_YAW', 'J2_SHOULDER', 'J3_ELBOW', 'J4_FOREARM_ROLL', 'J5_WRIST_PITCH', 'J6_TOOL_ROLL', 'EXTRUSION_TIP']; const root = new THREE.Group(); let p = root; for (const n of names) { const g = new THREE.Group(); g.name = n; p.add(g); p = g; } p.position.set(0, 11.6, 2.6); root.userData.actions = { Terraforming_Cycle: { paused: false } }; return root; }
 function ball() { const root = new THREE.Group(); root.name = 'DISCO_BALL_ROOT'; for (const n of ['DISCO_PENDULUM_PIVOT', 'DISCO_SPHERE_SPIN', 'LIGHT_HALO_YAW', 'LASER_RING_YAW', 'STANDALONE_CRADLE']) { const g = new THREE.Group(); g.name = n; root.add(g); } return root; }
 function host(o = {}) {
-  const log = { briefs: [], callouts: [], shots: [], played: [], armed: 0, stopped: 0, ducked: [] }, scene = new THREE.Scene(), stal = gantry(); scene.add(stal);
+  const log = { briefs: [], callouts: [], shots: [], played: [], primed: [], armed: 0, stopped: 0, ducked: [] }, scene = new THREE.Scene(), stal = gantry(); scene.add(stal);
   const music = { stop: () => { log.stopped++; } };
   const h = {
     scene, camera: new THREE.PerspectiveCamera(), metres: () => 1, loadGlb: async () => ({ scene: ball() }),
-    sfx: { loop: (k) => { log.played.push(k); return music; }, play: (k) => log.played.push(k), duck: (b, d, s) => log.ducked.push([b, d, s]) },
+    sfx: { loop: (k) => { if (o.decoded && !o.decoded()) return null; log.played.push(k); return music; }, prime: (k) => { log.primed.push(k); return Promise.resolve(true); }, play: (k) => log.played.push(k), duck: (b, d, s) => log.ducked.push([b, d, s]) },
     startShot: (s) => { log.shots.push(s.id); log.lastShot = s; }, snapCamera: () => {}, showBrief: (id) => log.briefs.push(id), callout: (t) => log.callouts.push(t), armWave: () => { log.armed++; },
     daylight: () => ({ day: () => o.day ?? 42 }), sectorRun: () => ({ breathing: () => o.breathing ?? true, state: () => ({ phase: o.phase ?? 'fighting' }), defNow: () => ({ boss: !!o.boss }) }),
     base: () => ({ structure: (id) => (id === 'stalheart' ? { root: stal, near: stal, far: stal, holder: stal } : null) }),
@@ -23,6 +23,7 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
 {
   const { h, log, scene, stal } = host({ day: 40 }); const p = createDiscoParty(h);
   p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); assert.equal(p.state().loaded, true, 'the ball loads two days ahead');
+  assert.deepEqual(log.primed, [DAY_42.music.key], 'the lazy track is primed with the ball, two days ahead (2026-10-18)');
   assert.equal(p.state().phase, 'idle'); assert.equal(p.holding(), false);
 }
 {
@@ -79,4 +80,9 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
 { const { h } = host(); h.loadGlb = async () => null; let warns = 0; const w = console.warn; console.warn = () => { warns++; };
   const p = createDiscoParty(h); try { p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); p.tick(0.1); } finally { console.warn = w; }
   assert.equal(p.state().failed, true); assert.equal(p.state().loaded, false); assert.equal(warns, 1, 'one warning, not one a frame'); }
+// the track is lazy (final review, 2026-10-18): a decode slower than the cut still starts it within `music.retry`, asking to decode again meanwhile
+{ let decoded = false; const { h, log } = host({ decoded: () => decoded }); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  assert.equal(p.state().phase, 'party'); assert.equal(p.state().music, false, 'not decoded: no music yet'); tickTo(p, 3);
+  assert.ok(log.primed.length > 2, `asked to decode again while it waits (${log.primed.length})`); assert.ok(3 < DAY_42.music.retry, 'the test sits inside the retry window');
+  decoded = true; p.tick(0.1); assert.equal(p.state().music, true, 'started at 3 s, after the cut'); assert.deepEqual(log.played, [DAY_42.music.key]); }
 console.log('disco-party ok');
