@@ -51,14 +51,16 @@ export const SECTORS = freeze([
   { n: 3, name: 'THE CANYON', shape: 'pulse', bodies: [30, 50, 70, 120], breath: { at: 0.25, max: 50 }, coreShare: 0.03, breaches: { gate: 1 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 10, held: { kg: 50, points: 500 }, canyon: true,
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'SOL-82 online',
     brief: ['A tremor on the far side of the world. A swarm, massing in a canyon.', 'The gate waits for you. The far side does not.'] },
-  { n: 4, name: 'THE PRESS', shape: 'flow', flow: { alive: 450, total: 1800, burst: 150, pulse: 6 }, coreShare: 0.03, breaches: { gate: 2 }, ladderStart: 4, threat: 2.1, pulse: 6, held: { kg: 55, points: 550 },
+  // nearFirst (owner, 2026-10-19, round three, note 3): the lane is never empty. The first gate breach of sectors 4 and 5 stands on the near ring
+  // (SECTOR_PLACEMENT.flowFirstHops), the ring behind it (ringHops); no other sector has it
+  { n: 4, name: 'THE PRESS', shape: 'flow', flow: { alive: 450, total: 1800, burst: 150, pulse: 6 }, coreShare: 0.03, breaches: { gate: 2 }, nearFirst: true, ladderStart: 4, threat: 2.1, pulse: 6, held: { kg: 55, points: 550 },
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
     brief: ['They are pressing harder. The lane is never empty now.', 'Spend what you have. The colony can print more.'] },
   // THE SIDE WALL (owner, 2026-10-01: "after 4 waves there's a « side breach ». Problem, but still within range of some of the existing
   // towers so easier to manage. This is a chekov's gun of sorts, it reveals that the walls can be breached"). `side` is the first key,
   // so the side breach is picked and opened first: it comes up outside the gate's wall, inside the front sentries' reach, and cuts
   // its way to the wall (SIDE_BREACH). Isao prints the wall shut again once the lane is quiet.
-  { n: 5, name: 'THE SIDE WALL', shape: 'flow', flow: { alive: 550, total: 2400, burst: 180, pulse: 6 }, coreShare: 0.05, breaches: { side: 1, gate: 1 }, ladderStart: 5, threat: 2.2, pulse: 6, held: { kg: 60, points: 600 },
+  { n: 5, name: 'THE SIDE WALL', shape: 'flow', flow: { alive: 550, total: 2400, burst: 180, pulse: 6 }, coreShare: 0.05, breaches: { side: 1, gate: 1 }, nearFirst: true, ladderStart: 5, threat: 2.2, pulse: 6, held: { kg: 60, points: 600 },
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a breach through the wall',
     brief: ['Something is digging beside the gate. Close to the sentries.', 'One mouth on the lane, and one where it comes up.'] },
 ]);
@@ -209,11 +211,19 @@ export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scrambl
 // apart, never within exclusionCells of a sealed breach (the gunship's far breach uses 6, GUNSHIP_FAR), and are picked from the farthest
 // open cells on their side, at random among those within bandHops of the farthest still valid
 // ringHops: gate-side breaches stand on this ring of walking hops from the heart, not the field's far ring (about 69): at the
-// sector pace a wave walks in about thirty seconds instead of a minute (owner, 2026-09-24: "too slow between enemies").
+// sector pace a wave walks in about thirty seconds instead of a minute (owner, 2026-09-24: "too slow between enemies"). That was the dots' walk; it is
+// now the ring of the second and later breaches (the first of sectors 4 and 5 is nearFirst, flowFirstHops): the Pearl column takes about 79 s from 45
+// hops (measured headless, 2026-10-19)
 // rimCells: and never within this many cells of the clearing. A breach blows out every rock cell within its clearRadius (6), so
 // one opened near the base's rim carved a way in beside a gate that still stood at 100% (measured with --pacing --passive: the
 // heart lost its first life 20 s into sector 1). The far ring never came that close; the near one can
-export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, rimCells: 10 });
+// flowFirstHops (owner, 2026-10-19, third round, note 3: "sector 4 and sector 5 have the tremor, but the first wave seems empty? There is a long delay
+// before enemies arrive"): the first gate breach of a row with nearFirst (THE PRESS and THE SIDE WALL, sectors 4 and 5, and no other: not the hold
+// sectors, THE BACK DOOR, BOTH WALLS or the generator's, whose tuned timing was not probed with it) stands on this nearer ring. Measured headless on sector 4 at ringHops (the Pearl
+// column walks slower than the dots this ring was set for): the burst left the holes 7 s after the first opened, nothing held, and walked 29-30
+// hops for 47 s before its front was within 10 cells of the gate (the gate reached ~80 s after the release). The other breaches keep ringHops,
+// so the lane still fills from far out behind the first
+export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, flowFirstHops: 30, rimCells: 10 });
 // THE ARENA'S PLACE (owner, 2026-10-16: "a giant opening very far from the base"; src/domain/arena.js, src/platform/story-world.js story.arena): the
 // farthest reachable cell outside the walls within `farHops` of the farthest; its opening `craterCells` wide (the sinkhole scaled, src/game-breaches.js)
 // reachCells: the hull this near the arena's cell opens it (the drive out to the beacon), and nothing else does: the waitMax fallback (150 s after the start) is gone
