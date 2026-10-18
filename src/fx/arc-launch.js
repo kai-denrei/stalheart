@@ -8,9 +8,12 @@
 // told once when it is complete (SOL-88 online: src/fx/laser-arsenal.js setAuto).
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture } from './model-fixture.js';
+import { LAUNCHER_LIGHTS } from '../content/orbital-works.js';
+import { lightLevels, arcIndex } from '../domain/light-sequence.js';
 
-export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, start: 8, seconds: 0.4, climb: 6, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
+export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, chargeAt: 4, start: 8, seconds: 0.4, climb: 6, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
 const RELEASE = LAUNCH.start + LAUNCH.seconds;
+const RAIL_CENTRE = [2.6 + LAUNCH.radius, -20];   // the centre [y, z] of railPose's arc, in the launcher's frame
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const ease = (t, a, b) => { const u = clamp((t - a) / (b - a)); return u * u * (3 - 2 * u); };
 const railPose = (u) => { const a = LAUNCH.sweep * u; return { position: [0, 2.6 + LAUNCH.radius * (1 - Math.cos(a)), -20 + LAUNCH.radius * Math.sin(a)], pitch: -a }; };
@@ -30,8 +33,36 @@ export function launchState(seconds) {
   // rail's kick the payload accelerates on along the tangent at LAUNCH.climb m/s² until it is gone, hundreds of metres up
   const away = Math.max(0, t - RELEASE - 1 / 3);
   const payload = t < RELEASE ? { position: [...sled.position], pitch: sled.pitch } : extensionPose(35 * (1 - (1 - clamp((t - RELEASE) / (1 / 3))) ** 2) + 0.5 * LAUNCH.climb * away * away);
-  const phase = t < 4 ? 'loading' : t < LAUNCH.start ? 'charging' : t < RELEASE ? 'accelerating' : t < 17 ? 'released' : t < 21 ? 'unfolding' : t < 26 ? 'insertion' : 'reset';
-  return { t, sled, payload, phase, charge: t < LAUNCH.start ? ease(t, 4, LAUNCH.start) : t < RELEASE ? 1 : 1 - ease(t, RELEASE, RELEASE + 2), clamp: 1 - ease(t, RELEASE - 0.04, RELEASE), deploy: ease(t, 17, 21), burn: t >= 21 && t < 26, done: t >= LAUNCH.duration };
+  const phase = t < LAUNCH.chargeAt ? 'loading' : t < LAUNCH.start ? 'charging' : t < RELEASE ? 'accelerating' : t < 17 ? 'released' : t < 21 ? 'unfolding' : t < 26 ? 'insertion' : 'reset';
+  return { t, sled, payload, phase, charge: t < LAUNCH.start ? ease(t, LAUNCH.chargeAt, LAUNCH.start) : t < RELEASE ? 1 : 1 - ease(t, RELEASE, RELEASE + 2), clamp: 1 - ease(t, RELEASE - 0.04, RELEASE), deploy: ease(t, 17, 21), burn: t >= 21 && t < 26, done: t >= LAUNCH.duration };
+}
+
+// THE MAGNETS ONE BY ONE (owner, 2026-10-19, third round, note 5: "small change, stage 7 the launcher; the magnets should light up in cyan one
+// by one, not all at a time"). The magnets are the ARC-01's sixteen passage gates and the status lights on them, and the pinned lod1 merges
+// each set into one mesh with one material (PASSAGE_GATES, ACCELERATOR_LIGHTS: no node per gate), so one emissive lit them all at once. For
+// the charge each mesh wears a copy of its geometry with its triangles sorted into one group per gate (by the gate's place on the rail's arc,
+// src/domain/light-sequence.js arcIndex) and one clone of its material per group. The clones share the original's shader program, so nothing
+// compiles; the extra draws (sixteen a mesh) last only until the magnets are equal again after the release, and the merged mesh comes back.
+function perMagnet(mesh, count) {
+  if (!mesh?.isMesh || Array.isArray(mesh.material) || !mesh.material?.emissive) return null;
+  const was = { geometry: mesh.geometry, material: mesh.material };
+  const g = was.geometry.clone(), pos = g.attributes.position, src = g.index?.array ?? null, n = src ? src.length : pos.count;
+  const vertex = (k) => (src ? src[k] : k), byGate = Array.from({ length: count }, () => []);
+  for (let t = 0; t + 2 < n; t += 3) {
+    let y = 0, z = 0;
+    for (let k = 0; k < 3; k++) { y += pos.getY(vertex(t + k)); z += pos.getZ(vertex(t + k)); }
+    byGate[arcIndex(y / 3, z / 3, RAIL_CENTRE, LAUNCH.sweep, count)].push(t);
+  }
+  const index = [];
+  g.clearGroups();
+  byGate.forEach((tris, i) => { g.addGroup(index.length, tris.length * 3, i); for (const t of tris) index.push(vertex(t), vertex(t + 1), vertex(t + 2)); });
+  g.setIndex(index);
+  const mats = byGate.map(() => was.material.clone());
+  mesh.geometry = g; mesh.material = mats;
+  return {
+    mats, worn: () => mesh.material === mats,   // something else may have swapped the material since: then the merged path lights it as before
+    restore() { if (mesh.material === mats) { mesh.geometry = was.geometry; mesh.material = was.material; g.dispose(); } for (const m of mats) m.dispose(); },   // the copy goes only where the original is back: a swapped material leaves the mesh its geometry
+  };
 }
 
 // launcher: the standing structure's root (src/fx/story-base.js structure(id).root); now(): the game clock in seconds; onComplete: once
@@ -41,6 +72,9 @@ export function launchState(seconds) {
 export function createArcLaunch({ launcher, now, onComplete = null, satellite = LAUNCH.satellite, sfx = null, onPhase = null }) {
   const node = (n) => launcher?.getObjectByName(n) ?? null;
   const sled = node('LAUNCH_SLED'), clamps = [[node('CLAMP_L'), -1], [node('CLAMP_R'), 1]], gates = node('PASSAGE_GATES'), lights = node('ACCELERATOR_LIGHTS');
+  let magnets = [gates, lights].map((m) => [m, perMagnet(m, LAUNCHER_LIGHTS.magnets)]);
+  const levels = new Array(LAUNCHER_LIGHTS.magnets).fill(0);
+  const merge = () => { for (const [, split] of magnets) split?.restore(); magnets = magnets.map(([m]) => [m, null]); };
   let t0 = null, sat = null, petals = [], plume = null, done = false, last = null, thrust = null, lastPhase = null;
   const up = new THREE.Vector3(0, 0.43, 0);
   // NAVIGATION LIGHTS (owner, 2026-10-16: 'the second SOL satellite launch should have glowing lights against the dark sky'): red to port, green to
@@ -58,7 +92,14 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
     last = s;
     if (sled) { sled.position.fromArray(s.sled.position); sled.rotation.x = s.sled.pitch; }
     for (const [c, side] of clamps) if (c) c.position.x = side * (1.47 - 0.15 * s.clamp);
-    for (const m of [gates, lights]) if (m?.material?.emissive) { m.material.emissive.set(0x00eaff); m.material.emissiveIntensity = 0.25 + s.charge * 2; }
+    // through the charge each magnet rises on its own beat, from the breech up the rail (LAUNCHER_LIGHTS); after the release they fall with
+    // the charge together, and once it is spent they are one mesh again
+    if (s.t >= RELEASE + 2) merge();
+    const lit = s.t < RELEASE ? lightLevels(s.t - LAUNCH.chargeAt, LAUNCHER_LIGHTS.magnets, LAUNCHER_LIGHTS.step, LAUNCHER_LIGHTS.ramp, levels) : null;
+    for (const [m, split] of magnets) {
+      if (split?.worn()) split.mats.forEach((mat, i) => { mat.emissive.set(0x00eaff); mat.emissiveIntensity = 0.25 + 2 * (lit ? lit[i] : s.charge); });
+      else if (m?.material?.emissive) { m.material.emissive.set(0x00eaff); m.material.emissiveIntensity = 0.25 + s.charge * 2; }
+    }
     if (sat) {
       sat.position.fromArray(s.payload.position); sat.rotation.x = s.payload.pitch; sat.position.add(up.clone().applyEuler(sat.rotation));
       for (const h of petals) h.rotation.x = (1 - s.deploy) * Math.PI / 2;
@@ -76,12 +117,12 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
       if (s.phase !== lastPhase) { lastPhase = s.phase; onPhase?.(s.phase); }
       const loud = s.t < RELEASE ? s.charge * 0.5 : s.t < 12 ? 1 - (s.t - RELEASE) / (12 - RELEASE) : 0;   // the charge hums, the release roars, the climb fades
       if (loud > 0) { thrust ??= sfx?.loop?.('rocket_thrust', { dist: 0, gain: 0 }) ?? null; thrust?.set?.(loud, 0.9 + 0.2 * loud); } else if (thrust) { thrust.stop?.(0.4); thrust = null; }
-      if (s.done) { done = true; if (sat) { launcher.remove(sat); sat = null; } thrust?.stop?.(0.3); thrust = null; onComplete?.(); }
+      if (s.done) { done = true; merge(); if (sat) { launcher.remove(sat); sat = null; } thrust?.stop?.(0.3); thrust = null; onComplete?.(); }
     },
     // where a camera should look: the payload while it flies, else the sled (world space)
     // computed from the choreography in the launcher's own frame, not read off a node whose world matrix may not be updated yet
     focus: (out = new THREE.Vector3()) => { if (!launcher) return out; launcher.updateWorldMatrix(true, false); const s = last ?? launchState(0); return launcher.localToWorld(out.fromArray(s.t < RELEASE ? s.sled.position : s.payload.position)); },
     state: () => ({ t: last ? +last.t.toFixed(1) : 0, phase: last?.phase ?? 'loading', done, satellite: !!sat, sled: !!sled }),
-    dispose() { done = true; if (sat) launcher?.remove(sat); sat = null; thrust?.stop?.(0.2); thrust = null; },
+    dispose() { done = true; merge(); if (sat) launcher?.remove(sat); sat = null; thrust?.stop?.(0.2); thrust = null; },
   };
 }
