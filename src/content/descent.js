@@ -11,5 +11,6 @@ export const DESCENT = Object.freeze({
   brief: 'descent_brief', back: 'descent_back', last: 'descent_last',
   mobileSkip: true,
   lookHold: 2.5,   // seconds the camera looks at the arena's hole (the nest's mouth) before the cave opens (2026-10-16)
+  briefCap: 22,   // game seconds the cave waits at most for Isao's descent_brief to finish: three lines' dwell (17.6 s by lineDwell) plus a margin; the owner's exposition is read before the cave covers the game (2026-10-18)
   jokeHold: 7,   // seconds Isao's line stays up after the cave closes before the ending begins (a caption needs reading)
 });
