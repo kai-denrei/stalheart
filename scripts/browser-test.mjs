@@ -1546,6 +1546,15 @@ try{
   const s=await st();assert.ok(pups>0,`the pups came up between the Reeds and the boss (${pups})`);assert.ok(s.boss.bossSeen&&s.boss.boss===1,`the Nih-Dairia is up, one (${JSON.stringify(s.boss)})`);assert.equal(s.boss.bossHp,BOSS_SECTOR.boss.boss.hp,'at its hit points');
   assert.ok(s.integrity.gates.some(g=>g.id==='boss'&&/100%/.test(g.text)),`the boss row reads its hit points, whole (${JSON.stringify(s.integrity.gates)})`);
   assert.ok(s.boss.phase==='boss'&&s.boss.auto&&s.boss.directive==='lure',`Isao drives the hull on its lure autopilot (${JSON.stringify(s.boss)})`);assert.equal(s.programme.colony.gunship.auto,false,'the gunship\'s autopilot is off: the seat is the player\'s');}
+ // THE MOTHER (owner, 2026-10-19, third round, note 8a: "we lost the scene explaining that we need to manually control the gunship while Isao plays Lure with the
+ // tank"): the hand-over card over the paused game as she rises, Isao's lines and the seat's controls on it; no seat until the step presses TAKE THE GUN
+ await until(`${T}.state().boss.card`,15000).catch(async()=>assert.fail(`THE MOTHER's card is up as she rises (${JSON.stringify((await st()).boss)})`));
+ {const s=await st(),txt=await evaluate('document.querySelector(".choice-card")?.innerText||""');assert.equal(s.paused,true,'the game paused under the card');
+  assert.match(txt,/THE MOTHER/,`the card's title (${txt})`);assert.match(txt,/Bait is the only play/,'Isao\'s hand-over on it');assert.match(txt,/move it to aim/,'the seat\'s controls');assert.match(txt,/TAKE THE GUN/,'the one button');
+  await delay(3000);assert.equal((await st()).boss.seated,false,'no seat while the card is up');}
+ current='boss-card';await finish();
+ await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');await delay(400);
+ {const s=await st();assert.equal(s.boss.card,false,'TAKE THE GUN: the card goes');assert.equal(s.paused,false,'the game runs again');}
  await until(`${T}.state().boss.seated`,90000).catch(async()=>assert.fail(`the gunship seat is taken by the strip's button (${JSON.stringify({boss:(await st()).boss,gunship:(await st()).gunship})})`));
  current='boss-up';await finish();
  // dead: the sector secure, the hull the player's again
@@ -1565,10 +1574,23 @@ try{
   assert.ok(atSecure.some(e=>!e.guard&&!e.hunter&&!e.harmless),`SECURE with the strays still alive: they no longer hold it (${JSON.stringify(atSecure)})`);
   await until(`${T}.aliveBodies().filter(e=>e.hunter&&(e.tier==='small'||e.tier==='pup')).length===0`,2000).catch(async()=>assert.fail(`the brood dies with the mother within 2 s (${JSON.stringify(brood(await alive()))})`));
   const broodAt=Date.now()-b0;
-  await until(`(window.__seen?.briefs||[]).some(t=>t.includes(${JSON.stringify(BRIEFS.boss_dead.lines[0])}))&&['debrief','finale','campaign'].includes(${T}.state().sector.phase)`,8000).catch(async()=>assert.fail(`boss_dead and the debrief by about +6 s (${JSON.stringify({phase:(await st()).sector.phase,briefs:(await evaluate('window.__seen')).briefs.slice(-4),alive:await alive()})})`));
-  console.log(`  boss killed: SECURE at +${secAt} ms, the brood dead at +${broodAt} ms, boss_dead and the debrief at +${Date.now()-b0} ms (game clock ${c0} -> ${(await st()).sector.clock}); alive at SECURE ${JSON.stringify(atSecure)}`);}
+  // boss_dead at her death, the panel free before the kill; the debrief now waits for Isao's decoded lines behind it (the step below), not the fight's +6 s
+  // (merge of r3-g's fix round under r3-f's messaging, 2026-10-19: src/fx/sector-run.js holds the boss sector's debrief while src/fx/boss-run.js talking())
+  await until(`(window.__seen?.briefs||[]).some(t=>t.includes(${JSON.stringify(BRIEFS.boss_dead.lines[0])}))`,4000).catch(async()=>assert.fail(`boss_dead on the panel at her death (${JSON.stringify({phase:(await st()).sector.phase,briefs:(await evaluate('window.__seen')).briefs.slice(-4),alive:await alive()})})`));
+  // the wheel back at her death (review, 2026-10-19): the boss phase is over and Isao's lure autopilot no longer holds the hull through his lines
+  {const sb=(await st()).boss;assert.ok(['over','off'].includes(sb.phase)&&sb.directive!=='lure',`the hull no longer on Isao's lure after her death (${JSON.stringify({phase:sb.phase,auto:sb.auto,directive:sb.directive})})`);}
+  console.log(`  boss killed: SECURE at +${secAt} ms, the brood dead at +${broodAt} ms, boss_dead at +${Date.now()-b0} ms (game clock ${c0} -> ${(await st()).sector.clock}); alive at SECURE ${JSON.stringify(atSecure)}`);}
  {const s=await st();assert.ok(['secure','finale','debrief','campaign'].includes(s.sector.phase),`the boss dead: SECURE (${JSON.stringify({phase:s.sector.phase,boss:s.boss})})`);
   const ab=s.sector.breaches?.find(b=>b.side==='arena');assert.ok(ab&&ab.hole===true,`the arena's hole stays open after SECURE: the nest's mouth (${JSON.stringify(s.sector.breaches)})`);}
+ // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): boss_dead, then arena_decoded on the panel;
+ // the debrief pauses the game and the panel's clock with it, so the sector loop holds the boss sector's debrief while Isao talks (STORY_CALM.maxHold caps it):
+ // boss_dead, then the four decoded lines, then the debrief (boss_dead's 3.1 s plus the four lines' ~13 s of game clock after her death; merge, 2026-10-19)
+ {const {BRIEFS}=await import('../src/isaobriefs.js'),L=BRIEFS.arena_decoded.lines,w0=Date.now();let seen=null,s=null;
+  while(Date.now()-w0<60000){s=await st();seen=await evaluate('window.__seen');if(s.sector.debriefOpen||['debrief','finale','campaign'].includes(s.sector.phase))break;await delay(250);}
+  const iD=seen.briefs.findIndex(t=>t.includes(BRIEFS.boss_dead.lines[0])),iL=L.map(l=>seen.briefs.findIndex(t=>t.includes(l)));console.log(`  after the mother (${((Date.now()-w0)/1000).toFixed(1)} s to the debrief): ${JSON.stringify(seen.briefs.slice(-6))}`);
+  assert.ok(s.sector.debriefOpen||['debrief','finale','campaign'].includes(s.sector.phase),`the debrief after Isao's lines (${JSON.stringify({phase:s.sector.phase,boss:s.boss,briefs:seen.briefs.slice(-6)})})`);
+  assert.ok(iL.every(i=>i>=0),`arena_decoded's four lines on the panel before the debrief (${JSON.stringify(iL)} ${JSON.stringify(seen.briefs.slice(-8))})`);assert.ok(iD>=0&&iD<iL[0],`after boss_dead (${iD}, ${iL[0]})`);
+  assert.ok(iL.every((i,k)=>k===0||i>iL[k-1]),`the four in order (${JSON.stringify(iL)})`);}
  await until(`!${T}.state().boss.on`,30000).catch(async()=>assert.fail(`the run ends with the sector's finish (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss})})`));
  {const s=await st();assert.equal(s.boss.on,false,'the run is over');assert.equal(s.boss.auto,false,'the hull is the player\'s again');assert.equal(s.gunship.seat,false,'the seat left');
   }
@@ -2643,6 +2665,10 @@ try{
  console.log(`ARENA DRIVE: backed out ${backs} times; ${openedAt!=null?`the hole opened at ${openedAt} s with the hull ${openCells} cells out (nearest ${minCells})`:'never opened'}; last ${JSON.stringify(last)}`);
  assert.equal(early,null,`the hole stayed shut while the hull had never come within ${ARENA.reachCells} cells (${JSON.stringify(early)})`);
  assert.ok(openedAt!=null,`the hull reached the arena and the hole opened within ${secs} s (${JSON.stringify(last)})`);
+ // THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "always 50m ahead of the tank clearing the path"): after the first cut no ask lay farther
+ // than ARENA.road.aheadMetres (and a cell, the hull's own) from the hull (state().boss.road.leadMax, the chord in cells at each ask)
+ {const r=(await st()).boss,{METRES_PER_CELL}=await import('../src/core/stage-units.js'),reach=ARENA.road.aheadMetres/METRES_PER_CELL;console.log(`ARENA DRIVE: the beam's lead ${JSON.stringify({cuts:r.roadCuts,asks:r.road.asks,leadMax:r.road.leadMax,reach})}`);
+  assert.ok(r.road.leadMax<=reach+1,`no cut farther than ${ARENA.road.aheadMetres} m and a cell ahead of the hull after the first (${r.road.leadMax} cells)`);}
  current='arena-drive-open';await finish();
  {const w0=Date.now();let s=null;while(Date.now()-w0<60000){s=await st();if((s.boss.wave??0)>=4)break;await delay(1000);}
   console.log(`ARENA DRIVE: the small Reeds ${JSON.stringify({wave:s.boss.wave,tiers:s.boss.tiers,phase:s.boss.phase,t:((Date.now()-w0)/1000).toFixed(0)})}`);

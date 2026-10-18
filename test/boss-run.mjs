@@ -2,16 +2,20 @@
 // clear what we must do ... 'Go investigate that area, I'll clear a way there'"), the opening only with the hull there, the road SOL cuts from the start
 import assert from 'node:assert/strict';
 import { createBossRun } from '../src/fx/boss-run.js';
-import { ARENA, ARENA_SECTOR } from '../src/content/sectors.js';
+import { ARENA, ARENA_SECTOR, ARENA_HANDOVER } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
+import { METRES_PER_CELL } from '../src/core/stage-units.js';
+import { GUNSHIP_SEAT_HINT } from '../src/content/gunship.js';
 
 function host(o = {}) {
-  const log = { briefs: [], callouts: [], tremor: [], road: [], over: [] };
+  const log = { briefs: [], callouts: [], tremor: [], road: [], over: [], pause: [] };
+  // THE MOTHER's card (2026-10-19, note 8a): a fake of src/fx/choice-card.js; take() presses its one button
+  const card = { shown: [], up: false, show(o) { card.shown.push(o); card.up = true; return new Promise((r) => { card.take = () => { card.up = false; r('a'); return Promise.resolve(); }; }); }, dispose() { card.up = false; card.disposed = true; } };
   const story = { arena: { cell: 7 }, gsAuto: false };
   const params = { directive: 'wander' };
   const h = {
-    log, story, params, now: 0, near: false, open: false, roadCell: -1, solTakes: true,
+    log, story, params, now: 0, near: false, open: false, roadCell: -1, solTakes: true, choiceCard: card, pause: (v) => log.pause.push(v), mobile: () => false,
     root: { querySelector: () => null }, enemies: [],
     showBrief: (id) => log.briefs.push(id), speak: () => {}, callout: (text) => log.callouts.push(text), tremor: (ci) => log.tremor.push(ci),
     story: () => story, storyViews: () => null, params: () => params, player: () => ({ pos: [0, 0, 1] }), playerHP: () => 10, autoMode: () => false, isao: () => null,
@@ -26,8 +30,9 @@ function host(o = {}) {
 // THE ORDER: Isao's arena_go is the sector's brief (sector-run's briefOf), its line is the owner's, and the run calls the job out and marks the tremor
 { assert.ok(BRIEFS.arena_go, 'the arena_go brief exists');
   assert.equal(BRIEFS.arena_go.face, 'focused');
-  assert.match(BRIEFS.arena_go.lines.join(' '), /investigate that tremor/i, 'it says what to do');
-  assert.match(BRIEFS.arena_go.lines.join(' '), /clear a way/i, 'and that Isao clears the way');
+  // the owner's words (2026-10-19, third round, note 7: "'other side of the planet, you must check it out.', 'seems big'")
+  assert.deepEqual(BRIEFS.arena_go.lines, ['Other side of the planet. You must check it out.', 'Seems big.'], 'it says what to do, in the owner\'s words');
+  assert.deepEqual(BRIEFS.arena_road.lines, ['Let me clear a path for you.'], 'and Isao clears the way as the first cut lands (note 7b)');
   assert.deepEqual(BRIEFS.arena_go.lines, [...ARENA_SECTOR.brief], 'the debrief\'s next-sector page reads the same order');
   assert.equal(BRIEFS.sector_boss, undefined, 'the old "nothing on the sensors" brief is gone');
   const h = host(), run = createBossRun(h);
@@ -81,7 +86,7 @@ function host(o = {}) {
   assert.equal(h.log.road.at(-1), 4, 'the next ask: the next rock on the same road');
   h.now += ARENA.road.burn + 0.1; run.tick(0.1);
   assert.equal(run.state().roadCuts, 1, 'a burn that left the rock standing is no cut');
-  tags[4] = 1; h.now = 2 * ARENA.road.every + 0.02; run.tick(0.1);
+  tags[4] = 1; tags[17] = 0; h.now = 2 * ARENA.road.every + 0.02; run.tick(0.1);   // 17: a rock beside the road (released at once were it open)
   assert.equal(h.log.road.at(-1), 17, 'the road open: the second version\'s shortcut and flank (roadNext)'); assert.equal(run.state().road.planned, false);
   h.now += ARENA.road.burn + 0.1; tags[17] = 1; run.tick(0.1);
   assert.equal(h.log.callouts.filter((x) => x === 'SOL CUTS THE ROAD').length, 1, 'the callout once only'); }
@@ -91,6 +96,71 @@ function host(o = {}) {
   const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: 0, to: 9 }), roadFar: (ci) => ci !== 2 }); h.story().arena.cell = 9;
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
   assert.deepEqual(h.log.road, [6], 'the near rock left to a later ask, the far one cut now'); }
+
+// THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "SOL should be destroying the paths much ahead, so that the path is already clear, should be
+// always 50m ahead of the tank clearing the path"): a chain 0..29 to the arena at 29 with planned rocks at 12, 13, 20 and 26, the chord from the hull |ci - hull|
+// cells. The first cut comes at once, on the nearest rock wherever it lies; after it nothing beyond ARENA.road.aheadMetres (5 cells) is asked for, the parked
+// hull's beam waits, and as the hull drives each rock is asked for the moment it comes into reach (not on the `every` cadence); the flank is held to it too
+{ const reach = ARENA.road.aheadMetres / METRES_PER_CELL; assert.equal(ARENA.road.aheadMetres, 50, 'fifty metres'); assert.equal(reach, 5, 'five cells of METRES_PER_CELL');
+  const adj = Array.from({ length: 32 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 29; i++) link(i, i + 1);
+  link(4, 30); link(18, 31);   // the flank's rocks: 30 beside the road's cell 4, 31 beside 18
+  const tags = new Int8Array(32).fill(1); for (const r of [12, 13, 20, 26, 30, 31]) tags[r] = 0;
+  let from = 0; const flank = [31, 30], at = (ci) => (ci === 30 ? 4 : ci === 31 ? 18 : ci);
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from, to: 29 }), roadFar: (ci) => Math.abs(at(ci) - from) >= 2, fromHull: (ci) => Math.abs(at(ci) - from), roadNext: (far) => flank.find((ci) => tags[ci] === 0 && far(ci)) ?? -1 });
+  h.story().arena.cell = 29;
+  const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(h.log.road, [12], 'the first cut at once: the nearest planned rock, 120 m out'); assert.ok(h.log.briefs.includes('arena_road'), 'Isao: let me clear a path');
+  tags[12] = 1; h.now = 0.3; run.tick(0.1);
+  assert.equal(run.state().roadCuts, 1, 'released as soon as the rock is gone, before ARENA.road.burn'); assert.equal(h.log.road.at(-1), -1);
+  const asked = () => h.log.road.filter((ci) => ci >= 0);
+  for (let k = 1; k <= 120; k++) { h.now = 0.3 + k * 0.25; run.tick(0.25); if (h.log.road.at(-1) >= 0) { tags[h.log.road.at(-1)] = 1; } }
+  assert.deepEqual(asked(), [12, 30], 'the hull parked at the base: only the flank\'s rock 40 m out; 13, 20 and the flank\'s 31 wait beyond the reach');
+  assert.ok(asked().slice(1).every((ci) => Math.abs(at(ci) - from) <= reach), 'nothing farther than the reach after the first cut');
+  from = 8; const t0 = h.now; h.now += 0.25; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 13, 'the hull 50 m from the next rock: asked for at the next look'); assert.ok(h.now - t0 < ARENA.road.every, 'not on the every cadence');
+  assert.equal(run.state().road.lead, 5, 'the beam 5 cells ahead of the hull');
+  tags[13] = 1; h.now += 0.25; run.tick(0.25);
+  for (let k = 0; k < 40; k++) { h.now += 0.25; run.tick(0.25); }
+  assert.ok(!asked().includes(20) && !asked().includes(31), 'parked at 8: 20 and the flank\'s 31 are not taken yet');
+  from = 15; h.now += 0.25; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 20, 'driven on: the next planned rock in reach'); tags[20] = 1; h.now += 0.25; run.tick(0.25);
+  for (let k = 0; k < 20; k++) { h.now += 0.25; run.tick(0.25); if (h.log.road.at(-1) >= 0) tags[h.log.road.at(-1)] = 1; }
+  assert.ok(asked().includes(31), 'the flank\'s rock once it is in reach');
+  assert.ok(!asked().includes(26), 'the last rock still beyond the reach');
+  assert.ok(run.state().road.leadMax <= reach, `the farthest ask after the first cut within the reach (${run.state().road.leadMax})`);
+  // a flank burn gives the beam up to a planned rock that comes into reach (probe r3-f: road rocks crossed the reach while the flank held the beam)
+  tags[31] = 0; flank.length = 0; flank.push(31); from = 20; h.now += ARENA.road.every; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 31, 'a flank burn on'); assert.equal(run.state().road.planned, false);
+  from = 21; h.now += 0.25; run.tick(0.25);
+  assert.deepEqual(h.log.road.slice(-2), [-1, 26], 'the planned rock in reach takes the beam at the next look'); assert.equal(run.state().road.planned, true); }
+
+// THE LOOK DURING A PLANNED BURN (review of note 7b, 2026-10-19): a burn holds the beam up to ARENA.road.burn (2.5 s), ~7 cells at the hull's top speed (2.8
+// cells/s), so a second planned rock 4 cells past the first crossed the reach unasked and, once inside `clear`, was never asked for. The chain 0..40 to the arena
+// at 40, planned rocks at 5 (the first cut), 14 and 18; the beam cuts nothing after the first (the worst case: every burn holds its whole 2.5 s); the hull drives
+// 2.8 cells/s from 0: both 14 and 18 are asked for while still at least `clear` cells ahead of the hull
+{ const adj = Array.from({ length: 41 }, () => []); for (let i = 0; i < 40; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(41).fill(1); for (const r of [5, 14, 18]) tags[r] = 0;
+  let x = 0; const asks = [], speed = 2.8, clear = ARENA.road.clear;
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(x), to: 40 }), roadFar: (ci) => Math.abs(ci - x) >= clear, fromHull: (ci) => Math.abs(ci - x), roadNext: () => -1,
+    solRoad: (ci) => { if (ci >= 0) asks.push([ci, +x.toFixed(2)]); return ci >= 0; } });
+  h.story().arena.cell = 40;
+  const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(asks.map((a) => a[0]), [5], 'the first cut'); tags[5] = 1; h.now = 0.05; run.tick(0.05); assert.equal(run.state().roadCuts, 1);
+  for (let k = 2; x < 20; k++) { h.now = k * 0.05; x += speed * 0.05; run.tick(0.05); }
+  const at = (ci) => asks.find((a) => a[0] === ci);
+  assert.ok(at(14) && at(18), `both planned rocks asked for (${JSON.stringify(asks)})`);
+  for (const ci of [14, 18]) assert.ok(ci - at(ci)[1] >= clear, `${ci} asked with the hull ${(ci - at(ci)[1]).toFixed(2)} cells short of it, outside clear`);
+  assert.ok(run.state().road.leadMax <= ARENA.road.aheadMetres / METRES_PER_CELL, 'and within the reach'); }
+// a refused ask (SOL seated or offline: solRoad false) backs the look off to `every` instead of asking every ROAD_LOOK s
+{ const adj = Array.from({ length: 10 }, () => []); for (let i = 0; i < 9; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(10).fill(1); tags[4] = 0; const times = [];
+  const h = host({ solTakes: false, roadGraph: () => ({ adj, tags, blocked: 0, from: 0, to: 9 }), roadFar: () => true, fromHull: (ci) => ci, roadNext: () => -1 });
+  h.story().arena.cell = 9; const sol = h.solRoad; h.solRoad = (ci) => { if (ci >= 0) times.push(h.now); return sol(ci); };
+  const run = createBossRun(h); run.begin(ARENA_SECTOR);
+  for (let k = 0; k <= 200; k++) { h.now = k * 0.05; run.tick(0.05); }
+  assert.equal(run.state().road.laid, false, 'refused');
+  assert.ok(times.length >= 2 && times.length <= Math.floor(10 / ARENA.road.every) + 1, `asked ${times.length} times in 10 s, not every ${0.25} s`);
+  for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= ARENA.road.every - 1e-9, `the asks ARENA.road.every apart (${times})`); }
 
 // ISAO TAKES THE HULL OUT (review of note 6, 2026-10-18): a hull that never comes gets ARENA.remindMax reminders, then Isao's arena_drive and the hull on the
 // lure directive (no quarry in the beacon: it drives the arena's field); he only starts it, nothing re-asserts it; the arrival still opens the hole
@@ -126,22 +196,33 @@ function host(o = {}) {
 { const h = host({ heartCell: () => 42 }), run = createBossRun(h); run.begin(ARENA_SECTOR); run.end('secure');
   assert.deepEqual(h.log.over, [7, 42], 'over the arena at the start, over the heart at the end'); }
 
-// THE HAND-OVER IS SAID FIRST (2026-10-18): the gunship circles the arena from the start, so it is over the arena the moment the mother rises; the seat waits
-// ARENA.seatAfter and for Isao's panel to be free (arena_force read), or ARENA.seatWait at the latest
-{ const clicks = [], h = host({ briefingNow: true, gunshipNearArena: () => true }); h.briefing = () => h.briefingNow;
+// THE MOTHER (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene explaining that we need to manually control the gunship while Isao plays
+// Lure with the tank"): as the mother rises the game pauses under the card (THE MOTHER, arena_force's lines, the seat's controls, one button); no seat while it
+// is up, however long; TAKE THE GUN runs the game again and the seat follows ARENA.seatAfter after the press, the panel not waited for (its lines were the card's)
+{ const clicks = [], h = host({ gunshipNearArena: () => true }); h.briefing = () => true;   // a panel that never frees
   h.root = { querySelector: () => ({ click: () => clicks.push(h.now) }) };
   const run = createBossRun(h); run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  assert.equal(run.state().card, false, 'no card in the waves');
   h.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h.now = 2; run.tick(0.1);
-  assert.equal(run.state().phase, 'boss'); assert.ok(h.log.briefs.includes('arena_force'), 'Isao\'s hand-over line');
-  for (let k = 1; k <= 8; k++) { h.now = 2 + k; run.tick(0.1); }
-  assert.deepEqual(clicks, [], 'the gunship over the arena, but the panel busy: no seat yet');
-  h.briefingNow = false; h.now = 10.5; run.tick(0.1);
-  assert.deepEqual(clicks, [10.5], 'the panel free: the seat');
-  const clicks2 = [], h2 = host({ gunshipNearArena: () => true }); h2.briefing = () => true; h2.root = { querySelector: () => ({ click: () => clicks2.push(h2.now) }) };
-  const run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
+  assert.equal(run.state().phase, 'boss'); assert.equal(run.state().card, true, 'the card is up as she rises'); assert.deepEqual(h.log.pause, [true], 'over the paused game');
+  const shown = h.choiceCard.shown[0];
+  assert.equal(shown.title, 'THE MOTHER'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
+  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.equal(shown.hint, ARENA_HANDOVER.hint);
+  assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aim, 'the seat footer\'s own aim text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimTouch);
+  assert.match(shown.hint, /move it to aim/); assert.match(shown.hint, /Space or the button fires/); assert.match(shown.hint, /MK-9/);
+  assert.ok(!h.log.briefs.includes('arena_force'), 'the card says it, not the panel');
+  assert.equal(h.params().directive, 'lure', 'Isao has the hull as the lure');
+  for (let k = 1; k <= ARENA.seatWait + 5; k++) { h.now = 2 + k; run.tick(0.1); }
+  assert.deepEqual(clicks, [], 'no seat while the card is up, even past seatWait');
+  await h.choiceCard.take(); await null;
+  assert.equal(run.state().card, false, 'taken'); assert.deepEqual(h.log.pause, [true, false], 'the game runs again');
+  const pressed = h.now; h.now += 0.5; run.tick(0.1); assert.deepEqual(clicks, [], 'ARENA.seatAfter from the press');
+  h.now = pressed + ARENA.seatAfter; run.tick(0.1); assert.deepEqual(clicks, [pressed + ARENA.seatAfter], 'then the seat, the busy panel not waited for');
+  // on a phone the hint is the seat's touch footer
+  const h2 = host({ mobile: () => true }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
   h2.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h2.now = 2; run2.tick(0.1);
-  for (let k = 1; k <= ARENA.seatWait + 1; k++) { h2.now = 2 + k; run2.tick(0.1); }
-  assert.equal(clicks2[0], 2 + ARENA.seatWait, 'a panel that never frees: the seat at seatWait'); }
+  assert.equal(h2.choiceCard.shown[0].hint, ARENA_HANDOVER.hintTouch);
+  run2.end('lost'); assert.equal(h2.choiceCard.disposed, true, 'the run ended under the card: it goes'); assert.equal(run2.state().card, false); }
 
 // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out ... more scare of 40mm. Gameplay = push her to a
 // side 40mm, launch big nuke, time it"): seen, she is given the ground phase and her own fear; a 40 mm near her frightens her (not while she stands on the
@@ -162,6 +243,58 @@ function host(o = {}) {
   assert.equal(run.landed('heavy', [0.02, 0, 1]), true, 'the MK-9 in its blast'); assert.equal(b.stagUntil, h.now + BOSS_FIGHT.nuke.stun, 'holds her still nuke.stun seconds');
   assert.deepEqual([run.state().fear.frights, run.state().fear.stuns, run.state().fear.stunned], [1, 1, true]);
   run.end('secure'); assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'the run over: nothing heard'); }
+
+// THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in. Isao : 'I have decoded some of their messages'.
+// 'They have a Nest and a Queen down there'. 'Someone must go there'. 'I am a poet and a builder, not a warrior'"): boss_dead the frame she dies, arena_decoded
+// held for the panel's first free frame after it (the panel keeps one beat pending), once; end('secure') without the death seen says both; a lost run neither
+{ assert.deepEqual(BRIEFS.arena_decoded.lines, ['I have decoded some of their messages.', 'They have a nest and a Queen down there.', 'Someone must go there.', 'I am a poet and a builder, not a warrior.']);
+  assert.equal(BRIEFS.arena_decoded.face, 'focused');
+  let busy = true, cleared = 0, pilot = false, left = 0; const h = host({ briefing: () => busy, clearBriefs: () => { cleared++; }, pilotMode: () => pilot, storyViews: () => ({ now: () => (pilot ? 'gunship' : 'tank') }), leavePilot: () => { pilot = false; left++; } }), run = createBossRun(h); run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1); await h.choiceCard.take(); await null;
+  pilot = true; h.now = 2.5; run.tick(0.1); assert.equal(run.state().seated, true, 'in the gunship\'s seat');
+  b.alive = false; h.now = 3; run.tick(0.1);
+  assert.equal(left, 1, 'the seat left as she dies: the panel is not drawn in the seat');
+  assert.deepEqual(h.log.briefs.filter((x) => x === 'boss_dead'), ['boss_dead'], 'boss_dead the frame she dies'); assert.equal(cleared, 1, 'the panel cleared for it');
+  assert.ok(!h.log.briefs.includes('arena_decoded'), 'arena_decoded waits while the panel is busy'); assert.equal(run.state().decoded, true);
+  assert.equal(run.talking(), true, 'the debrief held for it (src/fx/sector-run.js)');
+  busy = false; h.now = 4; run.tick(0.1);
+  assert.equal(h.log.briefs.at(-1), 'arena_decoded', 'then on its first free frame'); assert.equal(run.state().decoded, false);
+  busy = true; h.now = 10; assert.equal(run.talking(), true, 'still held while its four lines are read'); h.now = 30; assert.equal(run.talking(), false, 'and let go once they are');
+  h.now = 5; busy = false; assert.equal(run.talking(), false, 'or as soon as the panel is free (the player tapped through)'); busy = true;
+  run.end('secure'); for (let k = 0; k < 3; k++) run.tick(0.1);
+  assert.equal(h.log.briefs.filter((x) => x === 'boss_dead').length, 1, 'not again at the end'); assert.equal(h.log.briefs.filter((x) => x === 'arena_decoded').length, 1, 'said once');
+  // the end before the death was seen: both from end(), the decoded line after it once the panel frees, the run over
+  let busy2 = true; const h2 = host({ briefing: () => busy2 }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); run2.end('secure');
+  assert.ok(h2.log.briefs.includes('boss_dead')); assert.ok(!h2.log.briefs.includes('arena_decoded'));
+  busy2 = false; run2.tick(0.1); assert.equal(h2.log.briefs.at(-1), 'arena_decoded', 'after boss_dead, the run over');
+  const h3 = host({ briefing: () => false }), run3 = createBossRun(h3); run3.begin(ARENA_SECTOR); run3.end('lost'); run3.tick(0.1);
+  assert.ok(!h3.log.briefs.includes('boss_dead') && !h3.log.briefs.includes('arena_decoded'), 'a lost run: neither'); }
+
+// THE WHEEL BACK AT HER DEATH (review, 2026-10-19): the boss phase re-asserted Isao's lure autopilot every frame until end(), so the player (out of the seat at the
+// kill) sat in a hull they could not drive for the ~16 s of Isao's lines, and boss_hit_me / arena_lure could fire after "Target down". At her death the phase
+// is `over`, the directive and the autopilot are put back, nothing re-asserts them, and no boss-phase line is said; a panel other lines keep busy is cleared
+// for arena_decoded ARENA.decodedCap seconds after boss_dead (it held the debrief up to STORY_CALM.maxHold)
+{ assert.equal(ARENA.decodedCap, 20);
+  let auto = false, hp = 10, shots = 0, pilot = false, cleared = 0;
+  const h = host({ setAutoMode: (v) => { auto = !!v; }, autoMode: () => auto, playerHP: () => hp, shots: () => shots, briefing: () => true, clearBriefs: () => { cleared++; }, pilotMode: () => pilot, storyViews: () => ({ now: () => (pilot ? 'gunship' : 'tank') }), leavePilot: () => { pilot = false; } });
+  const run = createBossRun(h); h.params().directive = 'wander'; run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1); await h.choiceCard.take(); await null;
+  pilot = true; h.now = 2.5; run.tick(0.1); assert.equal(run.state().seated, true);
+  assert.deepEqual([h.params().directive, auto], ['lure', true], 'Isao has the hull while she is up');
+  b.alive = false; h.now = 3; run.tick(0.1);
+  assert.equal(run.state().phase, 'over', 'her death ends the boss phase');
+  assert.deepEqual([h.params().directive, auto], ['wander', false], 'the directive and the autopilot put back at her death');
+  for (let k = 1; k <= 20; k++) { h.now = 3 + k * 0.1; run.tick(0.1); }
+  assert.deepEqual([h.params().directive, auto], ['wander', false], 'and not re-asserted after it');
+  hp = 4; shots = 5; pilot = true; h.now = 5.2; run.tick(0.1); h.now = 5.3; run.tick(0.1);
+  assert.ok(!h.log.briefs.includes('boss_hit_me'), 'the hull hurt after her death: no boss_hit_me'); assert.ok(!h.log.briefs.includes('arena_lure'), 'nor arena_lure');
+  assert.equal(h.log.briefs.at(-1), 'boss_dead');
+  // the panel never frees: arena_decoded waits, then ARENA.decodedCap after boss_dead the panel is cleared for it
+  const c0 = cleared; h.now = 3 + ARENA.decodedCap - 0.1; run.tick(0.1);
+  assert.ok(!h.log.briefs.includes('arena_decoded'), 'still waiting just short of the cap'); assert.equal(run.talking(), true);
+  h.now = 3 + ARENA.decodedCap; run.tick(0.1);
+  assert.equal(h.log.briefs.at(-1), 'arena_decoded', 'shown at the cap'); assert.equal(cleared, c0 + 1, 'the panel cleared for it');
+  run.end('secure'); assert.equal(h.log.briefs.filter((x) => x === 'arena_decoded').length, 1, 'once'); assert.deepEqual([h.params().directive, auto], ['wander', false]); }
 
 // THE BROOD DIES WITH THE MOTHER (review of note 10, 2026-10-19; the mother is the fight): three of the wave's hunters alive at her death die after her,
 // BROOD_STAGGER (0.1 s) apart, deflating, within a second; a body that is not the arena's brood (no hunter, or another tier) is left alone
@@ -190,4 +323,4 @@ function host(o = {}) {
   h2.enemies.push(b2, ...r); h2.now = 2; run2.tick(0.1); b2.alive = false; h2.now = 2.1; run2.tick(0.1);
   assert.ok(r.some((e) => e.alive), 'mid-stagger'); run2.end('secure'); assert.ok(r.every((e) => !e.alive), 'end(secure) takes the rest'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line; the brood dies with the mother.');
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');

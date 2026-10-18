@@ -407,7 +407,8 @@ export function createSectorRun(h) {
     }
     if (cardLeft > 0) { cardLeft -= dt; if (cardLeft <= 0) card([]); }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
-    if (phase === 'secure') { left -= dt; if ((left <= 0 && (def.boss || !api.engaged?.())) || left <= -STORY_CALM.maxHold) finish('secure'); return; }   // the debrief waits out a fight (STORY_CALM); not the boss's (2026-10-18, note 10: a pup left round the hull would hold the mother's end up to STORY_CALM.maxHold)
+    if (phase === 'secure') { left -= dt; if ((left <= 0 && (def.boss ? !api.bossTalking?.() : !api.engaged?.())) || left <= -STORY_CALM.maxHold) finish('secure'); return; }   // the debrief waits out a fight (STORY_CALM); not the boss's (2026-10-18, note 10: a pup left round the hull would hold the mother's end up to STORY_CALM.maxHold)
+    // ...but it waits for Isao's lines over the mother (owner, 2026-10-19, note 9: "message between end of Nih Dairia and going in"; src/fx/boss-run.js talking): the debrief pauses the game and the panel's clock with it, and boss_dead alone outlasts securePause
     if (phase !== 'fighting') return;
     for (const id of pending.slice()) {
       const b = breachOf(id);

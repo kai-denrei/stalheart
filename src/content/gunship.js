@@ -75,6 +75,12 @@ export const GUNSHIP_GUNS = Object.freeze({
   heavy: Object.freeze({ key: 'heavy', label: 'MK-9', cue: 'clunk … ssshhhh-WHUMP', rate: 0, damage: 0, blastCells: 5.5, dangerCells: 5.5, zoom: 1.3, freeFall: GUNSHIP_NUKE.freeFall, travel: GUNSHIP_NUKE.freeFall + GUNSHIP_NUKE.drive, reload: 20, perPass: 1, sound: GUNSHIP_NUKE.releaseSound, ringHex: 0xff6a4d, clip: 'Heavy_Fire', strike: true }),
 });
 export const GUNSHIP_GUN_ORDER = Object.freeze(['rotary', 'bofors', 'heavy']);
+// THE SEAT'S CONTROLS, one text (review, 2026-10-19): the gunship seat's footer (src/sentry-pilot.js: leave · aim · views, on touch aimTouch · leaveTouch) and
+// THE MOTHER's card hint (src/content/sectors.js ARENA_HANDOVER: aim, aimTouch) quoted it twice
+export const GUNSHIP_SEAT_HINT = Object.freeze({
+  aim: 'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 mini nuke (paint, then release: it drops two seconds before it burns)',
+  aimTouch: 'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: paint, then release',
+  leave: 'Esc frees the mouse, Esc again or 7: back to the tank', views: 'V the ship · T top view · P pause', leaveTouch: 'TANK leaves' });
 
 // THE GUNSHIP ON AUTO (owner, 2026-10-02: "in later rounds, lets have the Gunship also be on Auto mode, it learned what to do, does it by
 // itself if the player wants, we use that to push the envelope on how many hundreds of enemies we can have ... Even the odd Gunship Dummy

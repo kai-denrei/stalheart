@@ -2,7 +2,7 @@
 // each with its own programme of `waves` waves sized by the computeWavePlan ladder at the sector's `threat`. First
 // numbers, tuning later. Pure data: the rules live in src/domain/sectors.js and src/domain/sector-stats.js.
 import { SENTRY_ORDER } from './sentries.js';
-import { GUNSHIP_GUN_ORDER } from './gunship.js';
+import { GUNSHIP_GUN_ORDER, GUNSHIP_SEAT_HINT } from './gunship.js';
 import { BOSS_FIGHT } from './boss-fight.js';
 
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
@@ -175,7 +175,7 @@ export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flo
 // Being bait is the only way… Now we FORCE the player to take the gunship. Isao quips 'I am the better driver, I'll lure it'"): the brief sends the
 // player to a tremor at the arena, its breach opens when the hull arrives (ARENA.reachCells; since 2026-10-18 only then, no clock), the player drives and shoots the small
 // waves with the gunship on its own autopilot overhead, and as the mother rises Isao takes the hull as the lure (the `lure` directive) and the player is
-// put in the gunship's seat (src/fx/boss-run.js). The choice card of 2026-10-15 is gone.
+// put in the gunship's seat (src/fx/boss-run.js). The choice card of 2026-10-15 is gone; its machinery came back on 2026-10-19 as THE MOTHER (ARENA_HANDOVER), one button.
 export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: [12, 6, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { arena: 1 }, waves: 3, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 120, points: 1200 },
   // THE SMALL REEDS THREE TIMES THE SIZE (owner, 2026-10-18, note 8b: "make the smaller reeds 3x bigger, same health"): `size` multiplies the record (its touch
   // and ram radius, src/fx/enemy-step.js) and the drawn body (src/fx/creature-reed.js) together; hp stays 4
@@ -183,7 +183,9 @@ export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: 
   gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a boss',
   // THE MESSAGE (owner, 2026-10-18, note 6: "sector 9, it's not quite clear what we must do. We should message it better ... 'Go investigate that area, I'll clear a
   // way there'"): the sector's brief is Isao's order, `arena_go` (src/isaobriefs.js, src/fx/sector-run.js briefOf), and the debrief's next-sector page reads the same
-  brief: ['Something big is moving out there. Go and investigate that tremor. I\'ll clear a way.'] });
+  // THE OWNER'S WORDS (2026-10-19, third round, note 7: "sector 9, we need a voice by Isao to announce : 'other side of the planet, you must check it out.', 'seems
+  // big'"): the order is his two lines now; the callout INVESTIGATE THE TREMOR still names the job on screen (src/fx/boss-run.js)
+  brief: ['Other side of the planet. You must check it out.', 'Seems big.'] });
 export const BOSS_SECTOR = ARENA_SECTOR;   // the arc's boss row, by its old name
 
 // PAST BOTH WALLS the sectors are generated from it: its flags carry over, `new` is null. With `past` the sectors after BOTH WALLS
@@ -237,7 +239,14 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // when the hull's road distance has not dropped since the last one (a driving player is not nagged; review, 2026-10-18)
 // remindMax: after this many reminders Isao drives the hull out himself on the lure directive (`arena_drive`; review of note 6, 2026-10-18): with no clock, a
 // hull that never came (a wedge, the player's own walls, AUTO on another order) hung the sector for good; the arrival stays the trigger, about 120 s at remind 40
-export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3,
+// THE MOTHER (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene explaining that we need to manually control the gunship while Isao plays Lure
+// with the tank"): the card over the paused game as the NIH-DAIRIA rises (src/fx/boss-run.js, src/fx/choice-card.js): this title, Isao's arena_force lines, the
+// seat's own controls (the seat footer's aim part, GUNSHIP_SEAT_HINT, src/sentry-pilot.js: the gunship flies its own track, the player aims and fires) and one button into the seat
+export const ARENA_HANDOVER = freeze({ title: 'THE MOTHER', take: 'TAKE THE GUN',
+  hint: GUNSHIP_SEAT_HINT.aim, hintTouch: GUNSHIP_SEAT_HINT.aimTouch });
+// decodedCap: seconds after boss_dead before arena_decoded clears a panel other lines keep busy and is shown (review, 2026-10-19: it waited on a free panel, and the
+// boss sector's debrief waits on it, up to STORY_CALM.maxHold, 120 s; src/fx/boss-run.js sayDecoded)
+export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3, decodedCap: 20,
   // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
   // `ahead` hops of the hull worth a shortcut of `saves` cells on the open walk to the arena (crossed up to `through` rocks deep), else with `flank` the first rock
   // beside the route ahead, never within `clear` cells of the hull by the chord (the beam keeps LASER_AUTO.safeMetres off a friend: 25 m and its radius, 3.1 cells) (second version, 2026-10-16: the cheapest-walk rule fired at 2% of the route, all at the rim), is burned by SOL for `burn` seconds;
@@ -248,7 +257,13 @@ export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatC
   // cadence had cut it; 4 cut all three ahead of it); its cells `marks` ahead of the hull ringed every `markEvery` seconds
   // overhead 45 -> 3.5, the burn and a second (review of note 6, 2026-10-18): a road pass is a special pass, which the automated aim never takes, and the last one
   // laid on the drive out stayed overhead up to 45 s after the hole opened, so SOL never fired on the small Reeds; each ask lays its own pass anyway
-  road: freeze({ every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 4, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+  // aheadMetres: THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "SOL should be destroying the paths much ahead, so that the path is already clear,
+  // should be always 50m ahead of the tank clearing the path"): after the first cut (at once, the nearest rock on the planned road, wherever it lies) SOL only takes
+  // the cells within aheadMetres of the hull (METRES_PER_CELL, the chord), so the beam is seen working down the road in front of the hull as it drives instead
+  // of the whole road burned in the first ten seconds; a planned rock inside that reach is asked for the moment the beam is free (or from a flank burn), the flank
+  // on the `every` cadence; clear 4 -> 3.2 cells, just outside the beam's own guard (LASER_AUTO.safeMetres and its radius, 3.1 cells, which roadSafe still checks):
+  // between 40 m and 50 m the band was one cell, crossed in about half a second, and road rocks slipped through it to the hull (probe r3-f)
+  road: freeze({ aheadMetres: 50, every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 3.2, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

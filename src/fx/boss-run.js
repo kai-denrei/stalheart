@@ -19,7 +19,9 @@
 // was (the hull manual, the autopilot as before, the seat left if it is still the gunship's, the tremor cleared).
 //
 // THE OLD CHOICE (2026-10-15, 'you drive the tank' / 'gunship on autopilot') is gone: the owner saw the gunship seat open over empty ground near the base
-// and asked for the drive out and the forced hand-over instead.
+// and asked for the drive out and the forced hand-over instead. THE SCENE BACK (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene
+// explaining that we need to manually control the gunship while Isao plays Lure with the tank"): the hand-over is the choice card's machinery again, one
+// button, over the paused game as the mother rises (THE MOTHER: arena_force's lines, the seat's controls, TAKE THE GUN), and the seat is forced once it is taken.
 // `c` hands in the controller: root (the tab's element), pause(v), showBrief(id), speak(id) (Isao's voice, a no-op without a line), callout(text),
 // tremor(ci) (the radar's tremor at a cell, -1 to clear), story() / storyViews() / params() / player() / playerHP() / autoMode() / isao() / cellSide() /
 // t() / pilotMode() as getters, enemies (the live array), setAutoMode(v), leavePilot(), fillCall() (the gunship's call meter to full), kill(e, fx) (killCreature), creatures() (the
@@ -28,13 +30,16 @@
 // (the arena's breach has opened).
 import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
-import { ARENA } from '../content/sectors.js';
+import { ARENA, ARENA_HANDOVER } from '../content/sectors.js';
+import { createChoiceCard } from './choice-card.js';
+import { brief, lineDwell } from '../isaobriefs.js';
 import { groundAt } from './lance-follow.js';
 import { roadField, roadPath, roadRock } from '../domain/arena.js';
 import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
 import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../content/gunship.js';
+import { METRES_PER_CELL } from '../core/stage-units.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
@@ -42,14 +47,18 @@ const REFILL = 5;       // seconds between calls for the gunship while it is off
 const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
 const BROOD_STAGGER = 0.1;   // seconds between the brood's deaths once the mother is dead (review of note 10, 2026-10-19)
 const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut lands (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)")
+const ROAD_LOOK = 0.25;   // seconds between looks for a planned rock inside the beam's lead while the beam is free (2026-10-19, note 7b: one crosses the reach's outer cell in about half a second at the hull's corridor pace)
 
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
-  let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
+  let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss | over (the mother dead, the sector not ended yet)
   let remindAt = 0, reminders = 0, remindDist = Infinity, drove = false;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind), how many fired, the hull's road distance then, Isao took the wheel (ARENA.remindMax)
   let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
+  let lookAt = -99, lead = null, leadMax = 0;   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
   let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
+  let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken
+  let decoded = false, talkUntil = 0, deadAt = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead (said at deadAt)
   let brood = null, broodAt = 0, broodI = 0;   // THE BROOD DIES WITH THE MOTHER (tick below): the wave's hunters alive at her death, when she died, how many have gone
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
@@ -62,6 +71,9 @@ export function createBossRun(c) {
   const roadAheadCells = () => { if (phase !== 'beacon') return []; const p = planned(); return p ? roadPath({ adj: p.g.adj, field: p.field, from: p.g.from, max: 12 }) : []; };   // the harness: the planned road's next cells (a driver follows the rings)
   const isOpen = (ci) => { const g = c.roadGraph?.(); return !!g && g.tags[ci] !== g.blocked; };
   const roadDist = () => { const p = planned(); return p ? p.field[p.g.from] : null; };   // the hull's walking cost to the arena down the planned road (null: no graph)
+  // THE BEAM'S LEAD (owner, 2026-10-19, note 7b: "always 50m ahead of the tank clearing the path"): a cell within ARENA.road.aheadMetres of the hull by the chord (c.fromHull, in cells)
+  const inLead = (ci) => !(c.fromHull?.(ci) > (ARENA.road?.aheadMetres ?? Infinity) / METRES_PER_CELL);
+  const roadOk = (ci) => (c.roadFar ? c.roadFar(ci) : true) && inLead(ci);
   function dock() {
     const isao = c.isao(), p = c.player()?.pos;
     if (!isao?.obj || !p) return;
@@ -70,7 +82,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; frights = 0; stuns = 0; brood = null; broodI = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -87,9 +99,28 @@ export function createBossRun(c) {
   }
   // the sector loop's read (src/fx/sector-run.js): the arena's breach opens once this is true
   const arenaDue = () => on && phase === 'beacon' && (dueNow || c.hullNearArena?.() === true);   // the hull there, nothing else (2026-10-18: the clock's fallback is gone)
+  // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): the panel keeps one beat pending and
+  // drops the rest, and the next sector's brief comes as the debrief closes, so arena_decoded is held here and shown on the panel's first free frame after
+  // boss_dead (the wait the party's lines use, src/fx/disco-party.js say), the run over or not; a panel other lines keep refilling is cleared for it ARENA.decodedCap
+  // seconds after boss_dead (review, 2026-10-19: else it held the debrief up to STORY_CALM.maxHold, 120 s)
+  function sayDecoded() { const cap = c.t() - deadAt >= (ARENA.decodedCap ?? Infinity); if (decoded && (cap || !(c.briefing?.() ?? false))) { decoded = false; if (cap) c.clearBriefs?.(); c.showBrief('arena_decoded'); c.speak('arena_decoded'); const b = brief('arena_decoded'); talkUntil = c.t() + (b?.lines ?? []).reduce((a, _, i) => a + lineDwell(b, i), 0); } }
+  // the sector loop holds the boss sector's debrief while this is true (src/fx/sector-run.js; STORY_CALM.maxHold caps it): the decoded line still to come, or on the panel
+  const talking = () => on && (decoded || (c.t() < talkUntil && (c.briefing?.() ?? false)));
+  // the panel cleared first: in the --arena run the gunship seat's own two-line briefing held it with a beat already pending, so boss_dead was dropped and the
+  // debrief froze the panel on the seat's tip (2026-10-19); with the mother down nothing on it still matters
+  // and the seat left with her (the hand-over is over): Isao's panel is not drawn in the gunship's seat, so a seated player read none of it (probe r3-f, 2026-10-19)
+  // THE WHEEL BACK AT HER DEATH (review, 2026-10-19): the boss phase re-asserted the lure autopilot every frame until end(), about 16 s with the debrief waiting on
+  // Isao, so the player sat in a hull they could not drive and boss_hit_me / arena_lure could take the panel after "Target down"; the phase is `over` now
+  const dead = () => { if (done) return; done = true; if (on) { phase = 'over'; if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); } } if (on && seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot(); c.clearBriefs?.(); c.showBrief('boss_dead'); c.speak('boss_dead'); decoded = true; deadAt = c.t(); };
   function tick(dt) {
+    sayDecoded();
     if (!on) return;
     const t = c.t();
+    // THE LOOK DURING A PLANNED BURN (review of note 7b, 2026-10-19): a burn holds the beam up to ARENA.road.burn (2.5 s), ~7 cells at the hull's top speed, so a
+    // second planned rock 4-7 cells past the first crossed the reach unasked, and once inside `clear` nothing asks for it; the look runs again once the hull is
+    // within `clear` + 1 cells of the held rock, past it (a next one in reach takes the beam); a refused ask (SOL seated or offline) backs the look off to `every`
+    const held = roadUntil > 0 && roadPlanned, heldNear = held && roadCell >= 0 && c.fromHull?.(roadCell) < (ARENA.road?.clear ?? 0) + 1;
+    const lookGap = roadLaid === false ? (ARENA.road?.every ?? 7) : ROAD_LOOK;
     if (phase === 'beacon' && c.arenaOpen?.()) {
       phase = 'waves'; c.tremor?.(-1); c.showBrief('arena_open'); c.speak('arena_open');
       if (drove && was && c.autoMode() && c.params().directive === 'lure') { c.params().directive = was.directive; c.setAutoMode(was.auto); }   // Isao drove it out: the wheel back to the player for the waves
@@ -98,17 +129,27 @@ export function createBossRun(c) {
     // first rock on the hull's cheapest walk to the arena (c.roadNext) is burned by SOL (c.solRoad: a pass laid over it when none is up, the beam held
     // ARENA.road.burn seconds); the first time Isao says so
     // THE PLANNED ROAD FIRST (owner, 2026-10-18, note 6: "there is a clear fast path (cleared by nukes and SOL) to the investigation"): the rock cells on the road
-    // planned from the arena (src/domain/arena.js roadField, ARENA.road.rockCost) are SOL's cuts from the sector's first second, in order, wherever the hull is
-    // (ARENA.road.plan cells of it); the road open, the second version's shortcut and flank go on widening the corridor ahead (c.roadNext)
-    else if (phase === 'beacon' && c.roadNext && t - roadAt >= (ARENA.road?.every ?? 7) && c.hullNearArena?.() !== true) {
-      const p = planned(), pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: c.roadFar ?? (() => true) }) : -1;
-      roadAt = t; const ci = pc >= 0 ? pc : c.roadNext(); roadPlanned = pc >= 0; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
-      if (roadLaid) { roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
+    // planned from the arena (src/domain/arena.js roadField, ARENA.road.rockCost) are SOL's cuts, in order; the road open, the second version's shortcut and
+    // flank go on widening the corridor ahead (c.roadNext)
+    // THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "SOL should be destroying the paths much ahead, so that the path is already clear, should
+    // be always 50m ahead of the tank clearing the path"): the whole planned road was cut from the first second (its three rocks in about ten seconds, the beam
+    // never seen again ahead of the hull), so only the first cut still comes at once (the nearest planned rock, wherever it lies: Isao's arena_road with it);
+    // after it SOL takes only cells within ARENA.road.aheadMetres of the hull (inLead): a planned rock the moment it comes into reach and the beam is free
+    // (looked for every ROAD_LOOK s), the flank's on the `every` cadence; a hull standing still gets its 50 m cut and the beam waits
+    // A planned rock in reach takes the beam from a flank burn (2026-10-19, probe r3-f: with the flank holding the beam, road rocks crossed the reach unasked and
+    // the hull met them at its next cell three times in one drive)
+    else if (phase === 'beacon' && c.roadNext && c.hullNearArena?.() !== true && ((!roadUntil && t - roadAt >= (ARENA.road?.every ?? 7)) || (t - lookAt >= lookGap && (!held || heldNear)))) {
+      const due = !roadUntil && t - roadAt >= (ARENA.road?.every ?? 7), p = planned(); lookAt = t;
+      const far = roadCuts ? roadOk : (c.roadFar ?? (() => true)), pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: held ? (ci) => ci !== roadCell && far(ci) : far }) : -1;
+      const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
+      if (pc >= 0 || due) {
+        if (roadUntil) release();
+        roadAt = t; roadPlanned = pc >= 0; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
+        if (roadLaid) { lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
+      }
     }
-    if (roadUntil && t >= roadUntil) {
-      roadUntil = 0; c.solRoad?.(-1);
-      if (roadCell >= 0 && isOpen(roadCell)) { roadCuts++; if (roadCuts === 1) c.callout(ROAD_CUT, 'co-victory'); }   // the burn took the rock: a cut landed
-    }
+    // the hold ends at ARENA.road.burn, or as soon as the rock is gone (2026-10-19: the beam is free for the next cell in reach at once)
+    if (roadUntil && (t >= roadUntil || (roadCell >= 0 && isOpen(roadCell)))) release();
     // THE ROAD READS (2026-10-18): the planned road's next cells ringed ahead of the hull every ARENA.road.markEvery seconds, the colour of the tap-to-go "here"
     if (phase === 'beacon' && c.roadMark && t - markAt >= (ARENA.road?.markEvery ?? Infinity)) {
       markAt = t; const p = planned();
@@ -124,7 +165,7 @@ export function createBossRun(c) {
     const h = hunters();
     if (phase === 'waves' && h.boss > 0) {   // PHASE TWO: the mother is up; Isao takes the hull as the lure, the player is forced to the gunship
       phase = 'boss'; bossSeen = true; forcedAt = t;
-      c.showBrief('arena_force'); c.speak('arena_force'); c.callout(bossName(), 'co-victory');
+      c.speak('arena_force'); c.callout(bossName(), 'co-victory'); handOver();   // THE MOTHER's card says arena_force's lines (2026-10-19, note 8a), not the panel
       c.params().directive = 'lure'; c.setAutoMode(true);
       if (c.story()) c.story().gsAuto = false;   // the autopilot has never seen this one: the seat is the player's
       if (c.pilotMode() && c.storyViews()?.now?.() !== 'gunship') c.leavePilot();
@@ -135,7 +176,10 @@ export function createBossRun(c) {
     // is the fight. The wave's hunters alive at her death die after her, BROOD_STAGGER s apart and deflating (fx), so it reads as the brood collapsing, not a cull
     // Isao's boss_dead is said here too, at her death: at end() the debrief pauses the game the same frame, and a panel still busy (the seat's brief) held it
     // past the debrief (--arena, 2026-10-19); here it has the secure pause to come up in. end() keeps it as the fallback
-    if (phase === 'boss' && h.boss === 0 && !brood) { brood = c.enemies.filter((e) => e.alive && e.hunter && e.tier in h.tiers); broodAt = t; broodI = 0; if (!done) { done = true; c.showBrief('boss_dead'); c.speak('boss_dead'); } }
+    // THE MOTHER DOWN (2026-10-19, note 9): boss_dead the frame she dies (SECURE follows at once, src/domain/boss-sector.js bossLeft), so it and arena_decoded
+    // are read through the secure pause before the debrief pauses the game (end() says them if she was never seen dying); dead() also leaves the seat and
+    // queues arena_decoded behind boss_dead (merge of r3-g's fix round under r3-f's messaging, 2026-10-19: one trigger, h.boss === 0 is !bossRecord())
+    if (phase === 'boss' && h.boss === 0 && !brood) { brood = c.enemies.filter((e) => e.alive && e.hunter && e.tier in h.tiers); broodAt = t; broodI = 0; dead(); }
     while (brood && broodI < brood.length && t >= broodAt + broodI * BROOD_STAGGER) { const e = brood[broodI++]; if (e.alive) c.kill?.(e, true); }
     // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss): the first frame she is seen, her record walks onto the sinkhole before the hunt
     // (`ground`, src/fx/enemy-step.js) and takes the guns by her own rule (`ownFear`: the generic impact scare leaves her alone; landed() below)
@@ -149,8 +193,9 @@ export function createBossRun(c) {
       // gunship's track is within ARENA.seatCells of the arena (it has been flying out since the beacon), or ARENA.seatWait seconds after the boss rose
       // ISAO'S LINE FIRST (2026-10-18): with the gunship circling the arena from the start the seat came the same frame as arena_force and the seat's own
       // briefing took the panel, so the hand-over was never said (probe r2-d); over the arena it now waits for the panel to be free (c.briefing)
-      const overArena = (c.gunshipNearArena?.() ?? true) && !(c.briefing?.() ?? false) && t - forcedAt >= (ARENA.seatAfter ?? 0);
-      if (!seated && !c.pilotMode() && t - retryAt >= RETRY && (overArena || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
+      // THE CARD FIRST (2026-10-19, note 8a): no seat while THE MOTHER is up; its lines were read there, so once taken the panel is not waited for
+      const overArena = (c.gunshipNearArena?.() ?? true) && (taken || !(c.briefing?.() ?? false)) && t - forcedAt >= (ARENA.seatAfter ?? 0);
+      if (!seated && !cardUp && !done && !c.pilotMode() && t - retryAt >= RETRY && (overArena || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
       if (!seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') seated = true;
       if (seated && !shotSaid && (c.shots?.() ?? 0) > 0) { shotSaid = true; c.showBrief('arena_lure'); c.speak('arena_lure'); }   // the first round from the seat: keep them off the hull
       const hp = c.playerHP();
@@ -161,6 +206,19 @@ export function createBossRun(c) {
   // ISAO TAKES THE HULL OUT (2026-10-18, review of note 6): the hull never came (a wedge, the player's own walls, AUTO on another order, a player who does not
   // understand) and no clock opens the hole, so after ARENA.remindMax reminders he drives it on the lure directive, which with no quarry drives the arena's
   // field (src/fx/hull-drive.js, lure() below); he only starts it: a seat's entry or any drive input puts the hull back in the player's hands, and that is fine here
+  // THE MOTHER (owner, 2026-10-19, third round, note 8a): the game paused under the card; TAKE THE GUN runs it again and the seat's clock (ARENA.seatAfter,
+  // seatWait) starts from the press (game time stands still under the card)
+  function handOver() {
+    card ??= c.choiceCard ?? createChoiceCard(c.root); cardUp = true; taken = false; c.pause?.(true);
+    card.show({ title: ARENA_HANDOVER.title, lines: brief('arena_force')?.lines ?? [], hint: c.mobile?.() ? ARENA_HANDOVER.hintTouch : ARENA_HANDOVER.hint, a: ARENA_HANDOVER.take }).then(() => {
+      if (!on || !cardUp) return;   // the run ended under the card
+      cardUp = false; taken = true; c.pause?.(false); forcedAt = c.t(); retryAt = -9;
+    });
+  }
+  function release() {
+    roadUntil = 0; c.solRoad?.(-1);
+    if (roadCell >= 0 && isOpen(roadCell)) { roadCuts++; if (roadCuts === 1) c.callout(ROAD_CUT, 'co-victory'); }   // the burn took the rock: a cut landed
+  }
   function isaoDrives() {
     drove = true; c.showBrief('arena_drive'); c.speak('arena_drive');
     c.params().directive = 'lure'; c.setAutoMode(true);
@@ -179,11 +237,11 @@ export function createBossRun(c) {
   }
   function end(outcome) {
     if (!on) return;
-    on = false; shotSaid = false; phase = 'off';
+    on = false; shotSaid = false; phase = 'off'; if (cardUp) { cardUp = false; card?.dispose(); }
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
     if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; if (c.story().gsStage >= 0) c.gunshipOver?.(c.heartCell?.() ?? -1); c.story().gsStage = -1; } }   // the gunship home at once: it crawled back across the planet after SECURE (2026-10-18)
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
-    if (outcome === 'secure' && !done) { done = true; c.showBrief('boss_dead'); c.speak('boss_dead'); }
+    if (outcome === 'secure') dead(); else decoded = false;   // boss_dead (and arena_decoded behind it) as the fallback if her death was never seen; a lost run says neither
     if (outcome === 'secure') { const tiers = hunters().tiers; for (const e of c.enemies) if (e.alive && e.hunter && e.tier in tiers) c.kill?.(e, false); }   // any of the brood the stagger has not reached yet
     brood = null;
     seated = false; def = null; was = null;
@@ -206,6 +264,6 @@ export function createBossRun(c) {
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
   const fearState = () => { const b = bossRecord(); return { frights, stuns, scared: !!b && isScared(b, c.t()), stunned: !!b && c.t() < (b.stagUntil ?? -1), ground: b?.ground ? 'ground' : b ? 'hunt' : null }; };
-  return { begin, tick, end, rows, lure, arenaDue, landed, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells() }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+  return { begin, tick, end, rows, lure, arenaDue, landed, talking, force: () => { dueNow = true; }, on: () => on,
+    state: () => ({ on, phase, card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }
