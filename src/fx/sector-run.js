@@ -379,6 +379,7 @@ export function createSectorRun(h) {
   }
 
   function tick(dt) {
+    if (h.clockHeld?.()) { api.backTick?.(dt); return; }   // DAY 42 (2026-10-18): the party is a lull the sector may not end; the back mouth's dust still rides the world
     clock += dt;
     api.backTick?.(dt);   // the back mouth's dust rides the world's clock (src/fx/back-omen.js)
     if (phase !== 'idle' && phase !== 'lost-shown') tickGate(dt);
@@ -449,8 +450,10 @@ export function createSectorRun(h) {
     // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path
     // holds its bodies until the hole is open. Breaches not yet due simply join a later pulse.
     canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && (stalled() || due()),   // by shape (2026-10-15): the breath, or the lane under its target
+    // a breath (2026-10-18): a pulse sector whose last pulse is mostly dead, a flow sector well under its target; what the party waits for
+    breathing: () => phase === 'fighting' && !!def && (def.shape === 'flow' ? aliveSectorEnemies(true) < flowTarget(def.flow.alive * swell(), crowdTrace.cap) * 0.25 : lastPulse.sent && aliveSectorEnemies(true) <= (def.breath?.at ?? 0.25) * lastPulse.size),
     // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
-    pulseGap: () => (phase === 'fighting' && def ? (canyon?.phase === 'rising' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.shape === 'flow' ? 0 : def.pulse ?? null) : null),   // the canyon's swarm does not wait a whole pulse (2026-10-03); a flow's stream is its own gap (2026-10-15)
+    pulseGap: () => (h.clockHeld?.() ? Infinity : phase === 'fighting' && def ? (canyon?.phase === 'rising' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.shape === 'flow' ? 0 : def.pulse ?? null) : null),   // held (2026-10-18): Infinity, the board's own clock never arms in the party; the canyon's swarm does not wait a whole pulse (2026-10-03); a flow's stream is its own gap (2026-10-15)
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now
@@ -499,7 +502,7 @@ export function createSectorRun(h) {
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; isaoSpeak('sector_lost'); h.hud(); return true; },
     state: () => ({
-      phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, hole: !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
