@@ -38,7 +38,7 @@ export function createLaserArsenal(scene, host) {
   let energyBonus = 0;   // THE ORBITAL WORKS: seconds of beam the collectors in orbit add to every ordinary pass
   const normalPass = () => { orbit.overhead = LASER_GAME.pass.overhead; Object.assign(beam, { energy: LASER_GAME.pass.energy + energyBonus, radius: LASER_GAME.pass.radius, slew: LASER_BEAM.slew }); laser?.tune({ radius: beam.radius }); };
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
-  let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
+  let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, roadTarget = null, lastHeld = false, friendsAt = -Infinity, anchors = null, breakMs = 0;   // roadTarget: THE ROAD SOL CUTS (2026-10-16): a ground point the unseated beam holds on, as an automated aim would, never over a friend
   // SOL AUTOMATED (src/domain/laser-auto.js): `manned` counts the passes the player sat in and burned; once the ARC-01 has put SOL-88
   // up (setAuto), a pass nobody is seated for aims itself at the densest pile every LASER_AUTO.retarget seconds and holds the beam
   let plumeT = 0, auto = false, manned = 0, mannedThisPass = false, autoT = 0, autoAim = null, platform = LASER_PLATFORMS.sol82, periodScale = 1;
@@ -176,6 +176,8 @@ export function createLaserArsenal(scene, host) {
   const friendsNow = () => { const centers = host.centers(), n = (p) => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
     return [host.heart(), ...host.towers().map((t) => centers[t.ci]), ...host.walls().map((w) => w.pos), ...host.structures().map((b) => b.pos), host.tank()].filter(Boolean).map(n); };
   const unsafe = (u) => { const r = (beam.radius + LASER_AUTO.safeMetres) / metres(), r2 = r * r; return friends.some((f) => (f[0] - u[0]) ** 2 + (f[1] - u[1]) ** 2 + (f[2] - u[2]) ** 2 < r2); };
+  // the harness: metres from the beam's contact to the nearest friend (null without a contact or friends), the unsafe guard's own measure
+  const cNowFriendM = () => { const u = contactU(); if (!u || !friends.length) return null; const R = metres(); return +Math.sqrt(Math.min(...friends.map((f) => (f[0] - u[0]) ** 2 + (f[1] - u[1]) ** 2 + (f[2] - u[2]) ** 2))).toFixed(4) * R; };
   // SOL FIRING IN 3… 2… (owner, 2026-10-02: "same as TACTICAL NUKE message"): an automated pass holds its fire `LASER_AUTO.countdown`
   // seconds after it arrives and calls each second out, so the strike is announced before it lands
   // ON ISAO'S BEATS (2026-10-04): the pass asks him for a countdown line as it arrives; once it is heard, number k shows at its beats[k]
@@ -209,8 +211,8 @@ export function createLaserArsenal(scene, host) {
 
   // the beam, per frame (the lab's applyBurn)
   function burn(dt, input) {
-    const aim = automatedAim(dt);
-    const cNow = contactU(), held = (seated && (!!input?.held || testHeld)) || (!!aim && !(cNow && unsafe(cNow)));
+    const aim = automatedAim(dt) ?? (seated ? null : roadTarget);   // the road: held and aimed like an automated pass while nobody sits (the seat's own hands win)
+    const cNow = contactU(), held = (seated && (!!input?.held || testHeld)) || (!!aim && !(cNow && unsafe(cNow))); lastHeld = held;
     let target = aim ?? input?.target ?? testTarget;
     const keys = input?.keys;
     if (!target && keys && (keys.x || keys.z) && st.contact && held) target = lead(keys);
@@ -311,7 +313,7 @@ export function createLaserArsenal(scene, host) {
       Object.assign(st, makeLaser(orbit, beam));
       passes = burnSeconds = aimArc = breakMs = 0; manned = 0; mannedThisPass = false; auto = false; autoAim = null; platform = LASER_PLATFORMS.sol82; periodScale = 1; energyBonus = 0; normalPass();
       for (const k of Object.keys(burned)) burned[k] = 0;
-      testTarget = null; testHeld = false; anchors = null;
+      testTarget = null; testHeld = false; roadTarget = null; anchors = null;
       online = !!host.online;
     },
     passNow() { if (online && st.phase !== 'overhead') edge(stepLaser(st, st.left, orbit, beam)); },
@@ -340,6 +342,11 @@ export function createLaserArsenal(scene, host) {
     // the harness's hands: a world point to aim at (null lets the seat's own pointer and keys aim again) and the trigger
     steer(p) { testTarget = p ? [p[0], p[1], p[2]] : null; },
     hold(on) { testHeld = !!on; },
+    // THE ROAD SOL CUTS (src/fx/boss-run.js through laser-station aimCell): the unseated beam burns at `p` until released with null; the friends are read now so
+    // the unsafe guard (the hull, our buildings) holds even with SOL's automation off, which never refreshes them
+    road(p) { roadTarget = p ? [p[0], p[1], p[2]] : null; if (p) friends = friendsNow(); },
+    // the road's candidates (src/domain/arena.js roadAhead `far`): would the beam burn here at all? The guard's own measure over the friends, read afresh at most twice a second
+    safeAt(p) { const now = performance.now(); if (now - friendsAt > 500) { friends = friendsNow(); friendsAt = now; } const l = Math.hypot(p[0], p[1], p[2]) || 1; return !unsafe([p[0] / l, p[1] / l, p[2] / l]); },
     nearestRock: (p) => nearestRock(p ?? anchor()),
 
     // what the seat's scope and panel read
@@ -356,7 +363,7 @@ export function createLaserArsenal(scene, host) {
     stats: () => ({ passes, seconds: burnSeconds }),   // cheap: the sector loop polls it every frame
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2), special: !!special, radius: beam.radius,
-      burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, strip: laserStrip(st, online, beam, LASER_GAME.lowEnergy, platform.name).text, period: +orbit.period.toFixed(1), energyBonus, passEnergy: beam.energy,
+      burning: st.burning, road: !!roadTarget, held: lastHeld, friendM: cNowFriendM(), contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, strip: laserStrip(st, online, beam, LASER_GAME.lowEnergy, platform.name).text, period: +orbit.period.toFixed(1), energyBonus, passEnergy: beam.energy,
       source: laser?.sourceAt?.() ?? null, under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(), bp = bodyGround(e); return Math.hypot(bp[0] * R - st.contact[0], bp[1] * R - st.contact[1], bp[2] * R - st.contact[2]); })).toFixed(1) : null,
