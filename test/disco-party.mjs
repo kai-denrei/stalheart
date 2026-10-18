@@ -99,4 +99,11 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
 for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = host(); h[k] = () => on; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
   assert.equal(p.state().phase, 'party'); tickTo(p, 1.2); on = true; tickTo(p, 0.5); assert.deepEqual(log.shots, [], `${k} at the cut: no startShot`);
   tickTo(p, DAY_42.seconds); assert.equal(p.state().phase, 'over', `${k}: the party still reaches its alarm`); assert.ok(log.played.includes('danger_alert')); }
+// the review's small ones (2026-10-18): no party while the Stålheart's holder is hidden (SOL burnt it); the ball grows with the hoist, a
+// fraction of its size while the arm is low, whole once the arm is at its pose
+{ const { h, stal } = host(); stal.visible = false; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); tickTo(p, 1);
+  assert.equal(p.state().phase, 'idle', 'no party with the holder hidden'); stal.visible = true; p.tick(0.1); assert.equal(p.state().phase, 'party'); }
+{ const { h, scene } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); tickTo(p, 1);
+  const s1 = scene.getObjectByName('DISCO_BALL_ROOT').scale.x; assert.ok(s1 > 0 && s1 < 0.2, `a quarter into the hoist the ball is small (${s1})`);
+  tickTo(p, DAY_42.hoist); assert.ok(Math.abs(scene.getObjectByName('DISCO_BALL_ROOT').scale.x - 1) < 1e-6, 'whole at the pose'); }
 console.log('disco-party ok');

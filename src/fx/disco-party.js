@@ -40,11 +40,15 @@ const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
 
 export function createDiscoParty(h) {
   const clock = createPartyClock(DAY_42), load = h.loadGlb ?? loadGlb;
-  let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [], lastWall = null;
+  let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [], lastWall = null, shrinkFrom = 1;
   const wallNow = h.now ?? (() => performance.now());
   const tip = new THREE.Vector3(), up = new THREE.Vector3(), base = new THREE.Vector3(), m4 = new THREE.Matrix4();
   const metres = () => h.metres?.() ?? 1;
   const node = (root, name) => root?.getObjectByName(name) ?? null;
+  // the nodes the loop drives every frame, looked up once (final review, 2026-10-18: getObjectByName walks the whole tree per call): the
+  // ball's four named in fetchBall, each tier's tip on first use (only a found one is kept: a tier can be swapped for its near one mid-party)
+  let parts = {};
+  const tips = new WeakMap(), tipOf = (root) => { if (!root) return null; let n = tips.get(root); if (!n) { n = node(root, 'EXTRUSION_TIP'); if (n) tips.set(root, n); } return n; };
 
   function fetchBall() {
     if (ball || loading || failed) return; loading = true;
@@ -56,6 +60,7 @@ export function createDiscoParty(h) {
       // one (a second party after a regenerate gets the whole ball back); geometry and materials stay shared, so nothing is disposed
       ball = (scene.name === 'DISCO_BALL_ROOT' ? scene : node(scene, 'DISCO_BALL_ROOT') ?? scene).clone();
       const cradle = node(ball, 'STANDALONE_CRADLE'); if (cradle) cradle.visible = false;   // hung, never standing
+      parts = { pivot: node(ball, 'DISCO_PENDULUM_PIVOT'), spin: node(ball, 'DISCO_SPHERE_SPIN'), halo: node(ball, 'LIGHT_HALO_YAW'), ring: node(ball, 'LASER_RING_YAW') };
     }, (e) => fail(e?.message ?? e));
   }
 
@@ -85,13 +90,13 @@ export function createDiscoParty(h) {
   }
   // the tip's world position (world units) and the planet's radial there; false without a Stålheart
   function tipNow(root) {
-    const n = node(root, 'EXTRUSION_TIP'); if (!n) return false;
+    const n = tipOf(root); if (!n) return false;
     n.getWorldPosition(tip); up.copy(tip); if (up.lengthSq() < 1e-12) up.copy(Y); else up.normalize();
     return true;
   }
 
   function addLights() {
-    const L = DAY_42.light, halo = node(ball, 'LIGHT_HALO_YAW'), ring = node(ball, 'LASER_RING_YAW');
+    const L = DAY_42.light, { halo, ring } = parts;
     for (let k = 0; halo && k < 4; k++) {
       const s = new THREE.SpotLight(PARTY_COLORS[k], L.intensity, L.distance * metres(), L.angle, L.penumbra, DECAY);
       const yaw = POD.at + k * Math.PI / 2; s.position.set(Math.cos(yaw) * POD.r, POD.y, -Math.sin(yaw) * POD.r); s.castShadow = false; s.userData.yaw = yaw;
@@ -115,10 +120,8 @@ export function createDiscoParty(h) {
     if (!ball.parent) h.scene.add(ball);
     ball.scale.setScalar(s); ball.quaternion.setFromUnitVectors(Y, up);
     ball.position.copy(tip).addScaledVector(up, -HOOK_LOCAL_OFFSET[1] * s);
-    node(ball, 'DISCO_PENDULUM_PIVOT')?.rotation.set(p.pendulumX, 0, p.pendulumZ);
-    const spin = node(ball, 'DISCO_SPHERE_SPIN'); if (spin) spin.rotation.y = p.sphereSpinY;
-    const halo = node(ball, 'LIGHT_HALO_YAW'); if (halo) halo.rotation.y = p.haloYaw;
-    const ring = node(ball, 'LASER_RING_YAW'); if (ring) ring.rotation.y = p.laserRingYaw;
+    const { pivot, spin, halo, ring } = parts;
+    pivot?.rotation.set(p.pendulumX, 0, p.pendulumZ); if (spin) spin.rotation.y = p.sphereSpinY; if (halo) halo.rotation.y = p.haloYaw; if (ring) ring.rotation.y = p.laserRingYaw;
     for (const s2 of spots) {
       const yaw = s2.userData.yaw, c = Math.cos(p.spotPitch);
       s2.target.position.set(Math.cos(yaw) * c * 10, Math.sin(p.spotPitch) * 10, -Math.sin(yaw) * c * 10);   // ten metres down and out along the pod
@@ -133,7 +136,7 @@ export function createDiscoParty(h) {
   // 2026-10-18): a scripted beat never evicts a gunner (owner, 2026-09-15) nor cuts over another shot; the party goes on without its cut
   function shot() {
     if (h.seated() || h.shotActive()) return;
-    const st = structure(), root = st?.near ?? st?.root; if (!root || !node(root, 'EXTRUSION_TIP')) return;
+    const st = structure(), root = st?.near ?? st?.root; if (!root || !tipOf(root)) return;
     const S = DAY_42.shot, start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() };
     const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();
     h.startShot({ id: S.id, dur: S.seconds, skippable: true, onEnd: () => h.snapCamera(), poseAt(u, out) {
@@ -168,7 +171,7 @@ export function createDiscoParty(h) {
       h.sfx?.play('danger_alert'); h.callout(DAY_42.callout, 'co-victory'); h.showBrief(DAY_42.briefs.over);
       if (sr?.state?.().phase === 'fighting') h.armWave();
     }
-    dropLights(); overAt = t;
+    dropLights(); overAt = t; shrinkFrom = appear;
     for (const r of tiers) r.from = r.last ?? r.rest;   // lowered from wherever the arm is now, mid-hoist or mid-loop
   }
   function finish() {   // 'done' and restore(): nothing of the party left in the yard
@@ -180,7 +183,8 @@ export function createDiscoParty(h) {
       const sr = h.sectorRun?.() ?? null, phase = sr?.state?.().phase, day = h.daylight?.()?.day?.() ?? 0;
       if (day >= DAY_42.day - DAY_42.loadAhead) fetchBall();
       const cond = { day, fighting: phase === 'fighting', secure: phase === 'secure', breathing: !!sr?.breathing?.(), shot: h.shotActive(), seated: h.seated(),
-        card: !ball || h.card() || !!h.warning?.(), alive: h.alive(), boss: !!sr?.defNow?.()?.boss, won: h.won(), isaoBusy: h.isaoBusy() };   // the board's wave warning is a card: no party over its rings
+        card: !ball || structure()?.holder?.visible === false || h.card() || !!h.warning?.(), alive: h.alive(), boss: !!sr?.defNow?.()?.boss, won: h.won(), isaoBusy: h.isaoBusy() };   // the board's wave warning is a card: no party over its rings; nor
+      // with the Stålheart's holder hidden (final review, 2026-10-18: SOL can burn it; the ball would hang from nothing)
       const was = clock.state().phase, events = clock.tick(dt, cond);
       if (was === 'party' && events.length === 0 && (!cond.alive || cond.won)) events.push(...clock.over().map((e) => (e === 'over' ? 'cut' : e)));
       // the wall gap: measured between ticks that advance, so a run of zero-dt ticks under a non-live shot counts whole; the music stopped
@@ -201,12 +205,13 @@ export function createDiscoParty(h) {
       if (!events.includes('start')) t += dt;   // the party's own time from its first frame; the loop keeps turning as the ball goes down
       const root = gather(), p = celebrationPose(t, DAY_42.loop);
       if (now === 'party') {
-        appear = Math.min(1, t);
+        // the ball grows with the hoist, the square of the arm's own eased progress (final review, 2026-10-18: a full ball in the first second hung
+        // its 6.2 m under an arm still low and sank into the slab); small and close under the tip while the arm rises, whole at the pose
+        const k = Math.min(1, t / DAY_42.hoist), e = k * k * (3 - 2 * k); appear = e * e;   // e: hoistBlend's own smoothstep
         if (!music && t < DAY_42.music.retry) startMusic();   // a slow decode still starts within the first seconds (2026-10-18: was the cut's 1.5 s)
-        const k = Math.min(1, t / DAY_42.hoist);
         for (const r of tiers) pose(r, hoistBlend(k, r.rest, target(p)));
       } else {
-        const k = (t - overAt) / DAY_42.lower; appear = Math.max(0, 1 - k);
+        const k = (t - overAt) / DAY_42.lower; appear = Math.max(0, shrinkFrom * (1 - k));   // from whatever size it had: a party cut mid-hoist does not pop
         for (const r of tiers) pose(r, hoistBlend(k, r.from ?? r.rest, r.rest));
       }
       hang(root, p);
