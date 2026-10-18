@@ -5,7 +5,7 @@ import { sectorDef } from '../src/domain/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
-function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 251, axis: [1, 0, 0] }, firstSector = 1, gate = false, lateStart = true, bossStart = false, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }], hold = undefined } = {}) {
+function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 251, axis: [1, 0, 0] }, firstSector = 1, gate = false, lateStart = true, bossStart = false, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }], hold = undefined, clockHeld = () => false } = {}) {
   const w = { t: 0, enemies: [], queue: [], opened: [], briefs: [], scrambles: 0, backDoors: 0 };
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
@@ -20,7 +20,7 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
     queued: (sp) => w.queue.some((q) => q.sp === sp), push: (qs) => w.queue.push(...qs), seal: () => {}, clearField: () => {},
     poll: () => ({ passes: 0, drawn: 0, delivered, earned: 0, spent: 0, shieldUp: false, laser: null }),
     bank: () => ({}), pause: () => {}, brief: (id) => w.briefs.push(id), callout: () => {}, hud: () => {}, sfx: () => {}, pay: () => {},
-    centers: () => centers, cellSide: () => 0.001, reload: () => {}, hold,
+    centers: () => centers, cellSide: () => 0.001, reload: () => {}, hold, clockHeld,
   });
   w.step = (secs, dt = 0.25) => { for (let k = 0; k < secs / dt; k++) { w.t += dt; w.run.tick(dt); } };
   // the board's spawner: a released pulse becomes live bodies at once (the clock rule does not care how they walk in)
@@ -386,5 +386,21 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(w.run.state().phase, 'fighting', 'held open: not secured');
   held = false; w.step(1);
   assert.equal(w.run.state().phase, 'secure', 'let go: secured');
+}
+// THE CLOCK HELD (2026-10-18, DAY 42: the party is a lull the sector may not end): while the host holds it, the sector's clock, its gates and its
+// releases stand, pulseGap reads Infinity so the board's own between-waves clock never arms, and no stall is counted; breathing() reads the
+// pulse's breath (the field under breath.at of the last pulse) and is false right after a release
+{
+  let held = false; const w = world({ clockHeld: () => held });
+  w.step(0.5); assert.equal(w.run.state().phase, 'fighting');
+  assert.equal(w.run.breathing(), false, 'no pulse sent yet: not a breath');
+  const q = w.run.release(w.t); assert.ok(q.length > 0); w.spawn(q);
+  assert.equal(w.run.breathing(), false, 'the pulse is alive');
+  for (const e of w.enemies) e.alive = false;
+  assert.equal(w.run.breathing(), true, 'the field dead: a breath');
+  const c0 = w.run.state().clock; held = true; w.step(30);
+  assert.equal(w.run.state().clock, c0, 'the clock stands while held'); assert.equal(w.run.pulseGap(), Infinity, 'no pulse arms while held');
+  held = false; w.step(1); assert.ok(w.run.state().clock > c0, 'and runs again'); assert.equal(w.run.pulseGap(), SECTORS[0].pulse);
+  assert.equal(w.run.state().phase, 'fighting', 'thirty held seconds were not a stall');
 }
 console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');
