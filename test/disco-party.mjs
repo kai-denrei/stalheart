@@ -19,6 +19,9 @@ function host(o = {}) {
   return { h, log, scene, stal };
 }
 const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.tick(dt); };
+// THE COUNTDOWN (owner, 2026-10-18 round 2): armed, the party first counts `countdown` seconds of Isao's announcement; through it in
+// quarter seconds (exact in binary: 30 s is 30 s), `step` the tick when a test drives the wall clock too
+const countdown = (p, step = (dt) => p.tick(dt)) => { for (let k = 0; k < DAY_42.countdown / 0.25; k++) step(0.25); };
 // the ball is fetched ahead (day 40), the party arms on the breath, the brief, the music and the hold come first, the shot at 1.5 s, the ball hangs under the tip
 {
   const { h, log, scene, stal } = host({ day: 40 }); const p = createDiscoParty(h);
@@ -29,8 +32,17 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
 {
   const { h, log, scene, stal } = host(); const p = createDiscoParty(h);
   p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  // the countdown: the announcement at once, the hold with it, no music, no duck, no ball, no lights; "come back to the base" at 20 s
+  assert.equal(p.state().phase, 'countdown'); assert.equal(p.holding(), true, 'the sector clock stands from the announcement');
+  assert.deepEqual(log.briefs, [DAY_42.briefs.soon]);
+  for (let k = 0; k < (DAY_42.back - 0.25) / 0.25; k++) p.tick(0.25); assert.deepEqual(log.briefs, [DAY_42.briefs.soon], 'nothing more before 20 s');
+  p.tick(0.25); assert.deepEqual(log.briefs, [DAY_42.briefs.soon, DAY_42.briefs.back], 'the second line at 20 s');
+  for (let k = 0; k < (DAY_42.countdown - DAY_42.back - 0.25) / 0.25; k++) p.tick(0.25);
+  assert.equal(p.state().phase, 'countdown'); assert.deepEqual(log.played, [], 'no music before the start'); assert.equal(log.ducked.length, 0, 'no duck');
+  assert.equal(p.state().hanging, false, 'no ball'); assert.equal(p.state().music, false); assert.deepEqual(log.shots, []);
+  p.tick(0.25);
   assert.equal(p.state().phase, 'party'); assert.equal(p.holding(), true);
-  assert.deepEqual(log.briefs, [DAY_42.briefs.start]); assert.deepEqual(log.played, [DAY_42.music.key]); assert.equal(log.ducked.length, 1);
+  assert.deepEqual(log.briefs, [DAY_42.briefs.soon, DAY_42.briefs.back, DAY_42.briefs.start]); assert.deepEqual(log.played, [DAY_42.music.key]); assert.equal(log.ducked.length, 1);
   assert.deepEqual(log.shots, [], 'no cut before the words'); tickTo(p, 1.6); assert.deepEqual(log.shots, [DAY_42.shot.id]);
   assert.equal(stal.userData.actions.Terraforming_Cycle.paused, true, 'the Terraforming loop is paused for the party');
   // the shot's pose: the eye about `radius` from the tip, `height` above it, looking at it
@@ -43,35 +55,35 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
   assert.ok(stal.getObjectByName('DISCO_SPHERE_SPIN') === undefined && ballRoot.getObjectByName('DISCO_SPHERE_SPIN').rotation.y !== 0, 'the sphere spins');
   // the end: the music stopped, the klaxon, the callout, the second line, the wave armed, the hold released; then the ball and the lights gone, the loop resumed
   tickTo(p, DAY_42.seconds - 5.5); assert.equal(p.state().phase, 'over'); assert.equal(log.stopped, 1); assert.ok(log.played.includes('danger_alert')); assert.deepEqual(log.callouts, [DAY_42.callout]);
-  assert.deepEqual(log.briefs, [DAY_42.briefs.start, DAY_42.briefs.over]); assert.equal(log.armed, 1); assert.equal(p.holding(), false);
+  assert.deepEqual(log.briefs, [DAY_42.briefs.soon, DAY_42.briefs.back, DAY_42.briefs.start, DAY_42.briefs.over]); assert.equal(log.armed, 1); assert.equal(p.holding(), false);
   tickTo(p, DAY_42.lower + 0.5); assert.equal(p.state().phase, 'done'); assert.equal(p.state().lights, 0); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT'), undefined, 'the ball is gone');
   assert.equal(stal.userData.actions.Terraforming_Cycle.paused, false, 'the Terraforming loop resumes');
   tickTo(p, 60); assert.equal(log.armed, 1, 'once a run'); p.restore(); assert.equal(p.state().phase, 'idle');
 }
 // no armWave when the sector is secure (nothing to arm); the arena never parties; force() arms whatever the day
-{ const { h, log } = host({ phase: 'secure', breathing: false }); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); assert.equal(p.state().phase, 'party'); tickTo(p, DAY_42.seconds + 1); assert.equal(log.armed, 0); }
+{ const { h, log } = host({ phase: 'secure', breathing: false }); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); assert.equal(p.state().phase, 'party'); tickTo(p, DAY_42.seconds + 1); assert.equal(log.armed, 0); }
 { const { h } = host({ boss: true }); const p = createDiscoParty(h); tickTo(p, 2); assert.equal(p.state().phase, 'idle'); }
-{ const { h } = host({ day: 3, breathing: false }); const p = createDiscoParty(h); p.force(); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); assert.equal(p.state().phase, 'party'); }
+{ const { h } = host({ day: 3, breathing: false }); const p = createDiscoParty(h); p.force(); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); assert.equal(p.state().phase, 'party'); }
 // the review's guards (2026-10-18): no party while the board's wave warning rings; the hull lost mid-party ends it at once, the hold
 // released, no klaxon and no wave armed; the ball still goes down and away
-{ let warn = true; const { h } = host(); h.warning = () => warn; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); tickTo(p, 2); assert.equal(p.state().phase, 'idle', 'not over the warning'); warn = false; p.tick(0.1); assert.equal(p.state().phase, 'party'); }
-{ let alive = true; const { h, log, scene } = host(); h.alive = () => alive; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); tickTo(p, 5);
+{ let warn = true; const { h } = host(); h.warning = () => warn; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); tickTo(p, 2); assert.equal(p.state().phase, 'idle', 'not over the warning'); warn = false; p.tick(0.1); assert.equal(p.state().phase, 'countdown'); }
+{ let alive = true; const { h, log, scene } = host(); h.alive = () => alive; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 5);
   const carriage = scene.getObjectByName('CARRIAGE_TRAVEL_X'), x0 = carriage.position.x;
   alive = false; p.tick(0.1); assert.equal(p.state().phase, 'over'); assert.ok(Math.abs(carriage.position.x - x0) < 0.25, `the arm lowers from where it is (${x0} -> ${carriage.position.x})`); assert.equal(p.holding(), false); assert.equal(log.stopped, 1); assert.ok(!log.played.includes('danger_alert')); assert.equal(log.armed, 0); assert.equal(p.state().lights, 0);
   tickTo(p, DAY_42.lower + 0.5); assert.equal(p.state().phase, 'done'); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT'), undefined); }
 // restore() mid-party leaves nothing in the scene and the loop running
-{ const { h, scene, stal } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); tickTo(p, 3); const before = scene.children.length;
+{ const { h, scene, stal } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 3); const before = scene.children.length;
   p.restore(); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT'), undefined); assert.equal(scene.children.length, before - 1); assert.equal(stal.userData.actions.Terraforming_Cycle.paused, false); assert.equal(p.holding(), false);
   let lights = 0; scene.traverse((o) => { if (o.isLight) lights++; }); assert.equal(lights, 0, 'no light of the party left'); }
 // the real loader resolves the glTF's scene group with DISCO_BALL_ROOT inside it: not hanging until the party, then in the world itself
 { const { h, scene } = host(); h.loadGlb = async () => { const g = new THREE.Group(); g.add(ball()); return g; }; let day = 41; h.daylight = () => ({ day: () => day }); const p = createDiscoParty(h);
   p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); assert.equal(p.state().phase, 'idle'); assert.equal(p.state().hanging, false, 'loaded, not hanging');
-  day = 42; p.tick(0.1); p.tick(0.1); assert.equal(p.state().phase, 'party'); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT')?.parent, scene, 'the ball hangs in the world'); }
+  day = 42; p.tick(0.1); countdown(p); p.tick(0.1); assert.equal(p.state().phase, 'party'); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT')?.parent, scene, 'the ball hangs in the world'); }
 // loadGlb caches one scene per URL for the page's life: a second party in the same page (the harness restart, the dev GUI's regenerate) is handed
 // the SAME group and must still get the whole ball and its four lights; the cached group is left as it was found
 { const cached = new THREE.Group(); cached.add(ball());
   const run = async () => { const { h, scene } = host(); h.loadGlb = async () => cached; const p = createDiscoParty(h);
-    p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); tickTo(p, 5); return { p, scene }; };
+    p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 5); return { p, scene }; };
   const a = await run(); assert.equal(a.p.state().hanging, true, 'the first party hangs'); assert.equal(a.p.state().lights, 4);
   a.p.restore(); assert.equal(cached.getObjectByName('DISCO_BALL_ROOT')?.parent, cached, 'the cached scene keeps its ball'); assert.equal(cached.getObjectByName('STANDALONE_CRADLE').visible, true, 'the cached cradle is untouched');
   const b = await run(); assert.equal(b.p.state().hanging, true, 'the second party hangs'); assert.equal(b.p.state().lights, 4, 'the second party has its four lights');
@@ -81,29 +93,29 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
   const p = createDiscoParty(h); try { p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); p.tick(0.1); } finally { console.warn = w; }
   assert.equal(p.state().failed, true); assert.equal(p.state().loaded, false); assert.equal(warns, 1, 'one warning, not one a frame'); }
 // the track is lazy (final review, 2026-10-18): a decode slower than the cut still starts it within `music.retry`, asking to decode again meanwhile
-{ let decoded = false; const { h, log } = host({ decoded: () => decoded }); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+{ let decoded = false; const { h, log } = host({ decoded: () => decoded }); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p);
   assert.equal(p.state().phase, 'party'); assert.equal(p.state().music, false, 'not decoded: no music yet'); tickTo(p, 3);
   assert.ok(log.primed.length > 2, `asked to decode again while it waits (${log.primed.length})`); assert.ok(3 < DAY_42.music.retry, 'the test sits inside the retry window');
   decoded = true; p.tick(0.1); assert.equal(p.state().music, true, 'started at 3 s, after the cut'); assert.deepEqual(log.played, [DAY_42.music.key]); }
 // the wall gap (final review, 2026-10-18): the host stops ticking the party while paused and the track plays on; a 2 s gap between ticks
 // stops the music and ends the party at its alarm on the next tick; a non-live shot (zero-dt ticks) counts the same; steady frames do not
 { let wall = 0; const { h, log } = host(); h.now = () => wall; const p = createDiscoParty(h); const step = (dt) => { wall += dt * 1000; p.tick(dt); };
-  step(0.1); await new Promise((r) => setTimeout(r, 5)); step(0.1); for (let k = 0; k < 50; k++) step(0.1);
+  step(0.1); await new Promise((r) => setTimeout(r, 5)); step(0.1); countdown(p, step); for (let k = 0; k < 50; k++) step(0.1);
   assert.equal(p.state().phase, 'party', 'steady frames: still the party'); assert.equal(p.state().music, true); assert.equal(log.stopped, 0);
   wall += 2000; step(0.1); assert.equal(log.stopped, 1, 'the music stopped'); assert.equal(p.state().phase, 'over', 'over on the first tick back');
   assert.equal(p.state().music, false); assert.ok(log.played.includes('danger_alert'), 'at its alarm'); assert.equal(log.armed, 1); assert.equal(p.holding(), false); }
 { let wall = 0; const { h, log } = host(); h.now = () => wall; const p = createDiscoParty(h); const step = (dt, adv = dt) => { wall += adv * 1000; p.tick(dt); };
-  step(0.1); await new Promise((r) => setTimeout(r, 5)); step(0.1); for (let k = 0; k < 20; k++) step(0.1);
+  step(0.1); await new Promise((r) => setTimeout(r, 5)); step(0.1); countdown(p, step); for (let k = 0; k < 20; k++) step(0.1);
   for (let k = 0; k < 60; k++) step(0, 1 / 60); assert.equal(p.state().phase, 'party', 'frozen ticks advance nothing'); step(0.1); assert.equal(p.state().phase, 'over', 'a second of frozen frames: over'); assert.equal(log.stopped, 1); }
 // the cut asks the seat again (final review, 2026-10-18): seated at 1.5 s, no cut and the party goes on to its alarm; a shot already up, the same
-for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = host(); h[k] = () => on; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = host(); h[k] = () => on; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p);
   assert.equal(p.state().phase, 'party'); tickTo(p, 1.2); on = true; tickTo(p, 0.5); assert.deepEqual(log.shots, [], `${k} at the cut: no startShot`);
   tickTo(p, DAY_42.seconds); assert.equal(p.state().phase, 'over', `${k}: the party still reaches its alarm`); assert.ok(log.played.includes('danger_alert')); }
 // the review's small ones (2026-10-18): no party while the Stålheart's holder is hidden (SOL burnt it); the ball grows with the hoist, a
 // fraction of its size while the arm is low, whole once the arm is at its pose
 { const { h, stal } = host(); stal.visible = false; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); tickTo(p, 1);
-  assert.equal(p.state().phase, 'idle', 'no party with the holder hidden'); stal.visible = true; p.tick(0.1); assert.equal(p.state().phase, 'party'); }
-{ const { h, scene } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); tickTo(p, 1);
+  assert.equal(p.state().phase, 'idle', 'no party with the holder hidden'); stal.visible = true; p.tick(0.1); assert.equal(p.state().phase, 'countdown'); }
+{ const { h, scene } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 1);
   const s1 = scene.getObjectByName('DISCO_BALL_ROOT').scale.x; assert.ok(s1 > 0 && s1 < 0.2, `a quarter into the hoist the ball is small (${s1})`);
   tickTo(p, DAY_42.hoist); assert.ok(Math.abs(scene.getObjectByName('DISCO_BALL_ROOT').scale.x - 1) < 1e-6, 'whole at the pose'); }
 // the rig built ahead (final review, 2026-10-18, the start measured at 117 ms): at the ball's load the four floodlights are in the scene at
@@ -114,7 +126,19 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
   const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
   assert.equal(p.state().phase, 'idle'); assert.equal(lights().length, 4, 'four floodlights parked at the load'); assert.ok(lights().every((l) => l.intensity === 0 && l.parent === scene), 'dark, in the scene');
   assert.equal(warmed.length, 1); assert.equal(warmed[0].name, 'DISCO_BALL_ROOT', 'the ball compiled through the warmer'); assert.equal(warmed[0].getObjectByName('LASER_RING_YAW').children.length, 4, 'with its lasers');
-  day = 42; p.tick(0.1); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(lights().length, 4, 'the same four, not eight');
+  day = 42; p.tick(0.1); countdown(p); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(lights().length, 4, 'the same four, not eight');
   assert.ok(lights().every((l) => l.parent.name === 'LIGHT_HALO_YAW' && l.intensity > 0), 'hung from the halo and lit'); assert.equal(p.state().lights, 4);
-  p.restore(); assert.equal(lights().length, 0, 'restore() leaves none'); p.tick(0.1); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(p.state().lights, 4, 'built again for a second party'); }
+  p.restore(); assert.equal(lights().length, 0, 'restore() leaves none'); p.tick(0.1); countdown(p); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(p.state().lights, 4, 'built again for a second party'); }
+// the countdown's guards (owner, 2026-10-18 round 2): the hull lost in the countdown cancels it quietly (no party, no music, no klaxon, no
+// ball, the hold released, never again this run); a seat in the countdown does not (the invitation stands, the cut asks the seat again)
+{ let alive = true; const { h, log, scene } = host(); h.alive = () => alive; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  assert.equal(p.state().phase, 'countdown'); tickTo(p, 5); alive = false; p.tick(0.1);
+  assert.equal(p.state().phase, 'done'); assert.equal(p.holding(), false); assert.deepEqual(log.briefs, [DAY_42.briefs.soon]); assert.deepEqual(log.played, []); assert.equal(log.armed, 0);
+  alive = true; tickTo(p, 60); assert.equal(p.state().phase, 'done', 'no party after'); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT'), undefined); assert.deepEqual(log.briefs, [DAY_42.briefs.soon]); }
+{ let on = false; const { h, log } = host(); h.seated = () => on; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  assert.equal(p.state().phase, 'countdown'); on = true; countdown(p); assert.equal(p.state().phase, 'party', 'seated: the party still starts');
+  assert.deepEqual(log.briefs, [DAY_42.briefs.soon, DAY_42.briefs.back, DAY_42.briefs.start]); tickTo(p, 2); assert.deepEqual(log.shots, [], 'seated at the cut: no startShot'); }
+// the state reports the countdown's own time
+{ const { h } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); for (let k = 0; k < 20; k++) p.tick(0.25);
+  assert.deepEqual([p.state().phase, p.state().t], ['countdown', 5]); }
 console.log('disco-party ok');

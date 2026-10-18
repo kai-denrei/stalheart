@@ -5,6 +5,9 @@
 // sector clock held by the host through holding(), a live ten-second cut round the Stålheart as its arm rises into the crane-hook pose and
 // the ball appears at the tip, the loop (pendulum, spin, halo, laser ring, four floodlights in the party's colours), then at the track's end
 // the klaxon, the callout, the second line, the ball lowered and shrunk away, the Terraforming loop resumed and the next pulse armed.
+// THE COUNTDOWN (owner, 2026-10-18 round 2: "let's record voices for Isao to announce the party"): thirty seconds of words first, the sector
+// clock already held: "I know it's weird, but we need to celebrate" as it arms, "Come back to the base, I have a surprise" ten seconds before,
+// "We survived 42 days!!! Congratulations!" as the party starts. Only Isao's words in the countdown: no music, no lights, the ball not up.
 //
 // THE ARM IS POSED ABSOLUTELY, as the diorama's runtime does (measured 2026-10-18 on terraformer_3000_d0_game.glb and the far tier: the same
 // node frames; the diorama's lift 1.87 m with the clip's carriage puts the tip at (0.05, 11.63, 2.6), its rest hook, where the Terraforming
@@ -203,10 +206,12 @@ export function createDiscoParty(h) {
         lastWall = wall;
       }
       for (const ev of events) {
-        if (ev === 'start') begin();
+        if (ev === 'announce') h.showBrief(DAY_42.briefs.soon);
+        else if (ev === 'back') h.showBrief(DAY_42.briefs.back);
+        else if (ev === 'start') begin();
         else if (ev === 'shot') shot();
         else if (ev === 'over' || ev === 'cut') end(ev === 'over', sr);
-        else if (ev === 'done') finish();
+        else if (ev === 'done') finish();   // 'cancel' (the hull lost or the win in the countdown): nothing of the party was up
       }
       const now = clock.state().phase;
       if (now !== 'party' && now !== 'over') return;
@@ -226,7 +231,7 @@ export function createDiscoParty(h) {
     },
     holding: () => clock.holding(),
     force() { clock.force(); fetchBall(); },
-    state: () => ({ ...clock.state(), t: +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music }),
+    state: () => { const c = clock.state(); return { ...c, t: c.phase === 'countdown' ? c.t : +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music }; },   // the countdown's t is the clock's own
     restore() { finish(); clock.reset(); },
   };
 }
