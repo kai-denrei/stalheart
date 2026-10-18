@@ -73,6 +73,18 @@ const storyAt = (o = {}) => ({ gunshipIn: false, grow: false, programme: null, s
   const laid = makeTrack(centers[6], [0, 0, 1]); rig.setTrack(laid); rig.tick(0.5);
   assert.deepEqual(rig.probe().track.pos, laid.pos);
 }
+// THE ARENA IS WHERE THE GUNSHIP CIRCLES (owner, 2026-10-18, note 6): placeOver puts the track over a cell, and while story.gsStage names one the track
+// loiters round it, whatever breach has the bodies; the stage cleared, the breaches again
+{
+  const { rig, s, gunship } = controller({ story: storyAt() });
+  rig.tick(0.5); startStation(gunship, GUNSHIP_ORBIT);
+  s.spawnPoints.push({ ci: 9, alive: true }); s.enemies.push({ alive: true, pos: centers[9] }, { alive: true, pos: centers[10] });
+  rig.placeOver(2); assert.deepEqual(rig.probe().track.pos, norm3(centers[2]), 'the track taken over the cell');
+  s.story.gsStage = 2; for (let i = 0; i < 10; i++) rig.tick(0.5);
+  const tr = rig.probe().track; assert.deepEqual(tr.target, norm3(centers[2]), 'it loiters round the stage, not the loaded breach'); assert.equal(tr.home, false);
+  s.story.gsStage = -1; rig.tick(0.5); assert.equal(rig.probe().track.enemies, 2, 'the stage cleared: the breach with the bodies again');
+  rig.placeOver(-1); assert.ok(rig.probe().track, 'a missing cell leaves the track as it was');
+}
 // A DEPARTURE on call ends the meter's pass; the walls the danger report counts are refreshed with the next pass
 {
   const { rig, s, gunship } = controller({ story: storyAt({ inside: (ci) => ci !== 3 }) });

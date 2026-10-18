@@ -6,7 +6,7 @@ import { ARENA, ARENA_SECTOR } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 
 function host(o = {}) {
-  const log = { briefs: [], callouts: [], tremor: [], road: [] };
+  const log = { briefs: [], callouts: [], tremor: [], road: [], over: [] };
   const story = { arena: { cell: 7 }, gsAuto: false };
   const params = { directive: 'wander' };
   const h = {
@@ -16,7 +16,7 @@ function host(o = {}) {
     story: () => story, storyViews: () => null, params: () => params, player: () => ({ pos: [0, 0, 1] }), playerHP: () => 10, autoMode: () => false, isao: () => null,
     cellSide: () => 0.01, t: () => h.now, pilotMode: () => false, setAutoMode: () => {}, leavePilot: () => {}, fillCall: () => {}, station: () => true,
     hullNearArena: () => h.near, arenaOpen: () => h.open,
-    roadNext: () => h.roadCell, solRoad: (ci) => { log.road.push(ci); return ci >= 0 ? h.solTakes : false; },
+    gunshipOver: (ci) => log.over.push(ci), roadNext: () => h.roadCell, solRoad: (ci) => { log.road.push(ci); return ci >= 0 ? h.solTakes : false; },
     ...o,
   };
   return h;
@@ -33,6 +33,7 @@ function host(o = {}) {
   assert.equal(run.begin(ARENA_SECTOR), true);
   assert.deepEqual(h.log.tremor, [7], 'the tremor on the radar at the arena\'s cell from the start');
   assert.deepEqual(h.log.callouts, ['INVESTIGATE THE TREMOR'], 'the callout names the job as the sector begins');
+  assert.equal(h.story().gsStage, 7, 'the gunship\'s stage is the arena (it circles there)'); assert.deepEqual(h.log.over, [7], 'and its track takes station over it');
   assert.ok(!h.log.briefs.includes('arena_open'), 'arena_open waits for the hole');
   // the order again every ARENA.remind seconds while the hull is not there
   for (let i = 1; i <= 2 * ARENA.remind; i++) { h.now = i; run.tick(1); }
@@ -53,7 +54,8 @@ function host(o = {}) {
   h.near = true; assert.equal(run.arenaDue(), true, 'the hull within reachCells: due');
   h.near = false; assert.equal(run.arenaDue(), false, 'and not once it drives off again before the hole opened');
   run.force(); assert.equal(run.arenaDue(), true, 'the harness\'s arenaNow() still opens it');
-  h.open = true; h.now += 1; run.tick(1); assert.equal(run.arenaDue(), false, 'never due again once open'); }
+  h.open = true; h.now += 1; run.tick(1); assert.equal(run.arenaDue(), false, 'never due again once open');
+  run.end('secure'); assert.equal(h.story().gsStage, -1, 'the run over, the gunship back to the breaches'); }
 
 // THE PLANNED ROAD (owner, 2026-10-18, note 6: "there is a clear fast path (cleared by nukes and SOL) to the investigation"): the chain 0..9 with rock at 3 and 4
 // and a ten-cell detour from 2 to 5 (test/arena.mjs); the arena at 9, the hull at 0. SOL's first ask, at the sector's first tick, is the planned road's first

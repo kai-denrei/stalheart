@@ -70,6 +70,10 @@ export function createBossRun(c) {
     // (src/fx/sector-run.js briefOf), the callout names the job, and it comes back every ARENA.remind seconds while the hull has not reached the tremor
     c.callout(INVESTIGATE, 'co-victory'); remindAt = c.t();
     if (c.story()) c.story().gsAuto = true;   // the gunship flies itself over the fight while the player drives
+    // THE ARENA IS WHERE THE GUNSHIP CIRCLES (owner, 2026-10-18, note 6): its track takes station over the arena's cell and loiters round it for the whole run
+    // (story.gsStage, src/fx/gunship-rig.js); before, it stayed over the base (no breach with bodies until the hole opened) and was still ~145 cells out when
+    // the seat was forced on the player (probe r2-d: the hull at the arena at 85 s, the gunship 149 cells away)
+    if (c.story() && arenaCell() >= 0) { c.story().gsStage = arenaCell(); c.gunshipOver?.(arenaCell()); }
     c.fillCall(); refillAt = c.t(); retryAt = -9;
     return true;
   }
@@ -130,7 +134,7 @@ export function createBossRun(c) {
     if (!on) return;
     on = false; shotSaid = false; phase = 'off';
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
-    if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) c.story().gsAuto = was.gsAuto; }
+    if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; c.story().gsStage = -1; } }
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
     if (outcome === 'secure' && !done) { done = true; c.showBrief('boss_dead'); c.speak('boss_dead'); }
     seated = false; def = null; was = null;

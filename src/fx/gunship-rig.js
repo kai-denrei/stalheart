@@ -48,7 +48,10 @@ export function createGunshipRig(host) {
     if (host.story()) {
       const hc = host.graph().centers[host.dungeon().heart];
       track ??= makeTrack(hc, sub3(host.graph().centers[lane()], hc));
-      if (onStation(gunship)) steerTrack(track, breachLoads(host.spawnPoints().filter((sp) => sp.alive).map((sp) => host.graph().centers[sp.ci]), host.enemies(), GUNSHIP_TRACK.nearCells * host.cellSide()), hc, dt, GUNSHIP_TRACK, host.cellSide());
+      // THE ARENA IS WHERE THE GUNSHIP CIRCLES (owner, 2026-10-18, note 6): while a run names a stage (story.gsStage, src/fx/boss-run.js: the arena's cell) the
+      // track loiters round it instead of the breaches or the base
+      const stage = host.story().gsStage ?? -1;
+      if (onStation(gunship)) steerTrack(track, stage >= 0 ? [{ pos: host.graph().centers[stage], enemies: 1 }] : breachLoads(host.spawnPoints().filter((sp) => sp.alive).map((sp) => host.graph().centers[sp.ci]), host.enemies(), GUNSHIP_TRACK.nearCells * host.cellSide()), hc, dt, GUNSHIP_TRACK, host.cellSide());
       else parkTrack(track);
       (optic ??= createGunshipOptic(scene, { cellSide: host.cellSide(), metresPerCell: GUNSHIP_PLATFORM.metresPerCell })).ride(track.pos, track.heading, onStation(gunship), len3(hc));
     }
@@ -169,5 +172,8 @@ export function createGunshipRig(host) {
     forgetWalls: () => { walls = null; },
     // the showcase lays the track over the breach it is flying to
     setTrack: (v) => { track = v; },
+    // THE ARENA (src/fx/boss-run.js, owner 2026-10-18, note 6: "The Arena is where the gunship circles"): the next pass flies over this cell; at 1.2 cells a
+    // second the track would take three minutes to cross the 213 cells out from the base, so the orbital ship takes station there instead
+    placeOver: (ci) => { const p = host.graph().centers[ci]; if (p) track = makeTrack(p, track?.heading ?? null); },
   };
 }
