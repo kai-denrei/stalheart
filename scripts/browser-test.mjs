@@ -1558,18 +1558,40 @@ try{
  await until(`${T}.state().boss.seated`,90000).catch(async()=>assert.fail(`the gunship seat is taken by the strip's button (${JSON.stringify({boss:(await st()).boss,gunship:(await st()).gunship})})`));
  current='boss-up';await finish();
  // dead: the sector secure, the hull the player's again
- for(let i=0;i<30;i++){await evaluate(`${T}.sectorCull(999)`);const s=await st();if(['secure','finale','debrief','campaign'].includes(s.sector.phase))break;await delay(2000);}
+ // THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"; review, 2026-10-19): the real cause was the
+ // bodies a held sector leaves alive far from the arena. Two strays (not guards, not hunters) and three of the brood (small Reed hunters) are put at the antipode,
+ // the mother is killed through the damage path (damageBoss, a gunship round's): SECURE within 1 s with the strays alive, the brood dead within 2 s (it dies with
+ // her, src/fx/boss-run.js), Isao's boss_dead on the panel and the debrief by about +6 s; every failure prints aliveBodies() (what held the sector)
+ {const {BRIEFS}=await import('../src/isaobriefs.js'),alive=()=>evaluate(`${T}.aliveBodies()`),brood=(a)=>a.filter(e=>e.hunter&&(e.tier==='small'||e.tier==='pup'));
+  const far=await evaluate(`${T}.creatures.spawnFar('amoeba',2)`),nb=await evaluate(`${T}.creatures.spawnFar('reed',3,{tier:'small',hunter:true})`);
+  assert.equal(far,2,'two strays far out');assert.equal(nb,3,'three of the brood far out');
+  await until(`${T}.aliveBodies().filter(e=>e.hunter&&e.tier==='small').length>=3`,10000).catch(async()=>assert.fail(`the brood alive before her death (${JSON.stringify(await alive())})`));
+  // the seat's own brief is still up the moment the seat is taken; a player's kill does not come in that second, and the panel holds one line behind it
+  await until(`!!document.querySelector('#td-brief')?.classList.contains('hidden')`,30000).catch(async()=>assert.fail(`Isao's panel free before the kill (${JSON.stringify((await evaluate('window.__seen')).briefs.slice(-3))})`));
+  const b0=Date.now(),c0=(await st()).sector.clock;assert.ok(await evaluate(`${T}.damageBoss(999)`)!=null,'the boss hit through damageEnemy');
+  await until(`['secure','finale','debrief','campaign'].includes(${T}.state().sector.phase)`,1000).catch(async()=>assert.fail(`the boss dead: SECURE within 1 s (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss,alive:await alive()})})`));
+  const secAt=Date.now()-b0,atSecure=await alive();
+  assert.ok(atSecure.some(e=>!e.guard&&!e.hunter&&!e.harmless),`SECURE with the strays still alive: they no longer hold it (${JSON.stringify(atSecure)})`);
+  await until(`${T}.aliveBodies().filter(e=>e.hunter&&(e.tier==='small'||e.tier==='pup')).length===0`,2000).catch(async()=>assert.fail(`the brood dies with the mother within 2 s (${JSON.stringify(brood(await alive()))})`));
+  const broodAt=Date.now()-b0;
+  // boss_dead at her death, the panel free before the kill; the debrief now waits for Isao's decoded lines behind it (the step below), not the fight's +6 s
+  // (merge of r3-g's fix round under r3-f's messaging, 2026-10-19: src/fx/sector-run.js holds the boss sector's debrief while src/fx/boss-run.js talking())
+  await until(`(window.__seen?.briefs||[]).some(t=>t.includes(${JSON.stringify(BRIEFS.boss_dead.lines[0])}))`,4000).catch(async()=>assert.fail(`boss_dead on the panel at her death (${JSON.stringify({phase:(await st()).sector.phase,briefs:(await evaluate('window.__seen')).briefs.slice(-4),alive:await alive()})})`));
+  console.log(`  boss killed: SECURE at +${secAt} ms, the brood dead at +${broodAt} ms, boss_dead at +${Date.now()-b0} ms (game clock ${c0} -> ${(await st()).sector.clock}); alive at SECURE ${JSON.stringify(atSecure)}`);}
  {const s=await st();assert.ok(['secure','finale','debrief','campaign'].includes(s.sector.phase),`the boss dead: SECURE (${JSON.stringify({phase:s.sector.phase,boss:s.boss})})`);
   const ab=s.sector.breaches?.find(b=>b.side==='arena');assert.ok(ab&&ab.hole===true,`the arena's hole stays open after SECURE: the nest's mouth (${JSON.stringify(s.sector.breaches)})`);}
+ // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): boss_dead, then arena_decoded on the panel;
+ // the debrief pauses the game and the panel's clock with it, so the sector loop holds the boss sector's debrief while Isao talks (STORY_CALM.maxHold caps it):
+ // boss_dead, then the four decoded lines, then the debrief (boss_dead's 3.1 s plus the four lines' ~13 s of game clock after her death; merge, 2026-10-19)
+ {const {BRIEFS}=await import('../src/isaobriefs.js'),L=BRIEFS.arena_decoded.lines,w0=Date.now();let seen=null,s=null;
+  while(Date.now()-w0<60000){s=await st();seen=await evaluate('window.__seen');if(s.sector.debriefOpen||['debrief','finale','campaign'].includes(s.sector.phase))break;await delay(250);}
+  const iD=seen.briefs.findIndex(t=>t.includes(BRIEFS.boss_dead.lines[0])),iL=L.map(l=>seen.briefs.findIndex(t=>t.includes(l)));console.log(`  after the mother (${((Date.now()-w0)/1000).toFixed(1)} s to the debrief): ${JSON.stringify(seen.briefs.slice(-6))}`);
+  assert.ok(s.sector.debriefOpen||['debrief','finale','campaign'].includes(s.sector.phase),`the debrief after Isao's lines (${JSON.stringify({phase:s.sector.phase,boss:s.boss,briefs:seen.briefs.slice(-6)})})`);
+  assert.ok(iL.every(i=>i>=0),`arena_decoded's four lines on the panel before the debrief (${JSON.stringify(iL)} ${JSON.stringify(seen.briefs.slice(-8))})`);assert.ok(iD>=0&&iD<iL[0],`after boss_dead (${iD}, ${iL[0]})`);
+  assert.ok(iL.every((i,k)=>k===0||i>iL[k-1]),`the four in order (${JSON.stringify(iL)})`);}
  await until(`!${T}.state().boss.on`,30000).catch(async()=>assert.fail(`the run ends with the sector's finish (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss})})`));
  {const s=await st();assert.equal(s.boss.on,false,'the run is over');assert.equal(s.boss.auto,false,'the hull is the player\'s again');assert.equal(s.gunship.seat,false,'the seat left');
   }
- // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): boss_dead, then arena_decoded on the panel;
- // the debrief pauses the game and the panel's clock with it, so the step continues the debrief if the line is still to come
- {const {BRIEFS}=await import('../src/isaobriefs.js'),first=BRIEFS.arena_decoded.lines[0],w0=Date.now();let seen=null;
-  while(Date.now()-w0<40000){seen=await evaluate('window.__seen');if(seen.briefs.some(t=>t.includes(first)))break;if((await st()).sector.debriefOpen)await evaluate(`${T}.sectorContinue()`);await delay(500);}
-  const iD=seen.briefs.findIndex(t=>t.includes(BRIEFS.boss_dead.lines[0])),iC=seen.briefs.findIndex(t=>t.includes(first));console.log(`  after the mother: ${JSON.stringify(seen.briefs.slice(-6))}`);
-  assert.ok(iC>=0,`arena_decoded on the panel after the boss died (${JSON.stringify(seen.briefs.slice(-8))})`);assert.ok(iD>=0&&iD<iC,`after boss_dead (${iD}, ${iC})`);}
  current='boss-dead';await finish();
  } else if(args.includes('--day-42')) {
  // DAY 42 (owner, 2026-10-18; spec docs/superpowers/specs/2026-10-18-day-42-design.md): sector 4 opened on day 42; the field culled to a breath, the party:

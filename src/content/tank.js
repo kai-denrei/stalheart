@@ -36,7 +36,8 @@ export const HULL_ARMOUR = Object.freeze({ hits: 4, whole: Object.freeze(['laser
 // uses, src/fx/story-base.js inside) gets a whole armour back in `seconds`, the shield array's recharge (ARRAY 30s, SHIELD_ARRAY.reserve), so a dent
 // every seconds / hits (7.5 s at four). Parked: slower than `maxSpeed` m/s (the array pad's own rest). The next dent's fraction is kept `keep` s off
 // the spot, then dropped; a dent taken holds the mend `hitHold` s and drops the fraction.
-export const HULL_REPAIR = Object.freeze({ seconds: SHIELD_ARRAY.reserve, maxSpeed: SHIELD_ARRAY.maxSpeed, keep: 5, hitHold: 1 });
+// spots: the landmarks whose footprint mends the hull (owner, 2026-10-18, third round: "either standing under the stalheart, or the paint-job garage"), first match wins
+export const HULL_REPAIR = Object.freeze({ seconds: SHIELD_ARRAY.reserve, maxSpeed: SHIELD_ARRAY.maxSpeed, keep: 5, hitHold: 1, spots: Object.freeze(['stalheart', 'garage']) });
 // THE LURE (owner, 2026-10-16, THE ARENA: Isao drives the hull as bait "avoiding both the monster and friendly fire"; src/domain/lure.js, the drive's `lure`
 // directive in src/fx/hull-drive.js): the quarry kept between `near` and `far` hops (nearer: kite away; farther: close in; between: circle), and no
 // exit within `blast` cells of a danger point (a painted or falling MK-9 cell, SOL's burn, a Bofors shell's target) while another remains

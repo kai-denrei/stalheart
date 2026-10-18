@@ -229,7 +229,17 @@ export function createSectorRun(h) {
     const ring = Math.min(SECTOR_PLACEMENT.ringHops ?? f.farHops, f.farHops, far), gateSide = [];
     const clear = (i) => !f.inside(i) && !((f.rim?.[i] ?? Infinity) < (SECTOR_PLACEMENT.rimCells ?? 0));   // never where its blast reaches the base's rim
     for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= ring - 6 && f.dist[i] <= ring + 3 && clear(i)) gateSide.push({ cell: i, side: 'gate', hops: f.dist[i], pos: f.centers[i] });
-    const picks = [...arena, ...pickBreachCells({ candidates: [...side, ...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng })];
+    // THE PRESS IS IN SIGHT (owner, 2026-10-19, third round, note 3: "sector 4 and sector 5 have the tremor, but the first wave seems empty? There is a
+    // long delay before enemies arrive"): a row that says nearFirst (sectors 4 and 5, SECTORS; never the door, BOTH WALLS, the hold sectors or the
+    // generator's) has its first gate breach on the near ring (SECTOR_PLACEMENT.flowFirstHops), picked before the rest, so it opens first under the
+    // tremor's dive; the others keep ringHops. No usable cell there (all excluded or closed), it is an ordinary gate breach on the ring
+    const nearRing = def.nearFirst && def.n <= SECTORS.length && def.shape === 'flow' && want.gate > 0 ? Math.min(SECTOR_PLACEMENT.flowFirstHops ?? Infinity, ring - 1) : Infinity, near = [];
+    if (Number.isFinite(nearRing)) for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= nearRing - 6 && f.dist[i] <= nearRing + 3 && clear(i)) near.push({ cell: i, side: 'near', hops: f.dist[i], pos: f.centers[i] });
+    const pick = (cands, order) => pickBreachCells({ candidates: cands, want: order, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng });
+    const nearOrder = near.length ? Object.fromEntries(Object.entries(want).flatMap(([k, v]) => (k === 'gate' ? [['near', 1], ['gate', v - 1]] : [[k, v]]))) : want;
+    let rest = pick([...side, ...near, ...gateSide, ...back], nearOrder);
+    if (near.length && !rest.some((p) => p.side === 'near')) rest = pick([...side, ...gateSide, ...back], want);   // the near ring gave nothing: the ring's own breach, as before
+    const picks = [...arena, ...rest.map((p) => (p.side === 'near' ? { ...p, side: 'gate' } : p))];
     if (!picks.length) picks.push({ cell: f.fallback(), side: 'gate' });
     // THE CANYON (sector 3): cut at the antipode as the sector begins, its swarm's breach at the deep end after the sector's own
     canyon = null;

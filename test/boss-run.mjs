@@ -239,4 +239,31 @@ function host(o = {}) {
   const h3 = host({ briefing: () => false }), run3 = createBossRun(h3); run3.begin(ARENA_SECTOR); run3.end('lost'); run3.tick(0.1);
   assert.ok(!h3.log.briefs.includes('boss_dead') && !h3.log.briefs.includes('arena_decoded'), 'a lost run: neither'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; arena_decoded after boss_dead.');
+// THE BROOD DIES WITH THE MOTHER (review of note 10, 2026-10-19; the mother is the fight): three of the wave's hunters alive at her death die after her,
+// BROOD_STAGGER (0.1 s) apart, deflating, within a second; a body that is not the arena's brood (no hunter, or another tier) is left alone
+{ const kills = [], h = host({ kill: (e, fx) => { e.alive = false; kills.push([e.id, fx, +h.now.toFixed(2)]); } }), run = createBossRun(h);
+  run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { id: 'boss', alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] };
+  const brood = [['r1', 'small'], ['r2', 'small'], ['p1', 'pup']].map(([id, tier]) => ({ id, alive: true, hunter: true, tier, hp: 4, pos: [0, 0, 1] }));
+  const stray = { id: 'stray', alive: true, tier: 'small', hp: 4, pos: [0, 0, 1] }, guard = { id: 'guard', alive: true, hunter: true, tier: 'large', hp: 9, pos: [0, 0, 1] };
+  h.enemies.push(b, ...brood, stray, guard); h.now = 2; run.tick(0.1);
+  assert.equal(run.state().phase, 'boss'); assert.equal(run.state().wave, 3);
+  for (let k = 1; k <= 20; k++) { h.now = 2 + k * 0.1; run.tick(0.1); }
+  assert.deepEqual(kills, [], 'the mother alive: the brood lives');
+  assert.ok(!h.log.briefs.includes('boss_dead'), 'not before her death');
+  b.alive = false; const died = h.now; h.now += 0.01; run.tick(0.01);
+  assert.equal(h.log.briefs.filter((x) => x === 'boss_dead').length, 1, 'Isao\'s boss_dead at her death, not at the debrief\'s pause');
+  for (let k = 1; k <= 10; k++) { h.now = died + k * 0.1; run.tick(0.1); }
+  assert.equal(run.state().wave, 0, 'within a second of her death the brood is dead');
+  assert.deepEqual(kills.map((k) => k[0]), ['r1', 'r2', 'p1'], 'all three, one by one');
+  assert.ok(kills.every((k) => k[1] === true), 'deflating (fx): the brood collapsing, not a cull');
+  for (let i = 1; i < kills.length; i++) assert.ok(kills[i][2] - kills[i - 1][2] >= 0.1 - 1e-9, 'BROOD_STAGGER apart');
+  assert.equal(stray.alive, true, 'a carried-over body that is not the arena\'s is left alone'); assert.equal(guard.alive, true, 'and another tier');
+  run.end('secure'); assert.equal(h.log.briefs.filter((x) => x === 'boss_dead').length, 1, 'said once: end() does not say it again');
+  // the stagger not done when the sector ends (end('secure')): the rest go at once
+  const h2 = host({ kill: (e) => { e.alive = false; } }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
+  const b2 = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }, r = Array.from({ length: 5 }, () => ({ alive: true, hunter: true, tier: 'small', hp: 4, pos: [0, 0, 1] }));
+  h2.enemies.push(b2, ...r); h2.now = 2; run2.tick(0.1); b2.alive = false; h2.now = 2.1; run2.tick(0.1);
+  assert.ok(r.some((e) => e.alive), 'mid-stagger'); run2.end('secure'); assert.ok(r.every((e) => !e.alive), 'end(secure) takes the rest'); }
+
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother; arena_decoded after boss_dead.');

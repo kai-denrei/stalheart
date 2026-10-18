@@ -17,13 +17,13 @@
 // the eye is far, and the ball must hang from whichever tier is drawn.
 //
 // The host: scene, camera, metres() (world units a metre), sfx (src/audio.js), startShot, snapCamera, showBrief, callout(text, cls), armWave,
-// daylight(), sectorRun(), base() (the story base: structure(id)), shotActive, seated, card, warning (the board's wave warning counting
+// boards() (the two scoreboards, src/fx/scoreboard.js: override(lines, colours); the party face from the start to the done, 2026-10-18), daylight(), sectorRun(), base() (the story base: structure(id)), shotActive, seated, card, warning (the board's wave warning counting
 // down: no party over it), alive, won, isaoBusy, warm (src/fx/shader-warm.js: compile(root)); loadGlb and now (the wall clock in ms, performance.now by default) for a test.
 import * as THREE from '../../vendor/three.module.js';
 import { loadGlb } from '../glbmodels.js';
 import { DAY_42 } from '../content/day-42.js';
 import { createPartyClock } from '../domain/disco-party-clock.js';
-import { celebrationPose, hoistBlend, HOOK_LOCAL_OFFSET, PARTY_COLORS, CELEBRATION_JOINTS } from '../domain/disco-celebration.js';
+import { celebrationPose, hoistBlend, HOOK_LOCAL_OFFSET, PARTY_COLORS, CELEBRATION_JOINTS, faceLines, partyCss } from '../domain/disco-celebration.js';
 
 // [node, transform, axis, pose key]: the joints the celebration drives, in the GLB's own frames (metres, radians)
 const JOINTS = [['GANTRY_TRAVEL_Y', 'position', 'z', 'gantryZ'], ['CARRIAGE_TRAVEL_X', 'position', 'x', 'carriageX'], ['TOOL_LIFT_Z', 'position', 'y', 'liftY'],
@@ -40,6 +40,8 @@ const DECAY = 1;
 // (dt is clamped at 0.1 s) beyond this many seconds while the music plays ends the party at its alarm instead of letting it drift
 const GAP = 0.3;
 const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
+// THE BOARDS' FACE (owner, 2026-10-18, third round): the lines once, and the four colour rings a line's colours step through every `cycle` s
+const FACE = Object.freeze(faceLines(DAY_42.boards)), RINGS = [0, 1, 2, 3].map((k) => partyCss(k));
 
 export function createDiscoParty(h) {
   const clock = createPartyClock(DAY_42), load = h.loadGlb ?? loadGlb;
@@ -196,12 +198,18 @@ export function createDiscoParty(h) {
     held = held.filter((l) => l.left > 0);
   }
 
+  // the party face on both boards from the start to the done, the colours moving on every DAY_42.boards.cycle s; asked every party frame because
+  // the board's own override repaints only when the lines or colours change, and a board printed mid-party takes it on its next one
+  function faceOn(on) {
+    const ring = RINGS[Math.floor(t / DAY_42.boards.cycle) % RINGS.length];
+    for (const b of h.boards?.() ?? []) b.override?.(on ? FACE : null, on ? ring : undefined);
+  }
   function begin() {
     held = held.filter((l) => l.id !== DAY_42.briefs.back);   // "come back to the base" is stale once the party starts: shown after the ball was up it would sit ahead of the party's own line
     say(DAY_42.briefs.start);
     startMusic();
     h.sfx?.duck(DAY_42.music.duck.buses, DAY_42.music.duck.depth, DAY_42.seconds);
-    t = 0; overAt = 0; appear = 0; tiers = []; gather(); addLights();
+    t = 0; overAt = 0; appear = 0; tiers = []; gather(); addLights(); faceOn(true);
   }
   function end(alarm, sr) {   // the track's end (alarm) or the party cut short by the hull or the win
     music?.stop(0.15); music = null; h.sfx?.duck(DAY_42.music.duck.buses, 1, 0);   // the duck lifted
@@ -214,7 +222,7 @@ export function createDiscoParty(h) {
     for (const r of tiers) r.from = r.last ?? r.rest;   // lowered from wherever the arm is now, mid-hoist or mid-loop
   }
   function finish() {   // 'done' and restore(): nothing of the party left in the yard
-    warmLeft = 0; dropLights(); ball?.removeFromParent(); release(); music?.stop(0.15); music = null; appear = 0; t = 0; overAt = 0;
+    warmLeft = 0; dropLights(); ball?.removeFromParent(); release(); music?.stop(0.15); music = null; appear = 0; t = 0; overAt = 0; faceOn(false);
   }
 
   return {
@@ -247,7 +255,7 @@ export function createDiscoParty(h) {
       const now = clock.state().phase;
       if (now !== 'party' && now !== 'over') return;
       if (!events.includes('start')) t += dt;   // the party's own time from its first frame; the loop keeps turning as the ball goes down
-      const root = gather(), p = celebrationPose(t, DAY_42.loop);
+      const root = gather(), p = celebrationPose(t, DAY_42.loop); faceOn(true);
       if (now === 'party') {
         // the ball grows with the hoist, the square of the arm's own eased progress (final review, 2026-10-18: a full ball in the first second hung
         // its 6.2 m under an arm still low and sank into the slab); small and close under the tip while the arm rises, whole at the pose

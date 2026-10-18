@@ -24,7 +24,7 @@
 // button, over the paused game as the mother rises (THE MOTHER: arena_force's lines, the seat's controls, TAKE THE GUN), and the seat is forced once it is taken.
 // `c` hands in the controller: root (the tab's element), pause(v), showBrief(id), speak(id) (Isao's voice, a no-op without a line), callout(text),
 // tremor(ci) (the radar's tremor at a cell, -1 to clear), story() / storyViews() / params() / player() / playerHP() / autoMode() / isao() / cellSide() /
-// t() / pilotMode() as getters, enemies (the live array), setAutoMode(v), leavePilot(), fillCall() (the gunship's call meter to full), creatures() (the
+// t() / pilotMode() as getters, enemies (the live array), setAutoMode(v), leavePilot(), fillCall() (the gunship's call meter to full), kill(e, fx) (killCreature), creatures() (the
 // creature seam, for the hunters alive), station() (the gunship on station), shots() (the seat's rounds), arenaField() and dangers() (the lure's read),
 // hullNearArena() (the hull within ARENA.reachCells of the arena), hullCells() (its distance in cells, the harness's read), gunshipNearArena() (the gunship's track within ARENA.seatCells of it), arenaOpen()
 // (the arena's breach has opened).
@@ -45,6 +45,7 @@ const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/f
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
 const REFILL = 5;       // seconds between calls for the gunship while it is off station (the arena's long session, 2026-10-16)
 const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
+const BROOD_STAGGER = 0.1;   // seconds between the brood's deaths once the mother is dead (review of note 10, 2026-10-19)
 const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut lands (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)")
 const ROAD_LOOK = 0.25;   // seconds between looks for a planned rock inside the beam's lead while the beam is free (2026-10-19, note 7b: one crosses the reach's outer cell in about half a second at the hull's corridor pace)
 
@@ -55,9 +56,10 @@ export function createBossRun(c) {
   let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   let lookAt = -99, lead = null, leadMax = 0;   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
-  let frights = 0, stuns = 0;
-  let card = null, cardUp = false, taken = false;
-  let decoded = false, talkUntil = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
+  let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
+  let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken
+  let decoded = false, talkUntil = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead
+  let brood = null, broodAt = 0, broodI = 0;   // THE BROOD DIES WITH THE MOTHER (tick below): the wave's hunters alive at her death, when she died, how many have gone
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
   const bossRecord = () => c.enemies.find((e) => e.alive && e.hunter && e.tier === (def?.boss?.boss?.tier ?? 'huge')) ?? null;
@@ -80,7 +82,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; frights = 0; stuns = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -161,12 +163,19 @@ export function createBossRun(c) {
       if (c.pilotMode() && c.storyViews()?.now?.() !== 'gunship') c.leavePilot();
       retryAt = -9;
     }
+    // THE BROOD DIES WITH THE MOTHER (review of note 10, 2026-10-19): SECURE is her death now (src/domain/boss-sector.js bossLeft), so up to 12 x3 small Reeds
+    // and 6 pups could outlive her and go on hunting the tank into BOTH WALLS with Isao's lure off and nothing left to wait for. The owner's reason: the mother
+    // is the fight. The wave's hunters alive at her death die after her, BROOD_STAGGER s apart and deflating (fx), so it reads as the brood collapsing, not a cull
+    // Isao's boss_dead is said here too, at her death: at end() the debrief pauses the game the same frame, and a panel still busy (the seat's brief) held it
+    // past the debrief (--arena, 2026-10-19); here it has the secure pause to come up in. end() keeps it as the fallback
+    // THE MOTHER DOWN (2026-10-19, note 9): boss_dead the frame she dies (SECURE follows at once, src/domain/boss-sector.js bossLeft), so it and arena_decoded
+    // are read through the secure pause before the debrief pauses the game (end() says them if she was never seen dying); dead() also leaves the seat and
+    // queues arena_decoded behind boss_dead (merge of r3-g's fix round under r3-f's messaging, 2026-10-19: one trigger, h.boss === 0 is !bossRecord())
+    if (phase === 'boss' && h.boss === 0 && !brood) { brood = c.enemies.filter((e) => e.alive && e.hunter && e.tier in h.tiers); broodAt = t; broodI = 0; dead(); }
+    while (brood && broodI < brood.length && t >= broodAt + broodI * BROOD_STAGGER) { const e = brood[broodI++]; if (e.alive) c.kill?.(e, true); }
     // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss): the first frame she is seen, her record walks onto the sinkhole before the hunt
     // (`ground`, src/fx/enemy-step.js) and takes the guns by her own rule (`ownFear`: the generic impact scare leaves her alone; landed() below)
     { const b = bossRecord(); if (b && !b.ownFear) { b.ownFear = true; b.ground = { ...BOSS_FIGHT.arenaBoss.ground }; } }
-    // THE MOTHER DOWN (2026-10-19, note 9): boss_dead the frame she dies (SECURE follows at once, src/domain/boss-sector.js bossLeft), so it and arena_decoded
-    // are read through the secure pause before the debrief pauses the game (end() says them if she was never seen dying)
-    if (phase === 'boss' && bossSeen && !bossRecord()) dead();
     if (phase === 'boss') {
       // ISAO KEEPS THE WHEEL: a seat's entry and any drive input put the hull back on manual (src/fx/hull-drive.js, src/platform/tank-input.js);
       // while the boss is up the hull is his, so the autopilot is re-asserted every frame
@@ -224,7 +233,9 @@ export function createBossRun(c) {
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
     if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; if (c.story().gsStage >= 0) c.gunshipOver?.(c.heartCell?.() ?? -1); c.story().gsStage = -1; } }   // the gunship home at once: it crawled back across the planet after SECURE (2026-10-18)
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
-    if (outcome === 'secure') dead(); else decoded = false;
+    if (outcome === 'secure') dead(); else decoded = false;   // boss_dead (and arena_decoded behind it) as the fallback if her death was never seen; a lost run says neither
+    if (outcome === 'secure') { const tiers = hunters().tiers; for (const e of c.enemies) if (e.alive && e.hunter && e.tier in tiers) c.kill?.(e, false); }   // any of the brood the stagger has not reached yet
+    brood = null;
     seated = false; def = null; was = null;
   }
   // the integrity strip's row while the sector runs: the beacon, then the wave's count, then the boss's hit points (src/fx/integrity-hud.js gate rows); `quiet`:

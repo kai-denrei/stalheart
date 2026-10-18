@@ -179,4 +179,19 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
 { let busy = false; const { h, log } = host(); h.isaoBusy = () => busy; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p);
   busy = true; tickTo(p, DAY_42.seconds); tickTo(p, DAY_42.sayWait + 1); busy = false; tickTo(p, 1); assert.ok(!log.briefs.includes(DAY_42.briefs.over), 'held past sayWait: dropped');
   p.restore(); assert.equal(p.state().phase, 'idle'); }
+// THE BOARDS' PARTY FACE (owner, 2026-10-18, third round: "the boards with the score could temporarily show : '42 days Survived!' And 'CONGRATS! VENI VIDI KICK ASS!'"):
+// override(lines, colours) on every board from the party's start, the lines the title then the wrapped body, the colours moving on every
+// DAY_42.boards.cycle s, and override(null) at the done; nothing before the start, nothing after
+{ const calls = [], board = { override: (l, c) => calls.push([l && [...l], c && [...c]]) }, { h } = host(); h.boards = () => [board, board]; const p = createDiscoParty(h);
+  p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); for (let k = 0; k < (DAY_42.countdown - 0.5) / 0.25; k++) p.tick(0.25); assert.equal(calls.length, 0, 'no face in the countdown');
+  p.tick(0.25); p.tick(0.25); assert.equal(p.state().phase, 'party'); assert.ok(calls.length >= 2, 'both boards asked at the start');
+  const first = calls[0]; assert.deepEqual(first[0], ['42 DAYS SURVIVED!', 'CONGRATS!', 'VENI VIDI', 'KICK ASS!'], 'the owner\'s words, the title then the body');
+  assert.equal(first[1].length, 4); assert.ok(first[1].every((c) => /^#[0-9a-f]{6}$/.test(c)));
+  tickTo(p, DAY_42.boards.cycle + 0.5); assert.notDeepEqual(calls.at(-1)[1], first[1], 'the colours moved on after one cycle'); assert.equal(calls.at(-1)[1][0], first[1][1], 'one place on: the ring turned a step');
+  assert.ok(calls.every((c) => c[0] !== null), 'the face stays up through the party');
+  tickTo(p, DAY_42.seconds); assert.ok(calls.at(-1)[0] !== null, 'still up through the alarm: until the done');
+  tickTo(p, DAY_42.lower + 0.5); assert.equal(p.state().phase, 'done'); assert.equal(calls.at(-1)[0], null, 'null at the done'); const n = calls.length; tickTo(p, 2); assert.equal(calls.length, n, 'nothing after the done'); }
+// a board with no override (an older one) and a host with no boards are left alone
+{ const { h } = host(); h.boards = () => [{}]; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 3); p.restore(); }
+{ const { h } = host(); delete h.boards; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 3); p.restore(); }
 console.log('disco-party ok');

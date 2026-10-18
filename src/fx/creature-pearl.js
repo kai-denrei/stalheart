@@ -78,6 +78,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // round three: the body's footprint (its origin, its anchors, its hop's middle, its sweep, a knock, a puddle) held off the rock too
     if (hubs?.clear) swarm.clearLimit = (i, x, z, rho, out, steps) => hubs.clear(swarm.hub[i], x, z, rho, owner[i]?.cell ?? -1, out, steps);
     const geo = createSwarmGeometry(swarm, { planetR, lod: tune.lod }); geo.group.name = `Pearl ${id}`; group.add(geo.group);
+    // DRAWN OVER THE SOFT ONES (owner, 2026-10-18, round three: "the purple enemies with outside bodies looking really white"; PEARL_MEMBRANE's `order`):
+    // the membranes write no depth, so a cored pool made before a soft one was painted over by it; the cored membranes now draw after the soft
+    if (def.values.membraneOrder != null) for (const l of geo.levels) l.membrane.renderOrder = def.values.membraneOrder;
     hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }

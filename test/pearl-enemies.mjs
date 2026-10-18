@@ -51,6 +51,17 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   for (const t of soft) assert.equal(t.values.membraneTint + t.values.glintShare, 0, `${t.id}: a soft tier keeps its skin and its white glints`);
   // enemyspec's RULE: a DARK alarm body may not highlight in white; the dark cored tiers' glints are their tint in full
   for (const t of cored.filter((x) => hueLuma(x.values.skinTint) < DARK_LUMA)) assert.equal(t.values.glintShare, 1, `${t.id}: a dark body glints in its warning colour, never white`);
+  // round three (owner, 2026-10-18: "the purple enemies with outside bodies looking really white"): purple and brown keep the rule too, their glints and
+  // rim their tint in full, their skin pulled further toward it than round two's 40 %, their membrane fuller than round two's .4 and still under the soft
+  for (const id of ['purple', 'brown', 'black']) assert.equal(PEARL_MEMBRANE[id].glint, 1, `${id}: no white in its glints or its rim`);
+  for (const id of ['purple', 'brown']) {
+    assert(PEARL_MEMBRANE[id].share >= 0.6, `${id}: its skin at least 60 % of the way to its alarm hue (${PEARL_MEMBRANE[id].share})`);
+    assert(PEARL_MEMBRANE[id].opacity > 0.4, `${id}: fuller than round two's .4 (${PEARL_MEMBRANE[id].opacity})`);
+  }
+  // the draw order: every cored membrane after every soft one (the membranes write no depth; a soft pool made later painted over a cored body)
+  const softOrder = Math.max(...soft.map((t) => t.values.membraneOrder));
+  for (const t of cored) assert(t.values.membraneOrder > softOrder, `${t.id}: its membrane (order ${t.values.membraneOrder}) drawn after every soft one (${softOrder})`);
+  for (const t of soft) assert.equal(t.values.membraneOrder, 2, `${t.id}: a soft membrane at the kit's own order`);
   for (const id of ['green', 'purple', 'brown']) assert.equal(PEARL_MEMBRANE[id].tint, ALARM_HUES[id], `${id}: its belt's alarm hue (enemyspec)`);
   assert.equal(tier.black.values.membraneTintTo, tier.black.values.coreTint, 'black: the red of its core');
   // the family draws it: the pool's config carries the mixed skin and glint, a soft pool the set's own skin and no glint key
@@ -59,12 +70,16 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   assert(purple && white, 'a cored and a soft body seated');
   const cfg = (id) => (id === 'purple' ? purple : white).p.swarm.config;   // the handle's pool
   const ch = (hex, sh) => (hex >> sh) & 255;
-  for (const sh of [16, 8, 0]) close(ch(cfg('purple').skinTint, sh), ch(tier.purple.values.skinTint, sh) * 0.6 + ch(PEARL_MEMBRANE.purple.tint, sh) * 0.4, 1, 'purple: the drawn skin 40 % of the way to its alarm hue');
+  const k = PEARL_MEMBRANE.purple.share;
+  for (const sh of [16, 8, 0]) close(ch(cfg('purple').skinTint, sh), ch(tier.purple.values.skinTint, sh) * (1 - k) + ch(PEARL_MEMBRANE.purple.tint, sh) * k, 1, `purple: the drawn skin ${k * 100} % of the way to its alarm hue`);
   assert.equal(cfg('white').skinTint, tier.white.values.skinTint); assert.equal(cfg('white').glintTint, undefined);
-  assert.notEqual(cfg('purple').glintTint, 0xffffff);
+  assert.equal(cfg('purple').glintTint, PEARL_MEMBRANE.purple.tint, 'purple: its glints (and the rim with them) its alarm hue, no white');
+  // the pools' membranes carry the order at every level of detail; a soft pool's stay at the kit's
+  for (const l of purple.p.geo.levels) assert.equal(l.membrane.renderOrder, PEARL_MEMBRANE.purple.order, 'purple: its membranes drawn over the soft ones');
+  for (const l of white.p.geo.levels) assert.equal(l.membrane.renderOrder, 2, 'white: the kit\'s order');
   family.dispose?.();
 }
-console.log('PASS the cored read: cored membranes thinner than every soft one, tinted, their glints not white (black\'s red)');
+console.log('PASS the cored read: cored membranes thinner than every soft one, tinted, drawn over the soft ones, their glints not white (purple, brown, black in full)');
 
 // ---- the mapping and the ram rule ----
 const programme = new Set([...INTROS.map((iv) => iv.type), ...Object.entries(ENEMY_SPEC).filter(([, s]) => !s.shelved).map(([t]) => t)]);

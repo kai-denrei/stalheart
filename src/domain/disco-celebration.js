@@ -16,3 +16,16 @@ export function celebrationPose(time, loop = LOOP) {
 const smooth = (k) => { const u = Math.max(0, Math.min(1, k)); return u * u * (3 - 2 * u); };
 // the hoist and the lowering: from the paused Terraforming joints to the celebration's (or back), eased; a key `from` lacks takes the target; the blend is written a(1-e)+be so k = 1 lands exactly on the target (a+(b-a)e left j2Shoulder one ulp off)
 export function hoistBlend(k, from, to) { const e = smooth(k), out = {}; for (const key of Object.keys(to)) { const a = from?.[key] ?? to[key]; out[key] = a * (1 - e) + to[key] * e; } return out; }
+// THE BOARDS' PARTY FACE (owner, 2026-10-18, third round; content DAY_42.boards): the lines a board shows, the title first, then the body
+// broken at spaces into lines of at most `wrap` characters (a longer word keeps its own line), all uppercase as the boards write
+//   faceLines({ title, body, wrap }) -> [line, ...]
+export function faceLines({ title, body, wrap = 11 }) {
+  const out = [String(title ?? '').toUpperCase()].filter(Boolean); let line = '';
+  for (const w of String(body ?? '').toUpperCase().split(/\s+/).filter(Boolean)) {
+    if (line && line.length + 1 + w.length > wrap) { out.push(line); line = w; } else line = line ? `${line} ${w}` : w;
+  }
+  if (line) out.push(line);
+  return out;
+}
+// the party's colours as CSS strings, turned `step` places so each line takes the next one on (the face's lines in a ring of four)
+export const partyCss = (step = 0) => PARTY_COLORS.map((_, i) => '#' + PARTY_COLORS[(i + step) % PARTY_COLORS.length].toString(16).padStart(6, '0'));
