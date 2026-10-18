@@ -5393,13 +5393,13 @@ export function initTdTab(root) {
   });
   // THE CANYON AND THE SIDE BREACH (src/fx/canyon-run.js)
   // THE BOSS SECTOR'S RUN (src/fx/boss-run.js, 2026-10-15): the choice, the hull on its avoid autopilot with Isao docked, the gunship seat, the bar row
-  const roadFar = (ci) => dist3(graph.centers[ci], player.pos) >= ARENA.road.clear * cellSide && laserStation.roadSafe(graph.centers[ci]); const bossRun = createBossRun({ root, enemies, showBrief, heartCell: () => dungeon.heart, speak: (id) => isaoSpeak(id), callout: (text, cls) => showCallout(text, cls),
+  const roadFar = (ci) => dist3(graph.centers[ci], player.pos) >= ARENA.road.clear * cellSide && laserStation.roadSafe(graph.centers[ci]); const hullCells = () => { const a = story?.arena?.cell; return a >= 0 && player.pos ? dist3(player.pos, graph.centers[a]) / cellSide : Infinity; }; const bossRun = createBossRun({ root, enemies, showBrief, heartCell: () => dungeon.heart, speak: (id) => isaoSpeak(id), callout: (text, cls) => showCallout(text, cls),
     story: () => story, storyViews: () => storyViews, params: () => params, player: () => player, playerHP: () => playerHP, autoMode: () => autoMode, isao: () => isao, cellSide: () => cellSide, t: () => t, pilotMode: () => pilotMode,
     setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL),
     shots: () => pilot?.state?.shots ?? 0, station: () => !!gunshipRig.probe().station, gunshipOver: (ci) => gunshipRig.placeOver(ci), briefing: () => !!briefQ, arenaField: () => (story?.arena?.cell >= 0 ? (story.arenaField ??= bfsDist(graph.adj, [story.arena.cell], (ci) => dungeon.tags[ci] !== BLOCKED)) : null),
     dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; },
     gunshipNearArena: () => { const a = story?.arena?.cell, p = gunshipRig.probe().track?.pos; return !(a >= 0) || !p || dist3(p, graph.centers[a]) < ARENA.seatCells * cellSide; },   /* THE ARENA (2026-10-16): the lure's field and its dangers; the seat once the gunship is over the arena */
-    hullNearArena: () => { const a = story?.arena?.cell; return a >= 0 && !!player.pos && dist3(player.pos, graph.centers[a]) < ARENA.reachCells * cellSide; }, tremor: (ci) => storyApi.tremor(ci),   /* the drive out to the beacon (2026-10-16) */
+    hullNearArena: () => hullCells() < ARENA.reachCells, hullCells, tremor: (ci) => storyApi.tremor(ci),   /* the drive out to the beacon (2026-10-16) */
     arenaOpen: () => !!sectorRun?.state().breaches?.some((b) => b.side === 'arena' && b.opened),   /* opened: its hole made (a breach's openedAt is its birth) */
     // THE ROAD SOL CUTS (2026-10-16): the first rock on the hull's cheapest walk to the arena; SOL's pass laid over it when none is up and the beam held there (the harness's hands)
     roadGraph: () => ({ adj: graph.adj, tags: dungeon.tags, blocked: BLOCKED, from: player.cur, to: story?.arena?.cell ?? -1 }), roadFar, roadMark: (ci) => warnRing(ci, 0x9fdcff, 0.9, cellSide * 0.6),   /* THE PLANNED ROAD (2026-10-18, note 6) */

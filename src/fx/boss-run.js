@@ -24,7 +24,7 @@
 // tremor(ci) (the radar's tremor at a cell, -1 to clear), story() / storyViews() / params() / player() / playerHP() / autoMode() / isao() / cellSide() /
 // t() / pilotMode() as getters, enemies (the live array), setAutoMode(v), leavePilot(), fillCall() (the gunship's call meter to full), creatures() (the
 // creature seam, for the hunters alive), station() (the gunship on station), shots() (the seat's rounds), arenaField() and dangers() (the lure's read),
-// hullNearArena() (the hull within ARENA.reachCells of the arena), gunshipNearArena() (the gunship's track within ARENA.seatCells of it), arenaOpen()
+// hullNearArena() (the hull within ARENA.reachCells of the arena), hullCells() (its distance in cells, the harness's read), gunshipNearArena() (the gunship's track within ARENA.seatCells of it), arenaOpen()
 // (the arena's breach has opened).
 import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
@@ -175,5 +175,5 @@ export function createBossRun(c) {
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
   return { begin, tick, end, rows, lure, arenaDue, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, reminders, drove, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells() }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells() }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }
