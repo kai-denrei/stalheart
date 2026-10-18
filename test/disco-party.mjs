@@ -95,4 +95,8 @@ const tickTo = (p, secs, dt = 0.1) => { for (let k = 0; k < secs / dt; k++) p.ti
 { let wall = 0; const { h, log } = host(); h.now = () => wall; const p = createDiscoParty(h); const step = (dt, adv = dt) => { wall += adv * 1000; p.tick(dt); };
   step(0.1); await new Promise((r) => setTimeout(r, 5)); step(0.1); for (let k = 0; k < 20; k++) step(0.1);
   for (let k = 0; k < 60; k++) step(0, 1 / 60); assert.equal(p.state().phase, 'party', 'frozen ticks advance nothing'); step(0.1); assert.equal(p.state().phase, 'over', 'a second of frozen frames: over'); assert.equal(log.stopped, 1); }
+// the cut asks the seat again (final review, 2026-10-18): seated at 1.5 s, no cut and the party goes on to its alarm; a shot already up, the same
+for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = host(); h[k] = () => on; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  assert.equal(p.state().phase, 'party'); tickTo(p, 1.2); on = true; tickTo(p, 0.5); assert.deepEqual(log.shots, [], `${k} at the cut: no startShot`);
+  tickTo(p, DAY_42.seconds); assert.equal(p.state().phase, 'over', `${k}: the party still reaches its alarm`); assert.ok(log.played.includes('danger_alert')); }
 console.log('disco-party ok');

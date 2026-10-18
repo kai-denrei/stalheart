@@ -129,8 +129,10 @@ export function createDiscoParty(h) {
   }
 
   // THE CUT: a slow quarter-orbit round the tip, `radius` out and `height` above along the base's radial, on the hanging ball, eased in
-  // from wherever the camera was (the sites tour's blend, td-tab freeLook)
+  // from wherever the camera was (the sites tour's blend, td-tab freeLook). The seat and the shot are asked again at 1.5 s (final review,
+  // 2026-10-18): a scripted beat never evicts a gunner (owner, 2026-09-15) nor cuts over another shot; the party goes on without its cut
   function shot() {
+    if (h.seated() || h.shotActive()) return;
     const st = structure(), root = st?.near ?? st?.root; if (!root || !node(root, 'EXTRUSION_TIP')) return;
     const S = DAY_42.shot, start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() };
     const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();
