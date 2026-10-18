@@ -118,6 +118,11 @@ console.log('Pinned story gate audio verified.');
 {const lock=JSON.parse(readFileSync(resolve(root,'docs/beacon-audio.lock.json'),'utf8'));
  for(const file of lock.files){if(!['assets/audio/beacon_ping.mp3','assets/audio/ambient_gust.mp3'].includes(file.path))throw Error('Unexpected story ambience path');const bytes=readFileSync(resolve(root,file.path));if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Beacon audio checksum mismatch, run scripts/synth-beacon-ping.sh: '+file.path);}
  console.log('Story ambience verified (beacon ping, ambient gust).');}
+// The disco ball's GLB and the DAY 42 track (2026-10-18): docs/disco-ball-assets.lock.json is written by scripts/import-disco-ball.mjs with object-keyed entries, not the files array the locks above use, so it had its own pin and nothing checked it. Every entry that has a path (the GLB, the reference copies, the owner's mp3) must exist at its recorded bytes and SHA-256.
+{const lock=JSON.parse(readFileSync(resolve(root,'docs/disco-ball-assets.lock.json'),'utf8'));let n=0;
+ for(const [name,f] of Object.entries(lock.files)){if(!f.path)throw Error('Disco ball lock entry has no path: '+name);const bytes=readFileSync(resolve(root,f.path));if(bytes.length!==f.bytes||sha(bytes)!==f.sha256)throw Error('Disco ball asset checksum mismatch, run scripts/import-disco-ball.mjs: '+f.path);n++;}
+ if(!lock.files['disco_ball_d0_lod1.glb']||!lock.files['day_42_music.mp3'])throw Error('Disco ball lock lacks the GLB or the track');
+ console.log(`Disco ball assets verified: ${n}`);}
 {const lock=JSON.parse(readFileSync(resolve(root,'docs/needle-audio.lock.json'),'utf8'));
  for(const f of lock.files){if(f.path!=='assets/audio/needle_fire.mp3')throw Error('Unexpected needle audio path');if(sha(readFileSync(resolve(root,f.sourcePath)))!==f.sourceSha256)throw Error('Needle source changed, run scripts/derive-needle-fire.sh');const bytes=readFileSync(resolve(root,f.path));if(bytes.length!==f.bytes||sha(bytes)!==f.sha256)throw Error('Needle audio checksum mismatch: '+f.path);}
  console.log('Derived needle report verified.');}
