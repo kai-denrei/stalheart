@@ -4904,11 +4904,11 @@ body.seat-gliding #seat-vignette { display: none; }
 #td-order { position: absolute; top: 38%; left: 50%; transform: translateX(-50%); z-index: 12; pointer-events: none; text-align: center; width: max-content; max-width: 96vw; }
 #td-order small { display: block; margin-top: 0.6em; font-size: 0.3em; letter-spacing: 0.2em; color: #ffd6cf; }
 
-/* THE DAY DIAL (src/fx/daylight.js makeDial): top centre beside the sound toggle, a lit disc and its tick going round with the day */
-#day-dial { position: absolute; top: 56px; left: calc(50% - 44px); width: 16px; height: 16px; border-radius: 50%; z-index: 11; pointer-events: none;
-  border: 1px solid rgba(159, 220, 255, .55); box-shadow: 0 0 8px rgba(255, 230, 180, .25); transition: background .6s linear; }
-#day-dial i { position: absolute; inset: -4px; border-radius: 50%; }
-#day-dial i::before { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 4px; margin-left: -1px; background: #cfe9ff; }
+/* THE PHASE DISC (src/fx/daylight.js makeDial, 2026-10-18): top centre beside the sound toggle, a drawn moon-phase disc and the day's number */
+#day-dial { position: absolute; top: 50px; left: calc(50% - 52px); width: 26px; z-index: 11; pointer-events: none; text-align: center; }
+#day-dial svg { display: block; width: 26px; height: 26px; filter: drop-shadow(0 0 6px rgba(255, 230, 180, .25)); }
+#day-dial .dd-dark { fill: #0b1524; } #day-dial .dd-lit { fill: #cfe9ff; transition: fill .25s linear; } #day-dial .dd-rim { fill: none; stroke: rgba(159, 220, 255, .55); stroke-width: 1; }
+#day-dial b { display: block; position: relative; left: 50%; width: max-content; transform: translateX(-50%); margin-top: 2px; font: 600 12px/1 var(--font-ui); letter-spacing: .08em; color: rgba(207, 233, 255, .8); white-space: nowrap; }
 
 /* THE WHY, LACONIC (src/fx/mission-card.js): the beats over the landing, one word at a time, then Isao's one line */
 #mission-card { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); z-index: 13; pointer-events: none; text-align: center; width: max-content; max-width: 92vw; transition: opacity .6s; }

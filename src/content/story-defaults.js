@@ -141,12 +141,12 @@ export const WALK_BIAS = Object.freeze({ stray: 0.02, straight: 0.6 });
 // middle of the frame with the bays and the Stalheart beyond it (the swarm's way in)
 export const STORY_BACK_DOOR = Object.freeze({ maxCells: 2, reachShare: 0.5, flank: 4, hops: Object.freeze([25, 35]), margin: 20, preRoll: 0.3, hold: 3.5, dive: Object.freeze({ height: 3, back: -6, diveSeconds: 1.4 }) });
 
-// A day on the story planet: five minutes, three of them daylight at the pole, the sun's orbit leaning 60 degrees off the pole so
+// A day on the story planet: thirty seconds, eighteen of them daylight at the pole (owner, 2026-10-18: about eighty days in a forty-minute run; DAY 42 is a party, src/content/day-42.js), the sun's orbit leaning 60 degrees off the pole so
 // noon stands 60 degrees up. The night rig is the look's own; the day set is the lab's warm sun and pale fill. No shadows.
 // `dusk` (seventh notes, 2026-10-02): the golden hour's sun, sky fill and background, at most `share` of the blend, within `band` of
 // elevation of the horizon. `discs`: the sun and the moon drawn in the sky, `distance` out from the planet's centre (the camera's far
 // plane is 50), `sunSize`/`moonSize` their sprites' width, the sun's colour at noon and `low` on the horizon (src/fx/daylight.js)
-export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, skyDim: 0.15, day: Object.freeze({ hemi: [0xc8cfe0, 0x555060, 1.5], sun: [0xfff0dc, 1.6], bg: 0x0b1524 }),
+export const STORY_DAY = Object.freeze({ seconds: 30, dayShare: 0.6, tilt: 60, skyDim: 0.15, day: Object.freeze({ hemi: [0xc8cfe0, 0x555060, 1.5], sun: [0xfff0dc, 1.6], bg: 0x0b1524 }),
   dusk: Object.freeze({ sun: 0xff8a3c, sky: 0x8a6a9a, bg: 0x2a1a2e, share: 0.75, band: 0.32 }),
   discs: Object.freeze({ distance: 40, sunSize: 3.2, moonSize: 1.6, sun: 0xfff4dc, low: 0xff7a30, moon: 0x9fb8d8 }) });
 

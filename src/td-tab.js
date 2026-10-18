@@ -51,7 +51,7 @@ import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from '.
 import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
-import { createDaylight } from './fx/daylight.js';
+import { createDaylight, dayFlag } from './fx/daylight.js';
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
@@ -2786,7 +2786,7 @@ export function initTdTab(root) {
     // A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world
     // the story planet has a day
     daylight?.restore();
-    daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +flags.day || 0, dial: root }) : null;
+    daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, ...(({ phase, day }) => ({ phase, dayNo: day }))(dayFlag(flags.day)), dial: root }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
