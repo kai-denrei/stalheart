@@ -1549,7 +1549,24 @@ try{
  await until(`${T}.state().boss.seated`,90000).catch(async()=>assert.fail(`the gunship seat is taken by the strip's button (${JSON.stringify({boss:(await st()).boss,gunship:(await st()).gunship})})`));
  current='boss-up';await finish();
  // dead: the sector secure, the hull the player's again
- for(let i=0;i<30;i++){await evaluate(`${T}.sectorCull(999)`);const s=await st();if(['secure','finale','debrief','campaign'].includes(s.sector.phase))break;await delay(2000);}
+ // THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"; review, 2026-10-19): the real cause was the
+ // bodies a held sector leaves alive far from the arena. Two strays (not guards, not hunters) and three of the brood (small Reed hunters) are put at the antipode,
+ // the mother is killed through the damage path (damageBoss, a gunship round's): SECURE within 1 s with the strays alive, the brood dead within 2 s (it dies with
+ // her, src/fx/boss-run.js), Isao's boss_dead on the panel and the debrief by about +6 s; every failure prints aliveBodies() (what held the sector)
+ {const {BRIEFS}=await import('../src/isaobriefs.js'),alive=()=>evaluate(`${T}.aliveBodies()`),brood=(a)=>a.filter(e=>e.hunter&&(e.tier==='small'||e.tier==='pup'));
+  const far=await evaluate(`${T}.creatures.spawnFar('amoeba',2)`),nb=await evaluate(`${T}.creatures.spawnFar('reed',3,{tier:'small',hunter:true})`);
+  assert.equal(far,2,'two strays far out');assert.equal(nb,3,'three of the brood far out');
+  await until(`${T}.aliveBodies().filter(e=>e.hunter&&e.tier==='small').length>=3`,10000).catch(async()=>assert.fail(`the brood alive before her death (${JSON.stringify(await alive())})`));
+  // the seat's own brief is still up the moment the seat is taken; a player's kill does not come in that second, and the panel holds one line behind it
+  await until(`!!document.querySelector('#td-brief')?.classList.contains('hidden')`,30000).catch(async()=>assert.fail(`Isao's panel free before the kill (${JSON.stringify((await evaluate('window.__seen')).briefs.slice(-3))})`));
+  const b0=Date.now(),c0=(await st()).sector.clock;assert.ok(await evaluate(`${T}.damageBoss(999)`)!=null,'the boss hit through damageEnemy');
+  await until(`['secure','finale','debrief','campaign'].includes(${T}.state().sector.phase)`,1000).catch(async()=>assert.fail(`the boss dead: SECURE within 1 s (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss,alive:await alive()})})`));
+  const secAt=Date.now()-b0,atSecure=await alive();
+  assert.ok(atSecure.some(e=>!e.guard&&!e.hunter&&!e.harmless),`SECURE with the strays still alive: they no longer hold it (${JSON.stringify(atSecure)})`);
+  await until(`${T}.aliveBodies().filter(e=>e.hunter&&(e.tier==='small'||e.tier==='pup')).length===0`,2000).catch(async()=>assert.fail(`the brood dies with the mother within 2 s (${JSON.stringify(brood(await alive()))})`));
+  const broodAt=Date.now()-b0;
+  await until(`(window.__seen?.briefs||[]).some(t=>t.includes(${JSON.stringify(BRIEFS.boss_dead.lines[0])}))&&['debrief','finale','campaign'].includes(${T}.state().sector.phase)`,8000).catch(async()=>assert.fail(`boss_dead and the debrief by about +6 s (${JSON.stringify({phase:(await st()).sector.phase,briefs:(await evaluate('window.__seen')).briefs.slice(-4),alive:await alive()})})`));
+  console.log(`  boss killed: SECURE at +${secAt} ms, the brood dead at +${broodAt} ms, boss_dead and the debrief at +${Date.now()-b0} ms (game clock ${c0} -> ${(await st()).sector.clock}); alive at SECURE ${JSON.stringify(atSecure)}`);}
  {const s=await st();assert.ok(['secure','finale','debrief','campaign'].includes(s.sector.phase),`the boss dead: SECURE (${JSON.stringify({phase:s.sector.phase,boss:s.boss})})`);
   const ab=s.sector.breaches?.find(b=>b.side==='arena');assert.ok(ab&&ab.hole===true,`the arena's hole stays open after SECURE: the nest's mouth (${JSON.stringify(s.sector.breaches)})`);}
  await until(`!${T}.state().boss.on`,30000).catch(async()=>assert.fail(`the run ends with the sector's finish (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss})})`));
