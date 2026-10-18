@@ -55,4 +55,36 @@ function host(o = {}) {
   run.force(); assert.equal(run.arenaDue(), true, 'the harness\'s arenaNow() still opens it');
   h.open = true; h.now += 1; run.tick(1); assert.equal(run.arenaDue(), false, 'never due again once open'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock.');
+// THE PLANNED ROAD (owner, 2026-10-18, note 6: "there is a clear fast path (cleared by nukes and SOL) to the investigation"): the chain 0..9 with rock at 3 and 4
+// and a ten-cell detour from 2 to 5 (test/arena.mjs); the arena at 9, the hull at 0. SOL's first ask, at the sector's first tick, is the planned road's first
+// rock; the cut lands (the cell opens by the release) and SOL CUTS THE ROAD is called once; the next ask takes the next rock; the road open, the asks fall to
+// the second version's roadNext; the road's cells are ringed ahead of the hull
+{ const adj = Array.from({ length: 20 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); };
+  for (let i = 0; i < 9; i++) link(i, i + 1); link(2, 10); for (let i = 10; i < 19; i++) link(i, i + 1); link(19, 5);
+  const tags = new Int8Array(20).fill(1); tags[3] = 0; tags[4] = 0;
+  const marks = [], h = host({ roadCell: 17, roadGraph: () => ({ adj, tags, blocked: 0, from: 0, to: 9 }), roadFar: () => true, roadMark: (ci) => marks.push(ci) });
+  h.story().arena.cell = 9;
+  const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(h.log.road, [3], 'the first ask, at the start, is the planned road\'s first rock');
+  assert.equal(run.state().road.planned, true); assert.ok(h.log.briefs.includes('arena_road'), 'Isao says the road once SOL takes it');
+  assert.deepEqual(marks, [4, 8], 'the road\'s cells ARENA.road.marks ahead of the hull are ringed');
+  tags[3] = 1;   // the beam took the rock
+  h.now = ARENA.road.burn + 0.1; run.tick(0.1);
+  assert.equal(run.state().roadCuts, 1, 'the cut landed'); assert.deepEqual(h.log.callouts.filter((x) => x === 'SOL CUTS THE ROAD'), ['SOL CUTS THE ROAD'], 'called as the first cut lands');
+  assert.equal(h.log.road.at(-1), -1, 'the hold released');
+  h.now = ARENA.road.every + 0.01; run.tick(0.1);
+  assert.equal(h.log.road.at(-1), 4, 'the next ask: the next rock on the same road');
+  h.now += ARENA.road.burn + 0.1; run.tick(0.1);
+  assert.equal(run.state().roadCuts, 1, 'a burn that left the rock standing is no cut');
+  tags[4] = 1; h.now = 2 * ARENA.road.every + 0.02; run.tick(0.1);
+  assert.equal(h.log.road.at(-1), 17, 'the road open: the second version\'s shortcut and flank (roadNext)'); assert.equal(run.state().road.planned, false);
+  h.now += ARENA.road.burn + 0.1; tags[17] = 1; run.tick(0.1);
+  assert.equal(h.log.callouts.filter((x) => x === 'SOL CUTS THE ROAD').length, 1, 'the callout once only'); }
+// a rock the hull is too near for the beam is passed over for the next one on the road
+{ const adj = Array.from({ length: 10 }, () => []); for (let i = 0; i < 9; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(10).fill(1); tags[2] = 0; tags[6] = 0;
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: 0, to: 9 }), roadFar: (ci) => ci !== 2 }); h.story().arena.cell = 9;
+  const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(h.log.road, [6], 'the near rock left to a later ask, the far one cut now'); }
+
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed.');

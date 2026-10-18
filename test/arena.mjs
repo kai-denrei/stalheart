@@ -1,6 +1,6 @@
 // arena.mjs — the arena's cell: reachable, outside, unblocked, the farthest band, the farthest first
 import assert from 'node:assert/strict';
-import { pickArenaCell, arenaFloor, roadAhead } from '../src/domain/arena.js';
+import { pickArenaCell, arenaFloor, roadAhead, roadField, roadPath, roadRock } from '../src/domain/arena.js';
 const dist = [0, 1, 2, 3, 4, 5, 6, 7, 8, Infinity, 9, 9];
 assert.equal(pickArenaCell({ dist }), 10, 'the farthest, the lowest index among equals');
 assert.equal(pickArenaCell({ dist, blocked: (i) => i === 10 }), 11, 'a blocked cell is skipped');
@@ -39,4 +39,26 @@ assert.equal(pickArenaCell({ dist, blocked: (i) => i === 11, farHops: 4 }), 10);
   assert.equal(roadAhead({ adj, tags, blocked: 0, from: 0, to: 9, ahead: 7, saves: 4, through: 2, clear: 9, far: () => true }), 3, 'and rules one in whatever the hops say');
   assert.equal(roadAhead({ adj, tags, blocked: 0, from: 9, to: 9 }), -1, 'there already');
   assert.equal(roadAhead({ adj: [[], []], tags: new Int8Array(2), blocked: 0, from: 0, to: 1 }), -1, 'no way'); }
-console.log('Arena: the farthest reachable cell outside the walls, its floor fourteen cells round, and the road SOL cuts to it (the shortcut, else the flank).');
+// THE PLANNED ROAD (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)"): the same chain and detour. The field from the arena (9) with a
+// rock at two: through the rocks is 0-1-2-3-4-5-..-9, eleven, the detour seventeen, so the road crosses 3 and 4 and SOL's first cut is 3; the hull's own
+// test (`far`) passes over a rock to the next; dear rock and the road is the detour with nothing to cut; the look-ahead bounds it
+{ const adj = Array.from({ length: 20 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); };
+  for (let i = 0; i < 9; i++) link(i, i + 1); link(2, 10); for (let i = 10; i < 19; i++) link(i, i + 1); link(19, 5);
+  const tags = new Int8Array(20).fill(1); tags[3] = 0; tags[4] = 0;
+  const field = roadField({ adj, tags, blocked: 0, to: 9, rockCost: 2 });
+  assert.equal(field[9], 0); assert.equal(field[0], 11, 'nine steps, two of them into rock at two');
+  assert.deepEqual(roadPath({ adj, field, from: 0 }), [1, 2, 3, 4, 5, 6, 7, 8, 9], 'the road runs through the rocks');
+  assert.deepEqual(roadPath({ adj, field, from: 0, max: 3 }), [1, 2, 3], 'at most max cells');
+  assert.equal(roadRock({ adj, tags, blocked: 0, field, from: 0 }), 3, 'SOL\'s first cut: the first rock on the road');
+  assert.equal(roadRock({ adj, tags, blocked: 0, field, from: 0, far: (ci) => ci !== 3 }), 4, 'a rock too near the hull is passed over for the next');
+  assert.equal(roadRock({ adj, tags, blocked: 0, field, from: 0, max: 2 }), -1, 'beyond the look-ahead: nothing');
+  const cut = Int8Array.from(tags); cut[3] = 1;
+  assert.equal(roadRock({ adj, tags: cut, blocked: 0, field, from: 0 }), 4, 'one cut: the next rock on the same road');
+  cut[4] = 1; assert.equal(roadRock({ adj, tags: cut, blocked: 0, field, from: 0 }), -1, 'both cut: the road is open');
+  const dear = roadField({ adj, tags, blocked: 0, to: 9, rockCost: 10 });
+  assert.deepEqual(roadPath({ adj, field: dear, from: 0 }), [1, 2, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 5, 6, 7, 8, 9], 'dear rock: the road is the detour');
+  assert.equal(roadRock({ adj, tags, blocked: 0, field: dear, from: 0 }), -1, 'and nothing to cut on it');
+  assert.deepEqual(roadPath({ adj, field, from: 9 }), [], 'at the arena: no road');
+  const lone = roadField({ adj: [[], []], tags: new Int8Array(2).fill(1), blocked: 0, to: 1 });
+  assert.equal(lone[0], Infinity); assert.deepEqual(roadPath({ adj: [[], []], field: lone, from: 0 }), [], 'no way: no road'); }
+console.log('Arena: the farthest reachable cell outside the walls, its floor fourteen cells round, the road SOL cuts to it (the shortcut, else the flank), and the planned road through rock.');

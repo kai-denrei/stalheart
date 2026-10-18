@@ -30,16 +30,19 @@ import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
 import { ARENA } from '../content/sectors.js';
 import { groundAt } from './lance-follow.js';
+import { roadField, roadPath, roadRock } from '../domain/arena.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
 const REFILL = 5;       // seconds between calls for the gunship while it is off station (the arena's long session, 2026-10-16)
 const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
+const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut lands (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)")
 
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
   let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
   let remindAt = 0;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind)
+  let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
@@ -47,6 +50,9 @@ export function createBossRun(c) {
   const bossName = () => CREATURE_TIERS[def?.boss?.family]?.[def?.boss?.boss?.tier]?.label ?? 'THE BOSS';   // the family's own label for the row and the callout (2026-10-16)
   const seatButton = () => c.root.querySelector?.('#story-views [data-mount="gunship"]:not([disabled])') ?? null;
   const arenaCell = () => c.story()?.arena?.cell ?? -1;
+  // THE PLANNED ROAD (2026-10-18): the graph from the controller (c.roadGraph: adj, tags, blocked, the hull's cell, the arena's), the field computed once a sector
+  const planned = () => { const g = c.roadGraph?.(); if (!g || !(g.to >= 0) || !(g.from >= 0)) return null; plan ??= roadField({ ...g, rockCost: ARENA.road?.rockCost ?? 2 }); return { g, field: plan }; };
+  const isOpen = (ci) => { const g = c.roadGraph?.(); return !!g && g.tags[ci] !== g.blocked; };
   function dock() {
     const isao = c.isao(), p = c.player()?.pos;
     if (!isao?.obj || !p) return;
@@ -55,7 +61,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null;
+    on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -75,11 +81,23 @@ export function createBossRun(c) {
     // THE ROAD SOL CUTS (owner, 2026-10-16: "have SOL shoot ahead of it here and there to open the maze"): on the drive out, every ARENA.road.every seconds the
     // first rock on the hull's cheapest walk to the arena (c.roadNext) is burned by SOL (c.solRoad: a pass laid over it when none is up, the beam held
     // ARENA.road.burn seconds); the first time Isao says so
+    // THE PLANNED ROAD FIRST (owner, 2026-10-18, note 6: "there is a clear fast path (cleared by nukes and SOL) to the investigation"): the rock cells on the road
+    // planned from the arena (src/domain/arena.js roadField, ARENA.road.rockCost) are SOL's cuts from the sector's first second, in order, wherever the hull is
+    // (ARENA.road.plan cells of it); the road open, the second version's shortcut and flank go on widening the corridor ahead (c.roadNext)
     else if (phase === 'beacon' && c.roadNext && t - roadAt >= (ARENA.road?.every ?? 7) && c.hullNearArena?.() !== true) {
-      roadAt = t; const ci = c.roadNext(); roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
+      const p = planned(), pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: c.roadFar ?? (() => true) }) : -1;
+      roadAt = t; const ci = pc >= 0 ? pc : c.roadNext(); roadPlanned = pc >= 0; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
       if (roadLaid) { roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
     }
-    if (roadUntil && t >= roadUntil) { roadUntil = 0; c.solRoad?.(-1); }
+    if (roadUntil && t >= roadUntil) {
+      roadUntil = 0; c.solRoad?.(-1);
+      if (roadCell >= 0 && isOpen(roadCell)) { roadCuts++; if (roadCuts === 1) c.callout(ROAD_CUT, 'co-victory'); }   // the burn took the rock: a cut landed
+    }
+    // THE ROAD READS (2026-10-18): the planned road's next cells ringed ahead of the hull every ARENA.road.markEvery seconds, the colour of the tap-to-go "here"
+    if (phase === 'beacon' && c.roadMark && t - markAt >= (ARENA.road?.markEvery ?? Infinity)) {
+      markAt = t; const p = planned();
+      if (p) { const path = roadPath({ adj: p.g.adj, field: p.field, from: p.g.from, max: Math.max(...(ARENA.road?.marks ?? [0])) }); for (const k of ARENA.road?.marks ?? []) if (path[k - 1] >= 0) c.roadMark(path[k - 1]); }
+    }
     if (phase === 'beacon' && ARENA.remind && t - remindAt >= ARENA.remind) { remindAt = t; c.callout(INVESTIGATE, 'co-victory'); }   // the order again, while the hull is not there
     // A LONG SESSION (owner, 2026-10-16: "a longer gunship session"): off station the gunship is called again, so it keeps coming back over the arena until the sector ends
     if (t - refillAt >= REFILL && c.station && !c.station()) { refillAt = t; c.fillCall(); seated = false; }
@@ -133,5 +151,5 @@ export function createBossRun(c) {
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
   return { begin, tick, end, rows, lure, arenaDue, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, wired: !!c.roadNext }, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, seated, bossSeen, hullHit, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

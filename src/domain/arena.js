@@ -71,3 +71,45 @@ export function roadAhead({ adj, tags, blocked = 0, from, to, field = null, ahea
   }
   return -1;
 }
+
+// THE PLANNED ROAD (owner, 2026-10-18, note 6: "I'd like the road there to be clear, we can clear via nukes and SOL ... there is a clear fast path (cleared by
+// nukes and SOL) to the investigation"). Measured on the shipped planet (probe r2-d, tools/probes): the open route from the base to the arena is 282 cells,
+// the walk that may cross rock at two cells a rock is 214 with three rock cells on it, twelve cells out of the base; the second version's shortcut and flank
+// asks widened the corridor but never shortened the drive (a simulated drive took 265 cells with or without them: a shortcut two rocks deep is named by its
+// first rock only). So the road is planned once, from the arena: `roadField` is the walking cost to the arena from every cell, a rock cell costing `rockCost`
+// (Dijkstra over the lattice, about 20 ms on the planet), and the road from any cell runs down it (`roadPath`); SOL takes its rock cells in order
+// (`roadRock`), the first one far enough from the hull (`far`, the caller's chord and beam-safety test) within `max` cells of road.
+//   roadField({ adj, tags, blocked, to, rockCost }) -> Float64Array (Infinity: no way)
+export function roadField({ adj, tags, blocked = 0, to, rockCost = 2 }) {
+  const n = adj.length, d = new Float64Array(n).fill(Infinity);
+  if (!(to >= 0) || to >= n) return d;
+  d[to] = 0;
+  const h = [[0, to]];
+  const push = (x) => { h.push(x); let i = h.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (h[p][0] <= h[i][0]) break; [h[p], h[i]] = [h[i], h[p]]; i = p; } };
+  const pop = () => { const top = h[0], last = h.pop(); if (h.length) { h[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < h.length && h[l][0] < h[m][0]) m = l; if (r < h.length && h[r][0] < h[m][0]) m = r; if (m === i) break; [h[m], h[i]] = [h[i], h[m]]; i = m; } } return top; };
+  while (h.length) {
+    const [dd, c] = pop(); if (dd > d[c]) continue;
+    const step = tags[c] === blocked ? rockCost : 1;   // the walk from nb steps INTO c and pays c's price: every rock entered on the way to the arena
+    for (const nb of adj[c]) { const nd = dd + step; if (nd < d[nb]) { d[nb] = nd; push([nd, nb]); } }
+  }
+  return d;
+}
+// the road from `from`: the cells down the field to the arena, at most `max` of them (the arena's cell last when it is reached)
+//   roadPath({ adj, field, from, max }) -> [cell, ...]
+export function roadPath({ adj, field, from, max = Infinity }) {
+  const out = [];
+  if (!(from >= 0) || !Number.isFinite(field[from])) return out;
+  for (let c = from; out.length < max && field[c] > 0;) {
+    let next = -1, best = field[c];
+    for (const nb of adj[c]) if (field[nb] < best) { best = field[nb]; next = nb; }
+    if (next < 0) break;
+    out.push(next); c = next;
+  }
+  return out;
+}
+// SOL's next cut on the planned road: the first rock cell on it within `max` cells of the hull that `far` allows (none of them: -1)
+//   roadRock({ adj, tags, blocked, field, from, max, far }) -> cell | -1
+export function roadRock({ adj, tags, blocked = 0, field, from, max = Infinity, far = () => true }) {
+  for (const c of roadPath({ adj, field, from, max })) if (tags[c] === blocked && far(c)) return c;
+  return -1;
+}
