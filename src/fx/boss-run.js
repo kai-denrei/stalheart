@@ -7,8 +7,9 @@
 // bar row into the integrity strip.
 //
 // Three phases. `beacon`: the sector's brief sends the player out; the arena's cell is a tremor on the radar (c.tremor) and its breach waits
-// (src/fx/sector-run.js holds the arena's openAt while `arenaDue` is false): due once the hull is within ARENA.reachCells of it, or ARENA.waitMax
-// seconds after the start (the player who never goes still gets the fight), or the harness's force(). The gunship is set to fly itself over the fight
+// (src/fx/sector-run.js holds the arena's openAt while `arenaDue` is false): due once the hull is within ARENA.reachCells of it, or the harness's force().
+// No clock opens it (owner, 2026-10-18, note 6: "I believe it is not working because of the wrong triggers ... waiting for the tank to be physically there,
+// is what triggers the Boss"): the ARENA.waitMax fallback (150 s) opened the hole with the hull still at the base, 273 cells away (probe r2-d). The gunship is set to fly itself over the fight
 // (story.gsAuto, the call meter filled and refilled) so it is over the arena by the time it matters. `waves`: the hole opened (c.arenaOpen), the small
 // Reeds and the pups hunt the hull, the player drives and shoots, the gunship fires from above on its own. `boss`: the NIH-DAIRIA is up: Isao's line
 // (`arena_force`), the hull goes to his lure autopilot (the `lure` directive: toward the arena, kiting the quarry, off the MK-9's and SOL's cells and the
@@ -37,7 +38,7 @@ const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (o
 
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
-  let phase = 'off', beganAt = 0, forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
+  let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
   let remindAt = 0;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind)
   let roadAt = -99, roadUntil = 0, roadSaid = false;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
@@ -56,7 +57,7 @@ export function createBossRun(c) {
     if (on || !row?.boss) return false;
     on = true; def = row; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
-    phase = 'beacon'; beganAt = c.t();
+    phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
     // THE ORDER (owner, 2026-10-18, note 6: "it's not quite clear what we must do. We should message it better"): the sector's brief is Isao's `arena_go`
     // (src/fx/sector-run.js briefOf), the callout names the job, and it comes back every ARENA.remind seconds while the hull has not reached the tremor
@@ -66,7 +67,7 @@ export function createBossRun(c) {
     return true;
   }
   // the sector loop's read (src/fx/sector-run.js): the arena's breach opens once this is true
-  const arenaDue = () => on && phase === 'beacon' && (dueNow || c.hullNearArena?.() === true || c.t() - beganAt >= (ARENA.waitMax ?? Infinity));
+  const arenaDue = () => on && phase === 'beacon' && (dueNow || c.hullNearArena?.() === true);   // the hull there, nothing else (2026-10-18: the clock's fallback is gone)
   function tick(dt) {
     if (!on) return;
     const t = c.t();

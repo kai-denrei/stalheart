@@ -43,4 +43,16 @@ function host(o = {}) {
   const n = h.log.callouts.length; h.now += 3 * ARENA.remind; run.tick(1);
   assert.equal(h.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length, h.log.callouts.slice(0, n).filter((c) => c === 'INVESTIGATE THE TREMOR').length, 'no reminder once the arena is open'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole.');
+// THE TANK MUST BE THERE (owner, 2026-10-18, note 6: "waiting for the tank to be physically there, is what triggers the Boss"): no clock opens the arena,
+// the hull within ARENA.reachCells does (and the harness's force(), arenaNow())
+{ assert.equal(ARENA.waitMax, undefined, 'no waitMax fallback in the content');
+  const h = host(), run = createBossRun(h); run.begin(ARENA_SECTOR);
+  for (let i = 1; i <= 900; i++) { h.now = i; run.tick(1); }
+  assert.equal(run.arenaDue(), false, 'fifteen minutes with the hull at the base: still not due');
+  assert.equal(run.state().phase, 'beacon');
+  h.near = true; assert.equal(run.arenaDue(), true, 'the hull within reachCells: due');
+  h.near = false; assert.equal(run.arenaDue(), false, 'and not once it drives off again before the hole opened');
+  run.force(); assert.equal(run.arenaDue(), true, 'the harness\'s arenaNow() still opens it');
+  h.open = true; h.now += 1; run.tick(1); assert.equal(run.arenaDue(), false, 'never due again once open'); }
+
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock.');

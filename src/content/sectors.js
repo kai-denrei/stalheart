@@ -170,7 +170,7 @@ export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flo
 // THE DRIVE OUT, THEN THE HAND-OVER (owner, 2026-10-16, third version: "a message to go investigate a different tremor somewhere far… we reach the beacon
 // with the tank… it opens up, phase 1 the player controls the tank as the gunship helps with the reeds, then phase 2 the monster is too enormous…
 // Being bait is the only way… Now we FORCE the player to take the gunship. Isao quips 'I am the better driver, I'll lure it'"): the brief sends the
-// player to a tremor at the arena, its breach opens when the hull arrives (ARENA.reachCells, or ARENA.waitMax), the player drives and shoots the small
+// player to a tremor at the arena, its breach opens when the hull arrives (ARENA.reachCells; since 2026-10-18 only then, no clock), the player drives and shoots the small
 // waves with the gunship on its own autopilot overhead, and as the mother rises Isao takes the hull as the lure (the `lure` directive) and the player is
 // put in the gunship's seat (src/fx/boss-run.js). The choice card of 2026-10-15 is gone.
 export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: [12, 6, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { arena: 1 }, waves: 3, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 120, points: 1200 },
@@ -216,10 +216,11 @@ export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scrambl
 export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, rimCells: 10 });
 // THE ARENA'S PLACE (owner, 2026-10-16: "a giant opening very far from the base"; src/domain/arena.js, src/platform/story-world.js story.arena): the
 // farthest reachable cell outside the walls within `farHops` of the farthest; its opening `craterCells` wide (the sinkhole scaled, src/game-breaches.js)
-// reachCells: the hull this near the arena's cell opens it (the drive out to the beacon); waitMax: seconds after the sector's start it opens anyway; seatWait: seconds after the
+// reachCells: the hull this near the arena's cell opens it (the drive out to the beacon), and nothing else does: the waitMax fallback (150 s after the start) is gone
+// (owner, 2026-10-18, note 6: "waiting for the tank to be physically there, is what triggers the Boss"; it opened the hole with the hull at the base); seatWait: seconds after the
 // boss rose the gunship seat is taken whether or not the gunship is over the arena yet (src/fx/boss-run.js, owner 2026-10-16: the drive out, then the forced hand-over)
 // remind: seconds between INVESTIGATE THE TREMOR callouts while the hull has not reached it (owner, 2026-10-18, note 6: "not quite clear what we must do")
-export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, waitMax: 150, seatWait: 45, remind: 40,
+export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, remind: 40,
   // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
   // `ahead` cells on the cheapest walk to the arena (a rock cell costs `rockCost` ground cells) is burned by SOL for `burn` seconds; a pass is laid over it
   // (overhead, energy in seconds, radius in metres, slew m/s) when none is up
