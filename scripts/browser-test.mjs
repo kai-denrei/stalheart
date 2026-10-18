@@ -1568,7 +1568,7 @@ try{
  await until(`/I have a surprise/.test(document.querySelector('#td-brief')?.textContent||'')`,45000).catch(async()=>assert.fail(`"come back to the base" in the countdown (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.party.phase,'countdown',`the second line comes inside the countdown (${JSON.stringify(s.party)})`);assert.ok(s.party.t>=DAY_42.back-0.5,`at ${DAY_42.back} s in (${s.party.t})`);assert.equal(s.party.music,false,'no music in the countdown');assert.equal(s.party.hanging,false,'no ball in the countdown');}
  await until(`${T}.state().party.phase==='party'`,30000).catch(async()=>assert.fail(`the party after the countdown (${JSON.stringify((await st()).party)})`));
- assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/survived forty-two days/,'Isao\'s line as the party starts');
+ await until(`/survived forty-two days/.test(document.querySelector('#td-brief')?.textContent||'')`,15000).catch(async()=>assert.fail(`Isao's line as the party starts (${JSON.stringify(await evaluate(`document.querySelector('#td-brief')?.textContent||''`))})`));
  await until(`${T}.state().shot==='${DAY_42.shot.id}'`,8000).catch(async()=>assert.fail(`the reveal cut (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.paused,false,'a live cut: the world runs');
   const c0=s.sector.clock;await delay(3000);const s2=await st();assert.equal(s2.party.phase,'party');assert.equal(s2.sector.clock,c0,`the sector clock holds through the party (${c0} -> ${s2.sector.clock})`);}
@@ -1582,7 +1582,9 @@ try{
  await until(`${T}.state().party.phase!=='party'`,60000).catch(async()=>assert.fail(`the alarm at the track's end (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.party.phase,'over',`the track ran out: over (${JSON.stringify(s.party)})`);assert.equal(s.party.music,false,'the music stopped');assert.ok((s.sounds?.danger_alert??0)>(atStart.sounds?.danger_alert??0),`the party's klaxon rang: danger_alert rose since the party armed (${atStart.sounds?.danger_alert??0} -> ${s.sounds?.danger_alert??0}; the wave's first contact and the integrity HUD ring it too, so a count above zero proves nothing)`);
   assert.ok(!(s.loopVoices||[]).includes(DAY_42.music.key),`no music voice left (${JSON.stringify(s.loopVoices)})`);assert.equal(s.party.lights,0,'the lights went with the alarm');
-  assert.match(await evaluate(`document.querySelector('#td-brief')?.textContent||''`),/Party's over/,'Isao\'s second line');}
+  // waited for, not read on the tick (2026-10-18 round 2: with the countdown's thirty seconds SOL-82's first pass, on its own clock, can put its once
+  // brief up just before the alarm; the party holds its line until Isao's panel is free, src/fx/disco-party.js say())
+  await until(`/Party's over/.test(document.querySelector('#td-brief')?.textContent||'')`,40000).catch(async()=>assert.fail(`Isao's second line (${JSON.stringify(await evaluate(`document.querySelector('#td-brief')?.textContent||''`))})`));}
  current='day-42-over';await finish();
  await until(`${T}.state().party.phase==='done'`,10000).catch(async()=>assert.fail(`the ball lowered and gone (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.party.lights,0,'the lights are gone');assert.equal(s.party.hanging,false,'the ball is gone');

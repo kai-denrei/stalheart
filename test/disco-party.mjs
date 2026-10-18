@@ -141,4 +141,19 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
 // the state reports the countdown's own time
 { const { h } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); for (let k = 0; k < 20; k++) p.tick(0.25);
   assert.deepEqual([p.state().phase, p.state().t], ['countdown', 5]); }
+// the party's later lines wait for Isao's panel (2026-10-18 round 2, the --day-42 step: with the countdown's thirty seconds SOL-82's first pass
+// put its two-line brief up at the alarm and "Party's over" was dropped by the panel's one-deep queue): busy, the line is held and shown on the
+// first free frame; held longer than `sayWait`, dropped
+{ let busy = false; const { h, log } = host(); h.isaoBusy = () => busy; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  assert.deepEqual(log.briefs, [DAY_42.briefs.soon]); busy = true; for (let k = 0; k < DAY_42.back / 0.25; k++) p.tick(0.25);
+  assert.deepEqual(log.briefs, [DAY_42.briefs.soon], 'Isao busy at 20 s: the line held'); tickTo(p, 2); busy = false; p.tick(0.1);
+  assert.deepEqual(log.briefs, [DAY_42.briefs.soon, DAY_42.briefs.back], 'shown on the first free frame');
+  for (let k = 0; k < (DAY_42.countdown - DAY_42.back) / 0.25; k++) p.tick(0.25); assert.equal(p.state().phase, 'party');
+  assert.deepEqual(log.briefs.at(-1), DAY_42.briefs.start); busy = true; tickTo(p, DAY_42.seconds); assert.equal(p.state().phase, 'over');
+  assert.ok(!log.briefs.includes(DAY_42.briefs.over), 'busy at the alarm: held'); tickTo(p, 5); busy = false; p.tick(0.1);
+  assert.equal(log.briefs.at(-1), DAY_42.briefs.over, 'shown once Isao is free, the party already done'); assert.equal(p.state().phase, 'done');
+  assert.equal(log.briefs.filter((b) => b === DAY_42.briefs.over).length, 1, 'once'); }
+{ let busy = false; const { h, log } = host(); h.isaoBusy = () => busy; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p);
+  busy = true; tickTo(p, DAY_42.seconds); tickTo(p, DAY_42.sayWait + 1); busy = false; tickTo(p, 1); assert.ok(!log.briefs.includes(DAY_42.briefs.over), 'held past sayWait: dropped');
+  p.restore(); assert.equal(p.state().phase, 'idle'); }
 console.log('disco-party ok');
