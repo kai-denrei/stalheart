@@ -1255,6 +1255,10 @@ html, body {
 .choice-card .choice-line { line-height: 1.45; margin-bottom: 14px; }
 .choice-card .choice-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .choice-card .sdb-btn { flex: 1 1 200px; }
+/* THE MOTHER (owner, 2026-10-19, third round, note 8a; src/fx/boss-run.js): the hand-over card's title and the gunship's controls under Isao's lines */
+.choice-card .choice-title { font-size: 20px; font-weight: 700; letter-spacing: 0.22em; color: #ff8a6a; margin-bottom: 10px; }
+.choice-card .choice-line + .choice-line { margin-top: -6px; }
+.choice-card .choice-hint { font-size: 11px; line-height: 1.5; color: #7fbfa6; border-top: 1px solid rgba(53, 255, 208, 0.2); padding-top: 10px; margin-bottom: 14px; }
 
 /* A DENT (owner, 2026-10-16: four hits a hull; src/td-tab.js playerHit): the frame's edges flash red for a third of a second when the armour takes one */
 #tab-td.hull-dent::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 40; box-shadow: inset 0 0 0 3px rgba(255, 59, 47, 0.9), inset 0 0 60px rgba(255, 59, 47, 0.45); animation: hull-dent 0.35s ease-out forwards; }

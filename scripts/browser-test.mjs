@@ -1546,6 +1546,15 @@ try{
   const s=await st();assert.ok(pups>0,`the pups came up between the Reeds and the boss (${pups})`);assert.ok(s.boss.bossSeen&&s.boss.boss===1,`the Nih-Dairia is up, one (${JSON.stringify(s.boss)})`);assert.equal(s.boss.bossHp,BOSS_SECTOR.boss.boss.hp,'at its hit points');
   assert.ok(s.integrity.gates.some(g=>g.id==='boss'&&/100%/.test(g.text)),`the boss row reads its hit points, whole (${JSON.stringify(s.integrity.gates)})`);
   assert.ok(s.boss.phase==='boss'&&s.boss.auto&&s.boss.directive==='lure',`Isao drives the hull on its lure autopilot (${JSON.stringify(s.boss)})`);assert.equal(s.programme.colony.gunship.auto,false,'the gunship\'s autopilot is off: the seat is the player\'s');}
+ // THE MOTHER (owner, 2026-10-19, third round, note 8a: "we lost the scene explaining that we need to manually control the gunship while Isao plays Lure with the
+ // tank"): the hand-over card over the paused game as she rises, Isao's lines and the seat's controls on it; no seat until the step presses TAKE THE GUN
+ await until(`${T}.state().boss.card`,15000).catch(async()=>assert.fail(`THE MOTHER's card is up as she rises (${JSON.stringify((await st()).boss)})`));
+ {const s=await st(),txt=await evaluate('document.querySelector(".choice-card")?.innerText||""');assert.equal(s.paused,true,'the game paused under the card');
+  assert.match(txt,/THE MOTHER/,`the card's title (${txt})`);assert.match(txt,/Bait is the only play/,'Isao\'s hand-over on it');assert.match(txt,/move it to aim/,'the seat\'s controls');assert.match(txt,/TAKE THE GUN/,'the one button');
+  await delay(3000);assert.equal((await st()).boss.seated,false,'no seat while the card is up');}
+ current='boss-card';await finish();
+ await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');await delay(400);
+ {const s=await st();assert.equal(s.boss.card,false,'TAKE THE GUN: the card goes');assert.equal(s.paused,false,'the game runs again');}
  await until(`${T}.state().boss.seated`,90000).catch(async()=>assert.fail(`the gunship seat is taken by the strip's button (${JSON.stringify({boss:(await st()).boss,gunship:(await st()).gunship})})`));
  current='boss-up';await finish();
  // dead: the sector secure, the hull the player's again

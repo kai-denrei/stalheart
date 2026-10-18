@@ -19,7 +19,9 @@
 // was (the hull manual, the autopilot as before, the seat left if it is still the gunship's, the tremor cleared).
 //
 // THE OLD CHOICE (2026-10-15, 'you drive the tank' / 'gunship on autopilot') is gone: the owner saw the gunship seat open over empty ground near the base
-// and asked for the drive out and the forced hand-over instead.
+// and asked for the drive out and the forced hand-over instead. THE SCENE BACK (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene
+// explaining that we need to manually control the gunship while Isao plays Lure with the tank"): the hand-over is the choice card's machinery again, one
+// button, over the paused game as the mother rises (THE MOTHER: arena_force's lines, the seat's controls, TAKE THE GUN), and the seat is forced once it is taken.
 // `c` hands in the controller: root (the tab's element), pause(v), showBrief(id), speak(id) (Isao's voice, a no-op without a line), callout(text),
 // tremor(ci) (the radar's tremor at a cell, -1 to clear), story() / storyViews() / params() / player() / playerHP() / autoMode() / isao() / cellSide() /
 // t() / pilotMode() as getters, enemies (the live array), setAutoMode(v), leavePilot(), fillCall() (the gunship's call meter to full), creatures() (the
@@ -28,7 +30,9 @@
 // (the arena's breach has opened).
 import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
-import { ARENA } from '../content/sectors.js';
+import { ARENA, ARENA_HANDOVER } from '../content/sectors.js';
+import { createChoiceCard } from './choice-card.js';
+import { brief } from '../isaobriefs.js';
 import { groundAt } from './lance-follow.js';
 import { roadField, roadPath, roadRock } from '../domain/arena.js';
 import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
@@ -51,7 +55,8 @@ export function createBossRun(c) {
   let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   let lookAt = -99, lead = null, leadMax = 0;   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
-  let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
+  let frights = 0, stuns = 0;
+  let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
   const bossRecord = () => c.enemies.find((e) => e.alive && e.hunter && e.tier === (def?.boss?.boss?.tier ?? 'huge')) ?? null;
@@ -74,7 +79,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; frights = 0; stuns = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; cardUp = false; taken = false; frights = 0; stuns = 0; lookAt = -99; lead = null; leadMax = 0; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -138,7 +143,7 @@ export function createBossRun(c) {
     const h = hunters();
     if (phase === 'waves' && h.boss > 0) {   // PHASE TWO: the mother is up; Isao takes the hull as the lure, the player is forced to the gunship
       phase = 'boss'; bossSeen = true; forcedAt = t;
-      c.showBrief('arena_force'); c.speak('arena_force'); c.callout(bossName(), 'co-victory');
+      c.speak('arena_force'); c.callout(bossName(), 'co-victory'); handOver();   // THE MOTHER's card says arena_force's lines (2026-10-19, note 8a), not the panel
       c.params().directive = 'lure'; c.setAutoMode(true);
       if (c.story()) c.story().gsAuto = false;   // the autopilot has never seen this one: the seat is the player's
       if (c.pilotMode() && c.storyViews()?.now?.() !== 'gunship') c.leavePilot();
@@ -156,8 +161,9 @@ export function createBossRun(c) {
       // gunship's track is within ARENA.seatCells of the arena (it has been flying out since the beacon), or ARENA.seatWait seconds after the boss rose
       // ISAO'S LINE FIRST (2026-10-18): with the gunship circling the arena from the start the seat came the same frame as arena_force and the seat's own
       // briefing took the panel, so the hand-over was never said (probe r2-d); over the arena it now waits for the panel to be free (c.briefing)
-      const overArena = (c.gunshipNearArena?.() ?? true) && !(c.briefing?.() ?? false) && t - forcedAt >= (ARENA.seatAfter ?? 0);
-      if (!seated && !c.pilotMode() && t - retryAt >= RETRY && (overArena || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
+      // THE CARD FIRST (2026-10-19, note 8a): no seat while THE MOTHER is up; its lines were read there, so once taken the panel is not waited for
+      const overArena = (c.gunshipNearArena?.() ?? true) && (taken || !(c.briefing?.() ?? false)) && t - forcedAt >= (ARENA.seatAfter ?? 0);
+      if (!seated && !cardUp && !c.pilotMode() && t - retryAt >= RETRY && (overArena || t - forcedAt >= (ARENA.seatWait ?? 0))) { retryAt = t; seatButton()?.click(); }
       if (!seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') seated = true;
       if (seated && !shotSaid && (c.shots?.() ?? 0) > 0) { shotSaid = true; c.showBrief('arena_lure'); c.speak('arena_lure'); }   // the first round from the seat: keep them off the hull
       const hp = c.playerHP();
@@ -168,6 +174,15 @@ export function createBossRun(c) {
   // ISAO TAKES THE HULL OUT (2026-10-18, review of note 6): the hull never came (a wedge, the player's own walls, AUTO on another order, a player who does not
   // understand) and no clock opens the hole, so after ARENA.remindMax reminders he drives it on the lure directive, which with no quarry drives the arena's
   // field (src/fx/hull-drive.js, lure() below); he only starts it: a seat's entry or any drive input puts the hull back in the player's hands, and that is fine here
+  // THE MOTHER (owner, 2026-10-19, third round, note 8a): the game paused under the card; TAKE THE GUN runs it again and the seat's clock (ARENA.seatAfter,
+  // seatWait) starts from the press (game time stands still under the card)
+  function handOver() {
+    card ??= c.choiceCard ?? createChoiceCard(c.root); cardUp = true; taken = false; c.pause?.(true);
+    card.show({ title: ARENA_HANDOVER.title, lines: brief('arena_force')?.lines ?? [], hint: c.mobile?.() ? ARENA_HANDOVER.hintTouch : ARENA_HANDOVER.hint, a: ARENA_HANDOVER.take }).then(() => {
+      if (!on || !cardUp) return;   // the run ended under the card
+      cardUp = false; taken = true; c.pause?.(false); forcedAt = c.t(); retryAt = -9;
+    });
+  }
   function isaoDrives() {
     drove = true; c.showBrief('arena_drive'); c.speak('arena_drive');
     c.params().directive = 'lure'; c.setAutoMode(true);
@@ -186,7 +201,7 @@ export function createBossRun(c) {
   }
   function end(outcome) {
     if (!on) return;
-    on = false; shotSaid = false; phase = 'off';
+    on = false; shotSaid = false; phase = 'off'; if (cardUp) { cardUp = false; card?.dispose(); }
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
     if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; if (c.story().gsStage >= 0) c.gunshipOver?.(c.heartCell?.() ?? -1); c.story().gsStage = -1; } }   // the gunship home at once: it crawled back across the planet after SECURE (2026-10-18)
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
@@ -212,5 +227,5 @@ export function createBossRun(c) {
   }
   const fearState = () => { const b = bossRecord(); return { frights, stuns, scared: !!b && isScared(b, c.t()), stunned: !!b && c.t() < (b.stagUntil ?? -1), ground: b?.ground ? 'ground' : b ? 'hunt' : null }; };
   return { begin, tick, end, rows, lure, arenaDue, landed, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, card: cardUp, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

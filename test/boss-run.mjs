@@ -2,16 +2,18 @@
 // clear what we must do ... 'Go investigate that area, I'll clear a way there'"), the opening only with the hull there, the road SOL cuts from the start
 import assert from 'node:assert/strict';
 import { createBossRun } from '../src/fx/boss-run.js';
-import { ARENA, ARENA_SECTOR } from '../src/content/sectors.js';
+import { ARENA, ARENA_SECTOR, ARENA_HANDOVER } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 
 function host(o = {}) {
-  const log = { briefs: [], callouts: [], tremor: [], road: [], over: [] };
+  const log = { briefs: [], callouts: [], tremor: [], road: [], over: [], pause: [] };
+  // THE MOTHER's card (2026-10-19, note 8a): a fake of src/fx/choice-card.js; take() presses its one button
+  const card = { shown: [], up: false, show(o) { card.shown.push(o); card.up = true; return new Promise((r) => { card.take = () => { card.up = false; r('a'); return Promise.resolve(); }; }); }, dispose() { card.up = false; card.disposed = true; } };
   const story = { arena: { cell: 7 }, gsAuto: false };
   const params = { directive: 'wander' };
   const h = {
-    log, story, params, now: 0, near: false, open: false, roadCell: -1, solTakes: true,
+    log, story, params, now: 0, near: false, open: false, roadCell: -1, solTakes: true, choiceCard: card, pause: (v) => log.pause.push(v), mobile: () => false,
     root: { querySelector: () => null }, enemies: [],
     showBrief: (id) => log.briefs.push(id), speak: () => {}, callout: (text) => log.callouts.push(text), tremor: (ci) => log.tremor.push(ci),
     story: () => story, storyViews: () => null, params: () => params, player: () => ({ pos: [0, 0, 1] }), playerHP: () => 10, autoMode: () => false, isao: () => null,
@@ -159,22 +161,32 @@ function host(o = {}) {
 { const h = host({ heartCell: () => 42 }), run = createBossRun(h); run.begin(ARENA_SECTOR); run.end('secure');
   assert.deepEqual(h.log.over, [7, 42], 'over the arena at the start, over the heart at the end'); }
 
-// THE HAND-OVER IS SAID FIRST (2026-10-18): the gunship circles the arena from the start, so it is over the arena the moment the mother rises; the seat waits
-// ARENA.seatAfter and for Isao's panel to be free (arena_force read), or ARENA.seatWait at the latest
-{ const clicks = [], h = host({ briefingNow: true, gunshipNearArena: () => true }); h.briefing = () => h.briefingNow;
+// THE MOTHER (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene explaining that we need to manually control the gunship while Isao plays
+// Lure with the tank"): as the mother rises the game pauses under the card (THE MOTHER, arena_force's lines, the seat's controls, one button); no seat while it
+// is up, however long; TAKE THE GUN runs the game again and the seat follows ARENA.seatAfter after the press, the panel not waited for (its lines were the card's)
+{ const clicks = [], h = host({ gunshipNearArena: () => true }); h.briefing = () => true;   // a panel that never frees
   h.root = { querySelector: () => ({ click: () => clicks.push(h.now) }) };
   const run = createBossRun(h); run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  assert.equal(run.state().card, false, 'no card in the waves');
   h.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h.now = 2; run.tick(0.1);
-  assert.equal(run.state().phase, 'boss'); assert.ok(h.log.briefs.includes('arena_force'), 'Isao\'s hand-over line');
-  for (let k = 1; k <= 8; k++) { h.now = 2 + k; run.tick(0.1); }
-  assert.deepEqual(clicks, [], 'the gunship over the arena, but the panel busy: no seat yet');
-  h.briefingNow = false; h.now = 10.5; run.tick(0.1);
-  assert.deepEqual(clicks, [10.5], 'the panel free: the seat');
-  const clicks2 = [], h2 = host({ gunshipNearArena: () => true }); h2.briefing = () => true; h2.root = { querySelector: () => ({ click: () => clicks2.push(h2.now) }) };
-  const run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
+  assert.equal(run.state().phase, 'boss'); assert.equal(run.state().card, true, 'the card is up as she rises'); assert.deepEqual(h.log.pause, [true], 'over the paused game');
+  const shown = h.choiceCard.shown[0];
+  assert.equal(shown.title, 'THE MOTHER'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
+  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.equal(shown.hint, ARENA_HANDOVER.hint);
+  assert.match(shown.hint, /move it to aim/); assert.match(shown.hint, /Space or the button fires/); assert.match(shown.hint, /MK-9/);
+  assert.ok(!h.log.briefs.includes('arena_force'), 'the card says it, not the panel');
+  assert.equal(h.params().directive, 'lure', 'Isao has the hull as the lure');
+  for (let k = 1; k <= ARENA.seatWait + 5; k++) { h.now = 2 + k; run.tick(0.1); }
+  assert.deepEqual(clicks, [], 'no seat while the card is up, even past seatWait');
+  await h.choiceCard.take(); await null;
+  assert.equal(run.state().card, false, 'taken'); assert.deepEqual(h.log.pause, [true, false], 'the game runs again');
+  const pressed = h.now; h.now += 0.5; run.tick(0.1); assert.deepEqual(clicks, [], 'ARENA.seatAfter from the press');
+  h.now = pressed + ARENA.seatAfter; run.tick(0.1); assert.deepEqual(clicks, [pressed + ARENA.seatAfter], 'then the seat, the busy panel not waited for');
+  // on a phone the hint is the seat's touch footer
+  const h2 = host({ mobile: () => true }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
   h2.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h2.now = 2; run2.tick(0.1);
-  for (let k = 1; k <= ARENA.seatWait + 1; k++) { h2.now = 2 + k; run2.tick(0.1); }
-  assert.equal(clicks2[0], 2 + ARENA.seatWait, 'a panel that never frees: the seat at seatWait'); }
+  assert.equal(h2.choiceCard.shown[0].hint, ARENA_HANDOVER.hintTouch);
+  run2.end('lost'); assert.equal(h2.choiceCard.disposed, true, 'the run ended under the card: it goes'); assert.equal(run2.state().card, false); }
 
 // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out ... more scare of 40mm. Gameplay = push her to a
 // side 40mm, launch big nuke, time it"): seen, she is given the ground phase and her own fear; a 40 mm near her frightens her (not while she stands on the
@@ -196,4 +208,4 @@ function host(o = {}) {
   assert.deepEqual([run.state().fear.frights, run.state().fear.stuns, run.state().fear.stunned], [1, 1, true]);
   run.end('secure'); assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'the run over: nothing heard'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line.');
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN.');
