@@ -220,8 +220,11 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // (owner, 2026-10-18, note 6: "waiting for the tank to be physically there, is what triggers the Boss"; it opened the hole with the hull at the base); seatWait: seconds after the
 // boss rose the gunship seat is taken whether or not the gunship is over the arena yet (src/fx/boss-run.js, owner 2026-10-16: the drive out, then the forced hand-over)
 // seatAfter: the least seconds after the boss rose before the seat is forced, and only once Isao's panel is free (arena_force read first; 2026-10-18)
-// remind: seconds between INVESTIGATE THE TREMOR callouts while the hull has not reached it (owner, 2026-10-18, note 6: "not quite clear what we must do")
-export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40,
+// remind: seconds between INVESTIGATE THE TREMOR callouts while the hull has not reached it (owner, 2026-10-18, note 6: "not quite clear what we must do"), and only
+// when the hull's road distance has not dropped since the last one (a driving player is not nagged; review, 2026-10-18)
+// remindMax: after this many reminders Isao drives the hull out himself on the lure directive (`arena_drive`; review of note 6, 2026-10-18): with no clock, a
+// hull that never came (a wedge, the player's own walls, AUTO on another order) hung the sector for good; the arrival stays the trigger, about 120 s at remind 40
+export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3,
   // THE ROAD SOL CUTS (owner, 2026-10-16; src/domain/arena.js roadAhead, src/fx/boss-run.js): every `every` seconds of the drive out, the first rock cell within
   // `ahead` hops of the hull worth a shortcut of `saves` cells on the open walk to the arena (crossed up to `through` rocks deep), else with `flank` the first rock
   // beside the route ahead, never within `clear` cells of the hull by the chord (the beam keeps LASER_AUTO.safeMetres off a friend: 25 m and its radius, 3.1 cells) (second version, 2026-10-16: the cheapest-walk rule fired at 2% of the route, all at the rim), is burned by SOL for `burn` seconds;
@@ -230,7 +233,9 @@ export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatC
   // planned from the arena with a rock cell at `rockCost` (on the shipped planet 214 cells and three rocks, against 282 open), its rocks SOL's first cuts from
   // the sector's start within `plan` cells of road; `every` 7 -> 4 (a simulated drive at the hull's 1.6 cells/s reached the first planned rock before a 7 s
   // cadence had cut it; 4 cut all three ahead of it); its cells `marks` ahead of the hull ringed every `markEvery` seconds
-  road: freeze({ every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 4, overhead: 45, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+  // overhead 45 -> 3.5, the burn and a second (review of note 6, 2026-10-18): a road pass is a special pass, which the automated aim never takes, and the last one
+  // laid on the drive out stayed overhead up to 45 s after the hole opened, so SOL never fired on the small Reeds; each ask lays its own pass anyway
+  road: freeze({ every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 4, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

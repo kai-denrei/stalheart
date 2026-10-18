@@ -445,6 +445,7 @@ export const BRIEFS = {
   // THE ARENA (owner, 2026-10-16, third version; src/fx/boss-run.js): `arena_open` as the ground opens at the beacon the hull drove out to, `arena_force` as the
   // mother rises and Isao takes the hull while the player is put in the gunship (the choice card's lines of 2026-10-15 are gone with it)
   arena_road: { id: 'arena_road', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['SOL is cutting you a road. Follow the glass.'] },   // the first burn ahead of the hull on the drive out (ARENA.road)
+  arena_drive: { id: 'arena_drive', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['Fine. I\'ll drive. Keep your eyes on the tremor.'] },   // the hull never came out: after ARENA.remindMax reminders he takes it there (2026-10-18)
   arena_open: { id: 'arena_open', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['There it goes. Small ones first.', 'Keep the hull moving and keep shooting. The gunship is on you.'] },
   arena_force: { id: 'arena_force', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave. That is the nest\'s mother. Too big for the shells, and it must never reach the base.', 'Bait is the only play, and I am the better driver. I take the hull. You take the gun.'] },
   arena_lure: { id: 'arena_lure', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['I\'ll take it for a drive. Keep your rounds off the hull.'] },

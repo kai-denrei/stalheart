@@ -41,7 +41,7 @@ const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut la
 export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
   let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss
-  let remindAt = 0;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind)
+  let remindAt = 0, reminders = 0, remindDist = Infinity, drove = false;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind), how many fired, the hull's road distance then, Isao took the wheel (ARENA.remindMax)
   let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
@@ -54,6 +54,7 @@ export function createBossRun(c) {
   const planned = () => { const g = c.roadGraph?.(); if (!g || !(g.to >= 0) || !(g.from >= 0)) return null; plan ??= roadField({ ...g, rockCost: ARENA.road?.rockCost ?? 2 }); return { g, field: plan }; };
   const roadAheadCells = () => { if (phase !== 'beacon') return []; const p = planned(); return p ? roadPath({ adj: p.g.adj, field: p.field, from: p.g.from, max: 12 }) : []; };   // the harness: the planned road's next cells (a driver follows the rings)
   const isOpen = (ci) => { const g = c.roadGraph?.(); return !!g && g.tags[ci] !== g.blocked; };
+  const roadDist = () => { const p = planned(); return p ? p.field[p.g.from] : null; };   // the hull's walking cost to the arena down the planned road (null: no graph)
   function dock() {
     const isao = c.isao(), p = c.player()?.pos;
     if (!isao?.obj || !p) return;
@@ -68,7 +69,7 @@ export function createBossRun(c) {
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
     // THE ORDER (owner, 2026-10-18, note 6: "it's not quite clear what we must do. We should message it better"): the sector's brief is Isao's `arena_go`
     // (src/fx/sector-run.js briefOf), the callout names the job, and it comes back every ARENA.remind seconds while the hull has not reached the tremor
-    c.callout(INVESTIGATE, 'co-victory'); remindAt = c.t();
+    c.callout(INVESTIGATE, 'co-victory'); remindAt = c.t(); reminders = 0; drove = false; remindDist = roadDist() ?? Infinity;
     if (c.story()) c.story().gsAuto = true;   // the gunship flies itself over the fight while the player drives
     // THE ARENA IS WHERE THE GUNSHIP CIRCLES (owner, 2026-10-18, note 6): its track takes station over the arena's cell and loiters round it for the whole run
     // (story.gsStage, src/fx/gunship-rig.js); before, it stayed over the base (no breach with bodies until the hole opened) and was still ~145 cells out when
@@ -82,7 +83,10 @@ export function createBossRun(c) {
   function tick(dt) {
     if (!on) return;
     const t = c.t();
-    if (phase === 'beacon' && c.arenaOpen?.()) { phase = 'waves'; c.tremor?.(-1); c.showBrief('arena_open'); c.speak('arena_open'); }
+    if (phase === 'beacon' && c.arenaOpen?.()) {
+      phase = 'waves'; c.tremor?.(-1); c.showBrief('arena_open'); c.speak('arena_open');
+      if (drove && was && c.autoMode() && c.params().directive === 'lure') { c.params().directive = was.directive; c.setAutoMode(was.auto); }   // Isao drove it out: the wheel back to the player for the waves
+    }
     // THE ROAD SOL CUTS (owner, 2026-10-16: "have SOL shoot ahead of it here and there to open the maze"): on the drive out, every ARENA.road.every seconds the
     // first rock on the hull's cheapest walk to the arena (c.roadNext) is burned by SOL (c.solRoad: a pass laid over it when none is up, the beam held
     // ARENA.road.burn seconds); the first time Isao says so
@@ -103,7 +107,11 @@ export function createBossRun(c) {
       markAt = t; const p = planned();
       if (p) { const path = roadPath({ adj: p.g.adj, field: p.field, from: p.g.from, max: Math.max(...(ARENA.road?.marks ?? [0])) }); for (const k of ARENA.road?.marks ?? []) if (path[k - 1] >= 0) c.roadMark(path[k - 1]); }
     }
-    if (phase === 'beacon' && ARENA.remind && t - remindAt >= ARENA.remind) { remindAt = t; c.callout(INVESTIGATE, 'co-victory'); }   // the order again, while the hull is not there
+    // the order again, while the hull is not there and has not come nearer down the road since the last one (a driving player is not nagged; 2026-10-18)
+    if (phase === 'beacon' && ARENA.remind && t - remindAt >= ARENA.remind && c.hullNearArena?.() !== true) {
+      remindAt = t; const d = roadDist(), nearer = d != null && d < remindDist; if (d != null) remindDist = d;
+      if (!nearer) { reminders++; c.callout(INVESTIGATE, 'co-victory'); if (!drove && reminders >= (ARENA.remindMax ?? Infinity)) isaoDrives(); }
+    }
     // A LONG SESSION (owner, 2026-10-16: "a longer gunship session"): off station the gunship is called again, so it keeps coming back over the arena until the sector ends
     if (t - refillAt >= REFILL && c.station && !c.station()) { refillAt = t; c.fillCall(); seated = false; }
     const h = hunters();
@@ -133,11 +141,18 @@ export function createBossRun(c) {
       hpWas = hp;
     } else hpWas = c.playerHP();
   }
+  // ISAO TAKES THE HULL OUT (2026-10-18, review of note 6): the hull never came (a wedge, the player's own walls, AUTO on another order, a player who does not
+  // understand) and no clock opens the hole, so after ARENA.remindMax reminders he drives it on the lure directive, which with no quarry drives the arena's
+  // field (src/fx/hull-drive.js, lure() below); he only starts it: a seat's entry or any drive input puts the hull back in the player's hands, and that is fine here
+  function isaoDrives() {
+    drove = true; c.showBrief('arena_drive'); c.speak('arena_drive');
+    c.params().directive = 'lure'; c.setAutoMode(true);
+  }
   function end(outcome) {
     if (!on) return;
     on = false; shotSaid = false; phase = 'off';
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
-    if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; c.story().gsStage = -1; } }
+    if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; if (c.story().gsStage >= 0) c.gunshipOver?.(c.heartCell?.() ?? -1); c.story().gsStage = -1; } }   // the gunship home at once: it crawled back across the planet after SECURE (2026-10-18)
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
     if (outcome === 'secure' && !done) { done = true; c.showBrief('boss_dead'); c.speak('boss_dead'); }
     seated = false; def = null; was = null;
@@ -156,9 +171,9 @@ export function createBossRun(c) {
   const nearestHunter = () => { const p = c.player()?.pos; let best = null, bd = Infinity; if (!p) return null; for (const e of c.enemies) { if (!e.alive || !e.hunter) continue; const d = Math.hypot(e.pos[0] - p[0], e.pos[1] - p[1], e.pos[2] - p[2]); if (d < bd) { bd = d; best = e; } } return best; };
   function lure() {
     if (!on) return null;
-    const q = bossRecord() ?? nearestHunter();
+    const q = phase === 'beacon' ? null : (bossRecord() ?? nearestHunter());   // the drive out (isaoDrives): no quarry, the arena's field
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
   return { begin, tick, end, rows, lure, arenaDue, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, seated, bossSeen, hullHit, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells() }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, seated, bossSeen, hullHit, reminders, drove, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells() }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

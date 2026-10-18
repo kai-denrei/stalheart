@@ -91,6 +91,40 @@ function host(o = {}) {
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
   assert.deepEqual(h.log.road, [6], 'the near rock left to a later ask, the far one cut now'); }
 
+// ISAO TAKES THE HULL OUT (review of note 6, 2026-10-18): a hull that never comes gets ARENA.remindMax reminders, then Isao's arena_drive and the hull on the
+// lure directive (no quarry in the beacon: it drives the arena's field); he only starts it, nothing re-asserts it; the arrival still opens the hole
+{ assert.equal(ARENA.remindMax, 3); assert.ok(BRIEFS.arena_drive, 'the arena_drive brief exists'); assert.equal(BRIEFS.arena_drive.face, 'determined');
+  assert.match(BRIEFS.arena_drive.lines.join(' '), /I'll drive/);
+  let auto = false; const h = host({ setAutoMode: (v) => { auto = !!v; }, autoMode: () => auto }), run = createBossRun(h); run.begin(ARENA_SECTOR);
+  const reminds = () => h.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length - 1;   // less the one at the start
+  for (let i = 1; i <= (ARENA.remindMax - 1) * ARENA.remind; i++) { h.now = i; run.tick(1); }
+  assert.equal(reminds(), ARENA.remindMax - 1); assert.ok(!h.log.briefs.includes('arena_drive'), 'not before the last reminder'); assert.equal(auto, false);
+  for (let i = 1; i <= ARENA.remind; i++) { h.now += 1; run.tick(1); }
+  assert.equal(reminds(), ARENA.remindMax, 'three reminders'); assert.ok(h.log.briefs.includes('arena_drive'), 'then Isao says he drives');
+  assert.equal(h.params().directive, 'lure', 'the hull on the lure directive'); assert.equal(auto, true, 'on the autopilot'); assert.equal(run.state().drove, true);
+  assert.equal(run.lure().quarry, null, 'no quarry on the drive out: the arena\'s field');
+  assert.equal(run.arenaDue(), false, 'the drive does not open the hole: the hull still has to arrive');
+  auto = false; h.params().directive = 'wander'; h.now += 1; run.tick(1);
+  assert.equal(auto, false, 'the player taking the wheel back is left alone'); h.now += 4 * ARENA.remind; for (let i = 0; i < 4; i++) run.tick(1);
+  assert.equal(h.log.briefs.filter((b) => b === 'arena_drive').length, 1, 'said once');
+  h.near = true; assert.equal(run.arenaDue(), true, 'the hull there: due');
+  // a hull already within reach never gets it (nor the reminders)
+  const h2 = host({ near: true }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.near = true;
+  for (let i = 1; i <= 10 * ARENA.remind; i++) { h2.now = i; run2.tick(1); }
+  assert.ok(!h2.log.briefs.includes('arena_drive'), 'within reach: no drive'); assert.equal(h2.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length, 1, 'and no reminder'); }
+// A DRIVING PLAYER IS NOT NAGGED (2026-10-18): the reminder only when the hull's road distance has not dropped since the last one
+{ const adj = Array.from({ length: 300 }, () => []); for (let i = 0; i < 299; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(300).fill(1); let from = 0;
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from, to: 299 }), roadFar: () => true }); h.story().arena.cell = 299;
+  const run = createBossRun(h); run.begin(ARENA_SECTOR);
+  for (let i = 1; i <= 6 * ARENA.remind; i++) { h.now = i; from = Math.min(298, i); run.tick(1); }
+  assert.equal(h.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length, 1, 'the hull coming nearer: no reminder after the first');
+  for (let i = 1; i <= 2 * ARENA.remind; i++) { h.now += 1; run.tick(1); }
+  assert.equal(h.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length, 3, 'stopped: the reminders again'); }
+// the run over, the gunship is put back over the base at once (it crawled home across the planet after SECURE)
+{ const h = host({ heartCell: () => 42 }), run = createBossRun(h); run.begin(ARENA_SECTOR); run.end('secure');
+  assert.deepEqual(h.log.over, [7, 42], 'over the arena at the start, over the heart at the end'); }
+
 // THE HAND-OVER IS SAID FIRST (2026-10-18): the gunship circles the arena from the start, so it is over the arena the moment the mother rises; the seat waits
 // ARENA.seatAfter and for Isao's panel to be free (arena_force read), or ARENA.seatWait at the latest
 { const clicks = [], h = host({ briefingNow: true, gunshipNearArena: () => true }); h.briefing = () => h.briefingNow;
@@ -108,4 +142,4 @@ function host(o = {}) {
   for (let k = 1; k <= ARENA.seatWait + 1; k++) { h2.now = 2 + k; run2.tick(0.1); }
   assert.equal(clicks2[0], 2 + ARENA.seatWait, 'a panel that never frees: the seat at seatWait'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; the seat after Isao\'s hand-over line.');
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line.');
