@@ -1,7 +1,7 @@
 // THE TUNE PANEL'S KNOBS (owner, 2026-10-16; the panel src/fx/tune-panel.js, the rules src/domain/tune.js): what is on screen, as knobs over the
 // content's defaults. A 'mul' knob multiplies its default (the walk, a tier's size, the pulse), an 'abs' knob replaces it (hits a hull, the lure's
 // hops, the seat's servo). `tuneKnobs(ctx)` builds the groups for the moment; `applyTune(ctx, values)` writes every knob's effect where the game
-// reads it each frame: `tune.tier[key]` (src/fx/enemy-step.js: the walk, a spawn's size and hit points), `tune.pulse` / `tune.breath`
+// reads it each frame: `tune.tier[key]` (src/fx/enemy-step.js: the walk, a spawn's size and hit points), `tune.hunt` (src/fx/soft-hunt.js), `tune.pulse` / `tune.breath`
 // (src/fx/sector-run.js), `tune.hull` (src/td-tab.js playerHit, src/fx/hull-drive.js the ramp), `tune.lure` (the lure directive), `tune.orbit`
 // (src/fx/gunship-rig.js), `params.enemySpeed` (every walk) and SENTRY_TUNE's servo and tolerance (a plain object, written in place).
 //   ctx: { tune, params, enemies, sector: { n, name, pulse, breath } | null, seat: 'gunship' | '<mount key>' | null, arena: boolean }
@@ -12,6 +12,7 @@ import { HULL_ARMOUR, TANK_DRIVE, LURE } from '../content/tank.js';
 import { GUNSHIP_ORBIT } from '../content/gunship.js';
 import { SENTRY_TUNE } from '../sentry.js';
 import { screenTiers } from '../domain/tune.js';
+import { SOFT_HUNT } from '../content/soft-hunt.js';
 
 // `when`: the moment a change bites: 'now' (read every frame; a tier's size and hit points reach the bodies on screen through the seam's retune), 'next pulse', 'next pass', 'this hull' (the count moves with it)
 const k = (o) => ({ kind: 'mul', default: 1, min: 0.25, max: 8, step: 0.05, when: 'now', ...o, value: o.value ?? o.default ?? 1 });
@@ -21,7 +22,10 @@ const tierLabel = (key) => { const [f, t] = key.split(':'); return f === 'pearl'
 export function tuneKnobs(ctx) {
   const v = ctx.tune.values ?? {}, val = (id) => v[id], groups = [];
   const screen = screenTiers(ctx.enemies, PEARL_OF).slice(0, 6);
-  const enemies = [k({ id: 'speed', path: 'params.enemySpeed', label: 'every walk ×', base: 1, value: val('speed') })];
+  const enemies = [k({ id: 'speed', path: 'params.enemySpeed', label: 'every walk ×', base: 1, value: val('speed') }),
+    // THE SOFT HUNT (owner, 2026-10-18, note 2; src/content/soft-hunt.js): the whites' and yellows' walk at the hull, and the ring they surround it on
+    k({ id: 'hunt.pace', path: 'SOFT_HUNT.pace', label: 'soft hunt: hunt pace ×', base: SOFT_HUNT.pace.white, value: val('hunt.pace'), max: 3 }),
+    k({ id: 'hunt.ring', path: 'SOFT_HUNT.ring', label: 'soft hunt: ring (cells)', kind: 'abs', base: SOFT_HUNT.ring, default: SOFT_HUNT.ring, value: val('hunt.ring'), min: 0.9, max: 4, step: 0.1 })];
   for (const { key, count } of screen) {
     const [f, t] = key.split(':'), pearl = f === 'pearl', tier = pearl ? PEARL_TIERS.find((x) => x.id === t) : CREATURE_TIERS[f]?.[t];
     if (!tier) continue;
@@ -61,6 +65,7 @@ export function applyTune({ tune, params }, values) {
   params.enemySpeed = g('speed', 1);
   tune.tier = {};
   for (const id of Object.keys(values)) { const m = /^(.+):(.+)\.(speed|size|hp)$/.exec(id); if (m) (tune.tier[`${m[1]}:${m[2]}`] ??= {})[m[3]] = values[id]; }
+  tune.hunt = { pace: g('hunt.pace', 1), ring: g('hunt.ring', SOFT_HUNT.ring) };   // read by src/fx/soft-hunt.js through the enemy loop
   tune.pulse = g('pulse', 1); tune.breath = g('breath', 1);
   tune.hull = { hits: g('hull.hits', HULL_ARMOUR.hits), drive: { ...TANK_DRIVE, top: g('hull.top', TANK_DRIVE.top), tau: g('hull.tau', TANK_DRIVE.tau) } };
   tune.lure = { ...LURE, near: g('lure.near', LURE.near), far: g('lure.far', LURE.far) };

@@ -47,8 +47,12 @@ function run(make) {
 const getN = Object.keys(spec).filter((k) => spec[k] !== 'value');
 const newLog = run((w) => { const host = { ...w.fixed }; for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); } return createEnemyStep(host); });
 // THE ORIGINAL BLOCK's log on these fakes (src/td-tab.js before the refactor run's Task 11, through new Function beside the module):
-// three spawns released on the queue's clock, 400 frames walking, a kill and the board cleared
-assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '3390876de0d3a026', 'the enemy loop behaves as the controller block did');
+// three spawns released on the queue's clock, 400 frames walking, a kill and the board cleared. RE-BASED 2026-10-18 (round three, note 2, the soft
+// hunt: src/fx/soft-hunt.js): the phage is a white, its hull (cell 2) 12 walking cells off against the heart's 10 is within SOFT_HUNT.bias, so it walks at
+// the hull x SOFT_HUNT.pace from its first frame and then circles it on the ring instead of walking into the heart (was '3390876de0d3a026'; the first
+// frames differ only in the phage's prog, x 1.35, test/soft-hunt.mjs covers the rule and the ring)
+const GOLDEN = '31678498317acf18';
+assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), GOLDEN, 'the enemy loop behaves as the controller block did');
 print('Enemy step: the queue released on its clock, the walk, a kill and the board cleared, as the controller block did.');
 
 // NO ROOM, NO RELEASE (owner, 2026-10-14: a huge sector-9 wave came as yellow and green dot clouds once its tiers' Pearl swarms were full):
@@ -58,6 +62,6 @@ print('Enemy step: the queue released on its clock, the walk, a kill and the boa
   const frames = held.filter((l) => l[0] === 'f');
   assert.equal(frames.at(-1)[1].length, 0, 'nothing spawned while the family has no room'); assert.ok(!held.some((l) => l[0] === 'throw'), 'and nothing threw');
   const roomy = run((w) => { const host = { ...w.fixed }; for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); } host.creatures = () => ({ full: () => false, dress: (q) => q, step() {}, kill() {} }); return createEnemyStep(host); });
-  assert.equal(createHash('sha256').update(JSON.stringify(roomy)).digest('hex').slice(0, 16), '3390876de0d3a026', 'with room the run is the controller block\'s, frame for frame');
+  assert.equal(createHash('sha256').update(JSON.stringify(roomy)).digest('hex').slice(0, 16), GOLDEN, 'with room the run is the controller block\'s, frame for frame');
   print('Enemy step: a release with no room in its creature family waits; with room it goes.');
 }

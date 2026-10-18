@@ -188,10 +188,8 @@ export const PEARL_GAIT = freeze({
 // (CUTIS_LOD 70/12, PEARL_FOLLOW's cap 12), so the thinning that round four put in "to get the animation right" is not needed at the end of a
 // breach's climb: \`last\` is 1, every single body of the plan. The start stays few and slow (the build-up).
 // THE COUNT IS THE SECTOR'S (2026-10-15, sector shapes, src/content/sectors.js): `scale` is gone; the table sizes every wave, and the build-up is the pace alone.
-export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd: 1.4, blackPerPulse: 3 });   // blackPerPulse: a few at a time (owner, 2026-10-16)
-// THE SOFT HUNT (owner, 2026-10-16: "hunting logic of the weak ivories and lemons; they rush to kill whichever enemy is closest; tank if tank, gate if gate"):
-// a record of these tiers within `within` cells of the tank, and nearer the tank than the gate, walks at the tank (src/fx/enemy-step.js, the hunters' field)
-export const PEARL_HUNT = freeze({ tiers: ['white', 'yellow'], within: 10 });   // crowd: every pulse's bodies x this (the swarm: larger waves that die faster, owner 2026-10-16)
+export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd: 1.4, blackPerPulse: 3 });   // blackPerPulse: a few at a time (owner, 2026-10-16); crowd: every pulse's bodies x this (the swarm: larger waves that die faster, owner 2026-10-16)
+// THE SOFT HUNT (owner, 2026-10-16, PEARL_HUNT here) moved to src/content/soft-hunt.js SOFT_HUNT (2026-10-18, round three, note 2: by walking distance, faster, the ring)
 
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.

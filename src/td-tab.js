@@ -5817,7 +5817,7 @@ export function initTdTab(root) {
   const gameHooks = {
       state: () => ({
         enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(),
-        explosions: explosions.state(), shellBlast: shellBlast.last(), boss: bossRun.state(), descent: descentHost.state(), enemySpeed: params.enemySpeed, hullRepair: hullRepair.state(),
+        explosions: explosions.state(), softHunt: enemyStep.softHunt(), shellBlast: shellBlast.last(), boss: bossRun.state(), descent: descentHost.state(), enemySpeed: params.enemySpeed, hullRepair: hullRepair.state(),
         pilotRounds: rs?.pilotRounds ?? 0,
         pilotHits: rs?.pilotHits ?? 0,
         pilotTracerGap: rs?.pilotGap ?? null,   // metres, tracer head to impact, widest; null until one lands
