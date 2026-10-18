@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createBossRun } from '../src/fx/boss-run.js';
 import { ARENA, ARENA_SECTOR } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
+import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 
 function host(o = {}) {
   const log = { briefs: [], callouts: [], tremor: [], road: [], over: [] };
@@ -142,4 +143,51 @@ function host(o = {}) {
   for (let k = 1; k <= ARENA.seatWait + 1; k++) { h2.now = 2 + k; run2.tick(0.1); }
   assert.equal(clicks2[0], 2 + ARENA.seatWait, 'a panel that never frees: the seat at seatWait'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line.');
+// THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out ... more scare of 40mm. Gameplay = push her to a
+// side 40mm, launch big nuke, time it"): seen, she is given the ground phase and her own fear; a 40 mm near her frightens her (not while she stands on the
+// sinkhole), one far off does not, the 25 mm does not, the MK-9 stuns her
+{ const h = host({ enemies: [] }), run = createBossRun(h);
+  run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1);
+  assert.equal(b.ownFear, true, 'the generic impact scare leaves her alone');
+  assert.deepEqual(b.ground, BOSS_FIGHT.arenaBoss.ground, 'she walks onto the sinkhole first');
+  assert.equal(run.state().fear.ground, 'ground');
+  assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'on the sinkhole she stands: no flight off it');
+  b.ground = null;
+  assert.equal(run.landed('rotary', [0.01, 0, 1]), false, 'the 25 mm does not push her');
+  assert.equal(run.landed('bofors', [0.3, 0, 1]), false, 'a 40 mm far off does not either');
+  assert.equal(run.landed('bofors', [0.03, 0, 1]), true, 'a 40 mm within her radius + reach + the blast frightens her');
+  assert.deepEqual(b.scareFrom, [0.03, 0, 1], 'away from the shell'); assert.equal(b.flight.flee, BOSS_FIGHT.arenaBoss.flee);
+  assert.equal(run.state().fear.scared, true);
+  assert.equal(run.landed('heavy', [0.02, 0, 1]), true, 'the MK-9 in its blast'); assert.equal(b.stagUntil, h.now + BOSS_FIGHT.nuke.stun, 'holds her still nuke.stun seconds');
+  assert.deepEqual([run.state().fear.frights, run.state().fear.stuns, run.state().fear.stunned], [1, 1, true]);
+  run.end('secure'); assert.equal(run.landed('bofors', [0.03, 0, 1]), false, 'the run over: nothing heard'); }
+
+// THE BROOD DIES WITH THE MOTHER (review of note 10, 2026-10-19; the mother is the fight): three of the wave's hunters alive at her death die after her,
+// BROOD_STAGGER (0.1 s) apart, deflating, within a second; a body that is not the arena's brood (no hunter, or another tier) is left alone
+{ const kills = [], h = host({ kill: (e, fx) => { e.alive = false; kills.push([e.id, fx, +h.now.toFixed(2)]); } }), run = createBossRun(h);
+  run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { id: 'boss', alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] };
+  const brood = [['r1', 'small'], ['r2', 'small'], ['p1', 'pup']].map(([id, tier]) => ({ id, alive: true, hunter: true, tier, hp: 4, pos: [0, 0, 1] }));
+  const stray = { id: 'stray', alive: true, tier: 'small', hp: 4, pos: [0, 0, 1] }, guard = { id: 'guard', alive: true, hunter: true, tier: 'large', hp: 9, pos: [0, 0, 1] };
+  h.enemies.push(b, ...brood, stray, guard); h.now = 2; run.tick(0.1);
+  assert.equal(run.state().phase, 'boss'); assert.equal(run.state().wave, 3);
+  for (let k = 1; k <= 20; k++) { h.now = 2 + k * 0.1; run.tick(0.1); }
+  assert.deepEqual(kills, [], 'the mother alive: the brood lives');
+  assert.ok(!h.log.briefs.includes('boss_dead'), 'not before her death');
+  b.alive = false; const died = h.now; h.now += 0.01; run.tick(0.01);
+  assert.equal(h.log.briefs.filter((x) => x === 'boss_dead').length, 1, 'Isao\'s boss_dead at her death, not at the debrief\'s pause');
+  for (let k = 1; k <= 10; k++) { h.now = died + k * 0.1; run.tick(0.1); }
+  assert.equal(run.state().wave, 0, 'within a second of her death the brood is dead');
+  assert.deepEqual(kills.map((k) => k[0]), ['r1', 'r2', 'p1'], 'all three, one by one');
+  assert.ok(kills.every((k) => k[1] === true), 'deflating (fx): the brood collapsing, not a cull');
+  for (let i = 1; i < kills.length; i++) assert.ok(kills[i][2] - kills[i - 1][2] >= 0.1 - 1e-9, 'BROOD_STAGGER apart');
+  assert.equal(stray.alive, true, 'a carried-over body that is not the arena\'s is left alone'); assert.equal(guard.alive, true, 'and another tier');
+  run.end('secure'); assert.equal(h.log.briefs.filter((x) => x === 'boss_dead').length, 1, 'said once: end() does not say it again');
+  // the stagger not done when the sector ends (end('secure')): the rest go at once
+  const h2 = host({ kill: (e) => { e.alive = false; } }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
+  const b2 = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }, r = Array.from({ length: 5 }, () => ({ alive: true, hunter: true, tier: 'small', hp: 4, pos: [0, 0, 1] }));
+  h2.enemies.push(b2, ...r); h2.now = 2; run2.tick(0.1); b2.alive = false; h2.now = 2.1; run2.tick(0.1);
+  assert.ok(r.some((e) => e.alive), 'mid-stagger'); run2.end('secure'); assert.ok(r.every((e) => !e.alive), 'end(secure) takes the rest'); }
+
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL cuts the planned road from the start, SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; the seat after Isao\'s hand-over line; the brood dies with the mother.');

@@ -39,6 +39,10 @@ assert.deepEqual(awayExits([1], centers, 0, blast), [], 'none, and the caller ke
 const AIRBORNE = new Set(['gunship.ignite', 'rock.dust', 'laser.contact', 'laser.smoke', 'tank.flash']);   // (2026-10-13) the tank shell's core pop: its burst, 'tank.blast', scares for both   // and (2026-10-03) the beam's own contact and smoke: SOL pins what it burns   // in the air, or not an impact at all (the back mouth's dust)
 assert.deepEqual(Object.keys(EXPLOSION_SCARE).sort(), Object.keys(EXPLOSION_USES).filter((u) => !AIRBORNE.has(u)).sort(), 'every explosion use that lands scares');
 for (const [use, s] of Object.entries(EXPLOSION_SCARE)) assert.ok(s.cells > 0 && s.seconds > SCARE_FREEZE_S, `${use}: a radius and a scare longer than the freeze`);
+// A BODY WITH ITS OWN FEAR (2026-10-18, note 8c): THE ARENA's Nih-Dairia takes the 40 mm and the MK-9 by its own rule (src/domain/boss-fear.js frightRecord), never the generic scare
+{ const own = { alive: true, pos: [0, 0, 1], ownFear: true }, plain = { alive: true, pos: [0, 0, 1] };
+  assert.equal(applyScare([own, plain], [0, 0, 1], { radius: 1, seconds: 2 }), 1, 'only the plain body is scared');
+  assert.equal(own.scareFrom, undefined, 'the boss is left to its own rule'); }
 console.log('Impact scare: radius, stamped on the step clock, freeze then flight, turn from the blast, exits away, every use scares.');
 
 // THE WALK LEANS ON THE HEART (owner, 2026-10-15; WALK_BIAS)

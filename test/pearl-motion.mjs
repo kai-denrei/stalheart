@@ -238,3 +238,16 @@ console.log('PASS the frame\'s own step');
 }
 console.log('PASS the waves paced under ?creatures=pearl: a first wave whole at PEARL_WAVES.pace.first; squads, bosses, harmless kept; &waves=full at its own pace');
 
+
+// ---- the tune panel keeps an entry's own scale (review of note 8b, 2026-10-19): THE ARENA's small Reeds spawn at x3 (ownSize 3, src/fx/enemy-step.js
+// spawnOne), and the panel's size is over it, so an apply at 1.2 reads 3.6, not 1.2; a record without an own scale takes the panel's size as before ----
+{
+  const ce = createCreatureEnemies({ scene: new THREE.Scene(), root: null, flags: {}, camera: null, canvasHeight: () => 800, enemies: [], field: () => null, spawn: () => null, heart: () => [[0, 0, 690], 0, 1], ground: () => null, perf: () => null, perfOn() {}, damage() {}, build: () => null });
+  const reed = { alive: true, size: 3, sizeMul: 3, ownSize: 3, hp: 4, hpMul: 1 }, plain = { alive: true, size: 1, sizeMul: 1, hp: 4, hpMul: 1 };
+  ce.retune(reed, { size: 1.2, hp: 1 }); ce.retune(plain, { size: 1.2, hp: 1 });
+  close(reed.sizeMul, 3.6, 1e-9, 'the x3 Reed retuned to 1.2 keeps its own scale'); close(reed.size, 3.6, 1e-9, 'and its reach with it'); assert.equal(reed.hp, 4, 'same health');
+  close(plain.sizeMul, 1.2, 1e-9, 'a record without an own scale: the panel\'s size'); close(plain.size, 1.2, 1e-9, 'its reach');
+  ce.retune(reed, { size: 1, hp: 1 }); close(reed.sizeMul, 3, 1e-9, 'the panel back to 1: back to x3, not 1x');
+  ce.dispose();
+}
+console.log('PASS the tune panel keeps an entry\'s own scale (the arena\'s x3 Reeds)');

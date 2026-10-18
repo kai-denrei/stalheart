@@ -9,7 +9,7 @@ export function applyScare(bodies, point, { radius, seconds }) {
   let scared = 0;
   const r2 = radius * radius;
   for (const e of bodies) {
-    if (!e.alive || !e.pos || d2(e.pos, point) > r2) continue;
+    if (!e.alive || !e.pos || e.ownFear || d2(e.pos, point) > r2) continue;   // ownFear: THE ARENA's Nih-Dairia takes the guns by its own rule (src/domain/boss-fear.js frightRecord, 2026-10-18)
     e.scareFrom = [point[0], point[1], point[2]];
     e.scareSeconds = seconds;
     e.scareAt = null;

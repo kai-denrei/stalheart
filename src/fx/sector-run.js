@@ -17,7 +17,7 @@ import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTo
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { waveCount, waveGap } from '../domain/wave-spread.js';
-import { bossWaves } from '../domain/boss-sector.js';
+import { bossWaves, bossLeft } from '../domain/boss-sector.js';
 import { tierSpec } from './creature-enemies.js';
 import { isStampede, stampedeWave } from '../domain/stampede.js';
 import { sizeWave, pulseBodies, pulseDue, flowDue, flowTarget, streamOffsets } from '../domain/sector-shape.js';
@@ -150,7 +150,7 @@ export function createSectorRun(h) {
   // 0.6 s apart off the breach's own source, with its spread (src/domain/boss-sector.js bossWaves; the enemy loop keeps `hunter`, `tier` and `spec`)
   function bossQueueOf(k, sp) {
     const plan = bossWaves(def, { tierSpec })[k] ?? [], out = []; let n = 0;
-    for (const e of plan) for (let i = 0; i < e.count; i++) out.push({ type: e.type, sp, at: n++ * 0.6, spread: 0.8, pace: e.pace ?? 1, spec: e.spec, tier: e.tier, hunter: true });
+    for (const e of plan) for (let i = 0; i < e.count; i++) out.push({ type: e.type, sp, at: n++ * 0.6, spread: 0.8, pace: e.pace ?? 1, spec: e.spec, tier: e.tier, hunter: true, ...(e.size ? { sizeMul: e.size } : {}) });   // sizeMul: the wave's scale on the record and its body (2026-10-18, note 8b)
     return out;
   }
   // one breach sends its next wave: the books count it, a feast is noted, the last pulse is remembered for the breath, and its queue entries come back (null: nothing to send)
@@ -407,7 +407,7 @@ export function createSectorRun(h) {
     }
     if (cardLeft > 0) { cardLeft -= dt; if (cardLeft <= 0) card([]); }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
-    if (phase === 'secure') { left -= dt; if ((left <= 0 && !api.engaged?.()) || left <= -STORY_CALM.maxHold) finish('secure'); return; }   // the debrief waits out a fight (STORY_CALM)
+    if (phase === 'secure') { left -= dt; if ((left <= 0 && (def.boss || !api.engaged?.())) || left <= -STORY_CALM.maxHold) finish('secure'); return; }   // the debrief waits out a fight (STORY_CALM); not the boss's (2026-10-18, note 10: a pup left round the hull would hold the mother's end up to STORY_CALM.maxHold)
     if (phase !== 'fighting') return;
     for (const id of pending.slice()) {
       const b = breachOf(id);
@@ -436,7 +436,11 @@ export function createSectorRun(h) {
     }
     // NO STRAGGLERS AND NO STALL IN A BOSS SECTOR (2026-10-16): the arena's whole wave is under the allowance, and it read SECURE with the Nih-Dairia alive at
     // 180; and twenty seconds of a fight without a kill (its 180 hit points take longer) is not a stall there
-    if (!pending.length && !h.hold?.() && isSecure(sector, stalled() && !def.boss ? 0 : aliveSectorEnemies(), def.boss ? 0 : SECTOR_TIMING.stragglers ?? 0)) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
+    // THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"; probe r3-g): that rule counted every
+    // live body on the planet, so the stragglers a held sector leaves alive (SECTOR_TIMING.stragglers: the door sector carried 50 into the arena in the probe,
+    // standing by the base for minutes) held THE ARENA open after the mother died; there the count is the boss, alive or still queued (src/domain/boss-sector.js)
+    const count = def.boss ? bossLeft(h.enemies(), h.queue(), def.boss.boss?.tier) : stalled() ? 0 : aliveSectorEnemies();
+    if (!pending.length && !h.hold?.() && isSecure(sector, count, def.boss ? 0 : SECTOR_TIMING.stragglers ?? 0)) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
       phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t;
       h.callout('SECTOR SECURE', 'co-victory'); h.sfx?.('tank_pickup'); h.hud();
     }

@@ -135,9 +135,9 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     const family = e.spec?.body, a = family && adapter(family), t = a && tiers[family]?.[e.tier];
     if (!t || !frame) return false;
     const hub = hubOf(a, e.pos), [x, z] = planeOf(e.pos, hub), apos = aheadOf(e), [ax, az] = planeOf(apos, hub);
-    const h = a.add(e.tier, lookInto(e, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, hub, cell: e.cur ?? -1 }));
+    const h = a.add(e.tier, lookInto(e, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0 * (e.sizeMul ?? 1)), pos: e.pos, apos, hub, cell: e.cur ?? -1 }));
     if (!h) return false;
-    live.set(e, { family, h, stamp, r0: t.r0, hub, apos });
+    live.set(e, { family, h, stamp, r0: t.r0 * (e.sizeMul ?? 1), hub, apos });   // r0: the record's scale over the tier's (2026-10-18, note 8b)
     h.record = e;   // round four: the hull's contact names the record (hull below)
     if (e.obj?.userData) e.obj.userData.point = () => point(e);   // the game's ram, reticle and lance meet the body where it is drawn (src/fx/lance-follow.js groundAt)
     return true;

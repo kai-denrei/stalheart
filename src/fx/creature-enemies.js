@@ -307,7 +307,9 @@ export function createCreatureEnemies(host) {
     rammed, touched, tap, bodyContact,
     // THE TUNE PANEL'S RETUNE (owner, 2026-10-16: "all instances of it, even those already on screen, should be re-spawned with the new stats"): a live record takes
     // the tier's size (its body eases to it, its reach and box with it) and hit points (its share kept) in place, no respawn
-    retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1; if (size !== os) { e.sizeMul = size; e.size = e.size * size / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },
+    // THE ENTRY'S OWN SCALE STAYS (review of note 8b, 2026-10-19): the panel's size is over the record's `ownSize` (THE ARENA's small Reeds x3, src/fx/enemy-step.js
+    // spawnOne), so an apply during the arena does not put them back to 1x
+    retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1, ns = size * (e.ownSize ?? 1); if (ns !== os) { e.sizeMul = ns; e.size = e.size * ns / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
     step(dt) {
       standGarrison();
@@ -344,10 +346,11 @@ export function createCreatureEnemies(host) {
       // round two: the ram's and the touch's presentation as the enemy loop calls it (the harness cannot drive the tank onto a record): rammed, then the
       // record killed through damageEnemy with its death; touched on a live one
       ram(e) { rammed(e); host.damage(e, e.hp + 1); return !e.alive; }, touch: (e) => touched(e),
-      // round two: n of `type` through the story's own spawn on the open cell furthest round the planet from the heart (the antipode's hub)
-      spawnFar: (type, n = 1) => { const g = host.ground?.(), h = host.heart(); if (!g || !h) return 0; let best = -1, bd = Infinity;
+      // round two: n of `type` through the story's own spawn on the open cell furthest round the planet from the heart (the antipode's hub); `tier` and
+      // `hunter` make them a family's tier as a boss wave sends it (THE ARENA's brood far from the arena, the review of note 10, 2026-10-19)
+      spawnFar: (type, n = 1, { tier = null, hunter = false } = {}) => { const g = host.ground?.(), h = host.heart(); if (!g || !h) return 0; let best = -1, bd = Infinity;
         for (let c = 0; c < g.centers.length; c++) { if (!g.open(c)) continue; const p = g.centers[c], d = (p[0] * h[0][0] + p[1] * h[0][1] + p[2] * h[0][2]) / (Math.hypot(p[0], p[1], p[2]) * Math.hypot(h[0][0], h[0][1], h[0][2])); if (d < bd) { bd = d; best = c; } }
-        let made = 0; for (let k = 0; k < n && best >= 0; k++) if (host.spawn({ type, sp: { ci: best, alive: true, obj: placeholder }, at: 0, spread: 0.5, pace: 1 })) made++; return made; }, handle: (e) => bodies?.handleOf(e) ?? null, viewHandle: (h) => bodies?.viewHandle(h) ?? null, spawn: (n) => (choice ? spawnProbe(n) : 0), ofTier: () => (choice ? host.enemies.filter(ofTier) : []),
+        let made = 0; for (let k = 0; k < n && best >= 0; k++) if (host.spawn({ type, sp: { ci: best, alive: true, obj: placeholder }, at: 0, spread: 0.5, pace: 1, ...(tier ? { tier, spec: tierSpec(type, tier) } : {}), ...(hunter ? { hunter: true } : {}) })) made++; return made; }, handle: (e) => bodies?.handleOf(e) ?? null, viewHandle: (h) => bodies?.viewHandle(h) ?? null, spawn: (n) => (choice ? spawnProbe(n) : 0), ofTier: () => (choice ? host.enemies.filter(ofTier) : []),
       hurt: (e, dmg) => host.damage(e, dmg),
       // round four: the bodies against the hull where the tank stands, measured (nothing shoved): the deepest overlap of a live body (m) and of a dying one, the bodies looked at, the
       // hull's half sizes, the drag (the speed share lost, recovering), the contacts booked; `at` [x, y, z] a position to measure at instead

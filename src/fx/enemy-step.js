@@ -16,6 +16,7 @@ import { guardExits } from '../domain/guard-aggro.js';
 import * as THREE from '../../vendor/three.module.js';
 import { BLOCKED, bfsDist } from '../dungeon.js';
 import { huntExits } from '../domain/hunters.js';
+import { groundPhase } from '../domain/boss-sector.js';
 import { tierKeyOf } from '../domain/tune.js';   /* the tune panel's per-tier knobs (2026-10-16) */
 import { sub3, add3, scale3, dot3, norm3, dist3, tangentBasis } from '../vec3.js';
 import { makeDebris, makeDotBurst, makeDotEnemy } from '../units.js';
@@ -232,8 +233,8 @@ export function createEnemyStep(host) {
       const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl, { hull: !host.story()?.hull?.held?.() }); }   // before the hull is issued the card says harder, not 'do not ram'   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
-      const tierKey = tierKeyOf({ type, tier: entry.tier }, PEARL_OF), tk = host.params.tune?.tier?.[tierKey];   // the tune panel's knobs for this tier (src/fx/tune-knobs.js)
-      const size = spec.size * 0.7 * (spec.body === 'pearl' ? pearlScaleOf(PEARL_OF[type]) : 1) * (tk?.size ?? 1);   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
+      const tierKey = tierKeyOf({ type, tier: entry.tier }, PEARL_OF), tk = host.params.tune?.tier?.[tierKey], grow = (tk?.size ?? 1) * (entry.sizeMul ?? 1);   // the tune panel's knobs for this tier (src/fx/tune-knobs.js); an entry's own scale over it (THE ARENA's small Reeds x3, 2026-10-18, note 8b)
+      const size = spec.size * 0.7 * (spec.body === 'pearl' ? pearlScaleOf(PEARL_OF[type]) : 1) * grow;   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
@@ -249,7 +250,7 @@ export function createEnemyStep(host) {
       if (atHole && emergeOff) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),tierKey,sizeMul:tk?.size??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),tierKey,sizeMul:grow,ownSize:entry.sizeMul??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
         cur: ci, prev: -1,
         next,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
@@ -325,7 +326,7 @@ export function createEnemyStep(host) {
         e.obj.userData.s0 = sv;
       }
       let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1) * (host.params.enemySpeed ?? 1) * (host.params.tune?.tier?.[e.tierKey]?.speed ?? 1);   // ENEMY SPEED x: the playtest knob over every walk, and the tune panel's per-tier walk (owner, 2026-10-16)
-      if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
+      if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S, e.flight ?? undefined); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
       pace *= softHunt.pace(e, tNow, isScared(e, tNow));   // a soft tier's goal (the hull or the gate) and its faster walk at the hull (src/fx/soft-hunt.js; 1 for every other record)
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
       if (e.bodyPace != null) pace *= e.bodyPace;   // a Pearl record waits for its body (round four, src/fx/creature-pearl.js paceOf: the body leads)
@@ -379,6 +380,11 @@ export function createEnemyStep(host) {
       // `e.prog` is deliberate — the path is untouched, so when it recovers it
       // carries on from exactly where it was rather than restarting a cell.
       if (tNow < (e.stagUntil ?? -1)) pace = 0;
+      // THE MOTHER WALKS ON THE SINKHOLE (owner, 2026-10-18, note 8c; src/domain/boss-sector.js groundPhase): a record with a `ground` (THE ARENA's boss, src/fx/boss-run.js)
+      // stands on its cell, the crater's centre, while its lip offset eases away, then hunts; its clock starts once it has risen (emergeAge >= riseDur; review,
+      // 2026-10-19), so no part of the cross is spent under the ground (the emergence branch above already skips this walk while it climbs: this keeps it so)
+      const risen = !e.breachSource || (e.emergeAge ?? 1.2) >= (e.riseDur ?? 1.2);
+      const ground = e.ground ? (risen ? groundPhase(tNow - (e.groundAt ??= tNow), e.ground) : { walk: false, off: 1 }) : null; if (ground && !ground.walk) pace = 0; if (ground?.walk) { e.ground = null; e.emergeOff = null; }
       // cloaked (phantom): optical camo. A haze most of the time — the
       // cloud sits near-invisible — with a brief shimmer of presence every
       // ~6s. The radar shares the same decloak window: no window, no blip.
@@ -416,7 +422,7 @@ export function createEnemyStep(host) {
       // FROM THE LIP ONTO THE PATH (2026-10-15): a body rose at the crater's rim (emergeOff, EMERGENCE.rim); its record glides from there onto its
       // cell path over EMERGENCE.settle seconds, an offset that decays like the shove's, instead of snapping the moment the rise ends (the snap
       // left a Pearl body a leash behind its record, and the body was put back: the motion audit's pops)
-      if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
+      if (ground && e.emergeOff) e.pos = norm3(add3(e.pos, scale3(e.emergeOff, ground.off)));   /* the ground phase: from the lip to the centre, over the hole */ else if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
       const ringed = softHunt.place(e, ringPace, dt, tNow);   // a ringed soft record's own step round the hull, or its way back onto the lane eased (src/fx/soft-hunt.js)
       // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
       // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body

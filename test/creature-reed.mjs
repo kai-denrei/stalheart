@@ -99,5 +99,14 @@ for (let k = 0; k < 40 && tight.stats().big.made < 2; k++) { tight.step(1 / 60);
 for (let k = 0; k < 10; k++) tight.step(1 / 60);
 assert.ok(tight.stats().big.timeScale < 1 && tight.stats().big.budget === 0.5, `the budget slows the bodies (${tight.stats().big.timeScale})`);
 two.forEach((h) => tight.free(h)); tight.dispose();
+// THREE TIMES THE SIZE (owner, 2026-10-18, note 8b: "make the smaller reeds 3x bigger, same health"): a body added with `grow` 3 is drawn, leashed and reported at three times the tier's r0
+{ const fam3 = createReedFamily({ parent, tiers, follow: CREATURE_FOLLOW, budget: null }); fam3.setPlanet(R);
+  const one = fam3.add('small', { pos: at(500, 0), apos: at(500, 9) }), three = fam3.add('small', { pos: at(500, 60), apos: at(500, 69), grow: 3 });
+  assert.equal(fam3.view(one).radius, tiers.small.r0); assert.equal(fam3.view(three).radius, 3 * tiers.small.r0, 'the radius follows the record\'s scale');
+  for (let k = 0; k < 40 && fam3.stats().small.made < 2; k++) { fam3.step(1 / 60); await tick(); }
+  fam3.step(1 / 60);
+  const scales = fam3.roots()[0].children.map((o) => o.scale.x).sort((a, b) => a - b);
+  assert.equal(scales.length, 2, `both made (${JSON.stringify(fam3.stats().small)})`); assert.ok(Math.abs(scales[1] / scales[0] - 3) < 1e-6, `drawn three times as wide (${scales[1] / scales[0]})`);
+  fam3.free(one); fam3.free(three); fam3.dispose(); }
 globalThis.fetch = realFetch;
 console.log('Creature Reeds: made a batch a frame, each in a frame of its own following its record across re-anchors, drawn on the sphere, re-placed past the leash, the v1 death, 120 Hz when many, the budget.');
