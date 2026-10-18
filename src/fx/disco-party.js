@@ -184,6 +184,7 @@ export function createDiscoParty(h) {
   }
 
   function begin() {
+    held = held.filter((l) => l.id !== DAY_42.briefs.back);   // "come back to the base" is stale once the party starts: shown after the ball was up it would sit ahead of the party's own line
     say(DAY_42.briefs.start);
     startMusic();
     h.sfx?.duck(DAY_42.music.duck.buses, DAY_42.music.duck.depth, DAY_42.seconds);
