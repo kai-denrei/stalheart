@@ -343,7 +343,7 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'THE ARENA'); assert.equal(run.state().name, 'THE ARENA');
   { let q = []; for (let g = 0; g < 200 && !q.length; g++) { q = run.release(ww.t) ?? []; step(0.5); }   // release() returns the entries the controller queues
     assert.equal(q.length, 12, `the arena row's first wave: twelve entries (${q.length}; ${JSON.stringify(run.state().breaches?.[0] ?? run.state())})`);
-    assert.ok(q.every((e) => e.type === 'reed' && e.tier === 'small' && e.hunter && e.spec?.hp === 4 && e.spec?.body === 'reed' && e.sp), `small Reed hunters at 4 hp off the breach (${JSON.stringify(q[0])})`);
+    assert.ok(q.every((e) => e.type === 'reed' && e.tier === 'small' && e.hunter && e.spec?.hp === 4 && e.spec?.body === 'reed' && e.sp && e.sizeMul === 3), `small Reed hunters at 4 hp off the breach, three times the size (note 8b) (${JSON.stringify(q[0])})`);
     const ab = ww.opened.at(-1); assert.deepEqual([ab.ci, ab.radius, ab.keep], [230, 3, true], `the arena's breach on the story's arena cell, three cells wide, kept (${JSON.stringify(ab)})`);
     assert.equal(run.state().breaches?.[0]?.side, 'arena', 'the arena side'); }
   { // NO STRAGGLERS AND NO STALL IN A BOSS SECTOR (2026-10-16): the mother alone, alive and unhurt for twenty seconds, holds the arena open where a held

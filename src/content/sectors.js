@@ -174,7 +174,9 @@ export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flo
 // waves with the gunship on its own autopilot overhead, and as the mother rises Isao takes the hull as the lure (the `lure` directive) and the player is
 // put in the gunship's seat (src/fx/boss-run.js). The choice card of 2026-10-15 is gone.
 export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: [12, 6, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { arena: 1 }, waves: 3, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 120, points: 1200 },
-  boss: { family: 'reed', waves: [{ count: 12, tier: 'small', hp: 4, pace: 1 }, { count: 6, tier: 'pup', hp: 6, pace: 1 }], boss: { tier: 'huge', hp: 180, pace: 1 } },
+  // THE SMALL REEDS THREE TIMES THE SIZE (owner, 2026-10-18, note 8b: "make the smaller reeds 3x bigger, same health"): `size` multiplies the record (its touch
+  // and ram radius, src/fx/enemy-step.js) and the drawn body (src/fx/creature-reed.js) together; hp stays 4
+  boss: { family: 'reed', waves: [{ count: 12, tier: 'small', hp: 4, pace: 1, size: 3 }, { count: 6, tier: 'pup', hp: 6, pace: 1 }], boss: { tier: 'huge', hp: 180, pace: 1 } },
   gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a boss',
   // THE MESSAGE (owner, 2026-10-18, note 6: "sector 9, it's not quite clear what we must do. We should message it better ... 'Go investigate that area, I'll clear a
   // way there'"): the sector's brief is Isao's order, `arena_go` (src/isaobriefs.js, src/fx/sector-run.js briefOf), and the debrief's next-sector page reads the same

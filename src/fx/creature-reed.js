@@ -79,11 +79,13 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     return c.parsed;
   }
 
-  function add(key, { pos, apos = pos, lift = 0 }) {
+  // `grow`: the record's scale over the tier's (THE ARENA's small Reeds three times the size, owner 2026-10-18, note 8b: "make the smaller reeds 3x bigger, same
+  // health"): the body's width, its leash and its re-anchor follow `r0` x grow
+  function add(key, { pos, apos = pos, lift = 0, grow = 1 }) {
     const def = tiers[key], b = book(key);
     if (!def) return null;
     if (b.alive >= def.capacity) { b.full++; return null; }
-    const h = { key, def, pos, apos, lift, kit: null, frame: null, s: 1, height: 0, outer: null, inner: null, dead: false, gone: false, behind: 0, deadAt: 0, fading: false };
+    const h = { key, def, r0: def.r0 * (grow > 0 ? grow : 1), pos, apos, lift, kit: null, frame: null, s: 1, height: 0, outer: null, inner: null, dead: false, gone: false, behind: 0, deadAt: 0, fading: false };
     pending.push(h); cage(def.variant);
     b.alive++; b.placed++; b.peak = Math.max(b.peak, b.alive);
     return h;
@@ -96,7 +98,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
       if (h.gone || disposed) { kit.dispose(); return; }
       const ext = restExtent(kit.body);
       kit.motion.feeding.enabled = false;
-      h.kit = kit; h.s = (2 * h.def.r0) / ext.width; h.height = ext.height; h.frame = surfaceFrame(h.pos);
+      h.kit = kit; h.s = (2 * h.r0) / ext.width; h.height = ext.height; h.frame = surfaceFrame(h.pos);
       h.outer = new THREE.Group(); h.inner = new THREE.Group();
       h.outer.name = `${h.def.label} body`; h.inner.add(kit.mesh); h.outer.add(h.inner); group.add(h.outer);
       bodies.add(h); aim(h); place(h);
@@ -118,7 +120,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     h.pos = pos; h.apos = apos; h.lift = lift;
     if (!h.kit) return false;
     const c = h.kit.motion.center, [rx, rz] = toPlane(h.frame, pos, R), lag = Math.hypot(c.x * h.s - rx, c.z * h.s - rz);
-    const leash = Math.max(follow.leashRadii * h.def.r0, follow.leashMin);
+    const leash = Math.max(follow.leashRadii * h.r0, follow.leashMin);
     h.behind = lag > leash ? h.behind + dt : 0;
     if (lag > 2 * leash || h.behind > follow.grace) {
       h.behind = 0; moveTo(h, pos); aim(h); book(h.key).replaced++;
@@ -202,7 +204,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
       }
       if (!h.dead) {
         const c = h.kit.motion.center;
-        if (Math.hypot(c.x, c.z) * h.s > Math.max(K.reanchor, K.reanchorSizes * 2 * h.def.r0)) { moveTo(h, fromPlane(h.frame, c.x * h.s, c.z * h.s, R)); aim(h); reanchors++; }
+        if (Math.hypot(c.x, c.z) * h.s > Math.max(K.reanchor, K.reanchorSizes * 2 * h.r0)) { moveTo(h, fromPlane(h.frame, c.x * h.s, c.z * h.s, R)); aim(h); reanchors++; }
       }
       place(h);
     }
@@ -238,7 +240,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
       if (!h) return null;
       const made = !!h.kit, c = made ? h.kit.motion.center : null;
       const k = h.dead ? clock - h.deadAt : 0;
-      return { tier: h.key, variant: h.def.variant, point: made ? fromPlane(h.frame, c.x * h.s, c.z * h.s, R) : h.pos, radius: h.def.r0, made, active: made && !h.dead, dead: h.dead, gone: h.gone,
+      return { tier: h.key, variant: h.def.variant, point: made ? fromPlane(h.frame, c.x * h.s, c.z * h.s, R) : h.pos, radius: h.r0, made, active: made && !h.dead, dead: h.dead, gone: h.gone,
         deflate: h.dead ? clamp01(k / K.collapse) : 0, opacity: h.fading ? 1 - clamp01((k - K.collapse) / K.fade) : 1, lift: h.lift, stage: made ? h.kit.motion.state : 'making', hz: hzOf(h.def) };
     },
     dispose() { disposed = true; for (const h of [...bodies, ...pending]) drop(h); pending.length = 0; parent.remove(group); },

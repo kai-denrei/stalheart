@@ -150,7 +150,7 @@ export function createSectorRun(h) {
   // 0.6 s apart off the breach's own source, with its spread (src/domain/boss-sector.js bossWaves; the enemy loop keeps `hunter`, `tier` and `spec`)
   function bossQueueOf(k, sp) {
     const plan = bossWaves(def, { tierSpec })[k] ?? [], out = []; let n = 0;
-    for (const e of plan) for (let i = 0; i < e.count; i++) out.push({ type: e.type, sp, at: n++ * 0.6, spread: 0.8, pace: e.pace ?? 1, spec: e.spec, tier: e.tier, hunter: true });
+    for (const e of plan) for (let i = 0; i < e.count; i++) out.push({ type: e.type, sp, at: n++ * 0.6, spread: 0.8, pace: e.pace ?? 1, spec: e.spec, tier: e.tier, hunter: true, ...(e.size ? { sizeMul: e.size } : {}) });   // sizeMul: the wave's scale on the record and its body (2026-10-18, note 8b)
     return out;
   }
   // one breach sends its next wave: the books count it, a feast is noted, the last pulse is remembered for the breath, and its queue entries come back (null: nothing to send)

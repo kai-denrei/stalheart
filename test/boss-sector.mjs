@@ -19,6 +19,9 @@ assert.equal(phaseScale(undefined, CUTIS_HITS), 1, 'no phase: the game\'s own da
 assert.deepEqual(bossAlive([{ alive: true, hunter: true, tier: 'small' }, { alive: true, hunter: true, tier: 'huge' }, { alive: false, hunter: true, tier: 'huge' }, { alive: true, hunter: false, tier: 'small' }]), { wave: 1, boss: 1, tiers: { small: 1 } });
 assert.deepEqual(bossAlive([{ alive: true, hunter: true, tier: 'small' }, { alive: true, hunter: true, tier: 'pup' }, { alive: true, hunter: true, tier: 'pup' }], { waveTiers: ['small', 'pup'] }), { wave: 3, boss: 0, tiers: { small: 1, pup: 2 } }, 'the waves\' tiers together and apart');
 assert.deepEqual(bossAlive(null), { wave: 0, boss: 0, tiers: { small: 0 } });
+// THE SMALL REEDS THREE TIMES THE SIZE (owner, 2026-10-18, note 8b: "make the smaller reeds 3x bigger, same health"): the wave's `size` rides on its entries, the hit points do not move
+assert.ok(wave.every((e) => e.size === 3 && e.spec.hp === 4), `the small Reeds carry the size 3 at 4 hp (${JSON.stringify(wave[0])})`);
+assert.ok(pups.every((e) => e.size === undefined) && boss.every((e) => e.size === undefined), 'the pups and the boss keep their own size');
 // THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"): what is left of the boss, alive or still queued
 assert.equal(bossLeft([{ alive: true, hunter: true, tier: 'huge' }, { alive: true, hunter: true, tier: 'small' }, { alive: true, type: 'gslime' }], []), 1, 'the mother alive: one');
 assert.equal(bossLeft([{ alive: false, hunter: true, tier: 'huge' }, { alive: true, hunter: true, tier: 'pup' }, { alive: true, type: 'gslime' }, { alive: true, type: 'ghost' }], []), 0, 'the mother dead: none left, whatever else walks');

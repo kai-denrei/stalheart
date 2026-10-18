@@ -231,8 +231,8 @@ export function createEnemyStep(host) {
       const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl, { hull: !host.story()?.hull?.held?.() }); }   // before the hull is issued the card says harder, not 'do not ram'   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
-      const tierKey = tierKeyOf({ type, tier: entry.tier }, PEARL_OF), tk = host.params.tune?.tier?.[tierKey];   // the tune panel's knobs for this tier (src/fx/tune-knobs.js)
-      const size = spec.size * 0.7 * (spec.body === 'pearl' ? pearlScaleOf(PEARL_OF[type]) : 1) * (tk?.size ?? 1);   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
+      const tierKey = tierKeyOf({ type, tier: entry.tier }, PEARL_OF), tk = host.params.tune?.tier?.[tierKey], grow = (tk?.size ?? 1) * (entry.sizeMul ?? 1);   // the tune panel's knobs for this tier (src/fx/tune-knobs.js); an entry's own scale over it (THE ARENA's small Reeds x3, 2026-10-18, note 8b)
+      const size = spec.size * 0.7 * (spec.body === 'pearl' ? pearlScaleOf(PEARL_OF[type]) : 1) * grow;   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
@@ -248,7 +248,7 @@ export function createEnemyStep(host) {
       if (atHole && emergeOff) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),tierKey,sizeMul:tk?.size??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),tierKey,sizeMul:grow,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
         cur: ci, prev: -1,
         next,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
