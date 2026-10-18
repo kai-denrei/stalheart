@@ -15,7 +15,7 @@
 //
 // The host: scene, camera, metres() (world units a metre), sfx (src/audio.js), startShot, snapCamera, showBrief, callout(text, cls), armWave,
 // daylight(), sectorRun(), base() (the story base: structure(id)), shotActive, seated, card, warning (the board's wave warning counting
-// down: no party over it), alive, won, isaoBusy; loadGlb and now (the wall clock in ms, performance.now by default) for a test.
+// down: no party over it), alive, won, isaoBusy, warm (src/fx/shader-warm.js: compile(root)); loadGlb and now (the wall clock in ms, performance.now by default) for a test.
 import * as THREE from '../../vendor/three.module.js';
 import { loadGlb } from '../glbmodels.js';
 import { DAY_42 } from '../content/day-42.js';
@@ -61,6 +61,7 @@ export function createDiscoParty(h) {
       ball = (scene.name === 'DISCO_BALL_ROOT' ? scene : node(scene, 'DISCO_BALL_ROOT') ?? scene).clone();
       const cradle = node(ball, 'STANDALONE_CRADLE'); if (cradle) cradle.visible = false;   // hung, never standing
       parts = { pivot: node(ball, 'DISCO_PENDULUM_PIVOT'), spin: node(ball, 'DISCO_SPHERE_SPIN'), halo: node(ball, 'LIGHT_HALO_YAW'), ring: node(ball, 'LASER_RING_YAW') };
+      rig(); h.warm?.compile?.(ball);   // the floodlights parked dark and the ball's programs linked with them, two days ahead (rig())
     }, (e) => fail(e?.message ?? e));
   }
 
@@ -95,19 +96,26 @@ export function createDiscoParty(h) {
     return true;
   }
 
-  function addLights() {
-    const L = DAY_42.light, { halo, ring } = parts;
-    for (let k = 0; halo && k < 4; k++) {
-      const s = new THREE.SpotLight(PARTY_COLORS[k], L.intensity, L.distance * metres(), L.angle, L.penumbra, DECAY);
+  // THE RIG BUILT AHEAD (final review, 2026-10-18, measured headless at sector 4: the party's first frames ran to 117 ms with three over
+  // 40 ms and 22 programs linked at 'start'; the four SpotLights change every lit material's light count, so every one relinks, and the ball's
+  // own materials link on their first draw). So the rig is built when the ball arrives (day 40): the floodlights parked in the scene at
+  // intensity 0, which links the scene's programs for four spots then, off the party, and the ball and its lasers compiled against them
+  // through the host's warmer; begin() hangs the same four lights from the halo, so the light count does not change on the cut. Built again
+  // at begin() for a party after restore() (dropLights() disposed it)
+  function rig() {
+    const L = DAY_42.light, { halo, ring } = parts, needSpots = !spots.length, needLasers = !lasers.length;
+    for (let k = 0; halo && needSpots && k < 4; k++) {
+      const s = new THREE.SpotLight(PARTY_COLORS[k], 0, L.distance * metres(), L.angle, L.penumbra, DECAY);
       const yaw = POD.at + k * Math.PI / 2; s.position.set(Math.cos(yaw) * POD.r, POD.y, -Math.sin(yaw) * POD.r); s.castShadow = false; s.userData.yaw = yaw;
-      s.add(s.target); halo.add(s); spots.push(s);
+      s.add(s.target); h.scene.add(s); spots.push(s);
     }
-    for (let k = 0; ring && k < 4; k++) {
+    for (let k = 0; ring && needLasers && k < 4; k++) {
       const geo = new THREE.PlaneGeometry(DAY_42.laser.length, DAY_42.laser.width); geo.translate(DAY_42.laser.length / 2 + APERTURE.r, 0, 0); geo.rotateX(-Math.PI / 2);   // flat, out along +x from the aperture
       const mat = new THREE.MeshBasicMaterial({ color: PARTY_COLORS[(k + 1) % 4], transparent: true, opacity: DAY_42.laser.opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
       const beam = new THREE.Mesh(geo, mat); beam.userData.yaw = k * Math.PI / 2; ring.add(beam); lasers.push(beam);
     }
   }
+  function addLights() { rig(); for (const s of spots) parts.halo.add(s); }   // hung from the halo, lit by hang()'s pulse
   function dropLights() {
     for (const s of spots) { s.removeFromParent(); s.dispose(); }
     for (const b of lasers) { b.removeFromParent(); b.geometry.dispose(); b.material.dispose(); }
@@ -218,7 +226,7 @@ export function createDiscoParty(h) {
     },
     holding: () => clock.holding(),
     force() { clock.force(); fetchBall(); },
-    state: () => ({ ...clock.state(), t: +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent).length : 0, music: !!music }),
+    state: () => ({ ...clock.state(), t: +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music }),
     restore() { finish(); clock.reset(); },
   };
 }

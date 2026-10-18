@@ -106,4 +106,15 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
 { const { h, scene } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); tickTo(p, 1);
   const s1 = scene.getObjectByName('DISCO_BALL_ROOT').scale.x; assert.ok(s1 > 0 && s1 < 0.2, `a quarter into the hoist the ball is small (${s1})`);
   tickTo(p, DAY_42.hoist); assert.ok(Math.abs(scene.getObjectByName('DISCO_BALL_ROOT').scale.x - 1) < 1e-6, 'whole at the pose'); }
+// the rig built ahead (final review, 2026-10-18, the start measured at 117 ms): at the ball's load the four floodlights are in the scene at
+// intensity 0 and the ball is compiled through the host's warmer; the party hangs the same four from the halo (the light count never changes
+// on the cut); a party after restore() in the same page builds them again
+{ let day = 40; const warmed = []; const { h, scene } = host(); h.daylight = () => ({ day: () => day }); h.warm = { compile: (r) => { warmed.push(r); return Promise.resolve(); } };
+  const lights = () => { const out = []; scene.traverse((o) => { if (o.isSpotLight) out.push(o); }); return out; };
+  const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  assert.equal(p.state().phase, 'idle'); assert.equal(lights().length, 4, 'four floodlights parked at the load'); assert.ok(lights().every((l) => l.intensity === 0 && l.parent === scene), 'dark, in the scene');
+  assert.equal(warmed.length, 1); assert.equal(warmed[0].name, 'DISCO_BALL_ROOT', 'the ball compiled through the warmer'); assert.equal(warmed[0].getObjectByName('LASER_RING_YAW').children.length, 4, 'with its lasers');
+  day = 42; p.tick(0.1); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(lights().length, 4, 'the same four, not eight');
+  assert.ok(lights().every((l) => l.parent.name === 'LIGHT_HALO_YAW' && l.intensity > 0), 'hung from the halo and lit'); assert.equal(p.state().lights, 4);
+  p.restore(); assert.equal(lights().length, 0, 'restore() leaves none'); p.tick(0.1); tickTo(p, 2); assert.equal(p.state().phase, 'party'); assert.equal(p.state().lights, 4, 'built again for a second party'); }
 console.log('disco-party ok');
