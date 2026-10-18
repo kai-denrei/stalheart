@@ -45,6 +45,8 @@ import { boxContact } from '../domain/hull-bodies.js';
 const IDENTITY = [0, 0, 0, 1];
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
+// two sRGB hex colours mixed channel by channel, `k` of the way from a to b (the cored read's tints, below)
+const mixHex = (a, b, k) => [16, 8, 0].reduce((o, sh) => o | (Math.round(((a >> sh) & 255) * (1 - k) + ((b >> sh) & 255) * k) << sh), 0);
 
 // `parent` the bodies' root, `tiers` the bodies by type (pearlBodies), `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `set` PEARL_TIERS, `tune` PEARL_FOLLOW,
 // `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub), `impact` PEARL_IMPACT, `pace` PEARL_PACE (a tier's hop reach),
@@ -67,6 +69,10 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
     if (gait) Object.assign(config, gait.config, { reach: pace?.[id]?.hop ?? gait.hop });   // a tier's own stride over the gait's (the whites, 2026-10-15)
     if (IMPACT?.death) config.deathTone = IMPACT.death.tone;   // the dead's darkness (PEARL_IMPACT.death)
+    // THE CORED READ (owner, 2026-10-18: "the core is slightly colored but the membrane is almost opaque white"; src/content/pearl-enemies.js
+    // PEARL_MEMBRANE): the drawn skin pulled toward the tier's tint by its share, the glints (white in the kit) toward it by theirs; a soft tier's shares are 0
+    if (def.values.membraneTint) config.skinTint = mixHex(def.values.skinTint, def.values.membraneTintTo, def.values.membraneTint);
+    if (def.values.glintShare) config.glintTint = mixHex(0xffffff, def.values.membraneTintTo, def.values.glintShare);
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 }), owner = new Array(swarm.capacity).fill(null);
     if (hubs?.reach) swarm.reachLimit = (i, x, z, dx, dz, max) => hubs.reach(swarm.hub[i], x, z, dx, dz, max, owner[i]?.cell ?? -1);
     // round three: the body's footprint (its origin, its anchors, its hop's middle, its sweep, a knock, a puddle) held off the rock too

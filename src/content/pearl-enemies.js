@@ -9,7 +9,7 @@
 // ratio: the game sizes its bodies by its own types, below), seeking stalks, hop cycle, hunting urgency, reach in radii, transfer acceleration, membrane
 // opacity and core size, all derived as tiers.ts derives them. THE OWNER'S EDIT (2026-10-13, on the belt clash: the game's orange is its first solid core,
 // the set's orange was soft): "we can trivially edit the set to reflect orange as the first pearl-hardcoded. do so." So orange carries a pearl core here
-// (coreShape 3, and with it tiers.ts's cored membrane opacity .32 and its core size .28); Jelly-Baby is not edited. The set's prototype `health` and
+// (coreShape 3, and with it tiers.ts's cored membrane opacity .32, PEARL_MEMBRANE's since 2026-10-18, and its core size .28); Jelly-Baby is not edited. The set's prototype `health` and
 // `contactDamage` are kept as data and not used: the fight is the game's own (ENEMY_SPEC), the recommended default. With the edit the bodies agree with the
 // game's ram rule exactly: soft tiers are the rammable belts, cored tiers the solid ones (test/pearl-enemies.mjs asserts it type by type).
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object') freeze(v); return Object.freeze(o); };
@@ -25,6 +25,27 @@ const ROWS = [
   ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 3, 4.5, 3, 3, 22, 240],
   ['black', 'Cutis-Core Onyx', 0x11151d, 0xff0000, 0.33, 3, 4, 4, 3, 35, 360],
 ];
+// THE CORED READ (owner, 2026-10-18, round two, note 4: "There's something confusing about a very white-looking enemy that has a hard core, too hard to
+// visually distinguish from harmless ones. It see it more clearly now; purple, brown, all of them... the core is slightly colored but the membrane is almost
+// opaque white, it is confusing."). Measured first (.superpowers/sdd/r2-c-before-*.png): the skin already carries the tier's colour, but dimmed by the
+// shading, and the brightest part of every body is its glints (the kit's specular, window and rim, all white), so in a crowd at the tank's distance a cored
+// body read as a glossy white one with a pale pearl in it. Per tier: `opacity` the membrane's (before: tiers.ts's cored .32, and .5 for the three hard
+// cores by the owner's edit of 2026-10-16; lowered so the pearl shows through, the hard cores still the fuller ones), `tint` the colour the drawn skin is
+// pulled toward by `share` (src/fx/creature-pearl.js; the data's skinTint stays the set's, the bestiary's swatch), `glint` that colour's share in the glints.
+// The colour is the core's where the core is the darker warning colour (orange's umber, black's red) and the belt's alarm hue (src/enemyspec.js ALARM_HUES, copied: content may not import it; the test pins them equal)
+// where the core is pale (green, purple, brown: their cores mixed in would whiten the skin, the opposite of the note). The soft tiers are untouched: .65 and
+// white glints. Black's glints are its red in full (enemyspec's RULE: a dark alarm body may not highlight in white). test/pearl-enemies.mjs: every cored
+// membrane under every soft one, every cored tint share above zero.
+export const PEARL_MEMBRANE = freeze({
+  white: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0 },
+  yellow: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0 },
+  blue: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0 },
+  orange: { opacity: 0.26, tint: 0x853b20, share: 0.4, glint: 0.6 },
+  green: { opacity: 0.26, tint: 0x3fbf5a, share: 0.4, glint: 0.6 },
+  purple: { opacity: 0.4, tint: 0xb44bff, share: 0.4, glint: 0.6 },
+  brown: { opacity: 0.4, tint: 0x8a5a2b, share: 0.4, glint: 0.6 },
+  black: { opacity: 0.4, tint: 0xff0000, share: 0.3, glint: 1 },
+});
 // a tier: `values` is the kit config's Pearl part (over src/fx/cutis-maku/config.js DEFAULT_CONFIG; r0 is set per body by the game's size)
 // THE NAMES (owner, 2026-10-14, from the bestiary: "Cutis-Soft Ivory, Cutis-Soft Lemon, Cutis-Soft Sky, etc. for all the colors, then Cutis-Core Pumpkin for
 // orange, Cutis-Core Emerald, etc. for the harder cores"): the soft tiers Cutis-Soft, the cored ones Cutis-Core, each with its colour's name; the ids stay.
@@ -32,7 +53,8 @@ export const PEARL_TIERS = freeze(ROWS.map(([id, name, skin, core, labR0, seekCo
   id, name, rank: rank + 1, cored: coreShape > 0, labR0,
   values: {
     seekCount, cycleDuration, aggression, skinTint: skin, veinTint: id === 'black' ? 0xbab6c1 : 0x45404b, pulseTint: core, coreTint: core, coreShape,
-    coreSize: id === 'black' ? 0.18 : id === 'purple' ? 0.22 : 0.28, membraneOpacity: coreShape ? (['purple', 'brown', 'black'].includes(id) ? 0.5 : 0.32) : 0.65, contactDamage, health,
+    coreSize: id === 'black' ? 0.18 : id === 'purple' ? 0.22 : 0.28, contactDamage, health,
+    membraneOpacity: PEARL_MEMBRANE[id].opacity, membraneTint: PEARL_MEMBRANE[id].share, membraneTintTo: PEARL_MEMBRANE[id].tint, glintShare: PEARL_MEMBRANE[id].glint,   // THE CORED READ, above
     transferAcceleration: rank < 4 ? 1.8 : 2.5, reach: rank < 4 ? 8 + rank : 12 + (rank - 4), noiseAmp: 0.15, veinWidth: 0.035, pearlVariant: 1,
   },
 })));

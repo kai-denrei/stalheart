@@ -4,10 +4,10 @@
 // bent onto the planet as the shader bends the shell, the family (pools, identity, the squad, the cloak, the death) and the switch (dress).
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../src/content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_MEMBRANE, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../src/content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
 import { pearlBodies, pearlPace, pearlLead, pearlLeash, squadSpots, pearlSpeed, pearlBuildUp } from '../src/domain/pearl-bodies.js';
-import { ENEMY_SPEC, INTROS } from '../src/enemyspec.js';
+import { ENEMY_SPEC, INTROS, ALARM_HUES, hueLuma, DARK_LUMA } from '../src/enemyspec.js';
 import { CutisSwarm, STEP } from '../src/fx/cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from '../src/fx/cutis-maku/config.js';
 import { PLANET_BEND, MEMBRANE_VERT, bendPoint } from '../src/fx/cutis-maku/shaders.js';
@@ -22,7 +22,8 @@ assert.deepEqual(PEARL_TIERS.map((t) => t.id), ['white', 'yellow', 'orange', 'bl
 assert.deepEqual(PEARL_TIERS.map((t) => t.cored), [false, false, true, false, true, true, true, true], 'orange is the first pearl-cored tier (the owner\'s edit)');
 for (const t of PEARL_TIERS) {
   assert.equal(t.values.coreShape, t.cored ? 3 : 0, `${t.id}: a pearl or no core`); assert.equal(t.values.pearlVariant, 1);
-  assert.equal(t.values.membraneOpacity, t.cored ? (['purple', 'brown', 'black'].includes(t.id) ? 0.5 : 0.32) : 0.65, `${t.id}: tiers.ts's opacity rule (the owner's edit of 2026-10-16: the three hard cores less transparent)`);
+  assert.equal(t.values.membraneOpacity, PEARL_MEMBRANE[t.id].opacity, `${t.id}: the membrane's opacity is the cored read's (PEARL_MEMBRANE)`);
+  assert.equal(t.values.membraneTint, PEARL_MEMBRANE[t.id].share); assert.equal(t.values.membraneTintTo, PEARL_MEMBRANE[t.id].tint); assert.equal(t.values.glintShare, PEARL_MEMBRANE[t.id].glint);
   assert.equal(t.values.coreTint, t.values.pulseTint);
 }
 const tier = Object.fromEntries(PEARL_TIERS.map((t) => [t.id, t]));
@@ -35,6 +36,35 @@ assert.deepEqual(PEARL_TIERS.map((t) => t.values.transferAcceleration), [1.8, 1.
 for (let k = 1; k < 8; k++) assert(PEARL_TIERS[k].labR0 > PEARL_TIERS[k - 1].labR0 && PEARL_TIERS[k].values.aggression > PEARL_TIERS[k - 1].values.aggression, 'the ladder grows');
 assert(Object.isFrozen(PEARL_TIERS) && Object.isFrozen(PEARL_TIERS[2].values));
 console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived values');
+
+// ---- the cored read (owner, 2026-10-18, round two note 4: "the core is slightly colored but the membrane is almost opaque white, it is confusing") ----
+{
+  const soft = PEARL_TIERS.filter((t) => !t.cored), cored = PEARL_TIERS.filter((t) => t.cored);
+  assert.deepEqual(Object.keys(PEARL_MEMBRANE).sort(), PEARL_TIERS.map((t) => t.id).sort(), 'a membrane row a tier');
+  const softMin = Math.min(...soft.map((t) => t.values.membraneOpacity));
+  for (const t of cored) {
+    assert(t.values.membraneOpacity < softMin, `${t.id}: a cored membrane (${t.values.membraneOpacity}) is under every soft one (${softMin}), so the pearl shows through`);
+    assert(t.values.membraneTint > 0 && t.values.membraneTint < 1, `${t.id}: the cored skin is pulled toward its tint, not replaced by it`);
+    assert(t.values.glintShare > 0, `${t.id}: its glints are not the soft tiers' white`);
+    assert(hueLuma(t.values.membraneTintTo) < 0.9, `${t.id}: its tint is not a white`);
+  }
+  for (const t of soft) assert.equal(t.values.membraneTint + t.values.glintShare, 0, `${t.id}: a soft tier keeps its skin and its white glints`);
+  // enemyspec's RULE: a DARK alarm body may not highlight in white; the dark cored tiers' glints are their tint in full
+  for (const t of cored.filter((x) => hueLuma(x.values.skinTint) < DARK_LUMA)) assert.equal(t.values.glintShare, 1, `${t.id}: a dark body glints in its warning colour, never white`);
+  for (const id of ['green', 'purple', 'brown']) assert.equal(PEARL_MEMBRANE[id].tint, ALARM_HUES[id], `${id}: its belt's alarm hue (enemyspec)`);
+  assert.equal(tier.black.values.membraneTintTo, tier.black.values.coreTint, 'black: the red of its core');
+  // the family draws it: the pool's config carries the mixed skin and glint, a soft pool the set's own skin and no glint key
+  const family = createPearlFamily({ parent: new THREE.Group(), tiers: pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY }), follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW });
+  const purple = family.add('barbed', { x: 0, z: 0 }), white = family.add('amoeba', { x: 5, z: 0 });
+  assert(purple && white, 'a cored and a soft body seated');
+  const cfg = (id) => (id === 'purple' ? purple : white).p.swarm.config;   // the handle's pool
+  const ch = (hex, sh) => (hex >> sh) & 255;
+  for (const sh of [16, 8, 0]) close(ch(cfg('purple').skinTint, sh), ch(tier.purple.values.skinTint, sh) * 0.6 + ch(PEARL_MEMBRANE.purple.tint, sh) * 0.4, 1, 'purple: the drawn skin 40 % of the way to its alarm hue');
+  assert.equal(cfg('white').skinTint, tier.white.values.skinTint); assert.equal(cfg('white').glintTint, undefined);
+  assert.notEqual(cfg('purple').glintTint, 0xffffff);
+  family.dispose?.();
+}
+console.log('PASS the cored read: cored membranes thinner than every soft one, tinted, their glints not white (black\'s red)');
 
 // ---- the mapping and the ram rule ----
 const programme = new Set([...INTROS.map((iv) => iv.type), ...Object.entries(ENEMY_SPEC).filter(([, s]) => !s.shelved).map(([t]) => t)]);
