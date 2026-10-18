@@ -213,7 +213,12 @@ export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scrambl
 // rimCells: and never within this many cells of the clearing. A breach blows out every rock cell within its clearRadius (6), so
 // one opened near the base's rim carved a way in beside a gate that still stood at 100% (measured with --pacing --passive: the
 // heart lost its first life 20 s into sector 1). The far ring never came that close; the near one can
-export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, rimCells: 10 });
+// flowFirstHops (owner, 2026-10-19, third round, note 3: "sector 4 and sector 5 have the tremor, but the first wave seems empty? There is a long delay
+// before enemies arrive"): a flow sector's first gate breach stands on this nearer ring. Measured headless on sector 4 at ringHops (the Pearl
+// column walks slower than the dots this ring was set for): the burst left the holes 7 s after the first opened, nothing held, and walked 29-30
+// hops for 47 s before its front was within 10 cells of the gate (the gate reached ~80 s after the release). The other breaches keep ringHops,
+// so the lane still fills from far out behind the first
+export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, flowFirstHops: 30, rimCells: 10 });
 // THE ARENA'S PLACE (owner, 2026-10-16: "a giant opening very far from the base"; src/domain/arena.js, src/platform/story-world.js story.arena): the
 // farthest reachable cell outside the walls within `farHops` of the farthest; its opening `craterCells` wide (the sinkhole scaled, src/game-breaches.js)
 // reachCells: the hull this near the arena's cell opens it (the drive out to the beacon), and nothing else does: the waitMax fallback (150 s after the start) is gone

@@ -422,4 +422,25 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(w.run.breathing(), true, `${n - Math.floor(n * 0.5)} of ${n} alive, at or under breath.at 0.6: a breath`);
   w.run.defNow().breath = { at: 0.25, max: 60 }; assert.equal(w.run.breathing(), false, 'the same field over breath.at 0.25: not a breath');
 }
+// THE PRESS IS IN SIGHT (owner, 2026-10-19, third round, note 3: "sector 4 and sector 5 have the tremor, but the first wave seems empty? There is a long
+// delay before enemies arrive"): a flow sector's first gate breach stands on the near ring (SECTOR_PLACEMENT.flowFirstHops) and opens first; the
+// second keeps ringHops; a side breach still goes first (sector 5); a pulse sector keeps both on ringHops; no cell on the near ring, the ring as before
+{
+  const { SECTOR_PLACEMENT } = await import('../src/content/sectors.js');
+  const near = SECTOR_PLACEMENT.flowFirstHops, ring = SECTOR_PLACEMENT.ringHops, hops = (cell) => (cell >= 200 ? 30 : 30 + (cell % 30));
+  assert.ok(near < ring - 6, 'the near ring is nearer than the ring\'s band');
+  const w = world({ firstSector: 4 }); w.step(0.5);
+  const b = w.run.state().breaches;
+  assert.deepEqual(b.map((x) => x.side), ['gate', 'gate']);
+  assert.ok(hops(b[0].cell) >= near - 6 && hops(b[0].cell) <= near + 3, `THE PRESS: the first breach on the near ring (${hops(b[0].cell)} hops)`);
+  assert.ok(hops(b[1].cell) >= ring - 6, `the second on the ring (${hops(b[1].cell)} hops)`);
+  assert.equal(w.opened[0].ci, b[0].cell, 'the near one opens first, under the dive');
+  assert.ok(b.every((x) => x.cell % 2 === 0), 'neither within a blast of the rim');
+  const w5 = world({ firstSector: 5 }); w5.step(2);
+  const b5 = w5.run.state().breaches;
+  assert.deepEqual(b5.map((x) => x.side), ['side', 'gate'], 'THE SIDE WALL: the side breach first');
+  assert.ok(hops(b5[1].cell) <= near + 3, `its gate breach on the near ring (${hops(b5[1].cell)} hops)`);
+  const w1 = world(); w1.step(0.5);
+  assert.ok(w1.run.state().breaches.every((x) => hops(x.cell) >= ring - 6), 'a pulse sector keeps both on the ring');
+}
 console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');
