@@ -10,7 +10,7 @@ export function sunDirection(angle, tiltDeg) {
   return [Math.cos(t) * c, -Math.sin(t) * c, s];   // in the plane normal to (sin t, cos t, 0); elevation at the pole is -sin(t) cos(angle)
 }
 export const smooth = (x) => { const u = Math.max(0, Math.min(1, x)); return u * u * (3 - 2 * u); };
-// dawn and dusk are soft and slow: the light starts before the sun clears the horizon and lingers well after, about half a minute of ramp on a five-minute day
+// dawn and dusk are soft and slow: the light starts before the sun clears the horizon and lingers well after, a few seconds of ramp on a thirty-second day
 export const daylightOf = (elevation) => smooth((elevation + 0.2) / 0.8);
 // ?day= (owner, 2026-10-18, DAY 42): below 1 a starting phase as before; 1 or more a day number, the run opening at that day's dawn,
 // a fraction past it the phase into that day (?day=42 is the party's playtest entry)
@@ -18,7 +18,7 @@ export function dayFlag(raw) {
   const v = Number(raw);
   if (raw === null || raw === undefined || raw === '' || !Number.isFinite(v) || v < 0) return { phase: 0, day: 1 };
   if (v < 1) return { phase: v, day: 1 };
-  const day = Math.floor(v); return { phase: +(v - day).toFixed(6), day };
+  const day = Math.floor(v); return { phase: +(v - day).toFixed(6) % 1, day };
 }
 // THE PHASE DISC (owner, 2026-10-18: "I am picturing something like the moon's phases"): the lit fraction of the HUD's disc is continuous
 // in the sun's angle, not the daylight scalar (which saturates for most of the day and most of the night): a half-lit disc at dawn, full at

@@ -8,6 +8,7 @@ assert.deepEqual(dayFlag(''), { phase: 0, day: 1 });
 assert.deepEqual(dayFlag('0.3'), { phase: 0.3, day: 1 });
 assert.deepEqual(dayFlag('42'), { phase: 0, day: 42 });
 assert.deepEqual(dayFlag('42.5'), { phase: 0.5, day: 42 });
+assert.deepEqual(dayFlag('42.9999996'), { phase: 0, day: 42 });   // the phase never rounds up to exactly 1
 assert.deepEqual(dayFlag('nonsense'), { phase: 0, day: 1 });
 assert.deepEqual(dayFlag('-3'), { phase: 0, day: 1 });
 

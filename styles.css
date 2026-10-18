@@ -4907,8 +4907,8 @@ body.seat-gliding #seat-vignette { display: none; }
 /* THE PHASE DISC (src/fx/daylight.js makeDial, 2026-10-18): top centre beside the sound toggle, a drawn moon-phase disc and the day's number */
 #day-dial { position: absolute; top: 50px; left: calc(50% - 52px); width: 26px; z-index: 11; pointer-events: none; text-align: center; }
 #day-dial svg { display: block; width: 26px; height: 26px; filter: drop-shadow(0 0 6px rgba(255, 230, 180, .25)); }
-#day-dial .dd-dark { fill: #0b1524; } #day-dial .dd-lit { fill: #cfe9ff; transition: fill .6s linear; } #day-dial .dd-rim { fill: none; stroke: rgba(159, 220, 255, .55); stroke-width: 1; }
-#day-dial b { display: block; margin-top: 2px; font: 600 12px/1 var(--font-ui); letter-spacing: .08em; color: rgba(207, 233, 255, .8); white-space: nowrap; }
+#day-dial .dd-dark { fill: #0b1524; } #day-dial .dd-lit { fill: #cfe9ff; transition: fill .25s linear; } #day-dial .dd-rim { fill: none; stroke: rgba(159, 220, 255, .55); stroke-width: 1; }
+#day-dial b { display: block; position: relative; left: 50%; width: max-content; transform: translateX(-50%); margin-top: 2px; font: 600 12px/1 var(--font-ui); letter-spacing: .08em; color: rgba(207, 233, 255, .8); white-space: nowrap; }
 
 /* THE WHY, LACONIC (src/fx/mission-card.js): the beats over the landing, one word at a time, then Isao's one line */
 #mission-card { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); z-index: 13; pointer-events: none; text-align: center; width: max-content; max-width: 92vw; transition: opacity .6s; }

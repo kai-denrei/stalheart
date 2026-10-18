@@ -11,7 +11,7 @@ import * as THREE from '../../vendor/three.module.js';
 export { dayFlag } from '../core/daylight.js';   // td-tab reads the ?day= flag through this module (no new import line there)
 import { sunAngle, sunDirection, daylightOf, phaseGlyph } from '../core/daylight.js';
 // `dayNo`: the day the run opens on (1 on the first dawn; the rig adds one each time the phase wraps). `dial`: an element the HUD's day dial goes in (owner, 2026-10-03: "a small day/night cycle moving animation in the main hud ... a circle
-// getting increasingly darker and brighter"): a disc lit by the daylight, warm at the golden hour, a tick going round its rim with the day
+// getting increasingly darker and brighter"): a disc lit by the daylight, warm at the golden hour, the day's number under it
 export function createDaylight({ hemi, sun, bg, day, tune, phase = 0, dayNo = 1, dial = null }) {
   const c = (v) => new THREE.Color(v);
   let night = null, p = phase, d = 0, elevation = 0, days = Math.max(1, Math.floor(dayNo));
@@ -29,7 +29,7 @@ export function createDaylight({ hemi, sun, bg, day, tune, phase = 0, dayNo = 1,
     bg.copy(night.bg).lerp(tmp.copy(dayBg), d);
     g = dusk ? Math.max(0, 1 - Math.abs(elevation - 0.04) / dusk.band) ** 1.5 * dusk.share : 0;   // the golden hour, either side of the horizon
     if (g > 0) { sun.color.lerp(dusk.sun, g); hemi.color.lerp(dusk.sky, g * 0.7); bg.lerp(dusk.bg, g); }
-    discs?.place(dir, g); face?.set(p, d, g, days, tune.dayShare);
+    discs?.place(dir, g); face?.set(p, g, days, tune.dayShare);
     return d;
   }
   apply();
@@ -81,17 +81,20 @@ function makeDial(parent) {
   const lit = document.createElementNS(NS, 'path'); lit.setAttribute('class', 'dd-lit');
   const rim = document.createElementNS(NS, 'circle'); rim.setAttribute('cx', C); rim.setAttribute('cy', C); rim.setAttribute('r', R); rim.setAttribute('class', 'dd-rim');
   svg.append(dark, lit, rim); const num = document.createElement('b'); el.append(svg, num); parent.append(el);
-  let lastDay = 0;
+  let lastDay = 0, lastD = null, lastTf = null, lastFill = null;
   return {
-    set(p, d, g, day, dayShare) {
+    set(p, g, day, dayShare) {
       const { lit: f, waning, rx } = phaseGlyph(p, dayShare);
       // the lit region: the right semicircle, closed by the terminator (a half-ellipse of half-width rx·R bowing into the dark side when more
       // than half is lit, into the lit side when less); mirrored for the evening so the shadow sits on the right
       const sweep = f > 0.5 ? 1 : 0, path = f <= 0.001 ? '' : f >= 0.999 ? `M${C} ${C - R} A${R} ${R} 0 1 1 ${C} ${C + R} A${R} ${R} 0 1 1 ${C} ${C - R}Z`
         : `M${C} ${C - R} A${R} ${R} 0 0 1 ${C} ${C + R} A${(rx * R).toFixed(2)} ${R} 0 0 ${sweep} ${C} ${C - R}Z`;
-      lit.setAttribute('d', path); lit.setAttribute('transform', waning ? `translate(26 0) scale(-1 1)` : '');
-      const warm = Math.min(1, g * 1.4);
-      lit.style.fill = `hsl(${Math.round(207 - 180 * warm)}, ${Math.round(70 + 20 * warm)}%, ${Math.round(90 - 25 * warm)}%)`;
+      const tf = waning ? 'translate(26 0) scale(-1 1)' : '', warm = Math.min(1, g * 1.4);
+      if (path !== lastD) { lastD = path; lit.setAttribute('d', path); }
+      if (tf !== lastTf) { lastTf = tf; lit.setAttribute('transform', tf); }
+      // RGB between the HUD's ice blue and a golden orange: an HSL hue sweep would go the long way through green and yellow
+      const fill = `rgb(${Math.round(207 + 48 * warm)}, ${Math.round(233 - 57 * warm)}, ${Math.round(255 - 159 * warm)})`;
+      if (fill !== lastFill) { lastFill = fill; lit.style.fill = fill; }
       if (day !== lastDay) { lastDay = day; num.textContent = `DAY ${day}`; }
     },
     dispose() { el.remove(); },
