@@ -25,6 +25,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { ENEMY_SPEC } from '../enemyspec.js';
 import { CREATURE_TIERS, CREATURE_FOLLOW, CREATURE_DEATH, CREATURE_PROBE, HUNTERS, tierSize } from '../content/creature-enemies.js';
+import { SOFT_HUNT } from '../content/soft-hunt.js';
 import { huntersDue } from '../domain/hunters.js';
 import { phaseScale } from '../domain/boss-sector.js';
 import { CUTIS_HITS } from '../content/cutis-maku.js';
@@ -199,6 +200,14 @@ export function createCreatureEnemies(host) {
     host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side });
   }
 
+  // THE SOFT HUNT'S JAB (owner, 2026-10-18, note 2: "they flank and surround and try to attack it although they cannot"; src/fx/soft-hunt.js): a soft body at
+  // its jab's deepest, short of the ram, is a light tick on the hull (its run-over jolt x SOFT_HUNT.tap); the jolt's load keeps a ring of them a rumble
+  function tap(e) {
+    if (e?.spec?.body !== 'pearl' || !e.alive) return;
+    const c = contact(e);
+    if (c) host.jolt?.kick({ radius: radiusOf(e) * (PEARL_IMPACT.tiers?.[e.spec.pearl]?.jolt ?? 1) * SOFT_HUNT.tap, solid: false, side: c.side });
+  }
+
   // ROUND FOUR, THE TANK AGAINST THE BODIES (owner, 2026-10-13: "the tank should never be able to 'go through' the enemy, they are still made of mass";
   // PEARL_IMPACT.contact): src/fx/hull-contact.js (moved there unchanged, 2026-10-14), on the unit sphere through the bodies' seam. The ram and the touch
   // stay the game's (src/fx/enemy-step.js: the record's distance decides who dies, the damage, the combo and the bounty); this is the bodies' and the
@@ -295,7 +304,7 @@ export function createCreatureEnemies(host) {
     },
     kill(e, fx) { bodies?.kill(e, fx); },
     // the game's ram (src/fx/enemy-step.js, just before the record's kill) and a cored body's touch on the tank (below)
-    rammed, touched, bodyContact,
+    rammed, touched, tap, bodyContact,
     // THE TUNE PANEL'S RETUNE (owner, 2026-10-16: "all instances of it, even those already on screen, should be re-spawned with the new stats"): a live record takes
     // the tier's size (its body eases to it, its reach and box with it) and hit points (its share kept) in place, no respawn
     retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1; if (size !== os) { e.sizeMul = size; e.size = e.size * size / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },

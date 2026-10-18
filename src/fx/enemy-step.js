@@ -20,7 +20,8 @@ import { tierKeyOf } from '../domain/tune.js';   /* the tune panel's per-tier kn
 import { sub3, add3, scale3, dot3, norm3, dist3, tangentBasis } from '../vec3.js';
 import { makeDebris, makeDotBurst, makeDotEnemy } from '../units.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from '../enemyspec.js';
-import { PEARL_OF, PEARL_TIERS, PEARL_HUNT, pearlScaleOf } from '../content/pearl-enemies.js';
+import { PEARL_OF, PEARL_TIERS, pearlScaleOf } from '../content/pearl-enemies.js';
+import { createSoftHunt } from './soft-hunt.js';   /* the soft tiers hunt the hull, flank and surround it (owner, 2026-10-18, note 2) */
 import { SQUADS } from '../content/sectors.js';   /* the squads unpacked under a count (2026-10-16) */   /* a blob at the lip takes the tier's skin; a soft tier's record smaller, a cored one's bigger (2026-10-16) */
 import { waveReset as shieldWaveReset, shoveVec, shoveMag } from '../shield.js';
 import { TOWER_ORDER } from '../towers.js';
@@ -277,18 +278,16 @@ export function createEnemyStep(host) {
   let hunt = null, huntAt = -9, huntCur = -1;
   function huntField(tNow) {
     const cur = host.player?.cur;
-    if (!(cur >= 0) || host.playerDown() || !host.enemies.some((e) => e.alive && (e.hunter || softHunter(e)))) { hunt = null; return; }
+    if (!(cur >= 0) || host.playerDown() || !host.enemies.some((e) => e.alive && (e.hunter || softHunt.soft(e)))) { hunt = null; return; }
     if (hunt && huntCur === cur && tNow - huntAt < 1) return;
     hunt = bfsDist(host.graph().adj, [cur], (i) => host.dungeon().tags[i] !== BLOCKED); huntAt = tNow; huntCur = cur;
   }
-  // THE SOFT HUNT (PEARL_HUNT, owner 2026-10-16): an ivory or a lemon within `within` cells of the tank, and nearer the tank than the gate, walks at the tank
-  const softHunter = (e) => PEARL_HUNT.tiers.includes(PEARL_OF[e.type]);
-  function wantsTank(e) {
-    if (!softHunter(e) || !host.player?.pos || host.playerDown()) return false;
-    const dt = dist3(e.pos, host.player.pos); if (dt > PEARL_HUNT.within * host.cellSide()) return false;
-    const gc = host.story()?.gateCell >= 0 ? host.story().gateCell : host.dungeon().heart;
-    return dt < dist3(e.pos, host.graph().centers[gc]);
-  }
+  // THE SOFT HUNT (owner, 2026-10-18, round three, note 2: "the weaker units (white and yellows) need to be faster and more aggressive towards a) priority 1
+  // the Tank, they flank and surround and try to attack it although they cannot, or b) the gates, whichever is closer"; src/fx/soft-hunt.js, SOFT_HUNT). It
+  // replaces PEARL_HUNT (2026-10-16: within 10 cells by the crow's flight, at the tank's cell): the goal by walking distance, the faster walk at the hull, the ring
+  const softHunt = createSoftHunt({ hull: () => (host.player?.cur >= 0 && !host.playerDown() && host.playerHP() > 0 && !host.story()?.hull?.held?.() ? host.player : null), field: () => hunt, graph: () => host.graph(), cellSide: () => host.cellSide(), enemies: () => host.enemies, tune: () => host.params.tune?.hunt ?? null, tap: (e) => host.creatures?.()?.tap?.(e),
+    open: (ci) => host.dungeon().tags[ci] !== BLOCKED && !host.story()?.sealed(ci),
+    gateDist: (ci) => { const d = host.dungeon().distToHeart, gc = host.story()?.gateCell; return d[ci] >= 0 ? Math.max(0, d[ci] - (gc >= 0 && d[gc] >= 0 ? d[gc] : 0)) : -1; } });
   // THE SQUADS UNPACKED (SQUADS.unpackUnder, owner 2026-10-16: packs of five and three walking to the base looked odd once the mass was gone): with fewer bodies
   // alive than the count, every squad record is set down as its members, singles at its cell
   let unpackAt = -9;
@@ -325,6 +324,7 @@ export function createEnemyStep(host) {
       }
       let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1) * (host.params.enemySpeed ?? 1) * (host.params.tune?.tier?.[e.tierKey]?.speed ?? 1);   // ENEMY SPEED x: the playtest knob over every walk, and the tune panel's per-tier walk (owner, 2026-10-16)
       if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
+      pace *= softHunt.pace(e, tNow, isScared(e, tNow));   // a soft tier's goal (the hull or the gate) and its faster walk at the hull (src/fx/soft-hunt.js; 1 for every other record)
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
       if (e.bodyPace != null) pace *= e.bodyPace;   // a Pearl record waits for its body (round four, src/fx/creature-pearl.js paceOf: the body leads)
       // the slow READS for its full duration: the whole cloud tints ice —
@@ -391,6 +391,7 @@ export function createEnemyStep(host) {
         }
         e.decloaked = vis;
       }
+      const ringPace = pace; if (softHunt.ringed(e)) pace = 0;   // on the ring round the hull a soft record walks free, not along the lanes (src/fx/soft-hunt.js place, below)
       if (isScared(e, tNow) && e.prog < 1 && towardScare(host.graph().centers[e.cur], host.graph().centers[e.next], e.scareFrom)) { const back = e.cur; e.cur = e.next; e.next = back; e.prog = 1 - e.prog; } e.walkPace = pace; e.prog += pace * dt;   /* walkPace: the walk as it is this frame, for the body that follows (src/fx/creature-bodies.js) */
       while (e.prog >= 1) {
         e.prog -= 1;
@@ -400,7 +401,7 @@ export function createEnemyStep(host) {
         // wobble left so the streams braid but visibly converge
         const exits = host.openNeighbors(e.cur).filter((c) => !host.story()?.sealed(c));   // a closed story gate is a wall to them
         let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, host.graph().centers, e.cur, e.scareFrom); if (away.length) pool = away; }
-        if (!pool && hunt && (e.hunter || wantsTank(e))) { const h = huntExits(exits, hunt, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js); a soft one too, when it is the nearer prey (PEARL_HUNT)
+        if (!pool && hunt && (e.hunter || softHunt.wants(e))) { const h = huntExits(exits, hunt, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js); a soft one too, when the hull is its goal (SOFT_HUNT)
         if (!pool) pool = seekExits(exits, host.dungeon().distToHeart, e.cur, host.whim()(), WALK_BIAS);   // the walk leans on the heart (WALK_BIAS; owner, 2026-10-15: "a much stronger bias to head towards the base")
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (e.guard) pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull: host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, aggro: STORY_EXPEDITIONS.aggro }); else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }
@@ -414,6 +415,7 @@ export function createEnemyStep(host) {
       // cell path over EMERGENCE.settle seconds, an offset that decays like the shove's, instead of snapping the moment the rise ends (the snap
       // left a Pearl body a leash behind its record, and the body was put back: the motion audit's pops)
       if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
+      const ringed = softHunt.place(e, ringPace, dt, tNow);   // a ringed soft record's own step round the hull, or its way back onto the lane eased (src/fx/soft-hunt.js)
       // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
       // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
       // slides back into its own lane.
@@ -429,7 +431,7 @@ export function createEnemyStep(host) {
       const raw = sub3(b, e.pos);
       const flat = sub3(raw, scale3(n, dot3(raw, n)));
       const l = Math.hypot(flat[0], flat[1], flat[2]);
-      if (l > 1e-9) e.dir = scale3(flat, 1 / l);
+      if (l > 1e-9 && !ringed) e.dir = scale3(flat, 1 / l);
       const s = host.cellSide() * (e.size ?? spec.size);
       let lift = s * (e.obj.userData.lift ?? 0.85);
       if(e.breachSource){const entry=e.breachSource.userData.breach;if(entry){const local=new THREE.Vector3(...e.pos).applyMatrix4(entry.fx.inverseFrame.value),r=entry.fx.tune.planetRadius;local.y+=r;const a=Math.atan2(Math.hypot(local.x,local.z),local.y)*r,angle=Math.atan2(local.z,local.x);lift+=sinkholeGroundHeight(Math.cos(angle)*a,Math.sin(angle)*a,entry.fx.hole.value)*host.cellSide();}}
@@ -550,5 +552,5 @@ export function createEnemyStep(host) {
     host.disposeObj(e.obj);
     host.updateHud();
   }
-  return { clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, seedPortals, gateTakesShell, killPortal, armWave, spawnWave, releaseSpawns, spawnOne, updateEnemies, killCreature };
+  return { clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, seedPortals, gateTakesShell, killPortal, armWave, spawnWave, releaseSpawns, spawnOne, updateEnemies, killCreature, softHunt: () => softHunt.state() };
 }

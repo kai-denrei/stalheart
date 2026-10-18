@@ -15,6 +15,9 @@ import { footprintDirs } from '../src/fx/cutis-maku/deform.js';
 import { createPearlFamily } from '../src/fx/creature-pearl.js';
 import { createCreatureEnemies, PEARL_BODIES, pearlSpec } from '../src/fx/creature-enemies.js';
 import { ENEMY_SPEC } from '../src/enemyspec.js';
+import { SOFT_HUNT } from '../src/content/soft-hunt.js';
+import { createSoftHunt } from '../src/fx/soft-hunt.js';
+import { bfsDist } from '../src/dungeon.js';
 
 const close = (a, b, eps, what) => assert(Math.abs(a - b) <= eps, `${what}: ${a} vs ${b}`);
 
@@ -82,6 +85,70 @@ console.log('PASS the heading turned through the coil (the stalks keep their wor
   assert.equal(pearlCatch(3, 6, 0.5), 1); close(pearlCatch(12, 6, 0.5), 1.5, 1e-12, 'hurried at most 1 + catchUp');
 }
 console.log('PASS the paced records (every tier at most its radii a second, no bursts, no jink), the record\'s wait for its body, the catch-up');
+
+// ---- THE SOFT HUNT'S WALK, AUDITED (owner, 2026-10-18, round three, note 2: "the weaker units (white and yellows) need to be faster and more aggressive"; src/fx/soft-hunt.js) ----
+// The caps re-based for the hunt only, by name. BEFORE: a white's and a yellow's walk was its PEARL_PACE `radii` (5 and 2.8 radii a second at the
+// sector's pace; the glide's audit above holds no upper bound since 2026-10-16, only no pop). HUNTING: x SOFT_HUNT.pace (white 1.35, yellow 1.25) at the
+// widest pace jitter (1.12), and on the ring the jab's lunge, faster than the walk: HUNT_CAP below. The pop is 0.25 radii in a 60 fps frame (15 radii a
+// second): the caps keep half of that and more. The walk is the real one (createSoftHunt on a grid of 10 m cells), the bodies the real gliding blobs.
+const HUNT_CAP = { white: 9, yellow: 6 };   // radii a second while hunting the hull, walk or jab (before: 5 / 2.8, the walk's PEARL_PACE radii)
+{
+  for (const [type, b] of Object.entries(PEARL_BODIES)) {
+    if (!SOFT_HUNT.tiers.includes(b.tier)) continue;
+    const walk = pearlSpec(type).speed * 1.12 * PEARL_GAIT.sectorPace * 10, hunting = (walk * SOFT_HUNT.pace[b.tier]) / b.r0;
+    const jab = ((Math.PI * (SOFT_HUNT.ring - SOFT_HUNT.jab.depth)) / SOFT_HUNT.jab.seconds) * 1.15 * 10 / b.r0;
+    assert(hunting <= HUNT_CAP[b.tier] && jab <= HUNT_CAP[b.tier], `${type} hunts at ${hunting.toFixed(2)} radii a second, jabs at ${jab.toFixed(2)} (cap ${HUNT_CAP[b.tier]})`);
+    assert(HUNT_CAP[b.tier] <= 0.25 * 60 / 1.5, 'the cap well under a pop a frame');
+  }
+  const N = 61, cs = 0.01, M = 1000, centers = [], adj = [], idx = (i, j) => (i + 30) * N + j + 30;   // 10 m cells (cs x M metres)
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const x = (i - 30) * cs, y = (j - 30) * cs, l = Math.hypot(x, y, 1); centers.push([x / l, y / l, 1 / l]); adj.push([[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]].filter(([a, c]) => a >= 0 && c >= 0 && a < N && c < N).map(([a, c]) => a * N + c)); }
+  const hull = { cur: idx(0, 0), pos: centers[idx(0, 0)].slice() };
+  let field = bfsDist(adj, [hull.cur]);
+  const sh = createSoftHunt({ hull: () => hull, field: () => field, graph: () => ({ adj, centers }), cellSide: () => cs, open: () => true, tune: () => null, gateDist: () => 40, enemies: () => recs });
+  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT, pace: PEARL_PACE, gait: PEARL_GAIT });
+  // the audit's own watch skips a gliding blob (it is placed every frame, which the audit books as a re-placement), so the blobs are measured
+  // here as the audit measures a centre: the drawn centre's move a frame, scaled to 60 fps, in the body's radii; a pop past 0.25
+  const seen = {};
+  let seed = 5; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const recs = [];
+  for (const [k, type] of ['amoeba', 'phage', 'ghost', 'scoutufo'].flatMap((t) => [t, t, t]).entries()) {
+    const c = idx(4 + (k % 3), -6 + k), p = centers[c];
+    const e = { id: k, type, alive: true, cur: c, next: c, prog: 0, pos: p.slice(), dir: [-1, 0, 0], jit: 0.9 + rnd() * 0.22, walkPace: 0 };
+    e.h = fam.add(type, { x: p[0] * M, z: p[1] * M, angle: Math.PI, speed: 5 }); recs.push(e);
+  }
+  let t = 0, frame = 0, ringed = 0;
+  while (t < 40) {
+    const dt = [1 / 60, 1 / 45, 1 / 50, 1 / 40][frame++ % 4]; t += dt;
+    if (t > 30 && t < 34) { const c = idx(Math.round((t - 30) * 0.6), 0); if (c !== hull.cur) { hull.cur = c; hull.pos = centers[c].slice(); field = bfsDist(adj, [c]); } }   // the hull drives off a few cells: they re-aim
+    for (const e of recs) {
+      let pace = pearlSpec(e.type).speed * e.jit * PEARL_GAIT.sectorPace * sh.pace(e, t);
+      const ringPace = pace; if (sh.ringed(e)) pace = 0;
+      e.prog += pace * dt; e.walkPace = pace;
+      while (e.prog >= 1) { e.prog -= 1; e.cur = e.next; const ex = adj[e.cur].filter((c) => sh.wants(e) && field[c] < field[e.cur]); e.next = ex.length ? ex[e.id % ex.length] : e.cur; }
+      const a = centers[e.cur], b = centers[e.next], f = Math.min(1, e.prog), q = [0, 1, 2].map((k) => a[k] + (b[k] - a[k]) * f), l = Math.hypot(...q);
+      e.pos = q.map((v) => v / l);
+      if (e.next !== e.cur) { const d = [b[0] - a[0], b[1] - a[1]], dl = Math.hypot(...d); e.dir = [d[0] / dl, d[1] / dl, 0]; }
+      sh.place(e, ringPace, dt, t);
+      const v = e.walkPace * 10, lead = CREATURE_FOLLOW.lead * v;
+      fam.track(e.h, { x: e.pos[0] * M, z: e.pos[1] * M, ax: e.pos[0] * M + e.dir[0] * lead, az: e.pos[1] * M + e.dir[1] * lead, dt, speed: v });
+    }
+    fam.step(dt, null, 0);
+    for (const e of recs) {
+      const v = fam.view(e.h), tier = PEARL_BODIES[e.type].tier, o = (seen[tier] ??= { frames: 0, pops: 0, worst: 0 });
+      if (e.last && e.last.hub === v.hub) { const step = Math.hypot(v.centre[0] - e.last.c[0], v.centre[1] - e.last.c[1]) / v.radius / (dt * 60); o.frames++; o.worst = Math.max(o.worst, step); if (step > 0.25) o.pops++; }
+      e.last = { c: v.centre.slice(), hub: v.hub };
+    }
+    if (t > 20 && t < 30) ringed = Math.max(ringed, sh.state().atHull);
+  }
+  assert(ringed >= 8, `the blobs reach the ring round the hull (${ringed} of 12 at once)`);
+  for (const id of SOFT_HUNT.tiers) {
+    const m = seen[id];
+    assert(m && m.frames > 3000, `${id}: watched (${JSON.stringify(m)})`);
+    assert.equal(m.pops, 0, `${id}: no centre pop on the hunt (${JSON.stringify(m)})`);
+  }
+  if (process.env.SOFT_HUNT_AUDIT) console.log(JSON.stringify(seen));
+}
+console.log('PASS the soft hunt audited: white and yellow hunting the hull x SOFT_HUNT.pace, flanking round it, circling and jabbing, under HUNT_CAP (re-based from the walk\'s 5 / 2.8 radii a second); the blobs on the real walk, no pop');
 
 // ---- the motion: bodies following records along cell paths (turns at the corners, a scare now and then), a jittery frame ----
 function follow(gait, secs = 12, per = 3) {
