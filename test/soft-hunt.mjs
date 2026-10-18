@@ -85,10 +85,10 @@ function world(blocked = () => false) {
   }
   return { cs, centers, adj, tags, idx: (i, j) => idx(i + 20, j + 20) };
 }
-const CLOCK = { t: 0 };
+const CLOCK = { t: 0 }, OPENS = { n: 0 };   // OPENS: the host's openness checks (a step's, and every one `aim` makes)
 function run({ w, recs, hull, secs, onFrame, tune = null }) {
   let field = null, fieldAt = -1;
-  const host = { hull: () => hull.cur >= 0 ? hull : null, field: () => field, graph: () => ({ adj: w.adj, centers: w.centers }), cellSide: () => w.cs, open: (ci) => w.tags[ci] !== 0, tune: () => tune,
+  const host = { hull: () => hull.cur >= 0 ? hull : null, field: () => field, graph: () => ({ adj: w.adj, centers: w.centers }), cellSide: () => w.cs, open: (ci) => { OPENS.n++; return w.tags[ci] !== 0; }, tune: () => tune,
     gateDist: () => 30, enemies: () => recs, tap: (e) => { e.taps = (e.taps ?? 0) + 1; } };
   const sh = createSoftHunt(host);
   let t = CLOCK.t;   // one clock across the runs: a record's next decision is on it
@@ -165,3 +165,24 @@ console.log('PASS in a corridor: never on rock, the group at both ends of the hu
   const [d] = angle(w, hull, recs[0]); assert(d > 1.6 && d < 2.1, `the ring at the knob's radius (${d.toFixed(2)})`);
 }
 console.log('PASS the tune panel\'s knobs: hunt pace x, the ring\'s radius');
+// a ringed body blocked on its way: it re-aims on the decision tick (not every frame) and is released after three blocked decisions, then kept off the ring
+{
+  const w = world(), hull = { cur: w.idx(0, 0), pos: w.centers[w.idx(0, 0)].slice() }, recs = [rec(w, 0, 3, 0)];
+  run({ w, recs, hull, secs: 14 });
+  const e = recs[0]; assert(e.hunt.ringed, 'ringed first');
+  hull.cur = w.idx(0, 2); hull.pos = w.centers[hull.cur].slice();   // the spot moves (the body is not on it), the hull stays within `leave`
+  const ci = Math.floor(e.cur / 41) - 20, cj = (e.cur % 41) - 20;
+  let walled = false, opens0 = 0, opens1 = 0, releasedAt = null;
+  const t0 = CLOCK.t;
+  run({ w, recs, hull, secs: 6, onFrame: (t) => {
+    if (!walled) { walled = true; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (a || b) w.tags[w.idx(ci + a, cj + b)] = 0; opens0 = OPENS.n; }   // rock all round it, after the field was laid
+    if (t - t0 > 1 && t - t0 < 2) opens1 = OPENS.n;
+    if (releasedAt == null && !e.hunt.ringed) releasedAt = t - t0;
+  } });
+  assert(!e.hunt.ringed && releasedAt != null, `released after its blocked decisions (ringed ${e.hunt.ringed})`);
+  assert(releasedAt <= 5 * T.every + 0.1, `within three blocked decisions after the one in flight and the one that finds it stopped (${releasedAt?.toFixed(2)} s, every ${T.every})`);
+  assert(opens1 - opens0 < 400, `a blocked body does not re-aim every frame (${opens1 - opens0} openness checks in the first second, one a frame is 60 and an aim is a dozen)`);
+  run({ w, recs, hull, secs: 3 });
+  assert(!e.hunt.ringed, 'kept off the ring for a while after it was let go');
+}
+console.log('PASS a ringed body blocked on its way re-aims on the decision tick and is released after three blocked decisions');

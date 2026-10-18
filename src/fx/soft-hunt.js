@@ -22,6 +22,8 @@ import { nearestCellFrom } from '../domain/body-reach.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, dist3, tangentBasis } from '../vec3.js';
 
 const PHI = 0.6180339887498949;
+const HOLD_OFF = 8;   // s a body let go for being blocked stays off the ring
+const BLOCKED_MAX = 3;   // blocked decisions in a row (SOFT_HUNT.every s apart) before a ringed body is released
 export function createSoftHunt(host) {
   let T = SOFT_HUNT, from = null, taps = 0;
   const knobs = () => {
@@ -49,7 +51,7 @@ export function createSoftHunt(host) {
   }
   function release(e) {
     const hs = e.hunt; if (!hs.ringed) return;
-    hs.ringed = false; hs.onRing = false;
+    hs.ringed = false; hs.onRing = false; hs.stuck = null;
     const c = host.graph().centers[e.cur];
     // back to the lanes from where it stands: its cell's walk picks the next exit at once (prog 1), the gap to the cell's centre eased out
     e.next = e.cur; e.prog = 1; hs.off = sub3(hs.p, c); hs.offLeft = knobs().settle;
@@ -64,11 +66,16 @@ export function createSoftHunt(host) {
     if (huntDue(hs, tNow)) {
       hs.at = tNow + t.every;
       hs.goal = huntGoal({ hullDist: hd, gateDist: host.gateDist(e.cur) }, t);
-      if (hs.ringed && h) aim(e, h);
+      if (hs.ringed && h) {
+        // a body blocked on its way since the last decision (rock or a shut gate between it and its spot) re-aims here, from the bearing it was
+        // stopped at, not every frame; after BLOCKED_MAX blocked decisions in a row it is let go (the lane takes it back) and kept off the ring for HOLD_OFF s
+        if (hs.stuck != null) { hs.blocked = (hs.blocked ?? 0) + 1; hs.bearing = hs.stuck; hs.stuck = null; } else hs.blocked = 0;
+        if (hs.blocked >= BLOCKED_MAX) { hs.blocked = 0; hs.holdUntil = tNow + HOLD_OFF; release(e); } else aim(e, h);   // (the hull's own motion is re-aimed here as before)
+      }
     }
     if (!h || scared || hs.goal !== 'hull') release(e);
     else if (!hs.ringed) {
-      if (!e.emergeOff && hd >= 0 && hd <= t.enter && dist3(e.pos, h.pos) <= (t.enter + t.ring) * host.cellSide()) { hs.ringed = true; hs.p = e.pos.slice(); hs.off = null; hs.t0 = tNow; aim(e, h); }
+      if (!e.emergeOff && !(tNow < (hs.holdUntil ?? 0)) && hd >= 0 && hd <= t.enter && dist3(e.pos, h.pos) <= (t.enter + t.ring) * host.cellSide()) { hs.ringed = true; hs.p = e.pos.slice(); hs.off = null; hs.t0 = tNow; aim(e, h); }
     } else if (hd < 0 || hd > t.leave || dist3(hs.p, h.pos) > (t.leave + t.ring) * host.cellSide()) release(e);
     return huntPace(PEARL_OF[e.type], t, hs.goal);
   }
@@ -103,7 +110,7 @@ export function createSoftHunt(host) {
       const p = toWorld(h, u, v, next, cs), ci = nearestCellFrom(g.adj, g.centers, e.cur, p);
       if (host.open(ci)) { const step = sub3(p, hs.p); hs.p = p; e.cur = e.next = ci; e.dir = norm3(sub3(step, scale3(p, dot3(step, p)))); }
       else if (hs.onRing) hs.dir = -hs.dir;   // rock or a shut gate on its circle: it turns round
-      else { hs.bearing = Math.atan2(at[1], at[0]); aim(e, h); }   // in its way to its spot: a spot on its own side of the hull instead
+      else hs.stuck = Math.atan2(at[1], at[0]);   // in its way to its spot: the next decision aims a spot on its own side of the hull instead
     }
     e.prog = 0; e.next = e.cur;
     if (!(moved > 1e-9)) { const f = sub3(h.pos, hs.p), fl = sub3(f, scale3(hs.p, dot3(f, hs.p))); if (Math.hypot(...fl) > 1e-9) e.dir = norm3(fl); }   // standing: it faces the hull

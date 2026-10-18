@@ -287,6 +287,8 @@ export function createEnemyStep(host) {
   // replaces PEARL_HUNT (2026-10-16: within 10 cells by the crow's flight, at the tank's cell): the goal by walking distance, the faster walk at the hull, the ring
   const softHunt = createSoftHunt({ hull: () => (host.player?.cur >= 0 && !host.playerDown() && host.playerHP() > 0 && !host.story()?.hull?.held?.() ? host.player : null), field: () => hunt, graph: () => host.graph(), cellSide: () => host.cellSide(), enemies: () => host.enemies, tune: () => host.params.tune?.hunt ?? null, tap: (e) => host.creatures?.()?.tap?.(e),
     open: (ci) => host.dungeon().tags[ci] !== BLOCKED && !host.story()?.sealed(ci),
+    // the gate's walking distance as `distToHeart[ci] - distToHeart[gate cell]`: exact only while the story gate lies on the shortest path from the cell to the
+    // heart; with the back door open a cell can reach the heart another way, and the difference undercounts (it is then at most the true distance to the gate)
     gateDist: (ci) => { const d = host.dungeon().distToHeart, gc = host.story()?.gateCell; return d[ci] >= 0 ? Math.max(0, d[ci] - (gc >= 0 && d[gc] >= 0 ? d[gc] : 0)) : -1; } });
   // THE SQUADS UNPACKED (SQUADS.unpackUnder, owner 2026-10-16: packs of five and three walking to the base looked odd once the mass was gone): with fewer bodies
   // alive than the count, every squad record is set down as its members, singles at its cell
