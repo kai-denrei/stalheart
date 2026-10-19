@@ -84,6 +84,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
+    // A SKIN AS IN THE LAB (owner, 2026-10-19, note 5; PEARL_MEMBRANE's `pearl`): under a full skin the pearl is drawn after the membranes, at that opacity
+    if (cores && def.values.pearlShow != null) for (const m of cores.meshes) { m.renderOrder = (def.values.membraneOrder ?? 2) + 1; m.material.opacity = def.values.pearlShow; }
     p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
     pools.set(id, p);
     return p;

@@ -86,7 +86,8 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   const capacity = Object.fromEntries(PEARL_TIERS.map((t) => [t.id, Math.max(...S.packSizes) * 2]));
   // the stage's own copies of the game's tables, slowed and stretched by BESTIARY_STAGE.body (see the header)
   const B = S.body;
-  const set = PEARL_TIERS.map((t) => ({ ...t, values: { ...t.values, cycleDuration: t.values.cycleDuration * B.cycle } }));
+  // and the lab's skin (BESTIARY_STAGE.skin, 2026-10-19): the reference opacity over the stage's black, the pearl under it
+  const set = PEARL_TIERS.map((t) => ({ ...t, values: { ...t.values, cycleDuration: t.values.cycleDuration * B.cycle, ...(S.skin?.[t.id] != null ? { membraneOpacity: S.skin[t.id], pearlShow: undefined } : {}) } }));
   const gait = { ...PEARL_GAIT, hop: PEARL_GAIT.hop * B.reach, config: { ...PEARL_GAIT.config, timing: B.timing ?? PEARL_GAIT.config.timing } };
   const pace = Object.fromEntries(Object.entries(PEARL_PACE).map(([id, p]) => [id, p.hop ? { ...p, hop: p.hop * B.reach } : p]));   // a tier's own stride stretched too (the whites, 2026-10-15)
   const pearl = createPearlFamily({ parent: world, tiers: BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set,

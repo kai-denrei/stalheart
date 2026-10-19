@@ -135,6 +135,10 @@ export const BESTIARY_STAGE = freeze({
   level: 0,
   creatureTier: 'small',
   silhouette: [0.003, 0.004, 0.006],
+  // THE LAB'S SKIN (owner, 2026-10-19, round four, note 5: the story's purples "should look like they do in our specimen lab"): the stage keeps the
+  // membrane opacity the owner named as the reference look, over its near-black stage, and the pearl under the skin (no PEARL_MEMBRANE `pearl`);
+  // the planet's full skin (PEARL_MEMBRANE purple, brown: 1.35) is what it takes to read the same over lit ground
+  skin: { purple: 0.45, brown: 0.45 },
 });
 
 // the terminal's CRT (src/fx/crt-pass.js): colour, not the feed's mono green; a faint cool phosphor cast and a little more light

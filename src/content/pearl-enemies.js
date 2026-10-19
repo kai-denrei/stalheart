@@ -45,14 +45,25 @@ const ROWS = [
 // drawn before both and write depth, as before). And purple and brown keep enemyspec's dark-body rule like black: their glints, the rim with them
 // (src/fx/cutis-maku/shaders.js: specular, window and rim all take uGlint), are their tint in full, not 40 % white; their skin 60 % of the way to it
 // (was 40 %); their membrane .45 (r2-c's .4 read faint in a crowd; its report named .45 as the first knob, under the owner's .5 of 2026-10-16).
+// A SKIN AS IN THE LAB (owner, 2026-10-19, round four, note 5: "color of purple enemy is still wrong, they look almost entirely white, they should
+// look like they do in our specimen lab, purple skin"). Measured first (.superpowers/sdd/r4-c-before-*.png): the membrane shader is unlit and its
+// front face covers about .29 of what lies behind it at .45 (.85 x .75 x .45; the high hull's back face adds ~.15). On the bestiary's near-black
+// stage what lies behind is black, so a purple body reads as its own purple (#5b3d7e sampled, 64 % of its box saturated purple); on the planet
+// it is the daylit floor, the base's pale pad, the white and blue crowds the purples walk in, and the day-lit pale pearl (0xdfa9ff, clearcoat),
+// so in a sector-5 crowd in daylight 23 % of a purple body's pixels were saturated purple and its mean #56596a, a lilac-grey. A thin skin can
+// only read as the lab's over a black ground. So purple and brown (the same row, the same cause) wear a full skin on the planet: `opacity` 1.35
+// (the shader clamps: ~.86 of the front face, the stretched stalks still ~.26), and `pearl`: their pearl drawn after the skin at that opacity
+// (src/fx/creature-pearl.js) instead of under it, so it shows through as it does through the lab's thin skin. The bestiary keeps its .45 and its
+// pearl under the skin (src/content/bestiary.js BESTIARY_STAGE.skin): the lab is the reference look, over its own black. Same frame A/B, sector 5
+// in daylight: 92 % of the purple body saturated purple, mean #7c52a1. Black is left: a dark skin, its read is its red, not this note.
 export const PEARL_MEMBRANE = freeze({
   white: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
   yellow: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
   blue: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
   orange: { opacity: 0.26, tint: 0x853b20, share: 0.4, glint: 0.6, order: 3 },
   green: { opacity: 0.26, tint: 0x3fbf5a, share: 0.4, glint: 0.6, order: 3 },
-  purple: { opacity: 0.45, tint: 0xb44bff, share: 0.6, glint: 1, order: 3 },   // was .4, .4, .6 (2026-10-18, round three)
-  brown: { opacity: 0.45, tint: 0x8a5a2b, share: 0.6, glint: 1, order: 3 },   // was .4, .4, .6 (2026-10-18, round three)
+  purple: { opacity: 1.35, tint: 0xb44bff, share: 0.6, glint: 1, order: 3, pearl: 0.55 },   // opacity was .45 (round three), .4 before; pearl new (2026-10-19, note 5)
+  brown: { opacity: 1.35, tint: 0x8a5a2b, share: 0.6, glint: 1, order: 3, pearl: 0.55 },   // as purple (2026-10-19, note 5)
   black: { opacity: 0.4, tint: 0xff0000, share: 0.3, glint: 1, order: 3 },
 });
 // a tier: `values` is the kit config's Pearl part (over src/fx/cutis-maku/config.js DEFAULT_CONFIG; r0 is set per body by the game's size)
@@ -63,7 +74,7 @@ export const PEARL_TIERS = freeze(ROWS.map(([id, name, skin, core, labR0, seekCo
   values: {
     seekCount, cycleDuration, aggression, skinTint: skin, veinTint: id === 'black' ? 0xbab6c1 : 0x45404b, pulseTint: core, coreTint: core, coreShape,
     coreSize: id === 'black' ? 0.18 : id === 'purple' ? 0.22 : 0.28, contactDamage, health,
-    membraneOpacity: PEARL_MEMBRANE[id].opacity, membraneTint: PEARL_MEMBRANE[id].share, membraneTintTo: PEARL_MEMBRANE[id].tint, glintShare: PEARL_MEMBRANE[id].glint, membraneOrder: PEARL_MEMBRANE[id].order,   // THE CORED READ, above
+    membraneOpacity: PEARL_MEMBRANE[id].opacity, membraneTint: PEARL_MEMBRANE[id].share, membraneTintTo: PEARL_MEMBRANE[id].tint, glintShare: PEARL_MEMBRANE[id].glint, membraneOrder: PEARL_MEMBRANE[id].order, pearlShow: PEARL_MEMBRANE[id].pearl,   // THE CORED READ, A SKIN AS IN THE LAB, above
     transferAcceleration: rank < 4 ? 1.8 : 2.5, reach: rank < 4 ? 8 + rank : 12 + (rank - 4), noiseAmp: 0.15, veinWidth: 0.035, pearlVariant: 1,
   },
 })));

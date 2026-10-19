@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { PEARL_TIERS, PEARL_MEMBRANE, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../src/content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
+import { BESTIARY_STAGE } from '../src/content/bestiary.js';
 import { pearlBodies, pearlPace, pearlLead, pearlLeash, squadSpots, pearlSpeed, pearlBuildUp } from '../src/domain/pearl-bodies.js';
 import { ENEMY_SPEC, INTROS, ALARM_HUES, hueLuma, DARK_LUMA } from '../src/enemyspec.js';
 import { CutisSwarm, STEP } from '../src/fx/cutis-maku/swarm.js';
@@ -43,7 +44,9 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   assert.deepEqual(Object.keys(PEARL_MEMBRANE).sort(), PEARL_TIERS.map((t) => t.id).sort(), 'a membrane row a tier');
   const softMin = Math.min(...soft.map((t) => t.values.membraneOpacity));
   for (const t of cored) {
-    assert(t.values.membraneOpacity < softMin, `${t.id}: a cored membrane (${t.values.membraneOpacity}) is under every soft one (${softMin}), so the pearl shows through`);
+    // the pearl shows through: a cored membrane under every soft one, or (a skin as in the lab, 2026-10-19, note 5) a full skin with its pearl drawn after it
+    if (t.values.pearlShow != null) assert(t.values.pearlShow > 0.3 && t.values.pearlShow < 1, `${t.id}: its pearl drawn over the full skin, part-seen (${t.values.pearlShow})`);
+    else assert(t.values.membraneOpacity < softMin, `${t.id}: a cored membrane (${t.values.membraneOpacity}) is under every soft one (${softMin}), so the pearl shows through`);
     assert(t.values.membraneTint > 0 && t.values.membraneTint < 1, `${t.id}: the cored skin is pulled toward its tint, not replaced by it`);
     assert(t.values.glintShare > 0, `${t.id}: its glints are not the soft tiers' white`);
     assert(hueLuma(t.values.membraneTintTo) < 0.9, `${t.id}: its tint is not a white`);
@@ -57,6 +60,12 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   for (const id of ['purple', 'brown']) {
     assert(PEARL_MEMBRANE[id].share >= 0.6, `${id}: its skin at least 60 % of the way to its alarm hue (${PEARL_MEMBRANE[id].share})`);
     assert(PEARL_MEMBRANE[id].opacity > 0.4, `${id}: fuller than round two's .4 (${PEARL_MEMBRANE[id].opacity})`);
+    // round four (owner, 2026-10-19, note 5: "they look almost entirely white, they should look like they do in our specimen lab, purple skin"): a full
+    // skin on the planet, the front face (.85 x .75 x opacity, the shader's alpha at rest) covering at least .8 of the lit ground behind it, the pearl drawn after
+    assert(0.85 * 0.75 * PEARL_MEMBRANE[id].opacity >= 0.8, `${id}: a full skin over lit ground (${PEARL_MEMBRANE[id].opacity})`);
+    assert(PEARL_MEMBRANE[id].pearl > 0, `${id}: its pearl drawn over the skin`);
+    // the bestiary keeps the reference look: its own thin skin over its black stage, the pearl under it
+    assert(BESTIARY_STAGE.skin[id] > 0.4 && BESTIARY_STAGE.skin[id] < 0.65, `${id}: the lab's skin stays the reference (${BESTIARY_STAGE.skin[id]})`);
   }
   // the draw order: every cored membrane after every soft one (the membranes write no depth; a soft pool made later painted over a cored body)
   const softOrder = Math.max(...soft.map((t) => t.values.membraneOrder));
@@ -77,9 +86,13 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   // the pools' membranes carry the order at every level of detail; a soft pool's stay at the kit's
   for (const l of purple.p.geo.levels) assert.equal(l.membrane.renderOrder, PEARL_MEMBRANE.purple.order, 'purple: its membranes drawn over the soft ones');
   for (const l of white.p.geo.levels) assert.equal(l.membrane.renderOrder, 2, 'white: the kit\'s order');
+  // a skin as in the lab: purple's pearls after its membranes at PEARL_MEMBRANE's share, every mesh of them; another cored pool's (orange) under, opaque
+  for (const m of purple.p.cores.meshes) { assert.equal(m.renderOrder, PEARL_MEMBRANE.purple.order + 1, 'purple: its pearls drawn after its skin'); assert.equal(m.material.opacity, PEARL_MEMBRANE.purple.pearl); }
+  const orange = family.add('drifter', { x: -5, z: 0 });
+  for (const m of orange.p.cores.meshes) { assert.equal(m.renderOrder, 1, 'orange: its pearls under its skin, as the kit'); assert.equal(m.material.opacity, 1); }
   family.dispose?.();
 }
-console.log('PASS the cored read: cored membranes thinner than every soft one, tinted, drawn over the soft ones, their glints not white (purple, brown, black in full)');
+console.log('PASS the cored read: cored membranes thinner than every soft one or full with the pearl drawn over (purple, brown), tinted, drawn over the soft ones, their glints not white (purple, brown, black in full)');
 
 // ---- the mapping and the ram rule ----
 const programme = new Set([...INTROS.map((iv) => iv.type), ...Object.entries(ENEMY_SPEC).filter(([, s]) => !s.shelved).map(([t]) => t)]);
