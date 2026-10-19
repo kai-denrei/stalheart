@@ -1,6 +1,6 @@
 // arena.mjs — the arena's cell: reachable, outside, unblocked, the farthest band, the farthest first
 import assert from 'node:assert/strict';
-import { pickArenaCell, arenaFloor, roadAhead, roadField, roadPath, roadRock } from '../src/domain/arena.js';
+import { pickArenaCell, arenaFloor, roadAhead, roadField, roadPath, roadRock, roadKept } from '../src/domain/arena.js';
 const dist = [0, 1, 2, 3, 4, 5, 6, 7, 8, Infinity, 9, 9];
 assert.equal(pickArenaCell({ dist }), 10, 'the farthest, the lowest index among equals');
 assert.equal(pickArenaCell({ dist, blocked: (i) => i === 10 }), 11, 'a blocked cell is skipped');
@@ -61,4 +61,18 @@ assert.equal(pickArenaCell({ dist, blocked: (i) => i === 11, farHops: 4 }), 10);
   assert.deepEqual(roadPath({ adj, field, from: 9 }), [], 'at the arena: no road');
   const lone = roadField({ adj: [[], []], tags: new Int8Array(2).fill(1), blocked: 0, to: 1 });
   assert.equal(lone[0], Infinity); assert.deepEqual(roadPath({ adj: [[], []], field: lone, from: 0 }), [], 'no way: no road'); }
+// THE ROAD KEPT (2026-10-19, the merged --arena-drive: a planned rock first seen 3.09 cells off): the road 0..5 to the arena at 5; a side cell 6 beside 2 whose own
+// descent runs through the rock 7 (7 beside 5; a rock costs 2, the detour the same); 8 beside 6 only. Laid from 0 the road is 1..5; the hull a cell off it (at 6)
+// keeps it (no rock), though the descent from 6 runs through 7; the hull two cells off (at 8) lays it again, through the rock
+{ const adj = Array.from({ length: 9 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); };
+  for (let i = 0; i < 5; i++) link(i, i + 1); link(2, 6); link(6, 7); link(7, 5); link(6, 8);
+  const tags = new Int8Array(9).fill(1); tags[7] = 0; const field = roadField({ adj, tags, blocked: 0, to: 5 });
+  assert.deepEqual(roadPath({ adj, field, from: 6 }), [7, 5], 'the descent from the side cell runs through the rock');
+  let k = roadKept({ adj, field, from: 0 }); assert.deepEqual(k.route, [0, 1, 2, 3, 4, 5]); assert.deepEqual(k.ahead, [1, 2, 3, 4, 5], 'laid from the hull');
+  k = roadKept({ adj, field, from: 2, route: k.route }); assert.deepEqual(k.ahead, [3, 4, 5], 'on it: the rest');
+  k = roadKept({ adj, field, from: 6, route: k.route }); assert.deepEqual(k.ahead, [3, 4, 5], 'a cell off it: kept, from the farthest road cell beside the hull');
+  assert.equal(roadRock({ adj, tags, blocked: 0, field, from: 6, path: k.ahead }), -1, 'no rock on the kept road');
+  assert.equal(roadRock({ adj, tags, blocked: 0, field, from: 6 }), 7, 'where the bare descent would have named the rock three cells from a hull');
+  k = roadKept({ adj, field, from: 8, route: k.route }); assert.deepEqual(k.route, [8, 6, 7, 5], 'two cells off: laid again from the hull'); assert.deepEqual(k.ahead, [6, 7, 5]);
+  assert.deepEqual(roadKept({ adj: [[], []], field: roadField({ adj: [[], []], tags: new Int8Array(2).fill(1), blocked: 0, to: 1 }), from: 0 }), { route: null, ahead: [] }, 'no way: nothing kept'); }
 console.log('Arena: the farthest reachable cell outside the walls, its floor fourteen cells round, the road SOL cuts to it (the shortcut, else the flank), and the planned road through rock.');

@@ -196,6 +196,23 @@ function host(o = {}) {
     assert.ok(Object.values(cleared).every((d) => d >= GUARD), `each before the hull reached its guard (${JSON.stringify(cleared)})`);
     assert.deepEqual(h.log.road.filter((c) => c >= 0), [5, 9], 'in road order, each asked once'); } }
 
+// THE MERGED DRIVE'S SHAPE (2026-10-19: the hull quicker, 3.25 cells/s, since rammed bodies no longer drag it): the beam held on rock A (6 cells off at the
+// first cut, its burn never taking: a held-off or slow burn) while rock B (16) comes into reach; the hold ends the moment the hull is inside A's guard (it no
+// longer keeps the beam for 2.5 s), B is asked as it enters the reach and burns before the hull is within ARENA.road.leadMin of it
+{ const adj = Array.from({ length: 41 }, () => []); for (let i = 0; i < 40; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(41).fill(1); tags[6] = 0; tags[16] = 0; let x = 0, on = -1, burn = 0; const asks = [], releases = [], cleared = {};
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(x), to: 40 }), roadFar: (ci, near = ARENA.road.clear) => Math.abs(ci - x) >= Math.max(near, GUARD), fromHull: (ci) => Math.abs(ci - x), roadNext: () => -1,
+    solRoad: (ci) => { if (ci >= 0) { asks.push([ci, +(ci - x).toFixed(2)]); on = ci; burn = 0; } else { releases.push([on, +x.toFixed(2)]); on = -1; } return ci >= 0; } });
+  h.story().arena.cell = 40; const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(asks.map((a) => a[0]), [6], 'the beam on A');
+  for (let k = 1; k <= 160 && x < 16; k++) { const dt = 0.025; h.now = k * dt; x += 3.25 * dt;
+    if (on === 16 && tags[16] === 0 && Math.abs(16 - x) >= GUARD) { burn += dt; if (burn >= 0.5) { tags[16] = 1; cleared[16] = +(16 - x).toFixed(2); } }   // A's burn never takes
+    run.tick(dt); }
+  const rA = releases.find((r) => r[0] === 6); assert.ok(rA && 6 - rA[1] < GUARD && 6 - rA[1] > GUARD - 0.2, `A released as the hull came inside its guard (${JSON.stringify(rA)})`);
+  const aB = asks.find((a) => a[0] === 16); assert.ok(aB && aB[1] >= ARENA.road.clear, `B asked as it entered the reach, in the band (${JSON.stringify(asks)})`);
+  assert.ok(cleared[16] >= ARENA.road.leadMin, `B burned with the hull ${cleared[16]} cells short (leadMin ${ARENA.road.leadMin})`);
+  const cuts = run.state().road.cuts; assert.equal(cuts.find((e) => e.cell === 6).cleared, false, 'A logged as left standing'); }
+
 // THE HAND-OFF RE-DERIVED (review of note 3, 2026-10-19): during a planned burn the look runs again only once the hull is within the beam's guard and a cell
 // (4.1 cells) of the held rock; at `clear` + 1 (7.5) it ran during almost every burn and dropped the rock being burned. The chain 0..30, planned rocks at 10 and 15:
 // the first cut takes 10; the hull at 5 (10 five cells off, still burnable; 15 in the band) keeps the beam on 10, and at 6.5 (10 is 3.5 off: within the hand-off
