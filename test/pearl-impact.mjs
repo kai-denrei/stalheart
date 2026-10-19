@@ -106,3 +106,29 @@ console.log('PASS the jolt: a pitch kick about its size, sharper for a cored bod
 }
 console.log('PASS the dead go grey at once: a plain death and a rammed body\'s stagger reach the grey within PEARL_IMPACT.death.seconds, the living untouched, the shader\'s uDeadGrey / uDeadMatte / uDeadAlpha');
 
+// ---- the ram drawn in under the hull (owner, 2026-10-19, round four, note 2: "like they are being absorbed under the hull when they die"; PEARL_IMPACT.absorb) ----
+{
+  const A = PEARL_IMPACT.absorb;
+  assert(A.on, 'the prototype is on');
+  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
+  // the hull at the origin heading +x; the body 5 m ahead of its centre and 2 m to the side
+  const h = fam.add('amoeba', { x: 5, z: 2, angle: 0, speed: 2 });
+  for (let f = 0; f < 20; f++) { fam.track(h, { x: 5, z: 2, dt: 1 / 60, speed: 2 }); fam.step(1 / 60); }
+  const v0 = fam.view(h), r = v0.radius;
+  fam.kill(h, { dx: 1, dz: 0, ax: 0, az: 1, hx: 0, hz: 0 });
+  let t = 0, v = fam.view(h);
+  while (t < A.seconds) { fam.step(1 / 60); t += 1 / 60; v = fam.view(h); }
+  assert(v.absorb && v.stagger !== null, 'the rammed body is absorbing');
+  const across = v.centre[1], along = v.centre[0];
+  assert(Math.abs(across) < 0.25 * Math.abs(v0.centre[1]), `pulled onto the hull's centre line (${v0.centre[1].toFixed(2)} -> ${across.toFixed(2)} m)`);
+  assert(along < v0.centre[0] - 0.4 * A.back * v0.centre[0], `drawn back under the hull, not flung ahead (${v0.centre[0].toFixed(2)} -> ${along.toFixed(2)} m)`);
+  assert(v.lift < -0.9 * A.sink * r, `sunk under the ground (${v.lift.toFixed(2)} m, radius ${r.toFixed(2)})`);
+  assert.equal(v.tint, -1, 'grey');
+  assert(v.deflate > 0.3, `squashed flat (${v.deflate})`);
+  while (t < A.seconds + A.fade + 0.05) { fam.step(1 / 60); t += 1 / 60; }
+  assert.equal(fam.stats().white.dying, 0, 'faded and its slot freed, not the six-second puddle'); assert.equal(fam.stats().white.absorbed, 1);
+  // a ram without the hull's centre (the swarm lab's) staggers as before
+  const g = fam.add('amoeba', { x: 40, z: 0, angle: 0, speed: 2 }); fam.step(1 / 60); fam.kill(g, { dx: 1, dz: 0 }); fam.step(1 / 60);
+  assert(!fam.view(g).absorb && fam.view(g).stagger !== null, 'no hull, the stagger');
+}
+console.log('PASS the ram drawn in under the hull: onto its centre line, back under it, sunk, flat and grey by PEARL_IMPACT.absorb.seconds, then faded and freed');

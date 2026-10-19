@@ -186,7 +186,7 @@ export function createCreatureEnemies(host) {
     if (e?.spec?.body !== 'pearl') return;
     const c = contact(e);
     if (!c) return;
-    e.impact = { dir: c.heading, aside: c.across };
+    e.impact = { dir: c.heading, aside: c.across, hull: host.tank?.()?.pos?.slice() ?? null };   // hull: the hull's centre at the ram (PEARL_IMPACT.absorb, 2026-10-19)
     // round four: a light tier's run-over is a light tick on the hull (PEARL_IMPACT.tiers[tier].jolt)
     host.jolt?.kick({ radius: radiusOf(e) * (PEARL_IMPACT.tiers?.[e.spec.pearl]?.jolt ?? 1), solid: false, side: c.side });
   }
