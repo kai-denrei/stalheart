@@ -6,7 +6,8 @@
 // starts late and is cut at `seconds`, the alarm still on the party's clock). `countdown` (owner, 2026-10-18 round 2: "let's record voices for
 // Isao to announce the party ... 30 seconds before ... 10 seconds before"): the seconds of Isao's announcement before the party, the sector
 // clock already held, `back` the seconds into it of "Come back to the base"; `briefs.soon` and `briefs.back` the two lines; `sayWait` the
-// seconds a later line of the party waits for Isao's panel before it is dropped (src/fx/disco-party.js say()): two of his two-line beats,
+// seconds a later line of the party waits for Isao's panel before it is dropped (src/fx/disco-party.js say(); not the over line, which cuts
+// the panel at the alarm since round 4, 2026-10-19: the gate's warnings held it past sayWait and it was lost): two of his two-line beats,
 // one up and one pending (the --day-42 step, 2026-10-18: a beat with SOL-82's first pass pending behind it outlasted 12 s)
 export const DAY_42 = Object.freeze({
   day: 42, patience: 6, countdown: 30, back: 20, sayWait: 20, seconds: 43.8, loadAhead: 2,

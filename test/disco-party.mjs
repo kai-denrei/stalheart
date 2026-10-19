@@ -170,6 +170,12 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
   assert.equal(p.state().lights, 0, 'the lights gone'); assert.equal(p.holding(), false); tickTo(p, 5); busy = false; p.tick(0.1);
   assert.equal(log.briefs.at(-1), DAY_42.briefs.over, 'shown once Isao is free, the party already done'); assert.equal(p.state().phase, 'done');
   assert.equal(log.briefs.filter((b) => b === DAY_42.briefs.over).length, 1, 'once'); }
+// THE OVER LINE CUTS THE PANEL (round 4, 2026-10-19): a host with cutBrief gets the over line through it at the alarm's tick, busy or not,
+// and the party's own held lines are forgotten; the other lines still wait
+{ let busy = false; const { h, log } = host(); h.isaoBusy = () => busy; log.cut = []; h.cutBrief = (id) => log.cut.push(id); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
+  for (let k = 0; k < DAY_42.countdown / 0.25; k++) p.tick(0.25); assert.equal(p.state().phase, 'party'); busy = true; tickTo(p, DAY_42.seconds); assert.equal(p.state().phase, 'over');
+  assert.deepEqual(log.cut, [DAY_42.briefs.over], 'the over line cut in at the alarm, Isao busy'); assert.ok(!log.briefs.includes(DAY_42.briefs.over), 'not through showBrief');
+  busy = false; tickTo(p, 5); p.tick(0.1); assert.equal(log.cut.length, 1, 'once'); assert.ok(!log.briefs.includes(DAY_42.briefs.over), 'nothing held behind it'); }
 // the held back line is dropped at the party's start: Isao busy from 20 s to 31 s of the countdown, then free: the party's own line shows, the back line never does
 { let busy = false; const { h, log } = host(); h.isaoBusy = () => busy; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
   for (let k = 0; k < (DAY_42.back - 0.25) / 0.25; k++) p.tick(0.25); busy = true; for (let k = 0; k < 45; k++) p.tick(0.25);   // busy from 19.75 s to 31 s

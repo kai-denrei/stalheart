@@ -191,6 +191,11 @@ export function createDiscoParty(h) {
   // a line held longer than `sayWait` (game seconds) is dropped. The announcement needs none: the clock only arms with Isao free
   let held = [];
   function say(id) { if (!held.length && !h.isaoBusy()) h.showBrief(id); else held.push({ id, left: DAY_42.sayWait }); }
+  // "PARTY'S OVER" IS THE ALARM'S OWN WORD (round 4, 2026-10-19: --day-42 red on the base, 1 run in 1, and 1 in 3 on the merged tree: the wave
+  // armed at the party's end put THE GATE · HALF, THE GATE IS FAILING and SOL-82's pass on the panel for more than sayWait, and the line was
+  // dropped): the over line is not held; the host's cutBrief (src/td-tab.js) cuts the line on the panel and shows it at once, the party's
+  // own earlier held lines forgotten; without the hook (a test host) it is held as the others are
+  function sayOver() { held = []; if (h.cutBrief) h.cutBrief(DAY_42.briefs.over); else say(DAY_42.briefs.over); }
   function sayHeld(dt) {
     if (!held.length) return;
     if (!h.isaoBusy()) { h.showBrief(held.shift().id); return; }
@@ -215,7 +220,7 @@ export function createDiscoParty(h) {
     music?.stop(0.15); music = null; h.sfx?.duck(DAY_42.music.duck.buses, 1, 0);   // the duck lifted
     if (!alarm) held = [];   // the hull lost or the win: no party line after it
     if (alarm) {
-      h.sfx?.play('danger_alert'); h.callout(DAY_42.callout, 'co-victory'); say(DAY_42.briefs.over);
+      h.sfx?.play('danger_alert'); h.callout(DAY_42.callout, 'co-victory'); sayOver();
       if (sr?.state?.().phase === 'fighting') h.armWave();
     }
     dropLights(); overAt = t; shrinkFrom = appear;
