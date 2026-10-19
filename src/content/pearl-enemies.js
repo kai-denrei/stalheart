@@ -241,7 +241,7 @@ export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd
 // hullContact). The jolt (src/fx/ram-jolt.js) and the grey (`death`) as before.
 export const PEARL_IMPACT = freeze({
   death: { grey: 0.12, matte: 1, alpha: 0.5, seconds: 0.08 },
-  absorb: { on: true, seconds: 0.4, knock: 0.12, pull: 1, back: 0.5, squash: 0.6, sink: 2.4, fade: 0.5, reach: 4.4 },
+  absorb: { on: true, seconds: 0.6, knock: 0.12, pull: 1, back: 0.8, squash: 0.6, sink: 2.4, fade: 0.5, reach: 4.4 },   // 0.6 / 0.8 over 0.4 / 0.5 (review, 2026-10-19: r4-a-fix-ram-series.png; the sink seen for longer, the body carried under the hull's middle, not its nose)
   // `ramSoft` (owner, 2026-10-15: "I encountered a soft-body enemy which I could not ram with the tank, it kept being just pushed away"): a soft body of
   // ANY tier the hull touches while it drives is the game's ram (e.bodyRam), as the light tiers' brush already was; the shove stays the body's answer
   // for the frame it is hit, its death the next (the ram's stagger and deflate)
