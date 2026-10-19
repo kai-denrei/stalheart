@@ -107,9 +107,23 @@ export function roadPath({ adj, field, from, max = Infinity }) {
   }
   return out;
 }
-// SOL's next cut on the planned road: the first rock cell on it within `max` cells of the hull that `far` allows (none of them: -1)
-//   roadRock({ adj, tags, blocked, field, from, max, far }) -> cell | -1
-export function roadRock({ adj, tags, blocked = 0, field, from, max = Infinity, far = () => true }) {
-  for (const c of roadPath({ adj, field, from, max })) if (tags[c] === blocked && far(c)) return c;
+// SOL's next cut on the planned road: the first rock cell on it within `max` cells of the hull that `far` allows (none of them: -1); `path` the road ahead when
+// the caller keeps one (roadKept), else the descent from `from`
+//   roadRock({ adj, tags, blocked, field, from, max, far, path }) -> cell | -1
+export function roadRock({ adj, tags, blocked = 0, field, from, max = Infinity, far = () => true, path = null }) {
+  for (const c of path ? path.slice(0, max) : roadPath({ adj, field, from, max })) if (tags[c] === blocked && far(c)) return c;
   return -1;
+}
+// THE ROAD KEPT (r4-b, 2026-10-19, the merged --arena-drive: a planned rock first asked 3.09 cells off, its burn held off, the hull past it): the field has many
+// equal-cost ways (a rock costs `rockCost` 2, a one-cell detour the same), so the descent from the hull's own cell changed as the hull drifted a cell off it, and a
+// rock no road from the start came within 12 cells of (cell 26948 on the shipped planet) joined the road ahead 3 cells from the hull, then left it again. The
+// road is kept instead: the descent from the hull when it was laid, the rest of it from the hull's cell or from the farthest road cell beside it (a cell off), and
+// laid again from the hull only when the hull is further off than that
+//   roadKept({ adj, field, from, route }) -> { route, ahead }   (route: the kept road, from its first cell; ahead: its cells after the hull's place on it)
+export function roadKept({ adj, field, from, route = null }) {
+  if (!(from >= 0) || !Number.isFinite(field[from])) return { route: null, ahead: [] };
+  let i = route ? route.indexOf(from) : -1;
+  if (i < 0 && route) for (const nb of adj[from]) { const j = route.indexOf(nb); if (j > i) i = j; }
+  if (i < 0) { route = [from, ...roadPath({ adj, field, from })]; i = 0; }
+  return { route, ahead: route.slice(i + 1) };
 }

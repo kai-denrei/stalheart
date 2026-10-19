@@ -34,7 +34,7 @@ import { ARENA, ARENA_HANDOVER, ARENA_ROAD_GUARD } from '../content/sectors.js';
 import { createChoiceCard } from './choice-card.js';
 import { brief, lineDwell } from '../isaobriefs.js';
 import { groundAt } from './lance-follow.js';
-import { roadField, roadPath, roadRock } from '../domain/arena.js';
+import { roadField, roadKept, roadRock } from '../domain/arena.js';
 import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
 import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
@@ -54,7 +54,7 @@ export function createBossRun(c) {
   let on = false, def = null, was = null, seated = false, retryAt = -9, bossSeen = false, hullHit = false, hpWas = null, done = false, shotSaid = false, refillAt = -9;
   let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss | over (the mother dead, the sector not ended yet)
   let remindAt = 0, reminders = 0, remindDist = Infinity, drove = false;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind), how many fired, the hull's road distance then, Isao took the wheel (ARENA.remindMax)
-  let plan = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the cuts landed, whether the last ask was on it, the last marks
+  let plan = null, route = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the road kept (roadKept, 2026-10-19), the cuts landed, whether the last ask was on it, the last marks
   let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
   let lookAt = -99, lead = null, leadMax = 0, cutLog = [];   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
   let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
@@ -69,7 +69,10 @@ export function createBossRun(c) {
   const arenaCell = () => c.story()?.arena?.cell ?? -1;
   // THE PLANNED ROAD (2026-10-18): the graph from the controller (c.roadGraph: adj, tags, blocked, the hull's cell, the arena's), the field computed once a sector
   const planned = () => { const g = c.roadGraph?.(); if (!g || !(g.to >= 0) || !(g.from >= 0)) return null; plan ??= roadField({ ...g, rockCost: ARENA.road?.rockCost ?? 2 }); return { g, field: plan }; };
-  const roadAheadCells = () => { if (phase !== 'beacon') return []; const p = planned(); return p ? roadPath({ adj: p.g.adj, field: p.field, from: p.g.from, max: 12 }) : []; };   // the harness: the planned road's next cells (a driver follows the rings)
+  // THE ROAD KEPT (2026-10-19, the merged --arena-drive): the road ahead of the hull is the one laid from it, kept while the hull is on it or a cell off it
+  // (src/domain/arena.js roadKept), so the rings, the harness's driver and SOL's cuts read one road, and a rock does not join it three cells from the hull
+  const roadAhead = () => { const p = planned(); if (!p) return []; const k = roadKept({ adj: p.g.adj, field: p.field, from: p.g.from, route }); route = k.route; return k.ahead; };
+  const roadAheadCells = () => (phase !== 'beacon' ? [] : roadAhead().slice(0, 12));   // the harness: the planned road's next cells (a driver follows the rings)
   const isOpen = (ci) => { const g = c.roadGraph?.(); return !!g && g.tags[ci] !== g.blocked; };
   const roadDist = () => { const p = planned(); return p ? p.field[p.g.from] : null; };   // the hull's walking cost to the arena down the planned road (null: no graph)
   // THE BEAM'S LEAD (owner, 2026-10-19, note 7b: "always 50m ahead of the tank clearing the path"): a cell within ARENA.road.aheadMetres of the hull by the chord (c.fromHull, in cells)
@@ -89,7 +92,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; cutLog = []; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; cutLog = []; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -162,7 +165,7 @@ export function createBossRun(c) {
       // first left a rock 3.1 to 6.5 cells off for later or for good (Isao driving while the player sat in SOL's seat; a rock dropped mid-burn): the road's
       // first rock is the one that blocks it first. The first cut: the same rule at any distance (the nearest road rock, at once)
       const burnable = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (!roadCuts || inLead(ci));
-      let pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: burnable }) : -1;
+      let pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: burnable, path: roadAhead() }) : -1;
       // THE HAND-OFF NEVER DROPS THE ROAD'S FIRST: during a planned burn the look only moves the beam on once the held rock is no longer the road's first burnable
       // rock (the hull inside the guard of it, or the rock gone); while it still is, the beam stays on it
       if (held && pc === roadCell) pc = -1;
@@ -175,11 +178,13 @@ export function createBossRun(c) {
       }
     }
     // the hold ends at ARENA.road.burn, or as soon as the rock is gone (2026-10-19: the beam is free for the next cell in reach at once)
-    if (roadUntil && (t >= roadUntil || (roadCell >= 0 && isOpen(roadCell)))) release();
+    // ...or as soon as the beam can no longer burn it (2026-10-19, the merged --arena-drive): the hull inside its guard (roadFar(ci, 0) false), so the beam is held
+    // off and a 2.5 s hold only kept the next rock and the flank waiting while the hull, quicker since rammed bodies no longer drag it (r4-a), closed on them
+    if (roadUntil && (t >= roadUntil || (roadCell >= 0 && (isOpen(roadCell) || (c.roadFar && !c.roadFar(roadCell, 0)))))) release();
     // THE ROAD READS (2026-10-18): the planned road's next cells ringed ahead of the hull every ARENA.road.markEvery seconds, the colour of the tap-to-go "here"
     if (phase === 'beacon' && c.roadMark && t - markAt >= (ARENA.road?.markEvery ?? Infinity)) {
       markAt = t; const p = planned();
-      if (p) { const path = roadPath({ adj: p.g.adj, field: p.field, from: p.g.from, max: Math.max(...(ARENA.road?.marks ?? [0])) }); for (const k of ARENA.road?.marks ?? []) if (path[k - 1] >= 0) c.roadMark(path[k - 1]); }
+      if (p) { const path = roadAhead(); for (const k of ARENA.road?.marks ?? []) if (path[k - 1] >= 0) c.roadMark(path[k - 1]); }
     }
     // the order again, while the hull is not there and has not come nearer down the road since the last one (a driving player is not nagged; 2026-10-18)
     if (phase === 'beacon' && ARENA.remind && t - remindAt >= ARENA.remind && c.hullNearArena?.() !== true) {
