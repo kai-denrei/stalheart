@@ -2339,6 +2339,86 @@ try{
  await press('ArrowDown','ArrowDown');await until(`window.__stalheartUnits.bestiary.state().selected==='reed'`,5000);
  {const s=await evaluate('window.__stalheartUnits.bestiary.state()');assert.equal(s.stage.mode,'none','the Reeds: a card without a stage');assert(s.card.lines>=2);}
  await press('Escape','Escape');await until('!window.__stalheartUnits.bestiary.state().open',5000);
+ } else if(args.includes('--dead-probe')) {
+ // THE DEAD READ GREY, AND THE RAM DRAWN IN UNDER THE HULL (owner, 2026-10-19, round four, notes 1 and 2): a measuring probe, no assertions but the page's
+ // errors. Story sector 2 with the Pearl set at PHASES (day numbers with the phase, default 2.95 and 3.45: noon and midnight once the page has loaded, about ten seconds of a thirty-second day later), the field cleared, bodies of four
+ // tiers put down ahead of the hull and a camera posed over them (a renderer hook sets it just before the main scene's render). MODE=kill kills every
+ // other body (one white by the ram's presentation) and shoots a frame series with each body's screen point; MODE=ram drives the hull into a lane of
+ // whites and yellows and shoots the series from the game's ram camera. OUT=<dir> (default artifacts/browser/dead-probe) gets the PNGs and <label>-frames.json.
+ const T='window.__stalheartTest',C=`${T}.creatures`,mode=process.env.MODE||'kill',label=process.env.LABEL||'probe',dir=resolve(process.env.OUT||join(output,'dead-probe'));mkdirSync(dir,{recursive:true});
+ await send('Page.addScriptToEvaluateOnNewDocument',{source:`(()=>{const o=window.__obs={pose:null,cam:null,scene:null};window.__THREE_DEVTOOLS__=new EventTarget();__THREE_DEVTOOLS__.addEventListener('observe',(e)=>{const d=e.detail;if(d&&d.isWebGLRenderer&&!d.__hooked){d.__hooked=true;const r0=d.render.bind(d);d.render=(s,c)=>{if(c&&c.isPerspectiveCamera&&s&&s.getObjectByName&&(o.scene===s||s.getObjectByName('Creature bodies'))){if(!o.scene)o.scene=s;if(s===o.scene)(o.cams??=new Set()).add(c);if(s===o.scene&&c===o.cam&&o.pose){const P=typeof o.pose==='function'?o.pose():o.pose;if(P){c.position.set(...P.pos);c.up.set(...P.up);c.lookAt(...P.at);c.updateMatrixWorld();}}}return r0(s,c);};}});})();`});
+ const HELP=`(()=>{const o=window.__obs,A=innerWidth/innerHeight;let best=null;for(const c of o.cams??[])if(Math.abs(c.aspect-A)<0.05&&(!best||c.fov>best.fov))best=c;o.cam=best;window.__r4={metre(){const r=o.scene.getObjectByName('Creature bodies');return r?r.scale.x:null;},
+  at(p,t,height,back){const m=this.metre(),l=Math.hypot(...p),n=p.map(v=>v/l),tl=Math.hypot(...t),u=t.map(v=>v/tl);return {pos:p.map((v,k)=>v+n[k]*height*m-u[k]*back*m),up:n,at:p};},
+  pose(p,t,height,back){o.pose=this.at(p,t,height,back);return o.pose;},
+  px(p){const c=o.cam;c.updateMatrixWorld();const v=c.position.clone().set(p[0],p[1],p[2]).project(c);return [(v.x+1)/2*innerWidth,(1-v.y)/2*innerHeight,v.z];},
+  rpx(p,rm){const c=o.cam,m=this.metre(),a=this.px(p),right=c.position.clone().setFromMatrixColumn(c.matrixWorld,0),q=[p[0]+right.x*rm*m,p[1]+right.y*rm*m,p[2]+right.z*rm*m],d=this.px(q);return Math.hypot(d[0]-a[0],d[1]-a[1]);}};return true;})()`;
+ const shotTo=async(name)=>{const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(dir,name+'.png'),Buffer.from(s.data,'base64'));};
+ const results=[];
+ for(const ph of (process.env.PHASES||'2.95,3.45').split(',')){
+  let tag=`${label}-${mode}-${ph}`;
+  await go(tag,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&fps=1&creatures=pearl&hold=1&day=${ph}#td`,1280,800);
+  await until(`!!${T} && ${T}.state().sector?.n===2 && ${T}.state().creatureProbe?.pearl===true && !!window.__obs.scene`,180000);
+  await evaluate(HELP);tag=`${label}-${mode}-${(await evaluate(`${T}.state().daylight.daylight`))>0.5?'day':'night'}`;
+  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card,#td-callouts{display:none!important}</style>")');
+  await evaluate(`${T}.sectorQuiet(true)`);await evaluate(`${C}.uncull(true)`);
+  await evaluate(`(()=>{for(const e of ${C}.pearls())${C}.hurt(e,e.hp+99);})()`);await delay(1500);
+  if(mode==='ram'){
+   await evaluate(`${T}.showcase.ram(true)`);await delay(400);
+   let target=-1;for(const c of await evaluate(`${C}.ground().band.map(b=>b.cell)`)){await evaluate(`${T}.placeTank(${c})`);await delay(80);for(const nb of await evaluate(`${C}.neighbours(${c})`)){await evaluate(`${C}.face(${nb})`);const a=await evaluate(`${C}.ahead(3)`);if(a>=0){target=a;break;}}if(target>=0)break;}
+   const near=await evaluate(`${C}.ahead(2)`);
+   for(const [type,ci,n] of [['amoeba',target,4],['ghost',target,2],['amoeba',near,3],['ghost',near,2]])for(let k=0;k<n;k++)await evaluate(`${C}.spawnAt(${JSON.stringify(type)},${ci})`);
+   await delay(700);await evaluate(`${C}.face(${target})`);
+   await evaluate(`(()=>{window.__mine=${C}.pearls();window.__h=new Map(window.__mine.map(e=>[e,${C}.handle(e)]));const s=${T}.state(),p=s.playerPosition,t=${T}.state().playerHeading??null;return true;})()`);
+   // the game's own ram camera (showcase.ram: low behind the hull, its nose into the frame), what the player sees
+   await delay(600);
+   const frames=[];let f=0;const t0=Date.now();
+   const snap=async()=>{const info=await evaluate(`(()=>{const v=[...window.__h].map(([e,h])=>{const w=${C}.viewHandle(h);return w?{type:e.type,alive:e.alive,absorb:w.absorb,stagger:w.stagger,lift:+(+w.lift).toFixed(2),opacity:+(+w.opacity).toFixed(2),tint:w.tint,knocked:w.knocked}:null;});return {speed:${C}.hull()?.drag,bodies:v,jolt:${C}.jolt()};})()`);const name=`${tag}-f${String(f).padStart(2,'0')}`;await shotTo(name);frames.push({name,wall:Date.now()-t0,...info});f++;};
+   await snap();
+   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+   for(let k=0;k<20;k++){await delay(110);await snap();}
+   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+   for(let k=0;k<4;k++){await delay(400);await snap();}
+   console.log(`  ${tag}: ${frames.map(fr=>`${fr.name} ${fr.wall}ms dead ${fr.bodies.filter(b=>b&&!b.alive).length} absorbed ${fr.bodies.filter(b=>b?.absorb).length}`).join('; ')}`);
+   console.log(`  books: ${JSON.stringify((await evaluate(`${T}.state().creatureProbe`)).bodies?.families?.pearl)}`);
+   results.push({tag,frames});await evaluate(`${T}.showcase.ram(false)`);continue;
+  }
+  if(mode==='reed'){
+   // the Reed family (THE ARENA's brood, the nests' Reed): four small Reeds at the antipode, two of them killed (the records found through the harness's own filter)
+   await evaluate(`(()=>{const f=Array.prototype.filter;let a=null;Array.prototype.filter=function(...x){a??=this;return f.apply(this,x);};try{${C}.pearls();}finally{Array.prototype.filter=f;}window.__enemies=a;return !!a;})()`);
+   const made=await evaluate(`${C}.spawnFar('reed',4,{tier:'small'})`);
+   await until(`(()=>{const r=window.__enemies.filter(e=>e.alive&&e.spec?.body==='reed');return r.length>=${made}&&r.every(e=>${C}.view(e)?.made);})()`,60000);await delay(1500);
+   const mid=await evaluate(`(()=>{window.__mine=window.__enemies.filter(e=>e.alive&&e.spec?.body==='reed');const P=window.__mine.map(e=>${C}.view(e).point);return [0,1,2].map(k=>P.reduce((a,v)=>a+v[k],0)/P.length);})()`);
+   await evaluate(`window.__r4.pose(${JSON.stringify(mid)},[${mid[1]},${-mid[0]},0],16,22)`);await delay(800);
+   await evaluate(`(()=>{window.__dead=window.__mine.filter((e,k)=>k%2).map(e=>({e,h:${C}.handle(e),ram:false,p:${C}.view(e).point.slice()}));for(const d of window.__dead)${C}.hurt(d.e,d.e.hp+99);return window.__dead.length;})()`);
+   const frames=[],t0=Date.now();
+   for(let f=0;f<10;f++){
+    const info=await evaluate(`(()=>{const R=window.__r4;const live=window.__mine.filter(e=>e.alive).map(e=>{const v=${C}.view(e);return v?{tier:'reed',px:R.px(v.point),rp:R.rpx(v.point,v.radius)}:null;}).filter(Boolean);
+     const dead=window.__dead.map(d=>{const v=${C}.viewHandle(d.h);return {tier:'reed',ram:false,px:R.px(v?.point??d.p),rp:R.rpx(d.p,v?.radius??1),deflate:v?.deflate,opacity:v?.opacity};});return {live,dead,daylight:${T}.state().daylight};})()`);
+    const name=`${tag}-f${f}`;await shotTo(name);frames.push({name,wall:Date.now()-t0,...info});await delay(f<4?200:600);
+   }
+   console.log(`  ${tag}: ${made} Reeds, ${frames.map(fr=>`${fr.name} ${fr.wall}ms deflate ${fr.dead.map(d=>d.deflate==null?'-':(+d.deflate).toFixed(2)).join('/')}`).join('; ')}`);
+   results.push({tag,frames});continue;
+  }
+  const where=await evaluate(`(()=>{const s=${T}.state();return {c:${C}.ahead(3),c2:${C}.ahead(2),tank:s.playerPosition,daylight:s.daylight};})()`);
+  const ci=where.c>=0?where.c:where.c2;const cells=[ci,...(await evaluate(`${C}.neighbours(${ci})`)).slice(0,3)];
+  for(const [type,n] of [['amoeba',8],['ghost',6],['saucer',4],['barbed',2]])for(let k=0;k<n;k++)await evaluate(`${C}.spawnAt(${JSON.stringify(type)},${cells[k%cells.length]})`);
+  await delay(2500);
+  const bodies=await evaluate(`(()=>{window.__mine=${C}.pearls();return window.__mine.map(e=>({tier:e.spec.pearl,p:(e.obj.userData.point?.()??e.pos).slice()}));})()`);
+  const mid=[0,1,2].map(k=>bodies.reduce((a,b)=>a+b.p[k],0)/bodies.length),tdir=mid.map((v,k)=>v-where.tank[k]);
+  await evaluate(`window.__r4.pose(${JSON.stringify(mid)},${JSON.stringify(tdir)},14,18)`);await delay(800);
+  const killed=await evaluate(`(()=>{const by={};window.__dead=[];window.__mine=window.__mine.filter(e=>e.alive&&e.obj.userData.point?.());for(const e of window.__mine){by[e.spec.pearl]=(by[e.spec.pearl]||0)+1;if(by[e.spec.pearl]%2===0)window.__dead.push({e,h:${C}.handle(e),ram:false});}
+   const w=window.__dead.find(d=>d.e.spec.pearl==='white');if(w)w.ram=true;for(const d of window.__dead){d.p=(d.e.obj.userData.point()??d.e.pos).slice();if(d.ram)${C}.ram(d.e);else ${C}.hurt(d.e,d.e.hp+99);}return window.__dead.length;})()`);
+  const frames=[],t0=Date.now();
+  for(let f=0;f<10;f++){
+   const info=await evaluate(`(()=>{const R=window.__r4;const live=window.__mine.filter(e=>e.alive).map(e=>{const p=e.obj.userData.point();return p?{tier:e.spec.pearl,px:R.px(p),rp:R.rpx(p,${C}.view(e)?.radius??1)}:null;}).filter(Boolean);
+    const dead=window.__dead.map(d=>{const v=${C}.viewHandle(d.h);return {tier:d.e.spec.pearl,ram:d.ram,px:R.px(d.p),rp:R.rpx(d.p,v?.radius??1),tint:v?.tint,deflate:v?.deflate,opacity:v?.opacity,stagger:v?.stagger,active:v?.active};});return {live,dead,daylight:${T}.state().daylight};})()`);
+   const name=`${tag}-f${f}`;await shotTo(name);frames.push({name,wall:Date.now()-t0,...info});await delay(f<4?150:500);
+  }
+  console.log(`  ${tag}: killed ${killed} of ${bodies.length}; daylight ${JSON.stringify(where.daylight)}; ${frames.map(fr=>`${fr.name} ${fr.wall}ms tint ${fr.dead.map(d=>d.tint==null?'-':(+d.tint).toFixed(2)).join('/')}`).join('; ')}`);
+  results.push({tag,frames});
+ }
+ writeFileSync(join(dir,`${label}-${mode}-frames.json`),JSON.stringify(results,null,1));
+ assert.deepEqual(errors,[],'no page errors');console.log(`PASS dead-probe (${dir})`);
  } else if(args.includes('--pearl-story')) {
  // THE STORY WITH THE PEARL SET (owner, 2026-10-13; src/fx/creature-enemies.js ?creatures=pearl, spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md):
  // a story sector (SECTOR, default 2) boots with every mapped type drawn as its Pearl tier's body: the sector's own waves come up as Pearl bodies, and
