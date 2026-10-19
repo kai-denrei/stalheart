@@ -4,6 +4,8 @@
 import { SENTRY_ORDER } from './sentries.js';
 import { GUNSHIP_GUN_ORDER, GUNSHIP_SEAT_HINT } from './gunship.js';
 import { BOSS_FIGHT } from './boss-fight.js';
+import { LASER_AUTO } from './orbital-laser.js';
+import { METRES_PER_CELL } from '../core/stage-units.js';
 
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 
@@ -280,6 +282,10 @@ export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatC
   // ahead 12 -> 15 (review of note 3, 2026-10-19): the flank walks `ahead` route cells, and a 10-cell chord lies further along a winding road; measured along the
   // planned road from the --arena-drive start (227 cells, 967 rocks beside it in the band from some road cell): up to 14 route steps out, 9 of them past 12
   road: freeze({ aheadMetres: 100, leadMin: 4, every: 4, ahead: 15, burn: 2.5, saves: 4, through: 2, flank: true, clear: 6.5, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+
+// THE BEAM'S GUARD ON THE ROAD in cells (review of note 3, 2026-10-19): the unseated beam holds off a contact within LASER_AUTO.safeMetres and the pass's radius of
+// a friend (src/fx/laser-arsenal.js unsafe), the hull included, so a road rock nearer the hull than this (25 + 6 m: 3.1 cells) cannot be burned (src/fx/boss-run.js)
+export const ARENA_ROAD_GUARD = (LASER_AUTO.safeMetres + ARENA.road.radius) / METRES_PER_CELL;
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

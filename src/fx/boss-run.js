@@ -30,7 +30,7 @@
 // (the arena's breach has opened).
 import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
-import { ARENA, ARENA_HANDOVER } from '../content/sectors.js';
+import { ARENA, ARENA_HANDOVER, ARENA_ROAD_GUARD } from '../content/sectors.js';
 import { createChoiceCard } from './choice-card.js';
 import { brief, lineDwell } from '../isaobriefs.js';
 import { groundAt } from './lance-follow.js';
@@ -40,7 +40,6 @@ import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../content/gunship.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
-import { LASER_AUTO } from '../content/orbital-laser.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
@@ -48,9 +47,7 @@ const REFILL = 5;       // seconds between calls for the gunship while it is off
 const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
 const BROOD_STAGGER = 0.1;   // seconds between the brood's deaths once the mother is dead (review of note 10, 2026-10-19)
 const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut lands (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)")
-// THE BEAM'S GUARD in cells (LASER_AUTO.safeMetres and the road pass's radius, 31 m: 3.1 cells): the unseated beam holds off a contact this near the hull
-// (src/fx/laser-arsenal.js unsafe), so a rock nearer than this cannot be burned; td-tab's roadFar(ci, 0) asks only that guard (laserStation.roadSafe)
-const GUARD = (LASER_AUTO.safeMetres + (ARENA.road?.radius ?? 0)) / METRES_PER_CELL;
+const GUARD = ARENA_ROAD_GUARD;   // the beam's guard in cells (src/content/sectors.js): a rock nearer than this cannot be burned; td-tab's roadFar(ci, 0) asks only that
 const ROAD_LOOK = 0.25;   // seconds between looks for a planned rock inside the beam's lead while the beam is free (2026-10-19, note 7b: one crosses the reach's outer cell in about half a second at the hull's corridor pace)
 
 export function createBossRun(c) {
@@ -131,7 +128,8 @@ export function createBossRun(c) {
     // within `clear` + 1 cells of the held rock, past it (a next one in reach takes the beam); a refused ask (SOL seated or offline) backs the look off to `every`
     // THE HAND-OFF RE-DERIVED (review of note 3, 2026-10-19): it was `clear` + 1 (4.2 cells) when clear was 3.2; at clear 6.5 that is 7.5 cells, and a look ran
     // during almost every planned burn and could drop a rock the beam was about to burn for a farther one. Its purpose is the moment the held rock is about to
-    // become unburnable: the hull within the beam's GUARD (3.1 cells) and a cell, 4.1 cells, the same point it marked under round 3's band
+    // become unburnable: the hull within the beam's GUARD (3.1 cells) and a cell, 4.1 cells, the same point it marked under round 3's band; and the look moves the
+    // beam only once the held rock is no longer the road's first burnable rock (second review: a near rock was dropped mid-burn for a farther one)
     const held = roadUntil > 0 && roadPlanned, heldNear = held && roadCell >= 0 && c.fromHull?.(roadCell) < GUARD + 1;
     const lookGap = roadLaid === false ? (ARENA.road?.every ?? 7) : ROAD_LOOK;
     if (phase === 'beacon' && c.arenaOpen?.()) {
@@ -158,13 +156,17 @@ export function createBossRun(c) {
     // the hull met them at its next cell three times in one drive)
     else if (phase === 'beacon' && c.roadNext && c.hullNearArena?.() !== true && ((!roadUntil && t - roadAt >= (ARENA.road?.every ?? 7)) || (t - lookAt >= lookGap && (!held || heldNear)))) {
       const due = !roadUntil && t - roadAt >= (ARENA.road?.every ?? 7), p = planned(); lookAt = t;
-      // THE BAND, THEN THE NEAREST BURNABLE (review of note 3, 2026-10-19): the planned rock is taken in the band (`clear` to aheadMetres, 6.5 to 10 cells; the
-      // first cut `clear` and out); when no planned rock lies in it, the nearest one outside the beam's guard (roadFar(ci, 0): 3.1 cells) and in reach. Without
-      // it a rock between 3.1 and 6.5 cells was never asked for again: Isao driving with the player in SOL's seat (asks refused, the look backed off to `every`),
-      // a rock dropped mid-burn for a newer ask, a rock 4 to 6 cells from where the hull starts; the road stayed shut. The flank (widening) keeps the band only
-      const far = roadCuts ? roadOk : (c.roadFar ?? (() => true)), near = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (!roadCuts || inLead(ci));
-      const rock = (f) => (p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: held ? (ci) => ci !== roadCell && f(ci) : f }) : -1);
-      let pc = rock(far); const inBand = pc >= 0; if (pc < 0) pc = rock(near);
+      // THE ROAD'S FIRST BURNABLE ROCK (review of note 3, 2026-10-19, two rounds): SOL asks for the first planned rock down the road that the beam can burn (outside
+      // its guard: roadFar(ci, 0), 3.1 cells) and, after the first cut, within reach (aheadMetres, 10 cells). Rocks are taken as they enter the reach, so in
+      // driving that is a rock about 10 cells out, inside the band (`clear` to aheadMetres, 6.5 to 10: the cut log's `band`, the flank's rule). The band asked
+      // first left a rock 3.1 to 6.5 cells off for later or for good (Isao driving while the player sat in SOL's seat; a rock dropped mid-burn): the road's
+      // first rock is the one that blocks it first. The first cut: the same rule at any distance (the nearest road rock, at once)
+      const burnable = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (!roadCuts || inLead(ci));
+      let pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: burnable }) : -1;
+      // THE HAND-OFF NEVER DROPS THE ROAD'S FIRST: during a planned burn the look only moves the beam on once the held rock is no longer the road's first burnable
+      // rock (the hull inside the guard of it, or the rock gone); while it still is, the beam stays on it
+      if (held && pc === roadCell) pc = -1;
+      const inBand = pc >= 0 && !(c.fromHull?.(pc) < (ARENA.road?.clear ?? 0));
       const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
       if (pc >= 0 || due) {
         if (roadUntil) release();
