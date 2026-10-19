@@ -42,20 +42,21 @@ const ROWS = [
 // without depth at the kit's one render order, so the pools draw in the order they were made: the purple pool is made at the load (the nests' barbed
 // guards) and every soft pool made after it painted its pale, white-glinting skin over the purple bodies, in front of them or not. `order` is the
 // membranes' render order: the cored tiers' after the soft tiers' (the kit's 2), so a warning body is never painted over by a harmless one (the pearls are
-// drawn before both and write depth, as before). And purple and brown keep enemyspec's dark-body rule like black: their glints, the rim with them
+// drawn before both and write depth, as before; since 2026-10-19 not purple's and brown's: A SKIN AS IN THE LAB, below). And purple and brown keep enemyspec's dark-body rule like black: their glints, the rim with them
 // (src/fx/cutis-maku/shaders.js: specular, window and rim all take uGlint), are their tint in full, not 40 % white; their skin 60 % of the way to it
 // (was 40 %); their membrane .45 (r2-c's .4 read faint in a crowd; its report named .45 as the first knob, under the owner's .5 of 2026-10-16).
 // A SKIN AS IN THE LAB (owner, 2026-10-19, round four, note 5: "color of purple enemy is still wrong, they look almost entirely white, they should
 // look like they do in our specimen lab, purple skin"). Measured first (.superpowers/sdd/r4-c-before-*.png): the membrane shader is unlit and its
 // front face covers about .29 of what lies behind it at .45 (.85 x .75 x .45; the high hull's back face adds ~.15). On the bestiary's near-black
 // stage what lies behind is black, so a purple body reads as its own purple (#5b3d7e sampled, 64 % of its box saturated purple); on the planet
-// it is the daylit floor, the base's pale pad, the white and blue crowds the purples walk in, and the day-lit pale pearl (0xdfa9ff, clearcoat),
-// so in a sector-5 crowd in daylight 23 % of a purple body's pixels were saturated purple and its mean #56596a, a lilac-grey. A thin skin can
-// only read as the lab's over a black ground. So purple and brown (the same row, the same cause) wear a full skin on the planet: `opacity` 1.35
-// (the shader clamps: ~.86 of the front face, the stretched stalks still ~.26), and `pearl`: their pearl drawn after the skin at that opacity
-// (src/fx/creature-pearl.js) instead of under it, so it shows through as it does through the lab's thin skin. The bestiary keeps its .45 and its
-// pearl under the skin (src/content/bestiary.js BESTIARY_STAGE.skin): the lab is the reference look, over its own black. Same frame A/B, sector 5
-// in daylight: 92 % of the purple body saturated purple, mean #7c52a1. Black is left: a dark skin, its read is its red, not this note.
+// it is the daylit floor, the base's pale pad, the white and blue crowds the purples walk in, and the day-lit pale pearl (0xdfa9ff, clearcoat).
+// So purple and brown (the same row, the same cause) wear a full skin on the planet. `opacity` is a GAIN, not an opacity: the shader multiplies
+// it into each face's alpha and clamps (src/fx/cutis-maku/shaders.js MEMBRANE_FRAG), so at 1.35 the front face at rest covers .86, the rim
+// saturates to 1, the back face .46 and a stretched stalk .25. `pearl`: their pearl drawn after the cored skins at that opacity, and the full skin
+// writing its back faces' depth (src/fx/creature-pearl.js depthBacks), so bodies and pearls behind it are hidden in the right order and its own
+// pearl shows over its front skin as through the lab's thin one. The bestiary keeps its .45 and its pearl under the skin (src/content/bestiary.js
+// BESTIARY_STAGE.skin): the lab is the reference look, over its own black. Same paused frame, sector 5's crowd in daylight at ~22 m: 31 % of the
+// purple body's pixels saturated purple, mean #463b5a, before; 79 %, mean #6e4a90, after. Black is left: a dark skin, its read is its red.
 export const PEARL_MEMBRANE = freeze({
   white: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
   yellow: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },

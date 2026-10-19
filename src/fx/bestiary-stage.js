@@ -58,6 +58,12 @@ export function packWalk(type) {
   return pearlSpeed({ speed: ENEMY_SPEC[type].speed * pace.speed, radii: pace.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: CELL }) * PEARL_GAIT.sectorPace * CELL;
 }
 
+// the stage's copy of the set: every hop cycle x body.cycle, and the lab's skin (BESTIARY_STAGE.skin, 2026-10-19): the reference opacity over the
+// stage's black, the pearl under the skin as the kit draws it and no depth twin (no `pearlShow`; src/fx/creature-pearl.js)
+export function stageSet(S = BESTIARY_STAGE, tiers = PEARL_TIERS) {
+  return tiers.map((t) => ({ ...t, values: { ...t.values, cycleDuration: t.values.cycleDuration * S.body.cycle, ...(S.skin?.[t.id] != null ? { membraneOpacity: S.skin[t.id], pearlShow: undefined } : {}) } }));
+}
+
 export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   const S = stage, L = S.lure;
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x05080b);
@@ -86,8 +92,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   const capacity = Object.fromEntries(PEARL_TIERS.map((t) => [t.id, Math.max(...S.packSizes) * 2]));
   // the stage's own copies of the game's tables, slowed and stretched by BESTIARY_STAGE.body (see the header)
   const B = S.body;
-  // and the lab's skin (BESTIARY_STAGE.skin, 2026-10-19): the reference opacity over the stage's black, the pearl under it
-  const set = PEARL_TIERS.map((t) => ({ ...t, values: { ...t.values, cycleDuration: t.values.cycleDuration * B.cycle, ...(S.skin?.[t.id] != null ? { membraneOpacity: S.skin[t.id], pearlShow: undefined } : {}) } }));
+  const set = stageSet(S);
   const gait = { ...PEARL_GAIT, hop: PEARL_GAIT.hop * B.reach, config: { ...PEARL_GAIT.config, timing: B.timing ?? PEARL_GAIT.config.timing } };
   const pace = Object.fromEntries(Object.entries(PEARL_PACE).map(([id, p]) => [id, p.hop ? { ...p, hop: p.hop * B.reach } : p]));   // a tier's own stride stretched too (the whites, 2026-10-15)
   const pearl = createPearlFamily({ parent: world, tiers: BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set,

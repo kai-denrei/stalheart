@@ -48,6 +48,24 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 // two sRGB hex colours mixed channel by channel, `k` of the way from a to b (the cored read's tints, below)
 const mixHex = (a, b, k) => [16, 8, 0].reduce((o, sh) => o | (Math.round(((a >> sh) & 255) * (1 - k) + ((b >> sh) & 255) * k) << sh), 0);
 
+// A FULL SKIN WRITES ITS DEPTH (owner, 2026-10-19, note 5, the review: at ~86 % a membrane drawn without depth in pool order showed a far body over a near
+// one, and a pearl drawn after every membrane showed through any body in front of it): for each level a depth-only twin of the membrane (the same geometry,
+// instance attributes and uniforms; no colour) draws the BACK faces, at `order` (before the cored skins, after the soft ones: the soft skins never test
+// against it, round three's rule stands). A later body or pearl behind a full-skinned body is depth-rejected wherever that body's far side covers it,
+// whatever the pools' and instances' order; the body's own pearl, inside, is in front of its own back face and stays seen. Fragments under `cut` alpha
+// (the back face at rest is ~.46 at the planet's gain; a stretched stalk ~.13, a body fading out under ~.65 of its life) write nothing, so the thin stalks
+// and a dying puddle never hide what is behind them; a small polygon offset keeps the skin's own back pass from z-fighting its twin.
+function depthBacks(geo, order, capacity, cut = 0.3) {
+  const group = new THREE.Group(); group.name = 'Pearl skin depth';
+  const meshes = geo.levels.map((l) => {
+    const m = l.material, mat = new THREE.ShaderMaterial({ vertexShader: m.vertexShader, fragmentShader: m.fragmentShader.replace('#include <tonemapping_fragment>', `if (gl_FragColor.a < ${cut.toFixed(2)}) discard;\n  #include <tonemapping_fragment>`),
+      uniforms: m.uniforms, side: THREE.BackSide, transparent: true, depthWrite: true, colorWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    const mesh = new THREE.InstancedMesh(l.geometry, mat, capacity); mesh.frustumCulled = false; mesh.renderOrder = order; mesh.count = 0; mesh.visible = false; group.add(mesh);
+    return mesh;
+  });
+  return { group, meshes, sync: () => geo.levels.forEach((l, k) => { meshes[k].count = l.membrane.count; meshes[k].visible = l.membrane.visible; }), dispose: () => meshes.forEach((x) => { x.material.dispose(); x.dispose(); }) };
+}
+
 // `parent` the bodies' root, `tiers` the bodies by type (pearlBodies), `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `set` PEARL_TIERS, `tune` PEARL_FOLLOW,
 // `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub), `impact` PEARL_IMPACT, `pace` PEARL_PACE (a tier's hop reach),
 // `gait` PEARL_GAIT (round four: the organic gait; without it the round-three follow, the kit's hop and the leash's re-placement, as before)
@@ -84,9 +102,13 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
-    // A SKIN AS IN THE LAB (owner, 2026-10-19, note 5; PEARL_MEMBRANE's `pearl`): under a full skin the pearl is drawn after the membranes, at that opacity
-    if (cores && def.values.pearlShow != null) for (const m of cores.meshes) { m.renderOrder = (def.values.membraneOrder ?? 2) + 1; m.material.opacity = def.values.pearlShow; }
-    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
+    // A SKIN AS IN THE LAB (owner, 2026-10-19, note 5; PEARL_MEMBRANE's `pearl`): a full skin writes its back faces' depth before every cored skin
+    // (depthBacks, below) and the pearl is drawn after the cored skins at that opacity, depth-tested: its own body's back face is behind it, so it shows
+    // over its own front skin as through the lab's thin one; a pearl behind another full-skinned body is hidden by that body's back face
+    const order = def.values.membraneOrder ?? 2, backs = def.values.pearlShow != null ? depthBacks(geo, order - 0.5, swarm.capacity) : null;
+    if (backs) { backs.group.name = `Pearl ${id} depth`; group.add(backs.group); }
+    if (cores && def.values.pearlShow != null) for (const m of cores.meshes) { m.renderOrder = order + 0.5; m.material.opacity = def.values.pearlShow; }
+    p = { id, def, swarm, geo, cores, backs, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
     pools.set(id, p);
     return p;
   }
@@ -435,7 +457,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         sw.life[i * 4 + 1] = impactStep(sw, i, j, t);
       }
       hubTable(sw); sw.advance(dt);
-      if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); }
+      if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); p.backs?.sync(); }
     }
     motion?.sample(pools, dt);
   }
@@ -542,6 +564,6 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         stage: sw.getState(i), phase: sw.phase[i], reach: sw.params[i * 4], active: !!sw.active[i], dead: h.dead, hub: h.hub,
         stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, room: +sw.room[i].toFixed(3), sweepDamp: +sw.sweepDamp[i].toFixed(3), pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
-    dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); } pools.clear(); parent.remove(group); },
+    dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); p.backs?.dispose(); } pools.clear(); parent.remove(group); },
   };
 }
