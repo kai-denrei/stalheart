@@ -47,7 +47,7 @@ const REFILL = 5;       // seconds between calls for the gunship while it is off
 const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
 const BROOD_STAGGER = 0.1;   // seconds between the brood's deaths once the mother is dead (review of note 10, 2026-10-19)
 const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut lands (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)")
-const GUARD = ARENA_ROAD_GUARD;   // the beam's guard in cells (src/content/sectors.js): a rock nearer than this cannot be burned; td-tab's roadFar(ci, 0) asks only that
+const GUARD = ARENA_ROAD_GUARD, ROAD_HYST = 0.25;   // ROAD_HYST: the cells past the guard before a rock is asked for (the release is at the guard itself)   // the beam's guard in cells (src/content/sectors.js): a rock nearer than this cannot be burned; td-tab's roadFar(ci, 0) asks only that
 const ROAD_LOOK = 0.25;   // seconds between looks for a planned rock inside the beam's lead while the beam is free (2026-10-19, note 7b: one crosses the reach's outer cell in about half a second at the hull's corridor pace)
 
 export function createBossRun(c) {
@@ -72,7 +72,8 @@ export function createBossRun(c) {
   // THE ROAD KEPT (2026-10-19, the merged --arena-drive): the road ahead of the hull is the one laid from it, kept while the hull is on it or a cell off it
   // (src/domain/arena.js roadKept), so the rings, the harness's driver and SOL's cuts read one road, and a rock does not join it three cells from the hull
   const roadAhead = () => { const p = planned(); if (!p) return []; const k = roadKept({ adj: p.g.adj, field: p.field, from: p.g.from, route }); route = k.route; return k.ahead; };
-  const roadAheadCells = () => (phase !== 'beacon' ? [] : roadAhead().slice(0, 12));   // the harness: the planned road's next cells (a driver follows the rings)
+  // the harness and the rings READ the road without laying it (review, 2026-10-19: state() reassigned `route`): roadKept is pure, the kept route left as the tick keeps it
+  const roadAheadCells = () => { if (phase !== 'beacon') return []; const p = planned(); return p ? roadKept({ adj: p.g.adj, field: p.field, from: p.g.from, route }).ahead.slice(0, 12) : []; };   // the harness: the planned road's next cells (a driver follows the rings)
   const isOpen = (ci) => { const g = c.roadGraph?.(); return !!g && g.tags[ci] !== g.blocked; };
   const roadDist = () => { const p = planned(); return p ? p.field[p.g.from] : null; };   // the hull's walking cost to the arena down the planned road (null: no graph)
   // THE BEAM'S LEAD (owner, 2026-10-19, note 7b: "always 50m ahead of the tank clearing the path"): a cell within ARENA.road.aheadMetres of the hull by the chord (c.fromHull, in cells)
@@ -164,7 +165,7 @@ export function createBossRun(c) {
       // driving that is a rock about 10 cells out, inside the band (`clear` to aheadMetres, 6.5 to 10: the cut log's `band`, the flank's rule). The band asked
       // first left a rock 3.1 to 6.5 cells off for later or for good (Isao driving while the player sat in SOL's seat; a rock dropped mid-burn): the road's
       // first rock is the one that blocks it first. The first cut: the same rule at any distance (the nearest road rock, at once)
-      const burnable = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (!roadCuts || inLead(ci));
+      const burnable = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (ci === roadCell || !(c.fromHull?.(ci) < GUARD + ROAD_HYST)) && (!roadCuts || inLead(ci));   // a rock not yet held is asked only from GUARD + ROAD_HYST; the held one keeps the beam to the guard itself: a hull sitting at the guard's edge does not re-ask each look (review, 2026-10-19)
       let pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: burnable, path: roadAhead() }) : -1;
       // THE HAND-OFF NEVER DROPS THE ROAD'S FIRST: during a planned burn the look only moves the beam on once the held rock is no longer the road's first burnable
       // rock (the hull inside the guard of it, or the rock gone); while it still is, the beam stays on it
