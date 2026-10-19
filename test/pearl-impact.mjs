@@ -84,7 +84,8 @@ console.log('PASS the jolt: a pitch kick about its size, sharper for a cored bod
 // distinguish against living ones") ----
 {
   const D = PEARL_IMPACT.death;
-  assert(D.tone <= 0.3 && D.seconds <= 0.15, 'much darker, at once');
+  // 2026-10-19 (round four, note 1: "color of dead enemies must immediately fade to grey"): one matte grey, the glints and the pulse gone, at once
+  assert(D.grey > 0.05 && D.grey < 0.5 && D.matte === 1 && D.seconds <= 0.1, 'a mid grey, matte, at once');
   assert(MEMBRANE_VERT !== undefined);
   const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
   const plain = fam.add('amoeba', { x: 0, z: 0, angle: 0, speed: 2 }), rammed = fam.add('amoeba', { x: 30, z: 0, angle: 0, speed: 2 }), alive = fam.add('amoeba', { x: 60, z: 0, angle: 0, speed: 2 });
@@ -98,6 +99,77 @@ console.log('PASS the jolt: a pitch kick about its size, sharper for a cored bod
 }
 {
   const { MEMBRANE_FRAG } = await import('../src/fx/cutis-maku/shaders.js');
-  assert(MEMBRANE_FRAG.includes('uniform float uDeadTone;') && MEMBRANE_FRAG.includes('if(vLife.z<0.){'), 'the membrane shader darkens a dead body');
+  assert(MEMBRANE_FRAG.includes('uniform float uDeadGrey,uDeadMatte,uDeadAlpha;') && MEMBRANE_FRAG.includes('float dead=vLife.z<0.') && MEMBRANE_FRAG.includes('pulse*=alive;'), 'the membrane shader greys a dead body and takes its glints and pulse');
+  const { createMembraneMaterial } = await import('../src/fx/cutis-maku/material.js');
+  const D = PEARL_IMPACT.death, m = createMembraneMaterial({ ...PEARL_TIERS[0].values, death: D });
+  assert.equal(m.uniforms.uDeadGrey.value, D.grey); assert.equal(m.uniforms.uDeadMatte.value, D.matte); assert.equal(m.uniforms.uDeadAlpha.value, D.alpha);
 }
-console.log('PASS the dead go dark at once: a plain death and a rammed body\'s stagger reach the dark within PEARL_IMPACT.death.seconds, the living untouched, the shader\'s uDeadTone');
+console.log('PASS the dead go grey at once: a plain death and a rammed body\'s stagger reach the grey within PEARL_IMPACT.death.seconds, the living untouched, the shader\'s uDeadGrey / uDeadMatte / uDeadAlpha');
+
+// ---- the ram drawn in under the hull (owner, 2026-10-19, round four, note 2: "like they are being absorbed under the hull when they die"; PEARL_IMPACT.absorb) ----
+{
+  const A = PEARL_IMPACT.absorb;
+  assert(A.on, 'the prototype is on');
+  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
+  // the hull at the origin heading +x; the body 5 m ahead of its centre and 2 m to the side
+  const h = fam.add('amoeba', { x: 5, z: 2, angle: 0, speed: 2 });
+  for (let f = 0; f < 20; f++) { fam.track(h, { x: 5, z: 2, dt: 1 / 60, speed: 2 }); fam.step(1 / 60); }
+  const v0 = fam.view(h), r = v0.radius;
+  fam.kill(h, { dx: 1, dz: 0, ax: 0, az: 1, hx: 0, hz: 0 });
+  let t = 0, v = fam.view(h);
+  while (t < A.seconds) { fam.step(1 / 60); t += 1 / 60; v = fam.view(h); }
+  assert(v.absorb && v.stagger !== null, 'the rammed body is absorbing');
+  const across = v.centre[1], along = v.centre[0];
+  assert(Math.abs(across) < 0.25 * Math.abs(v0.centre[1]), `pulled onto the hull's centre line (${v0.centre[1].toFixed(2)} -> ${across.toFixed(2)} m)`);
+  assert(along < v0.centre[0] - 0.4 * A.back * v0.centre[0], `drawn back under the hull, not flung ahead (${v0.centre[0].toFixed(2)} -> ${along.toFixed(2)} m)`);
+  assert(v.lift < -0.9 * A.sink * r, `sunk under the ground (${v.lift.toFixed(2)} m, radius ${r.toFixed(2)})`);
+  assert.equal(v.tint, -1, 'grey');
+  assert(v.deflate > 0.3, `squashed flat (${v.deflate})`);
+  while (t < A.seconds + A.fade + 0.05) { fam.step(1 / 60); t += 1 / 60; }
+  assert.equal(fam.stats().white.dying, 0, 'faded and its slot freed, not the six-second puddle'); assert.equal(fam.stats().white.absorbed, 1);
+  // a ram without the hull's centre (the swarm lab's) staggers as before
+  const g = fam.add('amoeba', { x: 40, z: 0, angle: 0, speed: 2 }); fam.step(1 / 60); fam.kill(g, { dx: 1, dz: 0 }); fam.step(1 / 60);
+  assert(!fam.view(g).absorb && fam.view(g).stagger !== null, 'no hull, the stagger');
+}
+console.log('PASS the ram drawn in under the hull: onto its centre line, back under it, sunk, flat and grey by PEARL_IMPACT.absorb.seconds, then faded and freed');
+
+// ---- the absorption's reach (review, 2026-10-19): a body further from the hull than the hull's half length plus its radius is staggered, not dragged ----
+{
+  const A = PEARL_IMPACT.absorb;
+  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
+  const far = fam.add('amoeba', { x: 20, z: 6, angle: 0, speed: 2 }), near = fam.add('amoeba', { x: 5, z: 1, angle: 0, speed: 2 });
+  for (let f = 0; f < 20; f++) { fam.track(far, { x: 20, z: 6, dt: 1 / 60, speed: 2 }); fam.track(near, { x: 5, z: 1, dt: 1 / 60, speed: 2 }); fam.step(1 / 60); }
+  const r = fam.view(far).radius, f0 = fam.view(far).centre.slice();
+  fam.kill(far, { dx: 1, dz: 0, ax: 0, az: 1, hx: 0, hz: 0 }); fam.kill(near, { dx: 1, dz: 0, ax: 0, az: 1, hx: 0, hz: 0 });
+  assert(!fam.view(far).absorb && fam.view(far).stagger !== null, 'the far body staggers'); assert(fam.view(near).absorb, 'the near body is drawn in');
+  for (let t = 0; t < 0.3; t += 1 / 60) fam.step(1 / 60);
+  const moved = Math.hypot(fam.view(far).centre[0] - f0[0], fam.view(far).centre[1] - f0[1]);
+  assert(moved <= S.knockRadii * r * 1.05 + 1e-6, `and moves no more than its stagger's knock (${moved.toFixed(2)} m, ${S.knockRadii} radii of ${r.toFixed(2)})`);
+  assert(fam.view(near).knocked <= A.reach + fam.view(near).radius + 1e-6, `the drawn-in move is within the reach (${fam.view(near).knocked})`);
+}
+console.log('PASS the absorption\'s reach: past the hull\'s half length plus a radius the ram staggers, within it the body is drawn in');
+
+// ---- the hull's contact spares only the absorbed (review, 2026-10-19): a live soft body and a live cored one beside an absorbing one are still touched, the
+// cored one still pushes the hull back; the absorbing one is neither touched nor shoved, and the harness's measure (drive null) still sees it ----
+{
+  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
+  const box = { x: 0, z: 0, ux: 1, uz: 0, hl: 4.4, hw: 2.2 };
+  const soft = fam.add('amoeba', { x: 4.8, z: -1, angle: Math.PI, speed: 2 }), hard = fam.add('drifter', { x: 0, z: 4.6, angle: -Math.PI / 2, speed: 2 }), gone = fam.add('amoeba', { x: 5.2, z: 1.2, angle: Math.PI, speed: 2 });
+  const spots = new Map([[soft, [4.8, -1]], [hard, [0, 4.6]], [gone, [5.2, 1.2]]]);
+  for (let f = 0; f < 20; f++) { for (const [h, [x, z]] of spots) fam.track(h, { x, z, dt: 1 / 60, speed: 2 }); fam.step(1 / 60); }
+  fam.kill(gone, { dx: 1, dz: 0, ax: 0, az: 1, hx: 0, hz: 0 });
+  for (let t = 0; t < 0.25; t += 1 / 60) { for (const h of [soft, hard]) fam.track(h, { x: spots.get(h)[0], z: spots.get(h)[1], dt: 1 / 60, speed: 2 }); fam.step(1 / 60); }
+  assert(fam.view(gone).absorb, 'one is being drawn in');
+  const g0 = fam.view(gone).centre.slice(), touched = [], pushes = [], depths = [];
+  // the soft one and the cored one pressed into the hull's nose and side
+  fam.hullContact(() => ({ ...box }), null, { push() {}, touch() {}, depth: (h, d, tier, dying, under) => depths.push({ h, d, dying, under }) });
+  const g = depths.find((x) => x.h === gone);
+  assert(g && g.under && g.dying && g.d > 0, `the measure sees the drawn-in body under the hull (${JSON.stringify(depths.map((x) => ({ d: +x.d.toFixed(2), under: x.under })))})`);
+  fam.hullContact(() => ({ ...box }), true, { push: (hub, dx, dz) => pushes.push([dx, dz]), touch: (h, cored) => touched.push({ h, cored }) });
+  assert(touched.some((x) => x.h === soft && !x.cored), 'the live soft body is touched');
+  assert(touched.some((x) => x.h === hard && x.cored), 'the live cored body is touched, as cored');
+  assert(pushes.length > 0, 'the cored body pushes the hull back');
+  assert(!touched.some((x) => x.h === gone), 'the drawn-in body is not touched (no speed lost to it)');
+  assert.deepEqual(fam.view(gone).centre, g0, 'nor shoved');
+}
+console.log('PASS the hull\'s contact: live soft and cored bodies beside a drawn-in one are touched and the cored one pushes back; the drawn-in one is neither, and the measure sees it');

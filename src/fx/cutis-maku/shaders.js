@@ -238,8 +238,9 @@ uniform vec3 uHeat;
 uniform vec3 uGlint;
 uniform float uOpacity;
 uniform float uMulticolored;
-// the Pearl set's death (owner, 2026-10-13): a dead body's brightness share (iLife.w below zero: how far into the dark it has gone)
-uniform float uDeadTone;
+// the Pearl set's death (owner, 2026-10-13; grey, 2026-10-19): iLife.w below zero is how far into its death look a body has gone: uDeadGrey the corpse's
+// grey (linear, shaded by the light), uDeadMatte the share of its glints and pulse taken away, uDeadAlpha the least its skin's alpha goes to
+uniform float uDeadGrey,uDeadMatte,uDeadAlpha;
 uniform vec3 uPaletteSkin[7],uPaletteVein[7],uPaletteGlow[7];
 varying vec3 vWorld,vRest,vHeading,vNormal;
 varying float vStretch,vPhase,vSeed,vLead;
@@ -271,16 +272,21 @@ void main(){
   float pulse=pow(.5+.5*sin(vRest.z*9.-uTime*uPulse*(vPhase>=.62?-1.:1.)),7.);
   float gate=vPhase<.1?1.:vPhase<.55?.12:vPhase<.62?1.:vPhase<.85?.6:.08;
   pulse=max(pulse,step(.55,vPhase)*(1.-step(.62,vPhase))*vLead);
+  // THE DEAD READ GREY (owner, 2026-10-19, round four, note 1: "color of dead enemies must immediately fade to grey so we don't mistake them for alive
+  // ones"): the live white tier is ivory, so grey alone cannot tell a corpse from it; a dead body also loses what reads as alive, its wet glints (specular,
+  // window, rim, the back light) and its veins' travelling pulse (held at rest, phase 0, the pulse ran at full gate on every corpse)
+  float dead=vLife.z<0.?clamp(-vLife.z,0.,1.):0.,alive=1.-dead*uDeadMatte;
+  pulse*=alive;
   vec3 veinColor=mix(skin*.78,veinTint,thick);
   vec3 color=mix(skin,veinColor,vein*mix(.5,.94,thick));
   if(uLow<.5)N=normalize(N+vec3(dFdx(field),dFdy(field),0.)*.14);
   float diffuse=max(0.,(dot(N,L)+.45)/1.45);
   float back=pow(max(0.,dot(V,-L)),3.)*(1.-thick);
   float spec=pow(max(0.,dot(N,normalize(L+V))),100.);
-  color*=.12+diffuse*.45;color+=skin*back*.32+(vec3(1.,.91,.8)*spec*.95+rim*.17)*uGlint;
+  color*=.12+diffuse*.45;color+=(skin*back*.32+(vec3(1.,.91,.8)*spec*.95+rim*.17)*uGlint)*alive;
   vec3 reflected=reflect(-V,N);
   float window=pow(max(0.,dot(reflected,normalize(vec3(-.4,1.,.7)))),32.);
-  color+=vec3(.85,.93,1.)*uGlint*window*.9+glow*pulse*gate*vein*.7;
+  color+=vec3(.85,.93,1.)*uGlint*window*.9*alive+glow*pulse*gate*vein*.7;
   float alpha=(mix(.25,.85,thick)+rim*.19)*(gl_FrontFacing?.75:.4);
   // A puddle is a thin skin: let the dark core show through.
   if(uCore<.5)alpha*=mix(1.,.7,max(0.,vLife.x));
@@ -294,9 +300,10 @@ void main(){
   float flashHit=step(2.,vLife.z)*clamp(vLife.z-2.,0.,1.),iceTint=(1.-step(2.,vLife.z))*clamp(vLife.z,0.,1.);
   color=mix(color,vec3(.56,.83,1.)*(.3+.7*max(max(color.r,color.g),color.b)),iceTint*.8);
   color=mix(color,vec3(1.,.22,.16)*(.6+.6*max(max(color.r,color.g),color.b)),flashHit*.85);alpha=min(1.,alpha+flashHit*.35);   // a red halo (owner, 2026-10-15, second round), the membrane fuller for it
-  // The Pearl set's death (owner, 2026-10-13: "keeping the current dissolving blob, but having it immediately much darker"): iLife.w below zero takes
-  // the body (its skin, veins, pulse, rim and glints, the inner core) toward a near-grey uDeadTone of its brightness
-  if(vLife.z<0.){float d=clamp(-vLife.z,0.,1.),l=dot(color,vec3(.299,.587,.114));color=mix(color,mix(vec3(l),color,.2)*uDeadTone,d);}
+  // The Pearl set's death (owner, 2026-10-13: "keeping the current dissolving blob, but having it immediately much darker"; 2026-10-19: grey): iLife.w below
+  // zero takes the body, membrane and inner core alike, to one matte grey, uDeadGrey shaded by the light (no hue, the same corpse grey for every tier;
+  // the inner core a shade under it), its skin no thinner than uDeadAlpha so it reads as a grey thing, not a dark stain
+  if(dead>0.){color=mix(color,vec3(uDeadGrey*(.55+.45*diffuse)*(uCore>.5?.7:1.)),dead);alpha=mix(alpha,max(alpha,uDeadAlpha),dead);}
   // Thermal: the FLIR lerps the material's emissive toward white; the colour follows, the skin thickens a little.
   float heat=clamp(uHeat.r,0.,1.);
   color=mix(color,vec3(1.),heat);alpha=min(1.,alpha+heat*.25);

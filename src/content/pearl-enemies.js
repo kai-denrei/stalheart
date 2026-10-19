@@ -232,10 +232,28 @@ export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd
 // the hull and the rock pushes the hull back by what it cannot give, times its tier's mass, at most `pin` m a frame (a dying one not at all).
 // `death` (owner, 2026-10-13: "when the Cutis-Maku dies, it becomes very hard to distinguish which ones are alive and which ones are dead... so I
 // propose keeping the current dissolving blob, but having it immediately much darker, so it is easier to distinguish against living ones."): at the
-// moment of death (a rammed body's stagger included: it is dead) the membrane, its veins, pulse and rim, the inner core and the pearl go to `tone` of
-// their brightness, near grey, over `seconds`, and stay so while the blob deflates and dissolves as before (src/fx/cutis-maku/shaders.js uDeadTone).
+// moment of death (a rammed body's stagger included: it is dead) the membrane, its veins, pulse and rim, the inner core and the pearl went to a share of
+// their brightness, near grey, over `seconds`, and stayed so while the blob deflated and dissolved as before (src/fx/cutis-maku/shaders.js); replaced, below.
+// GREY, NOT DARK (owner, 2026-10-19, round four, note 1: "color of dead enemies must immediately fade to grey so we don't mistake them for alive ones").
+// Measured first (.superpowers/sdd/r4-a-before-*.png): the dark tone did land (iLife.w at -1 by the first frame after the kill, membrane and pearl), but
+// a corpse kept everything that reads as alive: its wet glints, rim and back light, its veins' pulse running at full gate (the hop held at phase 0) and
+// the pearl's white clear-coat glint, so at night a dead body was a glossy dark-grey blob beside the live ivory and grey whites (a black tier's look),
+// and in daylight a dark see-through stain on the dark ground. Now `grey`: every corpse, membrane and core, one matte grey (linear, shaded by the
+// light, the core 0.7 of it), whatever its tier; `matte` the share of the glints, the pulse and the pearl's clear coat taken away; `alpha` the
+// least its skin's alpha goes to (a grey thing, not a stain: the floor holds a deflating corpse at `alpha` or more until its fade, over the puddle's
+// thinning and the back faces' lower share, shaders.js); over `seconds`. Under the gunship's FLIR a dead pearl loses its thermal glow with its gloss
+// (src/fx/cutis-maku/hard-core.js keeps the diffuse light only, the emissive with the rest), as meant: a hot core is a live one; the membrane still heats. Measured after (r4-a-after-grey012-*.png, 0.8 s after the kill): a corpse's disc
+// 65-88 of 255, no hue (saturation 0.00-0.08), nothing over 107; a live white's 108-138 with its glints to 230; the same day and night (the skin is unlit).
+// `absorb` (owner, 2026-10-19, round four, note 2: "we could investigate better ramming death mechanics, like they are being absorbed under the hull
+// when they die"; a prototype, `on` false puts the stagger back): a body the hull rams is not flung ahead of it but drawn in under it: knocked toward the
+// hull's centre line (`pull` of its offset across the hull's axis, `back` of its offset along it, both measured from the hull's centre at the ram), the
+// knock's speed falling off over `knock` s (a move longer than `reach` metres, the hull's half length, plus the body's radius staggers instead: a body
+// far from the hull is not dragged across the ground), squashed flat to `squash`, and sunk `sink` radii under the ground over `seconds` (eased), so the hull rolls
+// over it; then it fades out over `fade` s, its slot freed (not the six-second puddle). The hull neither shoves it nor loses speed to it (src/fx/creature-pearl.js
+// hullContact). The jolt (src/fx/ram-jolt.js) and the grey (`death`) as before.
 export const PEARL_IMPACT = freeze({
-  death: { tone: 0.22, seconds: 0.12 },
+  death: { grey: 0.12, matte: 1, alpha: 0.5, seconds: 0.08 },
+  absorb: { on: true, seconds: 0.6, knock: 0.12, pull: 1, back: 0.8, squash: 0.6, sink: 2.4, fade: 0.5, reach: 4.4 },   // 0.6 / 0.8 over 0.4 / 0.5 (review, 2026-10-19: r4-a-fix-ram-series.png; the sink seen for longer, the body carried under the hull's middle, not its nose)
   // `ramSoft` (owner, 2026-10-15: "I encountered a soft-body enemy which I could not ram with the tank, it kept being just pushed away"): a soft body of
   // ANY tier the hull touches while it drives is the game's ram (e.bodyRam), as the light tiers' brush already was; the shove stays the body's answer
   // for the frame it is hit, its death the next (the ram's stagger and deflate)

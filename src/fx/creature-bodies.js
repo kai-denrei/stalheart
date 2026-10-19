@@ -169,7 +169,9 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     const a = adapters.get(b.family);
     if (!fx) { a.free(b.h); return; }
     const d = e.impact && frame ? planeDir(e, b.hub, e.impact.dir) : null, s = d && e.impact.aside ? planeDir(e, b.hub, e.impact.aside) : null;
-    a.kill(b.h, d ? { ...d, ax: s?.dx ?? null, az: s?.dz ?? null } : null);
+    // the hull's centre at the ram in the body's hub plane (hx, hz metres): a family that draws the body in under the hull aims at it (PEARL_IMPACT.absorb, 2026-10-19)
+    const c = d && e.impact.hull ? planeOf(e.impact.hull, b.hub) : null;
+    a.kill(b.h, d ? { ...d, ax: s?.dx ?? null, az: s?.dz ?? null, hx: c?.[0] ?? null, hz: c?.[1] ?? null } : null);
   }
   // ROUND FOUR, THE TANK'S HULL (owner, 2026-10-13: "the tank should never be able to 'go through' the enemy"): `tank` { pos (unit), dir (unit
   // tangent: the hull's facing), hl, hw (metres: half length and half width) }; each family with hullContact (src/fx/creature-pearl.js) puts its
@@ -190,7 +192,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   };
   const hullPush = (hub, dx, dz) => { const to = toSphere[hub] ?? toSphere[0], b = boxes[hub], a = to(b.x, b.z), ax = a[0], ay = a[1], az = a[2], c = to(b.x + dx, b.z + dz); hullSink.push(c[0] - ax, c[1] - ay, c[2] - az); };
   const hullTouch = (h, cored, r, tier) => { if (h.record) hullSink.touch(h.record, cored, r, tier); };
-  const familySink = { push: hullPush, touch: hullTouch, depth: (h, d, tier, dying) => hullSink.depth?.(h, d, tier, dying) };
+  const familySink = { push: hullPush, touch: hullTouch, depth: (h, d, tier, dying, under) => hullSink.depth?.(h, d, tier, dying, under) };
   function hull(tank, drive, sink) {
     place();
     if (!frame || !tank?.pos) return 0;

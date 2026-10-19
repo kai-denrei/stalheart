@@ -89,7 +89,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
     // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
     if (gait) Object.assign(config, gait.config, { reach: pace?.[id]?.hop ?? gait.hop });   // a tier's own stride over the gait's (the whites, 2026-10-15)
-    if (IMPACT?.death) config.deathTone = IMPACT.death.tone;   // the dead's darkness (PEARL_IMPACT.death)
+    if (IMPACT?.death) config.death = IMPACT.death;   // the dead's grey (PEARL_IMPACT.death: ./cutis-maku/material.js, ./cutis-maku/hard-core.js)
     // THE CORED READ (owner, 2026-10-18: "the core is slightly colored but the membrane is almost opaque white"; src/content/pearl-enemies.js
     // PEARL_MEMBRANE): the drawn skin pulled toward the tier's tint by its share, the glints (white in the kit) toward it by theirs; a soft tier's shares are 0
     if (def.values.membraneTint) config.skinTint = mixHex(def.values.skinTint, def.values.membraneTintTo, def.values.membraneTint);
@@ -111,7 +111,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     const order = def.values.membraneOrder ?? 2, backs = def.values.pearlShow != null ? depthBacks(geo, twinOrder, swarm.capacity) : null;
     if (backs) { backs.group.name = `Pearl ${id} depth`; geo.group.add(backs.group); }   // a child of the pool's group: a hidden pool cuts nothing behind it
     if (cores && def.values.pearlShow != null) for (const m of cores.meshes) { m.renderOrder = order + 0.5; m.material.opacity = def.values.pearlShow; }
-    p = { id, def, swarm, geo, cores, backs, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
+    p = { id, def, swarm, geo, cores, backs, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0, absorbed: 0 };
     pools.set(id, p);
     return p;
   }
@@ -184,13 +184,27 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     return k.squash * Math.exp(-k.decay * t) * Math.cos(2 * Math.PI * k.hz * t);
   }
 
+  // DRAWN IN UNDER THE HULL (owner, 2026-10-19, round four, note 2; PEARL_IMPACT.absorb): the knock aimed at the hull's centre line from where the body
+  // stands (`pull` of its offset across the hull's axis, `back` of its offset along it, from the hull's centre (hx, hz) at the ram), flattened (no wobble).
+  // A move longer than `reach` metres plus the body's radius (a body far from the hull: one lagging its record, the harness's ram on a distant record)
+  // would be a streak across the ground: null, the caller staggers it instead
+  const ABSORB = IMPACT?.absorb?.on ? { ...IMPACT.absorb, knockSeconds: IMPACT.absorb.knock, hz: 0, decay: 0, knockRadii: 0 } : null;
+  function absorbOf(sw, i, imp) {
+    const pos = sw.position(i), ux = imp.dx, uz = imp.dz, l = Math.hypot(ux, uz) || 1, ax = ux / l, az = uz / l;
+    const rx = pos[0] - imp.hx, rz = pos[2] - imp.hz, along = rx * ax + rz * az, across = -rx * az + rz * ax;
+    const mx = -ax * along * ABSORB.back + az * across * ABSORB.pull, mz = -az * along * ABSORB.back - ax * across * ABSORB.pull, m = Math.hypot(mx, mz);
+    if (m > ABSORB.reach + sw.config.r0 * sw.scale[i]) return null;
+    snap(sw, i);
+    return { t0: clock, dx: m > 1e-9 ? mx / m : 0, dz: m > 1e-9 ? mz / m : 0, metres: m, moved: 0, tune: ABSORB, absorb: true };
+  }
   function die(h, slot, imp = null) {
     const { p } = h, sw = p.swarm, i = slot.i;
     sw.hold[i] = 1; sw.life[i * 4] = 0; p.jolts.delete(i);
-    // a rammed body staggers first: its deflate starts once the stagger is over
-    const S = staggerOf(p.id), st = imp && IMPACT ? impactOf(sw, i, imp, S, S.aside) : null;
+    // a rammed body staggers first: its deflate starts once the stagger is over (or is drawn in under the hull: PEARL_IMPACT.absorb)
+    const S = staggerOf(p.id), ab = imp && ABSORB && imp.hx != null ? absorbOf(sw, i, imp) : null, st = ab ?? (imp && IMPACT ? impactOf(sw, i, imp, S, S.aside) : null);
     if (st) p.staggers++; else { const was = sw.room[i]; sw.clearBody(i, false); if (was > 0) sw.room[i] = Math.min(was, sw.room[i]); }   // round three: the puddle measured where it lies (squeezed by a wall, not moved), within its hop's room (a body dying mid-transfer is drawn out along it)
-    p.dying.set(i, { at: clock + (st ? S.seconds : 0), op: sw.life[i * 4 + 2], st, t0: clock }); p.live--; p.deaths++;
+    if (ab) p.absorbed++;
+    p.dying.set(i, { at: clock + (ab ? ABSORB.seconds : st ? S.seconds : 0), op: sw.life[i * 4 + 2], st, t0: clock }); p.live--; p.deaths++;
   }
 
   // the record walked into another hub's region: every live member's plane state, re-projected into the new hub's plane
@@ -325,7 +339,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     return n;
   }
   // the bodies against the tank's hull: `boxOf(hub)` the hull in that hub's plane ({ x, z, ux, uz, hl, hw }, metres) or null; `drive` true while the
-  // tank moves (its next position): a soft body (or any dying one) in its way is shoved out of it along the contact's least move (and off the rock),
+  // tank moves (its next position): a soft body (or a dying one, but for one drawn in under the hull: PEARL_IMPACT.absorb) in its way is shoved out of it along the contact's least move (and off the rock),
   // and what the rock would not let it give back pushes the tank; a cored body pushes the tank back out of it. Not driving (`drive` false: after the
   // bodies stepped) every body is shoved out of the hull where it stands; `drive` null only measures (the harness: sink.depth(h, depth) for each
   // body overlapping). `sink` { push(hub, dx, dz) the tank's move in a hub's plane, touch(h, cored, r) a live body's contact (the caller books the
@@ -353,19 +367,21 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         if (!sw.active[i] || !h || sw.life[i * 4 + 2] < 0.05) continue;
         const box = boxOf(sw.hub[i]);
         if (!box) continue;
+        const under = !!p.dying.get(i)?.st?.absorb;   // drawn in under the hull (PEARL_IMPACT.absorb): measured (drive null), never shoved, slowing or pinning
+        if (under && drive !== null) continue;
         const pad = IMPACT?.tiers?.[p.id]?.pad ?? 0, r = sw.config.r0 * sw.scale[i], pos = sw.positionInto(i, POS), far = Math.hypot(box.hl, box.hw) + r * 1.8 + pad;
         if ((pos[0] - box.x) ** 2 + (pos[2] - box.z) ** 2 > far * far) continue;
         n++;
         const pts = outline(p, i);
         boxContact(box, OX, OZ, pts, HIT);
         let depth = HIT[0];
-        if (drive === null) { if (depth > 0) sink.depth(h, depth, p.id, p.dying.has(i)); continue; }
+        if (drive === null) { if (depth > 0) sink.depth(h, depth, p.id, p.dying.has(i), under); continue; }
         const dying = p.dying.has(i);
         // a light tier's generous hit (round four, PEARL_IMPACT.tiers[tier].pad): the hull grown by `pad` touching the body is a hit, booked
         if (pad > 0 && drive && !dying && !(depth > 0)) { box.hl += pad; box.hw += pad; boxContact(box, OX, OZ, pts, PADHIT); box.hl -= pad; box.hw -= pad; if (PADHIT[0] > 0) sink.touch(h, false, r, p.id); }
         if (!(depth > (IMPACT?.contact?.slop ?? 0.02))) continue;
         const nx = HIT[1], nz = HIT[2];
-        if (drive) sink.touch(h, cored && !dying, r, p.id);   // a dying body is mass too (a rammed one, its puddle): it takes speed, it does not stop the hull
+        if (drive) sink.touch(h, cored && !dying, r, p.id);   // a dying body is mass too (a staggered one, its puddle; not one drawn in under the hull): it takes speed, it does not stop the hull
         // a cored body stops the hull: it takes back what it drove in; what the touch's recoil grew the body into the hull since is the body's to give
         if (cored && !dying && drive) { shoveOut(p, i, box, depth); sink.push(sw.hub[i], -nx * depth, -nz * depth); continue; }
         // shoved: the whole body (its origin, anchor and the transfer between), then off the rock; what the rock took back is the tank's. A soft
@@ -449,8 +465,16 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         const k = clock - d0.at, d = clamp01(k / Math.max(1e-6, death.deflate)), f = clamp01((k - death.deflate) / Math.max(1e-6, death.fade));
         // the stagger before it (a ram): the knock all through, the squash until the deflate takes over
         const sq = d0.st ? impactStep(sw, i, d0.st, clock - d0.st.t0) : 0;
+        if (d0.st?.absorb) {
+          // drawn in under the hull: flat while it sinks `sink` radii over `seconds` (eased in and out), then faded over `fade` s and freed
+          const a = clamp01((clock - d0.t0) / ABSORB.seconds), g = clamp01(k / Math.max(1e-6, ABSORB.fade));
+          sw.life[i * 4 + 1] = sq; sw.life[i * 4 + 2] = d0.op * (1 - g); sw.life[i * 4] = -a * a * (3 - 2 * a) * ABSORB.sink * sw.config.r0 * sw.scale[i];
+          if (IMPACT?.death) sw.life[i * 4 + 3] = -Math.min(1, (clock - d0.t0) / Math.max(1e-6, IMPACT.death.seconds));
+          if (g >= 1) { p.dying.delete(i); release(p, i); }
+          continue;
+        }
         sw.life[i * 4 + 1] = k < 0 ? sq : d; sw.life[i * 4 + 2] = d0.op * (1 - f); sw.life[i * 4] = -f * death.sink * sw.config.r0 * sw.scale[i];
-        // the dead go dark at once, the stagger's moment included (PEARL_IMPACT.death: iLife.w below zero, the ice's channel)
+        // the dead go grey at once, the stagger's moment included (PEARL_IMPACT.death: iLife.w below zero, the ice's channel)
         if (IMPACT?.death) sw.life[i * 4 + 3] = -Math.min(1, (clock - d0.t0) / Math.max(1e-6, IMPACT.death.seconds));
         if (f >= 1) { p.dying.delete(i); release(p, i); }
       }
@@ -488,7 +512,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     geometries: () => [...pools.values()].map((p) => p.geo),
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
     // the pearls drawn and the bodies drawn at each level [high, low, lowest, culled] (src/fx/cutis-maku/geometry.js)
-    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, shoved: p.shoved, squashed: p.squashed, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
+    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, shoved: p.shoved, squashed: p.squashed, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, absorbed: p.absorbed, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
     // the harness's audit of the stalks against the rock: every live body's seeking stalks (its whole length and most of its cup) and anchor, put to
     // `clear(hub, cell, x, z, dx, dz, len)` (true when the way is clear); a body whose origin itself is on a blocked cell (`inRock`) is counted apart;
     // -> { bodies, stalks, crossing, anchors, inRock }
@@ -565,7 +589,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       const { p } = h, sw = p.swarm, i = slot.i, pos = sw.position(i), L = sw.life;
       return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
         stage: sw.getState(i), phase: sw.phase[i], reach: sw.params[i * 4], active: !!sw.active[i], dead: h.dead, hub: h.hub,
-        stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, room: +sw.room[i].toFixed(3), sweepDamp: +sw.sweepDamp[i].toFixed(3), pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
+        stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, absorb: !!p.dying.get(i)?.st?.absorb, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, room: +sw.room[i].toFixed(3), sweepDamp: +sw.sweepDamp[i].toFixed(3), pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
     dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); p.backs?.dispose(); } pools.clear(); parent.remove(group); },
   };

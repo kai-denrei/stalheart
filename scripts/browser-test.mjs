@@ -2344,6 +2344,76 @@ try{
  await press('ArrowDown','ArrowDown');await until(`window.__stalheartUnits.bestiary.state().selected==='reed'`,5000);
  {const s=await evaluate('window.__stalheartUnits.bestiary.state()');assert.equal(s.stage.mode,'none','the Reeds: a card without a stage');assert(s.card.lines>=2);}
  await press('Escape','Escape');await until('!window.__stalheartUnits.bestiary.state().open',5000);
+ } else if(args.includes('--dead-probe')) {
+ // THE DEAD READ GREY, AND THE RAM DRAWN IN UNDER THE HULL (owner, 2026-10-19, round four, notes 1 and 2): a measuring probe, no assertions but the page's
+ // errors. Story sector 2 with the Pearl set at PHASES (day numbers with the phase, default 2.95 and 3.45: noon and midnight once the page has loaded, about
+ // ten seconds of a thirty-second day later), the field cleared, a renderer hook posing the main camera (__THREE_DEVTOOLS__, set just before the main
+ // scene's render). MODE, a list: `kill` puts bodies of four tiers on four cells ahead of the hull and poses the camera over those cells' centres (the
+ // same camera every run), kills every other body (one white by the ram's presentation) and shoots a frame series with each body's screen point; `ram`
+ // drives the hull into two lanes of whites and yellows under the game's ram camera and shoots as fast as it can from the first death on, each frame with
+ // the seconds since that body's ram; `reed` puts four small Reeds on the cells ahead of the hull, close under the camera, and kills two. OUT=<dir>
+ // (default artifacts/browser/dead-probe) gets the PNGs and <label>-<mode>-frames.json.
+ const T='window.__stalheartTest',C=`${T}.creatures`,modes=(process.env.MODE||'kill').split(','),label=process.env.LABEL||'probe',dir=resolve(process.env.OUT||join(output,'dead-probe'));mkdirSync(dir,{recursive:true});
+ await send('Page.addScriptToEvaluateOnNewDocument',{source:`(()=>{const o=window.__obs={pose:null,cam:null,scene:null};window.__THREE_DEVTOOLS__=new EventTarget();__THREE_DEVTOOLS__.addEventListener('observe',(e)=>{const d=e.detail;if(d&&d.isWebGLRenderer&&!d.__hooked){d.__hooked=true;const r0=d.render.bind(d);d.render=(s,c)=>{if(c&&c.isPerspectiveCamera&&s&&s.getObjectByName&&(o.scene===s||s.getObjectByName('Creature bodies'))){if(!o.scene)o.scene=s;if(s===o.scene)(o.cams??=new Set()).add(c);if(s===o.scene&&c===o.cam&&o.pose){const P=typeof o.pose==='function'?o.pose():o.pose;if(P){c.position.set(...P.pos);c.up.set(...P.up);c.lookAt(...P.at);c.updateMatrixWorld();}}}return r0(s,c);};}});})();`});
+ const HELP=`(()=>{const o=window.__obs,A=innerWidth/innerHeight;let best=null;for(const c of o.cams??[])if(Math.abs(c.aspect-A)<0.05&&(!best||c.fov>best.fov))best=c;o.cam=best;window.__r4={metre(){const r=o.scene.getObjectByName('Creature bodies');return r?r.scale.x:null;},
+  at(p,t,height,back){const m=this.metre(),l=Math.hypot(...p),n=p.map(v=>v/l),tl=Math.hypot(...t),u=t.map(v=>v/tl);return {pos:p.map((v,k)=>v+n[k]*height*m-u[k]*back*m),up:n,at:p};},
+  pose(p,t,height,back){o.pose=this.at(p,t,height,back);return o.pose;},
+  px(p){const c=o.cam;c.updateMatrixWorld();const v=c.position.clone().set(p[0],p[1],p[2]).project(c);return [(v.x+1)/2*innerWidth,(1-v.y)/2*innerHeight,v.z];},
+  rpx(p,rm){const c=o.cam,m=this.metre(),a=this.px(p),right=c.position.clone().setFromMatrixColumn(c.matrixWorld,0),q=[p[0]+right.x*rm*m,p[1]+right.y*rm*m,p[2]+right.z*rm*m],d=this.px(q);return Math.hypot(d[0]-a[0],d[1]-a[1]);}};return true;})()`;
+ const shotTo=async(name)=>{const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(dir,name+'.png'),Buffer.from(s.data,'base64'));};
+ for(const mode of modes){const results=[];
+ for(const ph of (process.env.PHASES||'2.95,3.45').split(',')){
+  let tag=`${label}-${mode}-${ph}`;
+  await go(tag,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&fps=1&creatures=pearl&hold=1&day=${ph}#td`,1280,800);
+  await until(`!!${T} && ${T}.state().sector?.n===2 && ${T}.state().creatureProbe?.pearl===true && !!window.__obs.scene`,180000);
+  await evaluate(HELP);tag=`${label}-${mode}-${(await evaluate(`${T}.state().daylight.daylight`))>0.5?'day':'night'}`;
+  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card,#td-callouts{display:none!important}</style>")');
+  await evaluate(`${T}.sectorQuiet(true)`);await evaluate(`${C}.uncull(true)`);
+  await evaluate(`(()=>{for(const e of ${C}.pearls())${C}.hurt(e,e.hp+99);})()`);await delay(1500);
+  if(mode==='ram'){
+   await evaluate(`${T}.showcase.ram(true)`);await delay(400);
+   let target=-1;for(const c of await evaluate(`${C}.ground().band.map(b=>b.cell)`)){await evaluate(`${T}.placeTank(${c})`);await delay(80);for(const nb of await evaluate(`${C}.neighbours(${c})`)){await evaluate(`${C}.face(${nb})`);const a=await evaluate(`${C}.ahead(3)`);if(a>=0){target=a;break;}}if(target>=0)break;}
+   const near=await evaluate(`${C}.ahead(2)`);
+   for(const [type,ci,n] of [['amoeba',target,4],['ghost',target,2],['amoeba',near,3],['ghost',near,2]])for(let k=0;k<n;k++)await evaluate(`${C}.spawnAt(${JSON.stringify(type)},${ci})`);
+   await delay(700);await evaluate(`${C}.face(${target})`);
+   await evaluate(`(()=>{window.__mine=${C}.pearls();window.__h=new Map(window.__mine.map(e=>[e,${C}.handle(e)]));return true;})()`);
+   const frames=[];let f=0;const t0=Date.now();
+   const snap=async()=>{const info=await evaluate(`(()=>{const v=[...window.__h].map(([e,h])=>{const w=${C}.viewHandle(h);return w?{type:e.type,alive:e.alive,absorb:w.absorb,stagger:w.stagger,lift:+(+w.lift).toFixed(2),opacity:+(+w.opacity).toFixed(2),tint:w.tint,knocked:w.knocked}:null;});return {bodies:v,hull:${C}.hull(),jolt:${C}.jolt()};})()`);
+    const first=Math.max(-1,...info.bodies.map(b=>b?.stagger??-1));const name=`${tag}-f${String(f).padStart(2,'0')}`;await shotTo(name);frames.push({name,wall:Date.now()-t0,since:first,...info});f++;};
+   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+   // until the first death, quietly; then as fast as the page shoots, for a second and a half of the first rammed body's own clock
+   for(let k=0;k<200&&!(await evaluate(`[...window.__h.keys()].some(e=>!e.alive)`));k++)await delay(20);
+   for(let k=0;k<40;k++){await snap();if(frames.at(-1).since>1.6)break;}
+   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+   const books=(await evaluate(`${T}.state().creatureProbe`)).bodies?.families?.pearl;
+   console.log(`  ${tag}: ${frames.map(fr=>`${fr.name} +${(+fr.since).toFixed(2)}s dead ${fr.bodies.filter(b=>b&&!b.alive).length} under ${fr.bodies.filter(b=>b?.absorb).length} (${(+(fr.hull?.under??0)).toFixed(2)} m)`).join('; ')}`);
+   console.log(`  books: white ${JSON.stringify(books?.white)} yellow ${JSON.stringify(books?.yellow)}`);
+   results.push({tag,frames});await evaluate(`${T}.showcase.ram(false)`);continue;
+  }
+  const where=await evaluate(`(()=>{const s=${T}.state();return {c:${C}.ahead(3),c2:${C}.ahead(2),tank:s.playerPosition,daylight:s.daylight};})()`);
+  const ci=where.c>=0?where.c:where.c2;const cells=[ci,...(await evaluate(`${C}.neighbours(${ci})`)).slice(0,3)];
+  const plan=mode==='reed'?[['reed',4]]:[['amoeba',8],['ghost',6],['saucer',4],['barbed',2]];
+  await evaluate('window.__spawned=[]');
+  for(const [type,n] of plan)for(let k=0;k<n;k++)await evaluate(`(()=>{const f=Array.prototype.filter;let a=null;Array.prototype.filter=function(...x){a??=this;return f.apply(this,x);};try{${C}.pearls();}finally{Array.prototype.filter=f;}const before=new Set(a);${C}.spawnAt(${JSON.stringify(type)},${cells[k%cells.length]}${type==='reed'?",{tier:'small'}":''});for(const e of a)if(!before.has(e))window.__spawned.push(e);return true;})()`);
+  // the camera over the cells' centres (the records' spawn points, the same every run), from behind the hull
+  const mid=await evaluate(`(()=>{const P=window.__spawned.map(e=>e.pos);return [0,1,2].map(k=>P.reduce((a,v)=>a+v[k],0)/P.length);})()`),tdir=mid.map((v,k)=>v-where.tank[k]);
+  await evaluate(`window.__r4.pose(${JSON.stringify(mid)},${JSON.stringify(tdir)},${mode==='reed'?'9,12':'14,18'})`);
+  const pt=mode==='reed'?`(e=>${C}.view(e)?.point)`:`(e=>e.obj.userData.point?.())`,tierOf=mode==='reed'?`(e=>'reed')`:`(e=>e.spec.pearl)`;
+  if(mode==='reed')await until(`window.__spawned.every(e=>${C}.view(e)?.made)`,60000);
+  await delay(2500);
+  const killed=await evaluate(`(()=>{const pt=${pt},tierOf=${tierOf},by={};window.__mine=window.__spawned.filter(e=>e.alive&&pt(e));window.__dead=[];for(const e of window.__mine){const t=tierOf(e);by[t]=(by[t]||0)+1;if(by[t]%2===0)window.__dead.push({e,h:${C}.handle(e),ram:false});}
+   const w=window.__dead.find(d=>tierOf(d.e)==='white');if(w)w.ram=true;for(const d of window.__dead){d.p=(pt(d.e)??d.e.pos).slice();if(d.ram)${C}.ram(d.e);else ${C}.hurt(d.e,d.e.hp+99);}return window.__dead.length;})()`);
+  const frames=[],t0=Date.now();
+  for(let f=0;f<10;f++){
+   const info=await evaluate(`(()=>{const R=window.__r4,pt=${pt},tierOf=${tierOf};const live=window.__mine.filter(e=>e.alive).map(e=>{const p=pt(e);return p?{tier:tierOf(e),px:R.px(p),rp:R.rpx(p,${C}.view(e)?.radius??1)}:null;}).filter(Boolean);
+    const dead=window.__dead.map(d=>{const v=${C}.viewHandle(d.h);const p=v?.point??d.p;return {tier:tierOf(d.e),ram:d.ram,px:R.px(p),rp:R.rpx(p,v?.radius??1),tint:v?.tint,deflate:v?.deflate,opacity:v?.opacity,stagger:v?.stagger,active:v?.active};});return {live,dead,daylight:${T}.state().daylight};})()`);
+   const name=`${tag}-f${f}`;await shotTo(name);frames.push({name,wall:Date.now()-t0,...info});await delay(f<4?150:500);
+  }
+  console.log(`  ${tag}: killed ${killed} of ${await evaluate('window.__mine.length')}; daylight ${JSON.stringify(where.daylight)}; ${frames.map(fr=>`${fr.name} ${fr.wall}ms tint ${fr.dead.map(d=>d.tint==null?'-':(+d.tint).toFixed(2)).join('/')}`).join('; ')}`);
+  results.push({tag,frames});
+ }
+ writeFileSync(join(dir,`${label}-${mode}-frames.json`),JSON.stringify(results,null,1));}
+ assert.deepEqual(errors,[],'no page errors');console.log(`PASS dead-probe (${dir})`);
  } else if(args.includes('--pearl-story')) {
  // THE STORY WITH THE PEARL SET (owner, 2026-10-13; src/fx/creature-enemies.js ?creatures=pearl, spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md):
  // a story sector (SECTOR, default 2) boots with every mapped type drawn as its Pearl tier's body: the sector's own waves come up as Pearl bodies, and
@@ -2473,7 +2543,7 @@ try{
    const before=first>3?mean(sp.slice(Math.max(0,first-10),first-1)):null,after=first>0?Math.min(...sp.slice(first-1,first+15)):null;
    console.log(`  the hull and a ${type} (lane ${attempt+1}): ${rec.length} frames, overlap at most ${over.toFixed(3)} m, first contact at frame ${first}, speed ${before?.toFixed(1)} -> ${after?.toFixed(1)} m/s, contacts ${rec.at(-1).h.contacts-c0}, jolt kicks ${j0.kicks} -> ${j1.kicks} (peak ${j1.peak?.toFixed?.(3)}), alive ${alive}, hull ${rec[0].h.hl} x ${rec[0].h.hw} m (half); top speed ${Math.max(...sp).toFixed(1)} m/s, the record nearest ${(Math.min(...rec.map(r=>r.d))*R).toFixed(1)} m, its body ${Math.max(...rec.map(r=>r.gap??0)).toFixed(1)} m from it at most`);
    // a live body never inside the hull; a dying puddle pinned in a crowded lane may be, for frames (logged: the known gap)
-   const grazes=rec.filter(r=>r.h.overlap>0.05).length,dead=Math.max(...rec.map(r=>r.h.dead??0));console.log(`    a dying body at most ${dead.toFixed(3)} m inside`);
+   const grazes=rec.filter(r=>r.h.overlap>0.05).length,dead=Math.max(...rec.map(r=>r.h.dead??0)),under=Math.max(...rec.map(r=>r.h.under??0));console.log(`    a dying body at most ${dead.toFixed(3)} m inside (one drawn in under the hull ${under.toFixed(3)} m)`);
    assert(over<=0.2&&grazes<=2,`the hull is never inside a live body (at most ${over} m; ${grazes} frames over 5 cm)`);
    if(!(first>3&&before>5)){assert(attempt<4,`the hull drove into the ${type} (${JSON.stringify({first,before})})`);continue;}
    if(cored){assert(after<before*0.25,`a cored body stops the hull (${before} -> ${after})`);assert(j1.kicks>j0.kicks,'and jolts it');}
