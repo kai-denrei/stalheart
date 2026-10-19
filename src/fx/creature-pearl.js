@@ -68,7 +68,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
     // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
     if (gait) Object.assign(config, gait.config, { reach: pace?.[id]?.hop ?? gait.hop });   // a tier's own stride over the gait's (the whites, 2026-10-15)
-    if (IMPACT?.death) config.deathTone = IMPACT.death.tone;   // the dead's darkness (PEARL_IMPACT.death)
+    if (IMPACT?.death) config.death = IMPACT.death;   // the dead's grey (PEARL_IMPACT.death: ./cutis-maku/material.js, ./cutis-maku/hard-core.js)
     // THE CORED READ (owner, 2026-10-18: "the core is slightly colored but the membrane is almost opaque white"; src/content/pearl-enemies.js
     // PEARL_MEMBRANE): the drawn skin pulled toward the tier's tint by its share, the glints (white in the kit) toward it by theirs; a soft tier's shares are 0
     if (def.values.membraneTint) config.skinTint = mixHex(def.values.skinTint, def.values.membraneTintTo, def.values.membraneTint);

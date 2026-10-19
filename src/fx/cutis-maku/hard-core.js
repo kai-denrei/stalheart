@@ -43,11 +43,14 @@ export function createHardCores(swarm, { planetR = 0, levelOf = null } = {}) {
   // [fine, coarse] x [opaque, fading]: four meshes, two spheres, two materials
   const spheres = [new THREE.SphereGeometry(1, 24, 16), new THREE.SphereGeometry(1, 10, 7)];
   const fade = [0, 1, 2, 3].map(() => new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity), 1).setUsage(THREE.DynamicDrawUsage));
-  const geometries = fade.map((f, k) => { const g = new THREE.BufferGeometry(), src = spheres[k % 2]; g.setIndex(src.index); for (const n of ['position', 'normal', 'uv']) g.setAttribute(n, src.getAttribute(n)); g.setAttribute('iFade', f); return g; });
+  // THE DEAD READ GREY (owner, 2026-10-19, round four, note 1): a dead pearl's share of its death look per instance (iLife.w below zero): its light is
+  // its diffuse alone, the clear coat's white glint (not tinted by the instance colour) taken away, so the corpse's pearl is matte
+  const dead = [0, 1, 2, 3].map(() => new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity), 1).setUsage(THREE.DynamicDrawUsage));
+  const geometries = fade.map((f, k) => { const g = new THREE.BufferGeometry(), src = spheres[k % 2]; g.setIndex(src.index); for (const n of ['position', 'normal', 'uv']) g.setAttribute(n, src.getAttribute(n)); g.setAttribute('iFade', f); g.setAttribute('iDead', dead[k]); return g; });
   const patch = (material, key) => {
     material.onBeforeCompile = (shader) => {
-      shader.vertexShader = 'attribute float iFade;\nvarying float vFade;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vFade = iFade;');
-      shader.fragmentShader = 'varying float vFade;\n' + shader.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  gl_FragColor.a *= vFade;');
+      shader.vertexShader = 'attribute float iFade;\nattribute float iDead;\nvarying float vFade;\nvarying float vDead;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vFade = iFade;\n  vDead = iDead;');
+      shader.fragmentShader = 'varying float vFade;\nvarying float vDead;\n' + shader.fragmentShader.replace('#include <opaque_fragment>', 'outgoingLight = mix(outgoingLight, totalDiffuse, vDead);\n#include <opaque_fragment>').replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  gl_FragColor.a *= vFade;');
     };
     material.customProgramCacheKey = () => key;
     return material;
@@ -79,8 +82,9 @@ export function createHardCores(swarm, { planetR = 0, levelOf = null } = {}) {
         meshes[k].setMatrixAt(n, pose.matrix); fade[k].array[n] = o;
         const w = swarm.life[i * 4 + 3];
         tint.copy(base).lerp(ice, Math.max(0, Math.min(1, w)));
-        // the Pearl set's death (iLife.w below zero): the pearl too goes near grey at the config's deathTone of its brightness, at once
-        if (w < 0) { const d = Math.min(1, -w), tone = swarm.config.deathTone ?? .22, l = tint.r * .299 + tint.g * .587 + tint.b * .114; grey.setRGB(l, l, l).lerp(tint, .2).multiplyScalar(tone); tint.lerp(grey, d); }
+        // the Pearl set's death (iLife.w below zero): the pearl too goes to the corpse's grey (config.death.grey, the membrane's), a shade under it, matte
+        const d = w < 0 ? Math.min(1, -w) : 0; dead[k].array[n] = d * (swarm.config.death?.matte ?? 1);
+        if (d > 0) { const l = (swarm.config.death?.grey ?? .2) * .7; grey.setRGB(l, l, l); tint.lerp(grey, d); }
         meshes[k].setColorAt(n, tint);
       }
     }
@@ -88,6 +92,7 @@ export function createHardCores(swarm, { planetR = 0, levelOf = null } = {}) {
       m.count = counts[k]; m.visible = counts[k] > 0;
       if (!counts[k]) return;
       m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; fade[k].clearUpdateRanges(); fade[k].addUpdateRange(0, counts[k]); fade[k].needsUpdate = true;
+      dead[k].clearUpdateRanges(); dead[k].addUpdateRange(0, counts[k]); dead[k].needsUpdate = true;
     });
   }
   return { group, mesh, meshes, update, get count() { return counts[0] + counts[1] + counts[2] + counts[3]; }, setPlanetR: (R) => { planet = R > 0 ? R : 0; }, get planetR() { return planet; },

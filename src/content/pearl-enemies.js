@@ -221,9 +221,17 @@ export const PEARL_WAVES = freeze({ pace: freeze({ first: 0.6, last: 1 }), crowd
 // `death` (owner, 2026-10-13: "when the Cutis-Maku dies, it becomes very hard to distinguish which ones are alive and which ones are dead... so I
 // propose keeping the current dissolving blob, but having it immediately much darker, so it is easier to distinguish against living ones."): at the
 // moment of death (a rammed body's stagger included: it is dead) the membrane, its veins, pulse and rim, the inner core and the pearl go to `tone` of
-// their brightness, near grey, over `seconds`, and stay so while the blob deflates and dissolves as before (src/fx/cutis-maku/shaders.js uDeadTone).
+// their brightness, near grey, over `seconds`, and stay so while the blob deflates and dissolves as before (src/fx/cutis-maku/shaders.js).
+// GREY, NOT DARK (owner, 2026-10-19, round four, note 1: "color of dead enemies must immediately fade to grey so we don't mistake them for alive ones").
+// Measured first (.superpowers/sdd/r4-a-before-*.png): the dark tone did land (iLife.w at -1 by the first frame after the kill, membrane and pearl), but
+// a corpse kept everything that reads as alive: its wet glints, rim and back light, its veins' pulse running at full gate (the hop held at phase 0) and
+// the pearl's white clear-coat glint, so at night a dead body was a glossy dark-grey blob beside the live ivory and grey whites (a black tier's look),
+// and in daylight a dark see-through stain on the dark ground. Now `grey`: every corpse, membrane and core, one matte grey (linear, shaded by the
+// light, the core 0.7 of it), whatever its tier; `matte` the share of the glints, the pulse and the pearl's clear coat taken away; `alpha` the
+// least its skin's alpha goes to (a grey thing, not a stain); over `seconds`. Measured after (r4-a-after-grey012-*.png, 0.8 s after the kill): a corpse's disc
+// 65-88 of 255, no hue (saturation 0.00-0.08), nothing over 107; a live white's 108-138 with its glints to 230; the same day and night (the skin is unlit).
 export const PEARL_IMPACT = freeze({
-  death: { tone: 0.22, seconds: 0.12 },
+  death: { grey: 0.12, matte: 1, alpha: 0.5, seconds: 0.08 },
   // `ramSoft` (owner, 2026-10-15: "I encountered a soft-body enemy which I could not ram with the tank, it kept being just pushed away"): a soft body of
   // ANY tier the hull touches while it drives is the game's ram (e.bodyRam), as the light tiers' brush already was; the shove stays the body's answer
   // for the frame it is hit, its death the next (the ram's stagger and deflate)

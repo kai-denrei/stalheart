@@ -137,6 +137,14 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     if (!h.kit) { drop(h); return; }   // still being made: no body to die
     const m = h.kit.motion;
     m.active = false; m.feeding.enabled = false; h.kit.phys.gravity = K.deathGravity; h.deadAt = clock;
+    if (K.grey) grey(h.kit.mesh, K.grey);
+  }
+  // THE DEAD READ GREY (owner, 2026-10-19, note 1; CREATURE_REED.grey): the body's own colours to one grey, its tissue's light and dark kept as `pattern`, at once (each body owns its
+  // geometry and material: src/fx/nih-dairia/appearance.js)
+  function grey(mesh, G) {
+    const c = mesh.geometry.getAttribute('color'), a = c?.array, mat = mesh.material;
+    if (a) { for (let k = 0; k < a.length; k += 3) { const l = G.grey * (1 - G.pattern + G.pattern * 2 * (a[k] * 0.299 + a[k + 1] * 0.587 + a[k + 2] * 0.114)); a[k] = a[k + 1] = a[k + 2] = l; } c.needsUpdate = true; }
+    mat.attenuationColor?.setHex(G.attenuation); if (mat.clearcoat > 0) mat.clearcoat = Math.max(1e-3, G.clearcoat);
   }
   function drop(h) {
     h.gone = true;

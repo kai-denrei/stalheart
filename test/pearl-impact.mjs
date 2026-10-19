@@ -84,7 +84,8 @@ console.log('PASS the jolt: a pitch kick about its size, sharper for a cored bod
 // distinguish against living ones") ----
 {
   const D = PEARL_IMPACT.death;
-  assert(D.tone <= 0.3 && D.seconds <= 0.15, 'much darker, at once');
+  // 2026-10-19 (round four, note 1: "color of dead enemies must immediately fade to grey"): one matte grey, the glints and the pulse gone, at once
+  assert(D.grey > 0.05 && D.grey < 0.5 && D.matte === 1 && D.seconds <= 0.1, 'a mid grey, matte, at once');
   assert(MEMBRANE_VERT !== undefined);
   const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
   const plain = fam.add('amoeba', { x: 0, z: 0, angle: 0, speed: 2 }), rammed = fam.add('amoeba', { x: 30, z: 0, angle: 0, speed: 2 }), alive = fam.add('amoeba', { x: 60, z: 0, angle: 0, speed: 2 });
@@ -98,6 +99,10 @@ console.log('PASS the jolt: a pitch kick about its size, sharper for a cored bod
 }
 {
   const { MEMBRANE_FRAG } = await import('../src/fx/cutis-maku/shaders.js');
-  assert(MEMBRANE_FRAG.includes('uniform float uDeadTone;') && MEMBRANE_FRAG.includes('if(vLife.z<0.){'), 'the membrane shader darkens a dead body');
+  assert(MEMBRANE_FRAG.includes('uniform float uDeadGrey,uDeadMatte,uDeadAlpha;') && MEMBRANE_FRAG.includes('float dead=vLife.z<0.') && MEMBRANE_FRAG.includes('pulse*=alive;'), 'the membrane shader greys a dead body and takes its glints and pulse');
+  const { createMembraneMaterial } = await import('../src/fx/cutis-maku/material.js');
+  const D = PEARL_IMPACT.death, m = createMembraneMaterial({ ...PEARL_TIERS[0].values, death: D });
+  assert.equal(m.uniforms.uDeadGrey.value, D.grey); assert.equal(m.uniforms.uDeadMatte.value, D.matte); assert.equal(m.uniforms.uDeadAlpha.value, D.alpha);
 }
-console.log('PASS the dead go dark at once: a plain death and a rammed body\'s stagger reach the dark within PEARL_IMPACT.death.seconds, the living untouched, the shader\'s uDeadTone');
+console.log('PASS the dead go grey at once: a plain death and a rammed body\'s stagger reach the grey within PEARL_IMPACT.death.seconds, the living untouched, the shader\'s uDeadGrey / uDeadMatte / uDeadAlpha');
+

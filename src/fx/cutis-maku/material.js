@@ -12,11 +12,14 @@ const glintTint=config=>config.glintTint??0xffffff;
 // round two: the projection hubs' turns (./shaders.js HUB_TURN), identity until the swarm's hubTable says otherwise (updateHubs)
 const hubUniform=()=>Array.from({length:12},()=>new THREE.Vector4(0,0,0,1));
 export function updateHubs(material,table) { const v=material.uniforms.uHubs.value;for(let k=0;k<v.length;k++)v[k].set(table[k*4],table[k*4+1],table[k*4+2],table[k*4+3]); }
+// the death's look (the Pearl set's PEARL_IMPACT.death through config.death, 2026-10-19): a config without it greys to the kit's defaults
+const DEAD={grey:.2,matte:1,alpha:0};
+const deadOf=config=>config.death??DEAD;
 const hardRadius=config=>(config.coreShape??0)>0?config.coreSize??.28:0;
 export function createMembraneMaterial(config,core=false,low=false) {
   const palettes=Object.values(CUTIS_PALETTES),emissive=new THREE.Color(0,0,0);
   const material=new THREE.ShaderMaterial({vertexShader:MEMBRANE_VERT,fragmentShader:MEMBRANE_FRAG,transparent:true,depthWrite:core,side:core||low?THREE.FrontSide:THREE.DoubleSide,uniforms:{
-    uOpacity:{value:membraneOpacity(config)},uDeadTone:{value:config.deathTone??.22},uHardRadius:{value:hardRadius(config)},
+    uOpacity:{value:membraneOpacity(config)},uDeadGrey:{value:deadOf(config).grey},uDeadMatte:{value:deadOf(config).matte},uDeadAlpha:{value:deadOf(config).alpha},uHardRadius:{value:hardRadius(config)},
     uMulticolored:{value:0},uPaletteSkin:{value:palettes.map(p=>new THREE.Color(p.skinTint))},uPaletteVein:{value:palettes.map(p=>new THREE.Color(p.veinTint))},uPaletteGlow:{value:palettes.map(p=>new THREE.Color(p.pulseTint))},
     uSeekSweep:{value:config.seekSweep},uSeekRate:{value:config.seekRate},uAcceleration:{value:config.transferAcceleration},uEase:{value:config.transferEase??0},uTime:{value:0},uRadius:{value:config.r0},uNoise:{value:config.noiseAmp},uBreath:{value:config.breathRate},uRestCube:{value:config.cubenessRest},uCap:{value:config.capAngle},uNeck:{value:config.neckThin},uDelay:{value:config.delaySpread},uCore:{value:core?1:0},uForceCube:{value:0},uPulse:{value:config.pulseSpeed},uVeinWidth:{value:config.veinWidth},uSkin:{value:new THREE.Color(config.skinTint)},uVein:{value:new THREE.Color(config.veinTint)},uGlow:{value:new THREE.Color(config.pulseTint)},uDebug:{value:0},uLow:{value:low?1:0},
     uPlanetR:{value:0},uHeat:{value:emissive},uGlint:{value:new THREE.Color(glintTint(config))},uHubs:{value:hubUniform()},
@@ -26,7 +29,7 @@ export function createMembraneMaterial(config,core=false,low=false) {
   return material;
 }
 export function updateMaterial(material,config,time,debug=0,force=false,multicolored=false) {
-  const u=material.uniforms;u.uOpacity.value=membraneOpacity(config);u.uDeadTone.value=config.deathTone??.22;u.uHardRadius.value=hardRadius(config);u.uMulticolored.value=multicolored?1:0;u.uSeekSweep.value=config.seekSweep;u.uSeekRate.value=config.seekRate;u.uAcceleration.value=config.transferAcceleration;u.uEase.value=config.transferEase??0;u.uTime.value=time;u.uRadius.value=config.r0;u.uNoise.value=config.noiseAmp;u.uBreath.value=config.breathRate;u.uRestCube.value=config.cubenessRest;u.uCap.value=config.capAngle;u.uNeck.value=config.neckThin;u.uDelay.value=config.delaySpread;u.uPulse.value=config.pulseSpeed;u.uVeinWidth.value=config.veinWidth;u.uSkin.value.setHex(config.skinTint);u.uVein.value.setHex(config.veinTint);u.uGlow.value.setHex(config.pulseTint);u.uGlint.value.setHex(glintTint(config));u.uDebug.value=debug;u.uForceCube.value=force?1:0;
+  const u=material.uniforms;u.uOpacity.value=membraneOpacity(config);{const d=deadOf(config);u.uDeadGrey.value=d.grey;u.uDeadMatte.value=d.matte;u.uDeadAlpha.value=d.alpha;}u.uHardRadius.value=hardRadius(config);u.uMulticolored.value=multicolored?1:0;u.uSeekSweep.value=config.seekSweep;u.uSeekRate.value=config.seekRate;u.uAcceleration.value=config.transferAcceleration;u.uEase.value=config.transferEase??0;u.uTime.value=time;u.uRadius.value=config.r0;u.uNoise.value=config.noiseAmp;u.uBreath.value=config.breathRate;u.uRestCube.value=config.cubenessRest;u.uCap.value=config.capAngle;u.uNeck.value=config.neckThin;u.uDelay.value=config.delaySpread;u.uPulse.value=config.pulseSpeed;u.uVeinWidth.value=config.veinWidth;u.uSkin.value.setHex(config.skinTint);u.uVein.value.setHex(config.veinTint);u.uGlow.value.setHex(config.pulseTint);u.uGlint.value.setHex(glintTint(config));u.uDebug.value=debug;u.uForceCube.value=force?1:0;
 }
 /** The contact shadow's material; its plane is laid out by geometry.js (instanceMatrix places and sizes it, iFade fades it). */
 export function createShadowMaterial() {
