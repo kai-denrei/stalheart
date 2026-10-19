@@ -72,6 +72,9 @@ function depthBacks(geo, order, capacity, cut = 0.3) {
 export function createPearlFamily({ parent, tiers, follow, death, set, tune, hubs = null, impact: IMPACT = null, pace = null, gait = null }) {
   const group = new THREE.Group(); group.name = 'Pearl enemies'; parent.add(group);
   const byId = Object.fromEntries(set.map((t) => [t.id, t]));
+  // the full skins' depth twins' order (depthBacks): midway between the last soft skin and the FIRST cored skin of the whole table, so no tier's
+  // re-order can put a twin after another tier's skin (the review, 2026-10-19)
+  const orderOf = (t) => t.values.membraneOrder ?? 2, twinOrder = (Math.max(2, ...set.filter((t) => !t.cored).map(orderOf)) + Math.min(...set.filter((t) => t.cored).map(orderOf))) / 2;
   // each tier's base radius: its smallest type's
   const baseR0 = {};
   for (const b of Object.values(tiers)) baseR0[b.tier] = Math.min(baseR0[b.tier] ?? Infinity, b.r0);
@@ -105,8 +108,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // A SKIN AS IN THE LAB (owner, 2026-10-19, note 5; PEARL_MEMBRANE's `pearl`): a full skin writes its back faces' depth before every cored skin
     // (depthBacks, below) and the pearl is drawn after the cored skins at that opacity, depth-tested: its own body's back face is behind it, so it shows
     // over its own front skin as through the lab's thin one; a pearl behind another full-skinned body is hidden by that body's back face
-    const order = def.values.membraneOrder ?? 2, backs = def.values.pearlShow != null ? depthBacks(geo, order - 0.5, swarm.capacity) : null;
-    if (backs) { backs.group.name = `Pearl ${id} depth`; group.add(backs.group); }
+    const order = def.values.membraneOrder ?? 2, backs = def.values.pearlShow != null ? depthBacks(geo, twinOrder, swarm.capacity) : null;
+    if (backs) { backs.group.name = `Pearl ${id} depth`; geo.group.add(backs.group); }   // a child of the pool's group: a hidden pool cuts nothing behind it
     if (cores && def.values.pearlShow != null) for (const m of cores.meshes) { m.renderOrder = order + 0.5; m.material.opacity = def.values.pearlShow; }
     p = { id, def, swarm, geo, cores, backs, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
     pools.set(id, p);

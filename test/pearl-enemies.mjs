@@ -94,9 +94,11 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   for (const [id, h] of [['purple', purple], ['brown', brown]]) {
     for (const m of h.p.cores.meshes) { assert.equal(m.renderOrder, PEARL_MEMBRANE[id].order + 0.5, `${id}: its pearls after the cored skins`); assert.equal(m.material.opacity, PEARL_MEMBRANE[id].pearl); assert.notEqual(m.material.depthTest, false); }
     assert(h.p.backs && h.p.backs.meshes.length === h.p.geo.levels.length, `${id}: a depth twin a level`);
+    assert.equal(h.p.backs.group.parent, h.p.geo.group, `${id}: the twin inside the pool's group (hiding the pool hides its depth)`);
     for (const m of h.p.backs.meshes) {
       assert.equal(m.material.side, THREE.BackSide); assert.equal(m.material.depthWrite, true); assert.equal(m.material.colorWrite, false);
-      assert(m.renderOrder > 2 && m.renderOrder < PEARL_MEMBRANE[id].order, `${id}: its depth after the soft skins, before the cored ones (${m.renderOrder})`);
+      const coredMin = Math.min(...Object.values(PEARL_MEMBRANE).filter((r) => r.order > 2).map((r) => r.order)), softMax = Math.max(...Object.values(PEARL_MEMBRANE).filter((r) => r.order <= 2).map((r) => r.order));
+      assert(m.renderOrder > softMax && m.renderOrder < coredMin, `${id}: its depth after every soft skin (${softMax}), before every cored one (${coredMin}): ${m.renderOrder}`);
       assert(/discard;/.test(m.material.fragmentShader), `${id}: the thin stalks and the fading write no depth`);
     }
   }
