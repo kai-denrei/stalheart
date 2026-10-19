@@ -40,6 +40,7 @@ import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../content/gunship.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
+import { LASER_AUTO } from '../content/orbital-laser.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
@@ -47,6 +48,9 @@ const REFILL = 5;       // seconds between calls for the gunship while it is off
 const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
 const BROOD_STAGGER = 0.1;   // seconds between the brood's deaths once the mother is dead (review of note 10, 2026-10-19)
 const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut lands (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)")
+// THE BEAM'S GUARD in cells (LASER_AUTO.safeMetres and the road pass's radius, 31 m: 3.1 cells): the unseated beam holds off a contact this near the hull
+// (src/fx/laser-arsenal.js unsafe), so a rock nearer than this cannot be burned; td-tab's roadFar(ci, 0) asks only that guard (laserStation.roadSafe)
+const GUARD = (LASER_AUTO.safeMetres + (ARENA.road?.radius ?? 0)) / METRES_PER_CELL;
 const ROAD_LOOK = 0.25;   // seconds between looks for a planned rock inside the beam's lead while the beam is free (2026-10-19, note 7b: one crosses the reach's outer cell in about half a second at the hull's corridor pace)
 
 export function createBossRun(c) {
@@ -125,13 +129,19 @@ export function createBossRun(c) {
     // THE LOOK DURING A PLANNED BURN (review of note 7b, 2026-10-19): a burn holds the beam up to ARENA.road.burn (2.5 s), ~7 cells at the hull's top speed, so a
     // second planned rock 4-7 cells past the first crossed the reach unasked, and once inside `clear` nothing asks for it; the look runs again once the hull is
     // within `clear` + 1 cells of the held rock, past it (a next one in reach takes the beam); a refused ask (SOL seated or offline) backs the look off to `every`
-    const held = roadUntil > 0 && roadPlanned, heldNear = held && roadCell >= 0 && c.fromHull?.(roadCell) < (ARENA.road?.clear ?? 0) + 1;
+    // THE HAND-OFF RE-DERIVED (review of note 3, 2026-10-19): it was `clear` + 1 (4.2 cells) when clear was 3.2; at clear 6.5 that is 7.5 cells, and a look ran
+    // during almost every planned burn and could drop a rock the beam was about to burn for a farther one. Its purpose is the moment the held rock is about to
+    // become unburnable: the hull within the beam's GUARD (3.1 cells) and a cell, 4.1 cells, the same point it marked under round 3's band
+    const held = roadUntil > 0 && roadPlanned, heldNear = held && roadCell >= 0 && c.fromHull?.(roadCell) < GUARD + 1;
     const lookGap = roadLaid === false ? (ARENA.road?.every ?? 7) : ROAD_LOOK;
     if (phase === 'beacon' && c.arenaOpen?.()) {
       // STRAIGHT TO THE MOTHER (owner, 2026-10-19, round 4, note 4: "we arrive and it is straight to the boss nih-dairia and the swap"): with no small wave the
       // breach's one pulse is the mother and THE MOTHER card follows within seconds, so arena_open ("Small ones first.") is said only by a row that has waves
       phase = 'waves'; c.tremor?.(-1); if (wavesOf().length) { c.showBrief('arena_open'); c.speak('arena_open'); }
-      if (drove && was && c.autoMode() && c.params().directive === 'lure') { c.params().directive = was.directive; c.setAutoMode(was.auto); }   // Isao drove it out: the wheel back to the player for the waves
+      // Isao drove it out: the wheel back to the player as the hole opens. With no small wave (note 4, 2026-10-19) that is the hole's own opening, about 7 s
+      // (BREACH_DEFAULTS.duration), before the mother rises and THE MOTHER card gives the hull back to him as the lure; kept so his lure, which with no quarry
+      // drives the arena's field toward the hole's centre, does not run the hull at the opening crater while it forms
+      if (drove && was && c.autoMode() && c.params().directive === 'lure') { c.params().directive = was.directive; c.setAutoMode(was.auto); }
     }
     // THE ROAD SOL CUTS (owner, 2026-10-16: "have SOL shoot ahead of it here and there to open the maze"): on the drive out, every ARENA.road.every seconds the
     // first rock on the hull's cheapest walk to the arena (c.roadNext) is burned by SOL (c.solRoad: a pass laid over it when none is up, the beam held
@@ -148,12 +158,18 @@ export function createBossRun(c) {
     // the hull met them at its next cell three times in one drive)
     else if (phase === 'beacon' && c.roadNext && c.hullNearArena?.() !== true && ((!roadUntil && t - roadAt >= (ARENA.road?.every ?? 7)) || (t - lookAt >= lookGap && (!held || heldNear)))) {
       const due = !roadUntil && t - roadAt >= (ARENA.road?.every ?? 7), p = planned(); lookAt = t;
-      const far = roadCuts ? roadOk : (c.roadFar ?? (() => true)), pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: held ? (ci) => ci !== roadCell && far(ci) : far }) : -1;
+      // THE BAND, THEN THE NEAREST BURNABLE (review of note 3, 2026-10-19): the planned rock is taken in the band (`clear` to aheadMetres, 6.5 to 10 cells; the
+      // first cut `clear` and out); when no planned rock lies in it, the nearest one outside the beam's guard (roadFar(ci, 0): 3.1 cells) and in reach. Without
+      // it a rock between 3.1 and 6.5 cells was never asked for again: Isao driving with the player in SOL's seat (asks refused, the look backed off to `every`),
+      // a rock dropped mid-burn for a newer ask, a rock 4 to 6 cells from where the hull starts; the road stayed shut. The flank (widening) keeps the band only
+      const far = roadCuts ? roadOk : (c.roadFar ?? (() => true)), near = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (!roadCuts || inLead(ci));
+      const rock = (f) => (p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: held ? (ci) => ci !== roadCell && f(ci) : f }) : -1);
+      let pc = rock(far); const inBand = pc >= 0; if (pc < 0) pc = rock(near);
       const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
       if (pc >= 0 || due) {
         if (roadUntil) release();
         roadAt = t; roadPlanned = pc >= 0; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
-        if (roadLaid) { cutLog.push({ cell: ci, planned: roadPlanned, at: +t.toFixed(2), ask: signedLead(ci), road: roadLeft() }); if (cutLog.length > 60) cutLog.shift(); lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
+        if (roadLaid) { cutLog.push({ cell: ci, planned: roadPlanned, band: !roadPlanned || inBand, at: +t.toFixed(2), ask: signedLead(ci), road: roadLeft() }); if (cutLog.length > 60) cutLog.shift(); lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
       }
     }
     // the hold ends at ARENA.road.burn, or as soon as the rock is gone (2026-10-19: the beam is free for the next cell in reach at once)
@@ -276,5 +292,5 @@ export function createBossRun(c) {
   }
   const fearState = () => { const b = bossRecord(); return { frights, stuns, scared: !!b && isScared(b, c.t()), stunned: !!b && c.t() < (b.stagUntil ?? -1), ground: b?.ground ? 'ground' : b ? 'hunt' : null }; };
   return { begin, tick, end, rows, lure, arenaDue, landed, talking, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })) }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

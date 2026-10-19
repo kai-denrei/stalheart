@@ -7,6 +7,8 @@ import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 import { METRES_PER_CELL } from '../src/core/stage-units.js';
 import { GUNSHIP_SEAT_HINT } from '../src/content/gunship.js';
+import { LASER_AUTO } from '../src/content/orbital-laser.js';
+const GUARD = (LASER_AUTO.safeMetres + ARENA.road.radius) / METRES_PER_CELL;   // the beam's guard in cells (3.1): roadFar(ci, 0) in td-tab asks only that (laserStation.roadSafe)
 
 function host(o = {}) {
   const log = { briefs: [], callouts: [], tremor: [], road: [], over: [], pause: [] };
@@ -109,7 +111,7 @@ function host(o = {}) {
   link(8, 60); link(38, 61);
   const tags = new Int8Array(62).fill(1); for (const r of [24, 25, 40, 52, 60, 61]) tags[r] = 0;
   let from = 0; const flank = [61, 60], at = (ci) => (ci === 60 ? 8 : ci === 61 ? 38 : ci);
-  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from, to: 59 }), roadFar: (ci) => Math.abs(at(ci) - from) >= clear, fromHull: (ci) => Math.abs(at(ci) - from), roadNext: (far) => flank.find((ci) => tags[ci] === 0 && far(ci)) ?? -1 });
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from, to: 59 }), roadFar: (ci, near = clear) => Math.abs(at(ci) - from) >= Math.max(near, GUARD), fromHull: (ci) => Math.abs(at(ci) - from), roadNext: (far) => flank.find((ci) => tags[ci] === 0 && far(ci)) ?? -1 });
   h.story().arena.cell = 59;
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
   assert.deepEqual(h.log.road, [24], 'the first cut at once: the nearest planned rock, 240 m out'); assert.ok(h.log.briefs.includes('arena_road'), 'Isao: let me clear a path');
@@ -132,6 +134,7 @@ function host(o = {}) {
   assert.ok(!asked().includes(52), 'the last rock still beyond the reach');
   assert.ok(run.state().road.leadMax <= R, `the farthest ask after the first cut within the reach (${run.state().road.leadMax})`);
   // every laid ask is logged with its lead at the ask and at its burn's end (THE LEAD MEASURED, note 3): here the rocks go at the next tick, so the end lead is the ask's
+  { const copy = run.state().road.cuts, n = copy.length; copy[0].cell = -9; copy.length = 0; assert.equal(run.state().road.cuts.length, n, 'state() hands out a copy of the log'); assert.notEqual(run.state().road.cuts[0].cell, -9); }
   const cuts = run.state().road.cuts; assert.deepEqual(cuts.map((c) => c.cell), asked(), 'one entry an ask'); assert.ok(cuts.slice(1).every((c) => c.ask >= clear && c.end != null && c.cleared), JSON.stringify(cuts));
   // a flank burn gives the beam up to a planned rock that comes into reach (probe r3-f: road rocks crossed the reach while the flank held the beam)
   tags[61] = 0; flank.length = 0; flank.push(61); from = 31; h.now += ARENA.road.every; run.tick(0.25);
@@ -142,12 +145,12 @@ function host(o = {}) {
 
 // THE LOOK DURING A PLANNED BURN (review of note 7b, 2026-10-19): a burn holds the beam up to ARENA.road.burn (2.5 s), ~7 cells at the hull's top speed (2.8
 // cells/s), so a second planned rock 4 cells past the first crossed the reach unasked and, once inside `clear`, was never asked for. The chain 0..40 to the arena
-// at 40, planned rocks at 8 (the first cut, outside clear 6.5 since note 3, 2026-10-19), 18 and 22; the beam cuts nothing after the first (the worst case: every burn
+// at 40, planned rocks at 8 (the first cut in the band since note 3, 2026-10-19: a rock at 5 would come after 18, by the fallback, test below), 18 and 22; the beam cuts nothing after the first (the worst case: every burn
 // holds its whole 2.5 s); the hull drives 2.8 cells/s from 0: both 18 and 22 are asked for while still at least `clear` cells ahead of the hull
 { const adj = Array.from({ length: 41 }, () => []); for (let i = 0; i < 40; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
   const tags = new Int8Array(41).fill(1); for (const r of [8, 18, 22]) tags[r] = 0;
   let x = 0; const asks = [], speed = 2.8, clear = ARENA.road.clear;
-  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(x), to: 40 }), roadFar: (ci) => Math.abs(ci - x) >= clear, fromHull: (ci) => Math.abs(ci - x), roadNext: () => -1,
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(x), to: 40 }), roadFar: (ci, near = clear) => Math.abs(ci - x) >= Math.max(near, GUARD), fromHull: (ci) => Math.abs(ci - x), roadNext: () => -1,
     solRoad: (ci) => { if (ci >= 0) asks.push([ci, +x.toFixed(2)]); return ci >= 0; } });
   h.story().arena.cell = 40;
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
@@ -157,6 +160,45 @@ function host(o = {}) {
   assert.ok(at(18) && at(22), `both planned rocks asked for (${JSON.stringify(asks)})`);
   for (const ci of [18, 22]) assert.ok(ci - at(ci)[1] >= clear, `${ci} asked with the hull ${(ci - at(ci)[1]).toFixed(2)} cells short of it, outside clear`);
   assert.ok(run.state().road.leadMax <= ARENA.road.aheadMetres / METRES_PER_CELL, 'and within the reach'); }
+// THE BAND, THEN THE NEAREST BURNABLE (review of note 3, 2026-10-19): a planned rock between the beam's guard (3.1 cells) and `clear` (6.5) was never asked for
+// again; with none in the band the nearest outside the guard (and in reach after the first cut) is taken. The chain 0..30 to the arena at 30
+{ const mk = (rocks, o = {}) => { const adj = Array.from({ length: 31 }, () => []); for (let i = 0; i < 30; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+    const tags = new Int8Array(31).fill(1); for (const r of rocks) tags[r] = 0; const w = { x: 0, tags };
+    const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(w.x), to: 30 }), roadFar: (ci, near = ARENA.road.clear) => Math.abs(ci - w.x) >= Math.max(near, GUARD), fromHull: (ci) => Math.abs(ci - w.x), roadNext: () => -1, ...o });
+    h.story().arena.cell = 30; return { h, w, run: createBossRun(h) }; };
+  // the first cut: a rock 5 cells out and nothing in the band is cut at once (the fixture's old rock at 5)
+  { const { h, run } = mk([5]); run.begin(ARENA_SECTOR); run.tick(0.016);
+    assert.deepEqual(h.log.road, [5], 'a rock at 5 cut at once when nothing lies in the band'); assert.equal(run.state().road.cuts[0].band, false, 'logged as outside the band'); }
+  // in the band first: rocks at 5 and 20; the first cut takes 20 (in the band, `clear` and out), then 5 by the fallback at the next look
+  { const { h, w, run } = mk([5, 20]); run.begin(ARENA_SECTOR); run.tick(0.016);
+    assert.deepEqual(h.log.road, [20], 'the band first'); w.tags[20] = 1; h.now = 0.3; run.tick(0.1); h.now = 0.6; run.tick(0.1);
+    assert.equal(h.log.road.filter((c) => c >= 0).at(-1), 5, 'then the rock at 5 by the fallback'); }
+  // never inside the guard: a rock 2 cells out is not asked for
+  { const { h, run } = mk([2]); run.begin(ARENA_SECTOR); for (let k = 0; k <= 40; k++) { h.now = k * 0.25; run.tick(0.25); }
+    assert.deepEqual(h.log.road.filter((c) => c >= 0), [], 'inside the beam\'s guard: never'); }
+  // the seat scenario: the player in SOL's seat (asks refused, the look backed off to `every`) while Isao drives the hull from 0 to 7; the planned rock at 12 is
+  // then 5 cells off, between the guard and `clear`; the seat left, it is asked for within `every`
+  { let takes = false; const { h, w, run } = mk([12, 25]); const sol = h.solRoad; h.solRoad = (ci) => (ci >= 0 ? (sol(ci), takes) : sol(ci));
+    w.tags[25] = 1; run.begin(ARENA_SECTOR); run.tick(0.016);   // the first cut refused (12 in the band from 0)
+    for (let k = 1; k <= 28; k++) { h.now = k * 0.25; w.x = Math.min(7, k * 0.25 * 2.8); run.tick(0.25); }
+    assert.equal(run.state().road.laid, false, 'refused while seated'); const n = h.log.road.length;
+    takes = true; for (let k = 1; k <= 4 * ARENA.road.every + 1; k++) { h.now += 0.25; run.tick(0.25); if (run.state().road.laid) break; }
+    assert.equal(run.state().road.laid, true, `the seat left: the rock 5 cells off asked for and taken (${JSON.stringify(h.log.road.slice(n))})`); assert.equal(run.state().road.cell, 12);
+    assert.ok(Math.abs(12 - w.x) < ARENA.road.clear && Math.abs(12 - w.x) >= GUARD, 'between the guard and clear'); } }
+
+// THE HAND-OFF RE-DERIVED (review of note 3, 2026-10-19): during a planned burn the look runs again only once the hull is within the beam's guard and a cell
+// (4.1 cells) of the held rock; at `clear` + 1 (7.5) it ran during almost every burn and dropped the rock being burned. The chain 0..30, planned rocks at 10 and 15:
+// the first cut takes 10; the hull at 5 (10 five cells off, still burnable; 15 in the band) keeps the beam on 10; at 6.5 (10 is 3.5 off) the beam goes to 15
+{ const adj = Array.from({ length: 31 }, () => []); for (let i = 0; i < 30; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
+  const tags = new Int8Array(31).fill(1); tags[10] = 0; tags[15] = 0; let x = 0;
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(x), to: 30 }), roadFar: (ci, near = ARENA.road.clear) => Math.abs(ci - x) >= Math.max(near, GUARD), fromHull: (ci) => Math.abs(ci - x), roadNext: () => -1 });
+  h.story().arena.cell = 30; const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
+  assert.deepEqual(h.log.road, [10], 'the first cut');
+  for (let k = 1; k <= 4; k++) { h.now = k * 0.25; x = k * 1.25; run.tick(0.25); }
+  assert.equal(run.state().road.cell, 10, 'the hull 5 cells from the held rock: the beam stays on it');
+  x = 6.5; h.now += 0.25; run.tick(0.25);
+  assert.equal(run.state().road.cell, 15, 'within the guard and a cell of it: the next rock in the band takes the beam'); }
+
 // a refused ask (SOL seated or offline: solRoad false) backs the look off to `every` instead of asking every ROAD_LOOK s
 { const adj = Array.from({ length: 10 }, () => []); for (let i = 0; i < 9; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
   const tags = new Int8Array(10).fill(1); tags[4] = 0; const times = [];

@@ -1551,7 +1551,7 @@ try{
   assert.ok(s.boss.bossSeen&&s.boss.boss===1,`the Nih-Dairia is up, one (${JSON.stringify(s.boss)})`);assert.equal(s.boss.bossHp,BOSS_SECTOR.boss.boss.hp,'at its hit points');
   assert.ok(s.integrity.gates.some(g=>g.id==='boss'&&/100%/.test(g.text)),`the boss row reads its hit points, whole (${JSON.stringify(s.integrity.gates)})`);
   assert.ok(s.boss.phase==='boss'&&s.boss.auto&&s.boss.directive==='lure',`Isao drives the hull on its lure autopilot (${JSON.stringify(s.boss)})`);assert.equal(s.programme.colony.gunship.auto,false,'the gunship\'s autopilot is off: the seat is the player\'s');}
- current='boss-wave';await finish();
+ current='boss-rise';await finish();
  // THE MOTHER (owner, 2026-10-19, third round, note 8a: "we lost the scene explaining that we need to manually control the gunship while Isao plays Lure with the
  // tank"): the hand-over card over the paused game as she rises, Isao's lines and the seat's controls on it; no seat until the step presses TAKE THE GUN
  await until(`${T}.state().boss.card`,15000).catch(async()=>assert.fail(`THE MOTHER's card is up as she rises (${JSON.stringify((await st()).boss)})`));
@@ -1566,9 +1566,9 @@ try{
  // dead: the sector secure, the hull the player's again
  // THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"; review, 2026-10-19): the real cause was the
  // bodies a held sector leaves alive far from the arena. Two strays (not guards, not hunters) are put at the antipode (the brood's three went with the small waves, note 4, 2026-10-19),
- // the mother is killed through the damage path (damageBoss, a gunship round's): SECURE within 1 s with the strays alive, the brood dead within 2 s (it dies with
- // her, src/fx/boss-run.js), Isao's boss_dead on the panel and the debrief by about +6 s; every failure prints aliveBodies() (what held the sector)
- {const {BRIEFS}=await import('../src/isaobriefs.js'),alive=()=>evaluate(`${T}.aliveBodies()`),brood=(a)=>a.filter(e=>e.hunter&&(e.tier==='small'||e.tier==='pup'));
+ // the mother is killed through the damage path (damageBoss, a gunship round's): SECURE within 1 s with the strays alive (no brood since note 4: the node test
+ // test/boss-run.mjs keeps the brood's death on a row with waves), Isao's boss_dead on the panel; every failure prints aliveBodies() (what held the sector)
+ {const {BRIEFS}=await import('../src/isaobriefs.js'),alive=()=>evaluate(`${T}.aliveBodies()`);
   // no brood since note 4 (2026-10-19: no small wave, so none spawned here); the strays are the door sector's
   const far=await evaluate(`${T}.creatures.spawnFar('amoeba',2)`);assert.equal(far,2,'two strays far out');
   await until(`${T}.aliveBodies().filter(e=>!e.guard&&!e.hunter&&!e.harmless).length>=2`,10000).catch(async()=>assert.fail(`the strays alive before her death (${JSON.stringify(await alive())})`));
@@ -1578,13 +1578,13 @@ try{
   await until(`['secure','finale','debrief','campaign'].includes(${T}.state().sector.phase)`,1000).catch(async()=>assert.fail(`the boss dead: SECURE within 1 s (${JSON.stringify({phase:(await st()).sector.phase,boss:(await st()).boss,alive:await alive()})})`));
   const secAt=Date.now()-b0,atSecure=await alive();
   assert.ok(atSecure.some(e=>!e.guard&&!e.hunter&&!e.harmless),`SECURE with the strays still alive: they no longer hold it (${JSON.stringify(atSecure)})`);
-  const broodAt=Date.now()-b0;assert.equal(brood(atSecure).length,0,`no brood at her death (${JSON.stringify(brood(atSecure))})`);
+  const chkAt=Date.now()-b0;
   // boss_dead at her death, the panel free before the kill; the debrief now waits for Isao's decoded lines behind it (the step below), not the fight's +6 s
   // (merge of r3-g's fix round under r3-f's messaging, 2026-10-19: src/fx/sector-run.js holds the boss sector's debrief while src/fx/boss-run.js talking())
   await until(`(window.__seen?.briefs||[]).some(t=>t.includes(${JSON.stringify(BRIEFS.boss_dead.lines[0])}))`,4000).catch(async()=>assert.fail(`boss_dead on the panel at her death (${JSON.stringify({phase:(await st()).sector.phase,briefs:(await evaluate('window.__seen')).briefs.slice(-4),alive:await alive()})})`));
   // the wheel back at her death (review, 2026-10-19): the boss phase is over and Isao's lure autopilot no longer holds the hull through his lines
   {const sb=(await st()).boss;assert.ok(['over','off'].includes(sb.phase)&&sb.directive!=='lure',`the hull no longer on Isao's lure after her death (${JSON.stringify({phase:sb.phase,auto:sb.auto,directive:sb.directive})})`);}
-  console.log(`  boss killed: SECURE at +${secAt} ms (checked at +${broodAt} ms), boss_dead at +${Date.now()-b0} ms (game clock ${c0} -> ${(await st()).sector.clock}); alive at SECURE ${JSON.stringify(atSecure)}`);}
+  console.log(`  boss killed: SECURE at +${secAt} ms (checked at +${chkAt} ms), boss_dead at +${Date.now()-b0} ms (game clock ${c0} -> ${(await st()).sector.clock}); alive at SECURE ${JSON.stringify(atSecure)}`);}
  {const s=await st();assert.ok(['secure','finale','debrief','campaign'].includes(s.sector.phase),`the boss dead: SECURE (${JSON.stringify({phase:s.sector.phase,boss:s.boss})})`);
   const ab=s.sector.breaches?.find(b=>b.side==='arena');assert.ok(ab&&ab.hole===true,`the arena's hole stays open after SECURE: the nest's mouth (${JSON.stringify(s.sector.breaches)})`);}
  // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in"): boss_dead, then arena_decoded on the panel;
@@ -2681,8 +2681,12 @@ try{
   const cuts=(r.road.cuts||[]).map((c,i,a)=>({i,cell:c.cell,planned:c.planned,at:c.at,gap:i?+(c.at-a[i-1].at).toFixed(2):null,ask:c.ask,end:c.end??null,burn:c.endAt!=null?+(c.endAt-c.at).toFixed(2):null,cleared:c.cleared??null,vAsk:v(c.at),vEnd:c.endAt!=null?v(c.endAt):null,roadV:c.endAt!=null&&c.endAt>c.at&&c.road!=null&&c.endRoad!=null?+((c.road-c.endRoad)/(c.endAt-c.at)).toFixed(2):null}));
   console.log('ARENA DRIVE: per cut (cells; negative = the hull past it)');for(const c of cuts)console.log('  '+JSON.stringify(c));writeFileSync('artifacts/arena-drive-cuts.json',JSON.stringify({cuts,kmhs},null,0));
   // THE PROMISE (note 3): every finished burn (a hold still on as the hole opened has no end yet) ended with the hull at least ARENA.road.leadMin cells short of its rock
-  const done=cuts.filter(c=>c.end!=null),worst=done.reduce((m,c)=>Math.min(m,c.end),Infinity);console.log(`ARENA DRIVE: the lead at the burns' end ${JSON.stringify({finished:done.length,uncleared:done.filter(c=>!c.cleared).length,min:worst,askMin:Math.min(...done.slice(1).map(c=>c.ask)),leadMin:ARENA.road.leadMin})}`);
+  // a planned rock taken outside the band (none in it: the nearest the beam can burn, review 2026-10-19) is recovery, not the promise: logged, not held to leadMin;
+  // and no planned rock may end its burn standing (held off its whole ARENA.road.burn: the hull at it before the beam)
+  const raw=r.road.cuts||[],done=cuts.filter((c,i)=>c.end!=null&&raw[i]?.band!==false),worst=done.reduce((m,c)=>Math.min(m,c.end),Infinity),fin=cuts.filter(c=>c.end!=null),plannedLeft=fin.filter(c=>c.planned&&!c.cleared);
+  console.log(`ARENA DRIVE: the lead at the burns' end ${JSON.stringify({finished:fin.length,inBand:done.length,fallback:raw.filter(c=>c.band===false).length,uncleared:fin.filter(c=>!c.cleared).length,plannedUncleared:plannedLeft.length,min:worst,askMin:Math.min(...done.slice(1).map(c=>c.ask)),leadMin:ARENA.road.leadMin})}`);
   assert.ok(done.length>=3,`the road asked and burned on the drive (${done.length} finished)`);
+  assert.equal(plannedLeft.length,0,`every planned rock asked for was burned (${JSON.stringify(plannedLeft)})`);
   assert.ok(worst>=ARENA.road.leadMin,`every burn ended with the hull at least ARENA.road.leadMin (${ARENA.road.leadMin}) cells short of its rock (min ${worst}; ${JSON.stringify(done.filter(c=>c.end<ARENA.road.leadMin))})`);}
  current='arena-drive-open';await finish();
  // STRAIGHT TO THE MOTHER (owner, 2026-10-19, round 4, note 4): the hole opened by the drive, the mother rises and THE MOTHER card is up, no small Reeds first
