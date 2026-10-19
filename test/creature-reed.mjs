@@ -69,7 +69,15 @@ fam.track(hs[1], { pos: at(recs[1].x, recs[1].z), apos: at(recs[1].x, recs[1].z 
 assert.ok(fam.roots()[0].children[1].children[0].position.y * s < -5, 'six metres under');
 
 // the v1 death: motion off, the gravity up, collapse; then sink and fade, and gone
+// THE DEAD READ GREY (owner, 2026-10-19, round four, note 1; CREATURE_REED.grey): the tissue to one grey at the kill, no hue, its clear coat kept over 0 (no relink)
+const G = CREATURE_REED.grey;
+assert.ok(G.grey > 0.05 && G.grey < 0.6 && G.pattern >= 0 && G.pattern < 0.5 && G.clearcoat > 0 && G.clearcoat < 0.2, `a mid grey, a faint pattern, a coat just over 0 (${JSON.stringify(G)})`);
+const deadMesh = fam.roots()[0].children[2].children[0].children[0], hue = (m) => { const a = m.geometry.getAttribute('color').array; let w = 0; for (let k = 0; k < a.length; k += 3) w = Math.max(w, Math.max(a[k], a[k + 1], a[k + 2]) - Math.min(a[k], a[k + 1], a[k + 2])); return w; };
+const coat0 = deadMesh.material.clearcoat, hue0 = hue(deadMesh);
 fam.kill(hs[2]);
+assert.ok(hue0 > 0.02 && hue(deadMesh) < 1e-6, `the dead Reed's colours lose their hue (${hue0} -> ${hue(deadMesh)})`);
+assert.ok(coat0 > 0 && deadMesh.material.clearcoat > 0 && deadMesh.material.clearcoat <= Math.max(1e-3, G.clearcoat) + 1e-9, `its clear coat dulled, over 0 (${coat0} -> ${deadMesh.material.clearcoat})`);
+assert.ok(hue(fam.roots()[0].children[0].children[0].children[0]) > 0.02, 'a live Reed keeps its colours');
 let vw = fam.view(hs[2]); assert.ok(vw.dead && !vw.active && vw.made); assert.equal(fam.stats().small.live, 3); assert.equal(fam.stats().small.deaths, 1);
 for (let fr = 0; fr < 60 * CREATURE_REED.collapse + 30; fr++) fam.step(1 / 60);
 vw = fam.view(hs[2]); assert.ok(vw.deflate === 1 && vw.opacity < 1 && vw.opacity > 0, `fading ${JSON.stringify(vw)}`);

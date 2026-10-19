@@ -158,12 +158,15 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   }
 
   // DRAWN IN UNDER THE HULL (owner, 2026-10-19, round four, note 2; PEARL_IMPACT.absorb): the knock aimed at the hull's centre line from where the body
-  // stands (`pull` of its offset across the hull's axis, `back` of its offset along it, from the hull's centre (hx, hz) at the ram), flattened (no wobble)
+  // stands (`pull` of its offset across the hull's axis, `back` of its offset along it, from the hull's centre (hx, hz) at the ram), flattened (no wobble).
+  // A move longer than `reach` metres plus the body's radius (a body far from the hull: one lagging its record, the harness's ram on a distant record)
+  // would be a streak across the ground: null, the caller staggers it instead
   const ABSORB = IMPACT?.absorb?.on ? { ...IMPACT.absorb, knockSeconds: IMPACT.absorb.knock, hz: 0, decay: 0, knockRadii: 0 } : null;
   function absorbOf(sw, i, imp) {
     const pos = sw.position(i), ux = imp.dx, uz = imp.dz, l = Math.hypot(ux, uz) || 1, ax = ux / l, az = uz / l;
     const rx = pos[0] - imp.hx, rz = pos[2] - imp.hz, along = rx * ax + rz * az, across = -rx * az + rz * ax;
     const mx = -ax * along * ABSORB.back + az * across * ABSORB.pull, mz = -az * along * ABSORB.back - ax * across * ABSORB.pull, m = Math.hypot(mx, mz);
+    if (m > ABSORB.reach + sw.config.r0 * sw.scale[i]) return null;
     snap(sw, i);
     return { t0: clock, dx: m > 1e-9 ? mx / m : 0, dz: m > 1e-9 ? mz / m : 0, metres: m, moved: 0, tune: ABSORB, absorb: true };
   }
@@ -309,7 +312,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     return n;
   }
   // the bodies against the tank's hull: `boxOf(hub)` the hull in that hub's plane ({ x, z, ux, uz, hl, hw }, metres) or null; `drive` true while the
-  // tank moves (its next position): a soft body (or any dying one) in its way is shoved out of it along the contact's least move (and off the rock),
+  // tank moves (its next position): a soft body (or a dying one, but for one drawn in under the hull: PEARL_IMPACT.absorb) in its way is shoved out of it along the contact's least move (and off the rock),
   // and what the rock would not let it give back pushes the tank; a cored body pushes the tank back out of it. Not driving (`drive` false: after the
   // bodies stepped) every body is shoved out of the hull where it stands; `drive` null only measures (the harness: sink.depth(h, depth) for each
   // body overlapping). `sink` { push(hub, dx, dz) the tank's move in a hub's plane, touch(h, cored, r) a live body's contact (the caller books the
@@ -337,20 +340,21 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         if (!sw.active[i] || !h || sw.life[i * 4 + 2] < 0.05) continue;
         const box = boxOf(sw.hub[i]);
         if (!box) continue;
-        if (p.dying.get(i)?.st?.absorb) continue;   // drawn in under the hull (PEARL_IMPACT.absorb): neither shoved out of it nor slowing it
+        const under = !!p.dying.get(i)?.st?.absorb;   // drawn in under the hull (PEARL_IMPACT.absorb): measured (drive null), never shoved, slowing or pinning
+        if (under && drive !== null) continue;
         const pad = IMPACT?.tiers?.[p.id]?.pad ?? 0, r = sw.config.r0 * sw.scale[i], pos = sw.positionInto(i, POS), far = Math.hypot(box.hl, box.hw) + r * 1.8 + pad;
         if ((pos[0] - box.x) ** 2 + (pos[2] - box.z) ** 2 > far * far) continue;
         n++;
         const pts = outline(p, i);
         boxContact(box, OX, OZ, pts, HIT);
         let depth = HIT[0];
-        if (drive === null) { if (depth > 0) sink.depth(h, depth, p.id, p.dying.has(i)); continue; }
+        if (drive === null) { if (depth > 0) sink.depth(h, depth, p.id, p.dying.has(i), under); continue; }
         const dying = p.dying.has(i);
         // a light tier's generous hit (round four, PEARL_IMPACT.tiers[tier].pad): the hull grown by `pad` touching the body is a hit, booked
         if (pad > 0 && drive && !dying && !(depth > 0)) { box.hl += pad; box.hw += pad; boxContact(box, OX, OZ, pts, PADHIT); box.hl -= pad; box.hw -= pad; if (PADHIT[0] > 0) sink.touch(h, false, r, p.id); }
         if (!(depth > (IMPACT?.contact?.slop ?? 0.02))) continue;
         const nx = HIT[1], nz = HIT[2];
-        if (drive) sink.touch(h, cored && !dying, r, p.id);   // a dying body is mass too (a rammed one, its puddle): it takes speed, it does not stop the hull
+        if (drive) sink.touch(h, cored && !dying, r, p.id);   // a dying body is mass too (a staggered one, its puddle; not one drawn in under the hull): it takes speed, it does not stop the hull
         // a cored body stops the hull: it takes back what it drove in; what the touch's recoil grew the body into the hull since is the body's to give
         if (cored && !dying && drive) { shoveOut(p, i, box, depth); sink.push(sw.hub[i], -nx * depth, -nz * depth); continue; }
         // shoved: the whole body (its origin, anchor and the transfer between), then off the rock; what the rock took back is the tank's. A soft
@@ -443,7 +447,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
           continue;
         }
         sw.life[i * 4 + 1] = k < 0 ? sq : d; sw.life[i * 4 + 2] = d0.op * (1 - f); sw.life[i * 4] = -f * death.sink * sw.config.r0 * sw.scale[i];
-        // the dead go dark at once, the stagger's moment included (PEARL_IMPACT.death: iLife.w below zero, the ice's channel)
+        // the dead go grey at once, the stagger's moment included (PEARL_IMPACT.death: iLife.w below zero, the ice's channel)
         if (IMPACT?.death) sw.life[i * 4 + 3] = -Math.min(1, (clock - d0.t0) / Math.max(1e-6, IMPACT.death.seconds));
         if (f >= 1) { p.dying.delete(i); release(p, i); }
       }
