@@ -2643,11 +2643,12 @@ try{
  console.log(`ARENA DRIVE from cell ${s0.playerCell}, ${s0.boss.hullCells} cells from the arena (reach ${ARENA.reachCells})`);
  const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
  await evaluate(`${T}.showcase.aimHull(${s0.boss.road.path[0]})`);await delay(200);await K('keyDown','w','KeyW',87);
- let turning=null,backing=0,behind=0,cellWas=-1,cellSince=Date.now(),backs=0,cullAt=Date.now(),stuckS=+(process.env.STUCK_S||3),minCells=Infinity,openedAt=null,openCells=null,early=null,last=null;const t0=Date.now();
+ let turning=null,backing=0,behind=0,cellWas=-1,cellSince=Date.now(),backs=0,cullAt=Date.now(),stuckS=+(process.env.STUCK_S||3),minCells=Infinity,openedAt=null,openCells=null,early=null,last=null;const t0=Date.now(),kmhs=[];
  while(Date.now()-t0<secs*1000){
   const s=await st(),d=await evaluate(`${T}.showcase.drive()`),t=+((Date.now()-t0)/1000).toFixed(1);
   if(Number.isFinite(s.boss.hullCells))minCells=Math.min(minCells,s.boss.hullCells);
   last={t,cell:d.cur,hullCells:s.boss.hullCells,min:minCells,phase:s.boss.phase,due:s.boss.due,cuts:s.boss.roadCuts,reminders:s.boss.reminders,drove:s.boss.drove,hulls:s.hulls,alive:s.performance?.enemies};
+  {const k=parseFloat(await evaluate('document.querySelector(".hc-kmh")?.textContent||""'));if(Number.isFinite(k))kmhs.push({gt:s.boss.t,kmh:k});}   // the hull's speed on the console (THE LEAD MEASURED, 2026-10-19, note 3)
   if(Date.now()-cullAt>5000){cullAt=Date.now();await evaluate(`${T}.sectorCull(999)`);}   // the jump's leftovers still emerging at the first cull
   if(arenaOpen(s)){openedAt=t;openCells=s.boss.hullCells;if(minCells>ARENA.reachCells)early=last;break;}
   const path=s.boss.road.path??[],ids=[d.cur,...path];if(ids.length<2){await delay(100);continue;}
@@ -2668,7 +2669,12 @@ try{
  // THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "always 50m ahead of the tank clearing the path"): after the first cut no ask lay farther
  // than ARENA.road.aheadMetres (and a cell, the hull's own) from the hull (state().boss.road.leadMax, the chord in cells at each ask)
  {const r=(await st()).boss,{METRES_PER_CELL}=await import('../src/core/stage-units.js'),reach=ARENA.road.aheadMetres/METRES_PER_CELL;console.log(`ARENA DRIVE: the beam's lead ${JSON.stringify({cuts:r.roadCuts,asks:r.road.asks,leadMax:r.road.leadMax,reach})}`);
-  assert.ok(r.road.leadMax<=reach+1,`no cut farther than ${ARENA.road.aheadMetres} m and a cell ahead of the hull after the first (${r.road.leadMax} cells)`);}
+  assert.ok(r.road.leadMax<=reach+1,`no cut farther than ${ARENA.road.aheadMetres} m and a cell ahead of the hull after the first (${r.road.leadMax} cells)`);
+  // THE LEAD MEASURED (owner, 2026-10-19, round 4, note 3: "by the time SOL clears a piece of rock the tank is already past it"): every ask's chord from the hull
+  // in cells at the ask and at its burn's end (negative: the hull past it down the road), the hull's speed then (the console's km/h in cells/s), the cadence
+  const v=(gt)=>{let b=null;for(const k of kmhs)if(b==null||Math.abs(k.gt-gt)<Math.abs(b.gt-gt))b=k;return b?+(b.kmh/3.6/METRES_PER_CELL).toFixed(2):null;};
+  const cuts=(r.road.cuts||[]).map((c,i,a)=>({i,cell:c.cell,planned:c.planned,at:c.at,gap:i?+(c.at-a[i-1].at).toFixed(2):null,ask:c.ask,end:c.end??null,burn:c.endAt!=null?+(c.endAt-c.at).toFixed(2):null,cleared:c.cleared??null,vAsk:v(c.at),vEnd:c.endAt!=null?v(c.endAt):null,roadV:c.endAt!=null&&c.endAt>c.at&&c.road!=null&&c.endRoad!=null?+((c.road-c.endRoad)/(c.endAt-c.at)).toFixed(2):null}));
+  console.log('ARENA DRIVE: per cut (cells; negative = the hull past it)');for(const c of cuts)console.log('  '+JSON.stringify(c));writeFileSync('artifacts/arena-drive-cuts.json',JSON.stringify({cuts,kmhs},null,0));}
  current='arena-drive-open';await finish();
  {const w0=Date.now();let s=null;while(Date.now()-w0<60000){s=await st();if((s.boss.wave??0)>=4)break;await delay(1000);}
   console.log(`ARENA DRIVE: the small Reeds ${JSON.stringify({wave:s.boss.wave,tiers:s.boss.tiers,phase:s.boss.phase,t:((Date.now()-w0)/1000).toFixed(0)})}`);
