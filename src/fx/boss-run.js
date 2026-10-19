@@ -166,7 +166,7 @@ export function createBossRun(c) {
       // THE HAND-OFF NEVER DROPS THE ROAD'S FIRST: during a planned burn the look only moves the beam on once the held rock is no longer the road's first burnable
       // rock (the hull inside the guard of it, or the rock gone); while it still is, the beam stays on it
       if (held && pc === roadCell) pc = -1;
-      const inBand = pc >= 0 && !(c.fromHull?.(pc) < (ARENA.road?.clear ?? 0));
+      const inBand = pc >= 0 && !(c.fromHull?.(pc) < (ARENA.road?.clear ?? 0)) && !(c.fromHull?.(pc) > (ARENA.road?.aheadMetres ?? Infinity) / METRES_PER_CELL);   // the log's flag only: inside clear..aheadMetres
       const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
       if (pc >= 0 || due) {
         if (roadUntil) release();

@@ -278,7 +278,7 @@ export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatC
   // asked 3.2 to 3.7 cells out were never burned (the hull closed inside the beam's guard, 3.1 cells, within a frame or two, the beam held off, the hold ran out
   // its 2.5 s) and the hull drove past them (-2.3 to -3.4). clear 3.2 -> 6.5 and aheadMetres 50 -> 100: the band 6.5 to 10 cells ahead, 3.3 to 5 further than
   // before; leadMin: the least lead in cells the beam promises at a burn's end (6.5 less 0.5 s at 3.9 cells/s is 4.5), asserted by --arena-drive over every ask
-  // in the band (a planned rock with none in the band falls back to the nearest the beam can burn, src/fx/boss-run.js; review, 2026-10-19)
+  // in the band (the planned rocks are taken in road order: the first one down the road outside the guard and within the reach, so a near one is never starved by a farther one in the band, src/fx/boss-run.js; review, 2026-10-19)
   // ahead 12 -> 15 (review of note 3, 2026-10-19): the flank walks `ahead` route cells, and a 10-cell chord lies further along a winding road; measured along the
   // planned road from the --arena-drive start (227 cells, 967 rocks beside it in the band from some road cell): up to 14 route steps out, 9 of them past 12
   road: freeze({ aheadMetres: 100, leadMin: 4, every: 4, ahead: 15, burn: 2.5, saves: 4, through: 2, flank: true, clear: 6.5, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
