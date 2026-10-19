@@ -341,18 +341,21 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.deepEqual(log, [['report', SECTOR_DOOR.earliest]], 'the door sector held: its report, no finale');
   // THE BOSS (2026-10-15): the sector after the door, held like any; BOTH WALLS, the final sector, after it
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'THE ARENA'); assert.equal(run.state().name, 'THE ARENA');
-  { let q = []; for (let g = 0; g < 200 && !q.length; g++) { q = run.release(ww.t) ?? []; step(0.5); }   // release() returns the entries the controller queues
-    assert.equal(q.length, 12, `the arena row's first wave: twelve entries (${q.length}; ${JSON.stringify(run.state().breaches?.[0] ?? run.state())})`);
-    assert.ok(q.every((e) => e.type === 'reed' && e.tier === 'small' && e.hunter && e.spec?.hp === 4 && e.spec?.body === 'reed' && e.sp && e.sizeMul === 3), `small Reed hunters at 4 hp off the breach, three times the size (note 8b) (${JSON.stringify(q[0])})`);
+  // STRAIGHT TO THE MOTHER (owner, 2026-10-19, round 4, note 4: "skip the "boss phase 1" of smaller reed ... straight to the boss nih-dairia"): the arena's one
+  // pulse is the mother, and it goes at the first release the open breach allows (a sector's first pulse is due at once, pulseDue)
+  { let q = [], tries = 0, opened = null; for (let g = 0; g < 200 && !q.length; g++) { if (opened == null && ww.opened.length && ww.opened.at(-1).ci === 230) opened = g; q = run.release(ww.t) ?? []; ww.queue.push(...q); tries = g; step(0.5); }   // release() returns the entries the controller queues (src/fx/enemy-step.js: into the spawn queue at once)
+    assert.equal(q.length, 1, `the arena row's one pulse: one entry (${q.length}; ${JSON.stringify(run.state().breaches?.[0] ?? run.state())})`);
+    assert.ok(q.every((e) => e.type === 'reed' && e.tier === 'huge' && e.hunter && e.spec?.hp === 180 && e.sp && !e.sizeMul), `the mother, a hunter at 180 off the breach (${JSON.stringify(q[0])})`);
+    assert.ok(opened != null && tries <= opened, `released the first try the hole is open (opened at try ${opened}, released at ${tries})`);
     const ab = ww.opened.at(-1); assert.deepEqual([ab.ci, ab.radius, ab.keep], [230, 3, true], `the arena's breach on the story's arena cell, three cells wide, kept (${JSON.stringify(ab)})`);
     assert.equal(run.state().breaches?.[0]?.side, 'arena', 'the arena side'); }
   { // NO STRAGGLERS AND NO STALL IN A BOSS SECTOR (2026-10-16): the mother alone, alive and unhurt for twenty seconds, holds the arena open where a held
     // sector's twenty stragglers or twenty idle seconds would close it
     const dead = (q) => ({ alive: false, guard: null, breachSource: q.sp.obj, type: q.type }); let boss = null;
     for (let g = 0; g < 60 && !boss; g++) { run.release(ww.t);
-      if ((run.state().breaches?.[0]?.wavesReleased ?? 0) >= 3) { boss = { alive: true, guard: null, hunter: true, tier: 'huge', breachSource: ww.opened.at(-1).obj, type: 'reed' }; ww.enemies.push(boss); }   // the mother up with the last wave
+      if ((run.state().breaches?.[0]?.wavesReleased ?? 0) >= 1) { boss = { alive: true, guard: null, hunter: true, tier: 'huge', breachSource: ww.opened.at(-1).obj, type: 'reed' }; ww.enemies.push(boss); }   // the mother up with the last wave
       step(0.5); ww.enemies.push(...ww.queue.splice(0).map(dead)); if (!boss) step(SECTOR_TIMING.stall + 1); }
-    assert.ok(boss, 'the three waves released');
+    assert.ok(boss, 'the one pulse released (note 4)');
     step(SECTOR_TIMING.stall + 5); assert.equal(run.state().phase, 'fighting', `the mother alive holds the arena open (${run.state().phase})`);
     // THE BOSS'S DEATH IS THE SECTOR'S END (owner, 2026-10-18, note 10: "kill Nih Dairia fails to trigger the next phase"; probe r3-g): the stragglers the door
     // sector left alive (50 in the probe, walking or stuck by the base), a small Reed and a pup that walked off, and a fight round the hull do not hold the arena open

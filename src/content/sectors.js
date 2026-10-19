@@ -176,10 +176,15 @@ export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', shape: 'flow', flo
 // player to a tremor at the arena, its breach opens when the hull arrives (ARENA.reachCells; since 2026-10-18 only then, no clock), the player drives and shoots the small
 // waves with the gunship on its own autopilot overhead, and as the mother rises Isao takes the hull as the lure (the `lure` directive) and the player is
 // put in the gunship's seat (src/fx/boss-run.js). The choice card of 2026-10-15 is gone; its machinery came back on 2026-10-19 as THE MOTHER (ARENA_HANDOVER), one button.
-export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: [12, 6, 1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { arena: 1 }, waves: 3, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 120, points: 1200 },
+// STRAIGHT TO THE MOTHER (owner, 2026-10-19, round 4, note 4: "sector 9, let's skip the "boss phase 1" of smaller reed, we arrive and it is straight to the boss
+// nih-dairia and the swap of tank / gunship"): no small waves; the hull reaches the sinkhole, the breach opens, its one pulse (a sector's first goes at once,
+// src/domain/sector-shape.js pulseDue) is the mother, THE MOTHER card and the swap; bodies [12, 6, 1] and waves 3 -> [1] and 1, boss.waves [] (bossWaves maps it to
+// the boss alone; the brood machinery in src/fx/boss-run.js stays, harmless with no wave)
+export const ARENA_SECTOR = freeze({ name: 'THE ARENA', shape: 'pulse', bodies: [1], breath: { at: 0.15, max: 90 }, coreShare: 0, breaches: { arena: 1 }, waves: 1, ladderStart: 6, threat: 2.4, pulse: 8, held: { kg: 120, points: 1200 },
   // THE SMALL REEDS THREE TIMES THE SIZE (owner, 2026-10-18, note 8b: "make the smaller reeds 3x bigger, same health"): `size` multiplies the record (its touch
-  // and ram radius, src/fx/enemy-step.js) and the drawn body (src/fx/creature-reed.js) together; hp stays 4
-  boss: { family: 'reed', waves: [{ count: 12, tier: 'small', hp: 4, pace: 1, size: 3 }, { count: 6, tier: 'pup', hp: 6, pace: 1 }], boss: { tier: 'huge', hp: 180, pace: BOSS_FIGHT.arenaBoss.pace } },   /* the mother's pace: more aggro toward the tank (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss) */
+  // and ram radius, src/fx/enemy-step.js) and the drawn body (src/fx/creature-reed.js) together; hp stays 4. The waves were { count: 12, tier: 'small', hp: 4, pace: 1,
+  // size: 3 } and { count: 6, tier: 'pup', hp: 6, pace: 1 }; removed on 2026-10-19 at the owner's note 4 (STRAIGHT TO THE MOTHER, above); a wave's `size` still rides
+  boss: { family: 'reed', waves: [], boss: { tier: 'huge', hp: 180, pace: BOSS_FIGHT.arenaBoss.pace } },   /* the mother's pace: more aggro toward the tank (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss) */
   gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a boss',
   // THE MESSAGE (owner, 2026-10-18, note 6: "sector 9, it's not quite clear what we must do. We should message it better ... 'Go investigate that area, I'll clear a
   // way there'"): the sector's brief is Isao's order, `arena_go` (src/isaobriefs.js, src/fx/sector-run.js briefOf), and the debrief's next-sector page reads the same
@@ -263,7 +268,13 @@ export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatC
   // of the whole road burned in the first ten seconds; a planned rock inside that reach is asked for the moment the beam is free (or from a flank burn), the flank
   // on the `every` cadence; clear 4 -> 3.2 cells, just outside the beam's own guard (LASER_AUTO.safeMetres and its radius, 3.1 cells, which roadSafe still checks):
   // between 40 m and 50 m the band was one cell, crossed in about half a second, and road rocks slipped through it to the hull (probe r3-f)
-  road: freeze({ aheadMetres: 50, every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 3.2, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
+  // THE ROAD OPENED WELL AHEAD (owner, 2026-10-19, round 4, note 3: "SOL should be opening the road by destroying rocks much ahead of the mork, at least 3 further
+  // than it is now, now by the time SOL clears a piece of rock the tank is already past it"): measured in --arena-drive (probe r4-b, 19 asks on the drive out, the
+  // hull at 1.9 to 3.9 cells/s, most near 2.8): a rock was asked for 3.2 to 4.6 cells ahead, burned in 0.5 s, and gone with the hull 1.8 to 4.1 cells from it; four
+  // asked 3.2 to 3.7 cells out were never burned (the hull closed inside the beam's guard, 3.1 cells, within a frame or two, the beam held off, the hold ran out
+  // its 2.5 s) and the hull drove past them (-2.3 to -3.4). clear 3.2 -> 6.5 and aheadMetres 50 -> 100: the band 6.5 to 10 cells ahead, 3.3 to 5 further than
+  // before; leadMin: the least lead in cells the beam promises at a burn's end (6.5 less 0.5 s at 3.9 cells/s is 4.5), asserted by --arena-drive over every ask
+  road: freeze({ aheadMetres: 100, leadMin: 4, every: 4, ahead: 12, burn: 2.5, saves: 4, through: 2, flank: true, clear: 6.5, overhead: 3.5, energy: 40, radius: 6, slew: 16, rockCost: 2, plan: 400, markEvery: 1, marks: [4, 8, 12] }) });   // radiusCells: the plain carved round the arena's cell when the world is built (owner, 2026-10-16: 'an enormous arena'; the lab's bound was 12 cells)   // seatCells: the gunship this near the arena before the seat opens (owner, 2026-10-16)
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

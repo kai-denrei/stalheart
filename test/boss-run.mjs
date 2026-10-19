@@ -47,7 +47,7 @@ function host(o = {}) {
   assert.equal(h.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length, 3, `again at ${ARENA.remind} s and ${2 * ARENA.remind} s`);
   assert.equal(run.state().phase, 'beacon');
   h.open = true; h.now += 1; run.tick(1);
-  assert.equal(run.state().phase, 'waves'); assert.ok(h.log.briefs.includes('arena_open'), 'arena_open as the hole opens'); assert.deepEqual(h.log.tremor, [7, -1], 'the tremor cleared');
+  assert.equal(run.state().phase, 'waves'); assert.ok(!h.log.briefs.includes('arena_open'), 'no "Small ones first" with no small wave (note 4, 2026-10-19)'); assert.deepEqual(h.log.tremor, [7, -1], 'the tremor cleared');
   const n = h.log.callouts.length; h.now += 3 * ARENA.remind; run.tick(1);
   assert.equal(h.log.callouts.filter((c) => c === 'INVESTIGATE THE TREMOR').length, h.log.callouts.slice(0, n).filter((c) => c === 'INVESTIGATE THE TREMOR').length, 'no reminder once the arena is open'); }
 
@@ -98,58 +98,64 @@ function host(o = {}) {
   assert.deepEqual(h.log.road, [6], 'the near rock left to a later ask, the far one cut now'); }
 
 // THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "SOL should be destroying the paths much ahead, so that the path is already clear, should be
-// always 50m ahead of the tank clearing the path"): a chain 0..29 to the arena at 29 with planned rocks at 12, 13, 20 and 26, the chord from the hull |ci - hull|
-// cells. The first cut comes at once, on the nearest rock wherever it lies; after it nothing beyond ARENA.road.aheadMetres (5 cells) is asked for, the parked
-// hull's beam waits, and as the hull drives each rock is asked for the moment it comes into reach (not on the `every` cadence); the flank is held to it too
-{ const reach = ARENA.road.aheadMetres / METRES_PER_CELL; assert.equal(ARENA.road.aheadMetres, 50, 'fifty metres'); assert.equal(reach, 5, 'five cells of METRES_PER_CELL');
-  const adj = Array.from({ length: 32 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 29; i++) link(i, i + 1);
-  link(4, 30); link(18, 31);   // the flank's rocks: 30 beside the road's cell 4, 31 beside 18
-  const tags = new Int8Array(32).fill(1); for (const r of [12, 13, 20, 26, 30, 31]) tags[r] = 0;
-  let from = 0; const flank = [31, 30], at = (ci) => (ci === 30 ? 4 : ci === 31 ? 18 : ci);
-  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from, to: 29 }), roadFar: (ci) => Math.abs(at(ci) - from) >= 2, fromHull: (ci) => Math.abs(at(ci) - from), roadNext: (far) => flank.find((ci) => tags[ci] === 0 && far(ci)) ?? -1 });
-  h.story().arena.cell = 29;
+// always 50m ahead of the tank clearing the path"; round 4, note 3: "at least 3 further than it is now": ARENA.road.aheadMetres 100, clear 6.5): a chain 0..59 to
+// the arena at 59 with planned rocks at 24, 25, 40 and 52, the chord from the hull |ci - hull| cells, the flank's rocks 60 beside 8 and 61 beside 38. The first cut
+// comes at once, on the nearest rock wherever it lies; after it nothing beyond the reach (10 cells) nor inside `clear` is asked for, the parked hull's beam waits,
+// and as the hull drives each rock is asked for the moment it comes into reach (not on the `every` cadence); the flank is held to it too
+{ const R = ARENA.road.aheadMetres / METRES_PER_CELL, clear = ARENA.road.clear;
+  assert.equal(ARENA.road.aheadMetres, 100, 'a hundred metres (note 3, 2026-10-19)'); assert.equal(R, 10, 'ten cells of METRES_PER_CELL'); assert.equal(clear, 6.5, 'nothing nearer than 6.5 cells');
+  assert.ok(clear - 3.2 >= 3 && R - 5 >= 3, 'the band at least three cells further than round 3\'s 3.2 to 5'); assert.ok(ARENA.road.leadMin >= 4 && ARENA.road.leadMin < clear, 'the promise at a burn\'s end');
+  const adj = Array.from({ length: 62 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 59; i++) link(i, i + 1);
+  link(8, 60); link(38, 61);
+  const tags = new Int8Array(62).fill(1); for (const r of [24, 25, 40, 52, 60, 61]) tags[r] = 0;
+  let from = 0; const flank = [61, 60], at = (ci) => (ci === 60 ? 8 : ci === 61 ? 38 : ci);
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from, to: 59 }), roadFar: (ci) => Math.abs(at(ci) - from) >= clear, fromHull: (ci) => Math.abs(at(ci) - from), roadNext: (far) => flank.find((ci) => tags[ci] === 0 && far(ci)) ?? -1 });
+  h.story().arena.cell = 59;
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
-  assert.deepEqual(h.log.road, [12], 'the first cut at once: the nearest planned rock, 120 m out'); assert.ok(h.log.briefs.includes('arena_road'), 'Isao: let me clear a path');
-  tags[12] = 1; h.now = 0.3; run.tick(0.1);
+  assert.deepEqual(h.log.road, [24], 'the first cut at once: the nearest planned rock, 240 m out'); assert.ok(h.log.briefs.includes('arena_road'), 'Isao: let me clear a path');
+  tags[24] = 1; h.now = 0.3; run.tick(0.1);
   assert.equal(run.state().roadCuts, 1, 'released as soon as the rock is gone, before ARENA.road.burn'); assert.equal(h.log.road.at(-1), -1);
   const asked = () => h.log.road.filter((ci) => ci >= 0);
   for (let k = 1; k <= 120; k++) { h.now = 0.3 + k * 0.25; run.tick(0.25); if (h.log.road.at(-1) >= 0) { tags[h.log.road.at(-1)] = 1; } }
-  assert.deepEqual(asked(), [12, 30], 'the hull parked at the base: only the flank\'s rock 40 m out; 13, 20 and the flank\'s 31 wait beyond the reach');
-  assert.ok(asked().slice(1).every((ci) => Math.abs(at(ci) - from) <= reach), 'nothing farther than the reach after the first cut');
-  from = 8; const t0 = h.now; h.now += 0.25; run.tick(0.25);
-  assert.equal(h.log.road.at(-1), 13, 'the hull 50 m from the next rock: asked for at the next look'); assert.ok(h.now - t0 < ARENA.road.every, 'not on the every cadence');
-  assert.equal(run.state().road.lead, 5, 'the beam 5 cells ahead of the hull');
-  tags[13] = 1; h.now += 0.25; run.tick(0.25);
+  assert.deepEqual(asked(), [24, 60], 'the hull parked at the base: only the flank\'s rock 80 m out; 25, 40 and the flank\'s 61 wait beyond the reach');
+  assert.ok(asked().slice(1).every((ci) => Math.abs(at(ci) - from) <= R && Math.abs(at(ci) - from) >= clear), 'nothing outside the band after the first cut');
+  from = 15; const t0 = h.now; h.now += 0.25; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 25, 'the hull 100 m from the next rock: asked for at the next look'); assert.ok(h.now - t0 < ARENA.road.every, 'not on the every cadence');
+  assert.equal(run.state().road.lead, 10, 'the beam 10 cells ahead of the hull');
+  tags[25] = 1; h.now += 0.25; run.tick(0.25);
   for (let k = 0; k < 40; k++) { h.now += 0.25; run.tick(0.25); }
-  assert.ok(!asked().includes(20) && !asked().includes(31), 'parked at 8: 20 and the flank\'s 31 are not taken yet');
-  from = 15; h.now += 0.25; run.tick(0.25);
-  assert.equal(h.log.road.at(-1), 20, 'driven on: the next planned rock in reach'); tags[20] = 1; h.now += 0.25; run.tick(0.25);
+  assert.ok(!asked().includes(40) && !asked().includes(61), 'parked at 15: 40 and the flank\'s 61 are not taken yet');
+  from = 30; h.now += 0.25; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 40, 'driven on: the next planned rock in reach'); tags[40] = 1; h.now += 0.25; run.tick(0.25);
   for (let k = 0; k < 20; k++) { h.now += 0.25; run.tick(0.25); if (h.log.road.at(-1) >= 0) tags[h.log.road.at(-1)] = 1; }
-  assert.ok(asked().includes(31), 'the flank\'s rock once it is in reach');
-  assert.ok(!asked().includes(26), 'the last rock still beyond the reach');
-  assert.ok(run.state().road.leadMax <= reach, `the farthest ask after the first cut within the reach (${run.state().road.leadMax})`);
+  assert.ok(asked().includes(61), 'the flank\'s rock once it is in reach');
+  assert.ok(!asked().includes(52), 'the last rock still beyond the reach');
+  assert.ok(run.state().road.leadMax <= R, `the farthest ask after the first cut within the reach (${run.state().road.leadMax})`);
+  // every laid ask is logged with its lead at the ask and at its burn's end (THE LEAD MEASURED, note 3): here the rocks go at the next tick, so the end lead is the ask's
+  const cuts = run.state().road.cuts; assert.deepEqual(cuts.map((c) => c.cell), asked(), 'one entry an ask'); assert.ok(cuts.slice(1).every((c) => c.ask >= clear && c.end != null && c.cleared), JSON.stringify(cuts));
   // a flank burn gives the beam up to a planned rock that comes into reach (probe r3-f: road rocks crossed the reach while the flank held the beam)
-  tags[31] = 0; flank.length = 0; flank.push(31); from = 20; h.now += ARENA.road.every; run.tick(0.25);
-  assert.equal(h.log.road.at(-1), 31, 'a flank burn on'); assert.equal(run.state().road.planned, false);
-  from = 21; h.now += 0.25; run.tick(0.25);
-  assert.deepEqual(h.log.road.slice(-2), [-1, 26], 'the planned rock in reach takes the beam at the next look'); assert.equal(run.state().road.planned, true); }
+  tags[61] = 0; flank.length = 0; flank.push(61); from = 31; h.now += ARENA.road.every; run.tick(0.25);
+  assert.equal(h.log.road.at(-1), 61, 'a flank burn on'); assert.equal(run.state().road.planned, false);
+  from = 42; h.now += 0.25; run.tick(0.25);
+  assert.deepEqual(h.log.road.slice(-2), [-1, 52], 'the planned rock in reach takes the beam at the next look'); assert.equal(run.state().road.planned, true);
+  const e61 = run.state().road.cuts.at(-2); assert.equal(e61.cell, 61); assert.equal(e61.cleared, false, 'the flank\'s rock left standing'); assert.equal(e61.end, -4, 'the hull 4 cells past it down the road: negative'); }
 
 // THE LOOK DURING A PLANNED BURN (review of note 7b, 2026-10-19): a burn holds the beam up to ARENA.road.burn (2.5 s), ~7 cells at the hull's top speed (2.8
 // cells/s), so a second planned rock 4 cells past the first crossed the reach unasked and, once inside `clear`, was never asked for. The chain 0..40 to the arena
-// at 40, planned rocks at 5 (the first cut), 14 and 18; the beam cuts nothing after the first (the worst case: every burn holds its whole 2.5 s); the hull drives
-// 2.8 cells/s from 0: both 14 and 18 are asked for while still at least `clear` cells ahead of the hull
+// at 40, planned rocks at 8 (the first cut, outside clear 6.5 since note 3, 2026-10-19), 18 and 22; the beam cuts nothing after the first (the worst case: every burn
+// holds its whole 2.5 s); the hull drives 2.8 cells/s from 0: both 18 and 22 are asked for while still at least `clear` cells ahead of the hull
 { const adj = Array.from({ length: 41 }, () => []); for (let i = 0; i < 40; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
-  const tags = new Int8Array(41).fill(1); for (const r of [5, 14, 18]) tags[r] = 0;
+  const tags = new Int8Array(41).fill(1); for (const r of [8, 18, 22]) tags[r] = 0;
   let x = 0; const asks = [], speed = 2.8, clear = ARENA.road.clear;
   const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: Math.round(x), to: 40 }), roadFar: (ci) => Math.abs(ci - x) >= clear, fromHull: (ci) => Math.abs(ci - x), roadNext: () => -1,
     solRoad: (ci) => { if (ci >= 0) asks.push([ci, +x.toFixed(2)]); return ci >= 0; } });
   h.story().arena.cell = 40;
   const run = createBossRun(h); run.begin(ARENA_SECTOR); run.tick(0.016);
-  assert.deepEqual(asks.map((a) => a[0]), [5], 'the first cut'); tags[5] = 1; h.now = 0.05; run.tick(0.05); assert.equal(run.state().roadCuts, 1);
-  for (let k = 2; x < 20; k++) { h.now = k * 0.05; x += speed * 0.05; run.tick(0.05); }
+  assert.deepEqual(asks.map((a) => a[0]), [8], 'the first cut'); tags[8] = 1; h.now = 0.05; run.tick(0.05); assert.equal(run.state().roadCuts, 1);
+  for (let k = 2; x < 25; k++) { h.now = k * 0.05; x += speed * 0.05; run.tick(0.05); }
   const at = (ci) => asks.find((a) => a[0] === ci);
-  assert.ok(at(14) && at(18), `both planned rocks asked for (${JSON.stringify(asks)})`);
-  for (const ci of [14, 18]) assert.ok(ci - at(ci)[1] >= clear, `${ci} asked with the hull ${(ci - at(ci)[1]).toFixed(2)} cells short of it, outside clear`);
+  assert.ok(at(18) && at(22), `both planned rocks asked for (${JSON.stringify(asks)})`);
+  for (const ci of [18, 22]) assert.ok(ci - at(ci)[1] >= clear, `${ci} asked with the hull ${(ci - at(ci)[1]).toFixed(2)} cells short of it, outside clear`);
   assert.ok(run.state().road.leadMax <= ARENA.road.aheadMetres / METRES_PER_CELL, 'and within the reach'); }
 // a refused ask (SOL seated or offline: solRoad false) backs the look off to `every` instead of asking every ROAD_LOOK s
 { const adj = Array.from({ length: 10 }, () => []); for (let i = 0; i < 9; i++) { adj[i].push(i + 1); adj[i + 1].push(i); }
@@ -298,8 +304,11 @@ function host(o = {}) {
 
 // THE BROOD DIES WITH THE MOTHER (review of note 10, 2026-10-19; the mother is the fight): three of the wave's hunters alive at her death die after her,
 // BROOD_STAGGER (0.1 s) apart, deflating, within a second; a body that is not the arena's brood (no hunter, or another tier) is left alone
+// (a row with the waves THE ARENA had until note 4, 2026-10-19: the machinery stays)
+const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...ARENA_SECTOR.boss, waves: [{ count: 12, tier: 'small', hp: 4, pace: 1, size: 3 }, { count: 6, tier: 'pup', hp: 6, pace: 1 }] } };
 { const kills = [], h = host({ kill: (e, fx) => { e.alive = false; kills.push([e.id, fx, +h.now.toFixed(2)]); } }), run = createBossRun(h);
-  run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  run.begin(WITH_WAVES); h.open = true; h.now = 1; run.tick(0.1); assert.ok(h.log.briefs.includes('arena_open'), 'a row with waves still says arena_open');
+  assert.deepEqual(run.rows().map((r) => r.name), ['WAVE · NIH-DAIRIA'], 'and its strip counts the wave');
   const b = { id: 'boss', alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] };
   const brood = [['r1', 'small'], ['r2', 'small'], ['p1', 'pup']].map(([id, tier]) => ({ id, alive: true, hunter: true, tier, hp: 4, pos: [0, 0, 1] }));
   const stray = { id: 'stray', alive: true, tier: 'small', hp: 4, pos: [0, 0, 1] }, guard = { id: 'guard', alive: true, hunter: true, tier: 'large', hp: 9, pos: [0, 0, 1] };
@@ -318,9 +327,25 @@ function host(o = {}) {
   assert.equal(stray.alive, true, 'a carried-over body that is not the arena\'s is left alone'); assert.equal(guard.alive, true, 'and another tier');
   run.end('secure'); assert.equal(h.log.briefs.filter((x) => x === 'boss_dead').length, 1, 'said once: end() does not say it again');
   // the stagger not done when the sector ends (end('secure')): the rest go at once
-  const h2 = host({ kill: (e) => { e.alive = false; } }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
+  const h2 = host({ kill: (e) => { e.alive = false; } }), run2 = createBossRun(h2); run2.begin(WITH_WAVES); h2.open = true; h2.now = 1; run2.tick(0.1);
   const b2 = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }, r = Array.from({ length: 5 }, () => ({ alive: true, hunter: true, tier: 'small', hp: 4, pos: [0, 0, 1] }));
   h2.enemies.push(b2, ...r); h2.now = 2; run2.tick(0.1); b2.alive = false; h2.now = 2.1; run2.tick(0.1);
   assert.ok(r.some((e) => e.alive), 'mid-stagger'); run2.end('secure'); assert.ok(r.every((e) => !e.alive), 'end(secure) takes the rest'); }
 
-console.log('Boss run: the order to investigate the tremor, its callout and reminders, arena_open at the hole; the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only within 50 m of the hull as it drives (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');
+// STRAIGHT TO THE MOTHER (owner, 2026-10-19, round 4, note 4: "sector 9, let's skip the "boss phase 1" of smaller reed, we arrive and it is straight to the boss
+// nih-dairia and the swap of tank / gunship"): THE ARENA's row has no wave; the hole opens, no arena_open, the strip reads her row whole while she climbs, and the
+// frame she is seen the card is up, Isao has the hull; at her death no brood to kill (a small Reed hunter carried in is left alone: it is no wave's)
+{ assert.deepEqual(ARENA_SECTOR.boss.waves, [], 'no small waves on the row');
+  const kills = [], h = host({ kill: (e) => { e.alive = false; kills.push(e.id); } }), run = createBossRun(h); run.begin(ARENA_SECTOR);
+  h.open = true; h.now = 1; run.tick(0.1);
+  assert.equal(run.state().phase, 'waves'); assert.ok(!h.log.briefs.includes('arena_open'), 'no "Small ones first"');
+  assert.deepEqual(run.rows().map((r) => [r.name, r.hp, r.max]), [['NIH-DAIRIA', 180, 180]], 'her row, whole, while she climbs out (no WAVE row)');
+  const b = { id: 'boss', alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }, carried = { id: 'carried', alive: true, hunter: true, tier: 'small', hp: 4, pos: [0, 0, 1] };
+  h.enemies.push(b, carried); h.now = 1.6; run.tick(0.1);
+  assert.equal(run.state().phase, 'boss'); assert.equal(run.state().card, true, 'THE MOTHER card the frame she is seen'); assert.equal(h.params().directive, 'lure', 'the swap: Isao has the hull');
+  assert.equal(run.state().wave, 0, 'no wave counted');
+  b.alive = false; h.now = 2; run.tick(0.1); for (let k = 1; k <= 10; k++) { h.now = 2 + k * 0.1; run.tick(0.1); }
+  assert.deepEqual(kills, [], 'no brood: nothing killed after her'); assert.ok(h.log.briefs.includes('boss_dead'));
+  run.end('secure'); assert.equal(carried.alive, true, 'end(secure) leaves a body that is no wave\'s'); }
+
+console.log('Boss run: the order to investigate the tremor, its callout and reminders, no arena_open and her row whole with no small wave (straight to the mother, note 4); the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then only 6.5 to 10 cells (100 m) ahead of the hull as it drives (note 3), each ask\'s lead logged at the ask and the burn\'s end (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');

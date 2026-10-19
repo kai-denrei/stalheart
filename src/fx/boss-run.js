@@ -72,6 +72,7 @@ export function createBossRun(c) {
   const isOpen = (ci) => { const g = c.roadGraph?.(); return !!g && g.tags[ci] !== g.blocked; };
   const roadDist = () => { const p = planned(); return p ? p.field[p.g.from] : null; };   // the hull's walking cost to the arena down the planned road (null: no graph)
   // THE BEAM'S LEAD (owner, 2026-10-19, note 7b: "always 50m ahead of the tank clearing the path"): a cell within ARENA.road.aheadMetres of the hull by the chord (c.fromHull, in cells)
+  // round 4, note 3 (2026-10-19: "at least 3 further than it is now"): the band is ARENA.road.clear to aheadMetres, 6.5 to 10 cells, measured per cut in --arena-drive
   const inLead = (ci) => !(c.fromHull?.(ci) > (ARENA.road?.aheadMetres ?? Infinity) / METRES_PER_CELL);
   const roadOk = (ci) => (c.roadFar ? c.roadFar(ci) : true) && inLead(ci);
   // THE LEAD MEASURED (owner, 2026-10-19, round 4, note 3: "by the time SOL clears a piece of rock the tank is already past it"): a cell's chord from the hull in
@@ -127,7 +128,9 @@ export function createBossRun(c) {
     const held = roadUntil > 0 && roadPlanned, heldNear = held && roadCell >= 0 && c.fromHull?.(roadCell) < (ARENA.road?.clear ?? 0) + 1;
     const lookGap = roadLaid === false ? (ARENA.road?.every ?? 7) : ROAD_LOOK;
     if (phase === 'beacon' && c.arenaOpen?.()) {
-      phase = 'waves'; c.tremor?.(-1); c.showBrief('arena_open'); c.speak('arena_open');
+      // STRAIGHT TO THE MOTHER (owner, 2026-10-19, round 4, note 4: "we arrive and it is straight to the boss nih-dairia and the swap"): with no small wave the
+      // breach's one pulse is the mother and THE MOTHER card follows within seconds, so arena_open ("Small ones first.") is said only by a row that has waves
+      phase = 'waves'; c.tremor?.(-1); if (wavesOf().length) { c.showBrief('arena_open'); c.speak('arena_open'); }
       if (drove && was && c.autoMode() && c.params().directive === 'lure') { c.params().directive = was.directive; c.setAutoMode(was.auto); }   // Isao drove it out: the wheel back to the player for the waves
     }
     // THE ROAD SOL CUTS (owner, 2026-10-16: "have SOL shoot ahead of it here and there to open the maze"): on the drive out, every ARENA.road.every seconds the
@@ -260,6 +263,7 @@ export function createBossRun(c) {
     const h = hunters(), b = bossRecord();
     if (b) return [{ id: 'boss', name: bossName(), hp: Math.max(0, b.hp), max: def.boss.boss.hp, broken: false, quiet: true }];
     if (phase === 'beacon') return [{ id: 'boss', name: 'TREMOR · FAR OUT', hp: 1, max: 1, broken: false, quiet: true }];
+    if (!bossSeen && !wavesOf().length) return [{ id: 'boss', name: bossName(), hp: def.boss.boss.hp, max: def.boss.boss.hp, broken: false, quiet: true }];   // no wave (note 4, 2026-10-19): her row, whole, while she climbs out
     if (!bossSeen) return [{ id: 'boss', name: `WAVE · ${bossName().split(' ')[0]}`, hp: h.wave, max: wavesOf().reduce((a, w) => a + w.count, 0), broken: false, quiet: true }];
     return [];
   }
