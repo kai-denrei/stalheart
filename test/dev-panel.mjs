@@ -42,6 +42,7 @@ function run(make) {
 const vals = Object.keys(world([]).fixed);
 const newLog = run((w) => createDevPanel(w.gui, { ...w.fixed, plasma: () => w.st.plasma }));
 // THE ORIGINAL BLOCK's log on these fakes (src/td-tab.js before the refactor run's Task 5, run through new Function beside the module)
-assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '2fe98c791a164a25', 'the module behaves as the controller block did');
-assert.equal(newLog.filter((x) => x[1] === 'add').length, 80, 'eighty bindings');
+// ...less the far-field rewards control, gone with the pickups on 2026-10-22 (refactor round 4): the hash was 2fe98c791a164a25 with it
+assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '92882b74a53d2eb4', 'the module behaves as the controller block did');
+assert.equal(newLog.filter((x) => x[1] === 'add').length, 79, 'seventy-nine bindings');
 print('Dev panel: the same bindings, labels and order, and the same callbacks, as the controller block did.');
