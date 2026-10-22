@@ -425,12 +425,14 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
 { const h = host({ enemies: [] }), run = createBossRun(h);
   assert.equal(run.guns(), GUNSHIP_GUNS); assert.equal(run.orbit(), null, 'off: no orbit of its own');
   run.begin(ARENA_SECTOR); assert.equal(run.guns(), GUNSHIP_GUNS, 'the beacon: the content\'s guns'); assert.equal(run.orbit(), null);
+  assert.equal(run.lure().bound, 0, 'the drive out: no bound');
   h.open = true; h.now = 1; run.tick(0.1); assert.equal(run.guns().heavy.perPass, GUNSHIP_GUNS.heavy.perPass, 'the waves: still the content\'s');
   const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1);
   assert.equal(run.state().phase, 'boss');
   assert.deepEqual([run.guns().heavy.perPass, run.guns().heavy.reload], [0, BOSS_FIGHT.arenaGuns.reload], 'the lab\'s MK-9: no limit a pass, its 6 s reload');
   assert.equal(run.guns().bofors, GUNSHIP_GUNS.bofors, 'the other guns are the content\'s'); assert.equal(GUNSHIP_GUNS.heavy.perPass, 1, 'the content is untouched');
   assert.equal(run.orbit().station, Infinity, 'the station does not end while she lives'); assert.equal(run.orbit().pass, GUNSHIP_ORBIT.pass);
+  assert.equal(run.lure().bound, (BOSS_FIGHT.bounds.radius - BOSS_FIGHT.bounds.baitMargin) / METRES_PER_CELL, 'the lure keeps the hull within the disc less the bait margin (11 cells)');
   b.alive = false; h.now = 3; run.tick(0.1); assert.equal(run.state().phase, 'over');
   assert.equal(run.guns().heavy.perPass, 0, 'over: the seat keeps the lab\'s MK-9 through the secure pause'); assert.equal(run.orbit(), null, 'but the station may end');
   run.end('secure'); assert.equal(run.guns(), GUNSHIP_GUNS); assert.equal(run.orbit(), null); }

@@ -8,7 +8,7 @@
 // as getters (cellIndex, towerCells, cellSide, cruise, dungeon, gotoField, graph, kick, playerDown, portalDist, storyBase, stuck,
 // throttle, whim) and the lets this writes as setters (setAutoMode) and getters with setters (respawnClock, steerHold).
 import { TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK, HULL_STUCK, LURE } from '../content/tank.js';
-import { lureMode, nearDanger } from '../domain/lure.js';
+import { lureMode, nearDanger, insideArena, keepInside } from '../domain/lure.js';
 import { stepDriveRamp, scrubDriveRamp } from '../domain/drive-ramp.js';
 import { stepSteerEase } from '../domain/steer-ease.js';
 import { stepStuck, unstick } from '../domain/hull-stuck.js';
@@ -64,7 +64,11 @@ export function createHullDrive(host) {
         // falling MK-9 cell, SOL's burn, a Bofors shell's target) while another exit remains: "avoiding both the monster and friendly fire"
         const L = host.lure(), LU = host.tune?.()?.lure ?? LURE;   // the tune panel's hops over the content's
         if (L) {
-          const n = norm3(host.player.pos), hops = L.quarry ? dist3(host.player.pos, L.quarry) / host.cellSide() : null, mode = lureMode({ quarryHops: hops, near: LU.near, far: LU.far });
+          // THE BOUND (owner, 2026-10-23, d: "it should stay in the arena"): with a disc (L.bound cells round the arena's cell, the boss phase) the hull inside it keeps
+          // to exits inside it, and outside it drives in on the arena's field whatever the quarry (src/domain/lure.js insideArena, keepInside)
+          const centre = L.bound > 0 && L.arena >= 0 ? host.graph().centers[L.arena] : null, rad = (L.bound ?? 0) * host.cellSide(), inArena = insideArena(host.player.pos, centre, rad);
+          if (centre && inArena) exits = keepInside(exits, host.graph().centers, centre, rad);
+          const n = norm3(host.player.pos), hops = L.quarry ? dist3(host.player.pos, L.quarry) / host.cellSide() : null, mode = lureMode({ quarryHops: hops, near: LU.near, far: LU.far, inArena });
           if (mode === 'arena') { if (L.arenaField) goalField = L.arenaField; }
           else if (L.quarry) {
             const raw = sub3(L.quarry, host.player.pos), flat = sub3(raw, scale3(n, dot3(raw, n))), l = len3(flat);
