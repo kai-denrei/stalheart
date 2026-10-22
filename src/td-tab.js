@@ -52,7 +52,7 @@ import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
 import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js';
-import { createReinforcements } from './fx/reinforcements-host.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
+import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
@@ -2398,6 +2398,7 @@ export function initTdTab(root) {
     discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, cutBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide),
       daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveClock.in() >= 0, boards: () => story?.boards ?? [],   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen(), alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(), warm: warmShaders }) : null;
+    mechSquad?.restore(); mechSquad = story ? createMechSquad({ metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => (playerHP > 0 ? player.pos : null), towerDef: (k) => TOWER_BY_KEY[k], towerId: () => nextTowerId++, seed: params.seed }) : null;
     reinforcements?.restore(); reinforcements = story ? createReinforcements({ scene, camera, metres: () => metresToArc(1, cellSide), sfx, explode, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), graph: () => graph, dungeon: () => dungeon, story: () => story,
       daylight: () => daylight, sectorRun: () => sectorRun, shotActive, flag: flags.reinforce, uplink: () => programme.hasPerk('uplink'), landed: (m, f, c) => mechSquad?.adopt(m, f, c), squad: () => mechSquad, alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(),   /* FEIDS-26 (2026-10-23) */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() }) : null;
@@ -3664,7 +3665,8 @@ export function initTdTab(root) {
     a6Rng,
     aimTower,
     automated,
-    autoTower: (tw) => !!story?.autoTowers?.has(tw.ci),   /* Isao's Rotor fires before the handover (2026-10-16) */
+    autoTower: (tw) => !!tw.mech || !!story?.autoTowers?.has(tw.ci),   /* Isao's Rotor fires before the handover (2026-10-16); FEIDS-26's Ridgebacks fire on their own (2026-10-23) */
+    mechTowers: () => mechSquad?.towers() ?? [],
     beams,
     chord,
     debris,
@@ -5085,6 +5087,7 @@ export function initTdTab(root) {
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
       reinforceNow: () => { reinforcements?.force(); return !!reinforcements; },   // FEIDS-26 (2026-10-23): the drop armed now
+      spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)

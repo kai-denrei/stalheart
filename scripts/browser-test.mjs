@@ -1690,6 +1690,28 @@ try{
  await until(`${T}.state().shot!=='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>assert.fail(`the camera released after the drop (${(await st()).shot})`));
  {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}`);}
  current='reinforce-landed';await finish();
+ // THE FOUR AFTER THE DROP (decisions 3 and 4): four mechs in their roles, sixteen sentry records at the top tier; 30 game seconds on, the base mech nearer the
+ // heart, the hunter moved, the arena pair still on the plain; who fired
+ {const s=await st(),ms=R(s).mechs;
+  for(const m of ms)console.log(`  reinforcements: mech ${m.role} at cell ${m.cell} (heart ${m.heartDist}, park at ${m.park}), on the plain ${m.onPlain}, records ${m.records.join(' ')}, walking ${m.walking} at gait rate ${m.rate}`);
+  assert.equal(ms.length,4,'four mechs');assert.deepEqual(ms.map(m=>m.role),REINFORCEMENTS.roles,'their roles');
+  assert.ok(ms.every(m=>m.records.length===4&&m.records.every(r=>/:2$/.test(r))),'four records each at the top tier');}
+ {const s0=await st(),t0=s0.reinforcements.mechs[0].t;
+  await until(`(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+30}`,240000).catch(async()=>assert.fail(`30 game seconds after the landing (${JSON.stringify(R(await st()).mechs.map(m=>m.t))})`));
+  const s=await st(),ms=R(s).mechs;
+  for(const m of ms)console.log(`  reinforcements: +30 s mech ${m.role}: cell ${m.start} -> ${m.cell}, ${m.cells} cells walked, heart ${m.startDist} -> ${m.heartDist}, on the plain ${m.onPlain}, walking ${m.walking} rate ${m.rate}, shots ${m.shots}, last fired ${m.firedAt}`);
+  const base=ms.find(m=>m.role==='base'),hunt=ms.find(m=>m.role==='hunt'),arena=ms.filter(m=>m.role==='arena');
+  assert.ok(base.heartDist<base.startDist,`the base mech nearer the heart (${base.startDist} -> ${base.heartDist})`);
+  assert.ok(hunt.cells>0,`the hunter moved (${hunt.cells} cells)`);
+  assert.ok(arena.every(m=>m.onPlain),'the arena pair on the plain');}
+ current='reinforce-mechs';await finish();
+ // they fire: bodies put beside the hunter and an arena mech, and within 20 game seconds their records have shot (tower-combat's second list, autoTower)
+ {const s0=await st(),ms0=R(s0).mechs,t0=ms0[0].t,hunt=ms0.find(m=>m.role==='hunt'),ar=ms0.find(m=>m.role==='arena');
+  await evaluate(`${T}.spawnHere(${hunt.cell},8)`);await evaluate(`${T}.spawnHere(${ar.cell},8)`);
+  await until(`${T}.state().reinforcements.mechs.some(m=>m.shots>0)||(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+20}`,240000);
+  const ms=R(await st()).mechs;for(const m of ms)console.log(`  reinforcements: firing check, mech ${m.role} at cell ${m.cell}: shots ${m.shots}, last fired at game t ${m.firedAt}`);
+  assert.ok(ms.some(m=>m.shots>0),'the Ridgebacks fire on bodies beside them');}
+ current='reinforce-firing';await finish();
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see
