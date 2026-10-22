@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-22-the-far-field-pickups-go",
+  "date": "2026-10-22",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The far-field pickups go: the overdrive star, the repair cell, the regen ring and the energy dome, their regrow and the permanent speed bonus; the shell triads stay as the main gun's only ammo",
+  "context": "Owner, 2026-10-22, two screenshots of the planet (a white octahedron glowing by the hull, a magenta torus on a ledge): 'we still have remnants of old games items here, they used to be boost-ups pickables in a previous iteration'. The four far-field rewards (src/pickups.js PICKUPS) were the campaign board's power-ups: spawned on the far 45 % of the floor at every regenerate and sector expansion (params.rewards 6), regrown 50 s after a pick, read by the unit viewer, the friendly glossary, the lore and the shield's dome knob. In the story they still spawned on the planet with no part in its design.",
+  "outcome": "Removed in one commit (229ee37f on branch refactor-round-4): the rewards section of src/td-tab.js (clearRewards, farCells, placeReward, spawnRewards, stepRegrow, checkRewards; the cargo expeditions' step that rode in checkRewards now runs in the frame at the same place), carryingRegen and its HUD flag, speedBonus (the drive, the deploy, the engine bed and the hull-drive host read params.speed alone), params.rewards and the dev panel's control for it; src/pickups.js deleted and off topLevelModules, SHELL_PICKUP into src/unitcatalog.js; units.js keeps solidWithEdges for the hard cores and drops makeRewardSolid; the viewer, the glossary and the lore keep only the shells; SHIELD_TUNE.pickup gone (test/shield.mjs charges a literal 12 s dose); test/dev-panel.mjs re-pins its hash (79 bindings). whim() is now consumed only by enemy-step and hull-drive. Found on the way: the dev panel read the key as a string (gui.add(params, 'rewards')), which a .rewards grep misses; the page threw at boot and every suite timed out at __stalheartReady while npm test, check and build stayed green; a headless boot probe found it in seconds.",
+  "alternatives": [
+    "Keeping the shell triads out too: they are the main gun's only ammo (nine a rack), part of the current design, and the owner pointed at the cube and the ring; kept.",
+    "Hiding the rewards in the story and keeping them on the campaign board: two codepaths for a mechanic nobody asked for; the board serves the acceptance runs and the simulator, which never read them."
+  ],
+  "evidence": [
+    "npm test 279 then 293 after the merge; npm run check; npm run build; browser --waves, --sectors, --story-world on 9a08fac6 (1, 11, 31 PASS)",
+    "test/shield.mjs, test/dev-panel.mjs, test/hull-drive.mjs, test/lore.mjs (every catalogue entry has lore: the shells only)",
+    "grep -rn 'pickups.js|makeRewardSolid|PICKUP_BY_TYPE|SHIELD_SOURCES|speedBonus|carryingRegen' src test scripts: empty outside history"
+  ],
+  "supersedes": []
+}
