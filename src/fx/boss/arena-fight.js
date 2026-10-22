@@ -6,7 +6,7 @@
 // THE BODY OWNS HER POSITION. src/fx/boss-run.js makes one of these for THE ARENA's boss once her body is made (src/fx/creature-reed.js body()) and steps it each frame
 // of the boss phase: it runs the lab's own fear per gun (./fear.js, gunFear on: the 25 mm's barrage meter, the 40 mm's wild flight, the MK-9's panic) and the lab's
 // own temperament (./temperament.js: the lunges and the flight's speed written into the kit's live settings over the base the kit was made with), and returns the
-// point her body hunts (the record's `bodyAim`): the hull's point, the fear's flee point, her own centre while stunned, the arena's centre while she stands on the
+// point her body hunts (the record's `bodyAim`): the hull's point (pulled BOSS_FIGHT.arenaBoss.keep m back toward her: she stalks it, see the content), the fear's flee point, her own centre while stunned, the arena's centre while she stands on the
 // sinkhole (`ground`), clamped to the disc's radius less BOSS_FIGHT.bounds.creatureMargin. The kit pursues it at its own (the predator preset's) speed; the record
 // takes its point from the body (src/fx/enemy-step.js ledPoint).
 //
@@ -27,6 +27,8 @@ import { GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../../content/gunship.js';
 
 const SPEED_WINDOW = 1;   // seconds: a speed is the displacement over this long
 const KIND = { rotary: 'rotary', bofors: 'bofors', heavy: 'nuke' };
+// the point `keep` metres short of `h` on the line from `c` (never past `c`)
+const short = (h, c, keep) => { const dx = h[0] - c[0], dz = h[1] - c[1], d = Math.hypot(dx, dz); if (!(keep > 0) || d < 1e-9) return [h[0], h[1]]; const k = Math.min(keep, d) / d; return [h[0] - dx * k, h[1] - dz * k]; };
 
 // `now()` the game's clock (seconds), `tune` the fight's numbers (BOSS_FIGHT), `seed` the temperament's lunges
 export function createArenaFight({ now, tune = BOSS_FIGHT, seed = 1 }) {
@@ -58,7 +60,7 @@ export function createArenaFight({ now, tune = BOSS_FIGHT, seed = 1 }) {
       temperament.step(dt, r.flight);
       mode = ground ? 'ground' : r.mode;
       if (r.mode === 'stun') { stunned = true; m.active = false; } else if (stunned) { stunned = false; m.active = true; }
-      const want = ground ? [0, 0] : r.mode === 'stun' ? c : r.mode === 'flee' ? r.point : hull;
+      const want = ground ? [0, 0] : r.mode === 'stun' ? c : r.mode === 'flee' ? r.point : short(hull, c, T.arenaBoss?.keep ?? 0);
       aimNow = clampTo(want, (ctx.radius ?? T.bounds.radius) - T.bounds.creatureMargin);
       if (dt > 0) {
         speed = speedOf(marks, t, c); peak = Math.max(peak, speed); if (speed > 0) { sum += speed; n++; }

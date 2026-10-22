@@ -449,7 +449,7 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: u(0, 0) }; h.enemies.push(b); h.now = 2; run.tick(0.1);
   assert.equal(b.bodyLed, undefined, 'no body yet: the record walks'); assert.equal(run.state().led, false);
   made = true; b.ground = null; h.now = 2.1; run.tick(0.1);
-  assert.equal(b.bodyLed, true, 'her body made: body-led'); assert.ok(Math.hypot(...b.bodyAim.map((v, k) => v - u(50, 0)[k])) < 1e-6, 'her body hunts the hull');
+  assert.equal(b.bodyLed, true, 'her body made: body-led'); assert.ok(Math.hypot(...b.bodyAim.map((v, k) => v - u(50 - BOSS_FIGHT.arenaBoss.keep, 0)[k])) < 1e-6, 'her body hunts the hull (arenaBoss.keep short of it)');
   assert.equal(run.landed('bofors', u(20, 0)), true, 'a 40 mm by her body: the lab\'s wild flight'); assert.equal(run.state().fear.frights, 1); assert.equal(run.state().fear.lab.wild, 1);
   h.now = 2.2; run.tick(0.1); assert.equal(run.state().fear.scared, true); assert.ok(toPlane(f, b.bodyAim, R)[0] < -20, 'her body flees away from the shell');
   const st = run.state(); assert.equal(st.led, true); assert.deepEqual({ hull: st.dist.hull, boss: st.dist.boss, gap: st.dist.gap }, { hull: 5, boss: 0, gap: 5 }, 'the hull 5 cells out, she at the centre'); assert.deepEqual(st.dist.at.hull, u(50, 0), 'and the points for the harness');

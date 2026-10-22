@@ -14,7 +14,7 @@ function fake(x = 0, z = 0) {
   const b = { kit, at: [x, z], get point() { return u(...b.at); }, shape: (toLocal) => ({ centre: toLocal(u(...b.at)), contacts: [toLocal(u(b.at[0] + 15, b.at[1])), toLocal(u(b.at[0] - 15, b.at[1]))], nodes: [] }) };
   return b;
 }
-const DISC = BOSS_FIGHT.bounds.radius, IN = DISC - BOSS_FIGHT.bounds.creatureMargin;
+const DISC = BOSS_FIGHT.bounds.radius, IN = DISC - BOSS_FIGHT.bounds.creatureMargin, KEEP = BOSS_FIGHT.arenaBoss.keep;
 
 // nothing before the body is made
 { let t = 0; const fight = createArenaFight({ now: () => t });
@@ -23,7 +23,8 @@ const DISC = BOSS_FIGHT.bounds.radius, IN = DISC - BOSS_FIGHT.bounds.creatureMar
 // the hull is the prey; a hull beyond the disc: the aim held on its edge less the creature's margin; on the sinkhole she aims at the centre
 { let t = 0; const fight = createArenaFight({ now: () => t }), body = fake(0, 0);
   const step = (hull, o = {}) => { t += 1 / 60; return loc(fight.step(1 / 60, { body, centre, R, hull, radius: DISC, ...o })); };
-  assert.ok(near(step(u(40, 30)), [40, 30]), 'the hull inside: she hunts its point');
+  assert.ok(near(step(u(40, 30)), [40 * (1 - KEEP / 50), 30 * (1 - KEEP / 50)]), `the hull inside: she hunts its point, ${KEEP} m short of it (she stalks)`);
+  assert.ok(KEEP > 0 && KEEP < 50, 'a keep shorter than the lure\'s near band (5 cells)');
   assert.ok(near(step(u(300, 0)), [IN, 0]), `the hull outside: the aim on the disc less the margin (${IN} m)`);
   assert.ok(near(step(u(40, 30), { ground: true }), [0, 0]), 'on the sinkhole: the centre'); assert.equal(fight.state().mode, 'ground');
   assert.equal(fight.landed('bofors', u(5, 0)), false, 'no fright while she stands on the sinkhole');
@@ -41,7 +42,7 @@ const DISC = BOSS_FIGHT.bounds.radius, IN = DISC - BOSS_FIGHT.bounds.creatureMar
   assert.ok(Math.abs(body.kit.settings.speed - NIH_DAIRIA_PREDATOR.speed * BOSS_FIGHT.gunFear.bofors.speed) < 1e-6, `the flight's speed over her base (${body.kit.settings.speed})`);
   assert.equal(fight.state().temper, 'wild');
   t += BOSS_FIGHT.gunFear.bofors.duration; step(); assert.equal(fight.state().mode, 'hunt', 'the flight over: the hull again');
-  assert.ok(near(step(), [60, 0])); }
+  assert.ok(near(step(), [60 - KEEP, 0])); }
 
 // THE MK-9 (the clean nuke): within its blast + reach she is stunned BOSS_FIGHT.nuke.stun s (the kit's motion off, the aim her own centre), then the panic's flight
 { let t = 0; const fight = createArenaFight({ now: () => t }), body = fake(10, 0), hull = u(80, 0);
