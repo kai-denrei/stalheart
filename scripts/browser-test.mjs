@@ -1688,9 +1688,11 @@ try{
   by('impact').forEach((h,i)=>console.log(`  reinforcements: touchdown ${h.index+1} heard at drop t ${h.t} s (rule ${TD[h.index].toFixed(2)} s, off ${(h.t-TD[h.index]).toFixed(2)} s)`));
   by('woosh').forEach(h=>console.log(`  reinforcements: woosh ${h.index+1} at drop t ${h.t} s (rule ${(TD[h.index]-4).toFixed(2)} s)`));
   by('entry').forEach(h=>console.log(`  reinforcements: capsule ${h.index+1} entry at drop t ${h.t} s`));
+  console.log(`  reinforcements: sounds decoded before the drop ${r.primed}; voiced (a live voice after the ask) ${heard.filter(h=>h.voiced).length} of ${heard.length}: ${heard.map(h=>`${h.kind}${h.index+1}${h.voiced?'':' (silent)'}`).join(' ')}`);
   console.log(`  reinforcements: sounds asked ${JSON.stringify(Object.fromEntries(Object.values(REINFORCEMENTS.sounds).filter(k=>typeof k==='string').map(k=>[k,s.sounds?.[k]??0])))}`);
   assert.equal(by('entry').length,2,'two capsule entries');assert.equal(by('woosh').length,4,'four wooshes');assert.equal(by('impact').length,4,'four impacts');
   by('impact').forEach(h=>assert.ok(Math.abs(h.t-TD[h.index])<=0.5,`touchdown ${h.index+1} at ${h.t} s, rule ${TD[h.index]}`));
+  assert.ok(heard.every(h=>h.voiced),'every cue sounded (a live voice of its key after the ask)');
   for(const k of ['feids_reentry','mech_reentry_woosh','mech_landing_impact'])assert.ok((s.sounds?.[k]??0)>=(k==='feids_reentry'?2:4),`${k} asked (${s.sounds?.[k]})`);}
  await until(`${T}.state().shot!=='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>assert.fail(`the camera released after the drop (${(await st()).shot})`));
  {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}`);}

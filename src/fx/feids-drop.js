@@ -9,8 +9,8 @@
 // glow and the split's flash on each capsule, a fire glow on each falling mech, the braking jet under SOCKET_BRAKE_JET, the game's own dust
 // at each touchdown and flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them. The Ridgeback's static far
 // tier (mx06_d0_lod2, one draw) is fetched with them and handed to the squad with the four (mechs()[i].far).
-//   host: scene, metres() (world units a metre), sfx (play), explode(use, point) (optional), load(url) (optional, loadGlbWithClips)
-//   createFeidsDrop(host) -> { prepare(), ready(), failed(), begin(frame), tick(t), pose(t, out), mechs(), release(), heard(), worldOf(local, out), show(on), dispose() }
+//   host: scene, metres() (world units a metre), sfx (play, prime, activeVoices), explode(use, point) (optional), load(url) (optional, loadGlbWithClips)
+//   createFeidsDrop(host) -> { prepare(), prime(), primed(), ready(), failed(), begin(frame), tick(t), pose(t, out), mechs(), release(), heard(), worldOf(local, out), show(on), dispose() }
 //   frame: { origin, x, up, z } (THREE.Vector3s; origin on the ground at the centre)
 import * as THREE from '../../vendor/three.module.js';
 import { loadGlbWithClips } from '../glbmodels.js';
@@ -27,7 +27,18 @@ export function createFeidsDrop(h) {
   const basis = new THREE.Matrix4(), qFrame = new THREE.Quaternion(), qLocal = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3();
   const m4 = new THREE.Matrix4(), eye = new THREE.Vector3(), look = new THREE.Vector3();
 
+  // THE THREE SOUNDS ARE LAZY (src/content/audio-defaults.js): decoded on demand, and a prime before the page's first gesture has no context to decode
+  // with and is not retried by the engine (src/fx/disco-party.js), so prime() asks again on every call until all three are in
+  const KEYS = [...new Set(CUES.map((c) => c.key))];
+  let primed = false, priming = false;
+  function prime() {
+    if (primed || priming || !h.sfx?.prime) return primed;
+    priming = true;
+    Promise.all(KEYS.map((k) => h.sfx.prime(k))).then((r) => { primed = r.every(Boolean); priming = false; }, () => { priming = false; });
+    return primed;
+  }
   function prepare() {
+    prime();
     if (loading) return loading;
     loading = Promise.all([load(M.capsule), load(M.mech), load(M.mechFar)]).then(([cap, mech, far]) => {
       if (!cap?.scene || !mech?.scene) { bad = true; console.warn('feids drop: a model did not load'); return; }
@@ -97,7 +108,10 @@ export function createFeidsDrop(h) {
       mc.fire.visible = s.heat > 0.01; mc.fire.material.opacity = 0.55 * s.heat;
       if (s.landed && !mc.landed) { mc.landed = true; h.explode?.('rock.dust', worldOf(s.x, 0, s.z, v).toArray()); }
     });
-    for (const cue of cuesIn(CUES, last, t)) { h.sfx?.play?.(cue.key); heard.push({ key: cue.key, kind: cue.kind, index: cue.index, t: +t.toFixed(2) }); }
+    for (const cue of cuesIn(CUES, last, t)) {   // `voiced`: a voice of the key is live after the ask (the engine refuses a sound not decoded or a context not running)
+      h.sfx?.play?.(cue.key);
+      heard.push({ key: cue.key, kind: cue.kind, index: cue.index, t: +t.toFixed(2), voiced: !!h.sfx?.activeVoices?.some((x) => x.key === cue.key) });
+    }
     last = t;
   }
 
@@ -117,7 +131,7 @@ export function createFeidsDrop(h) {
   }
 
   return {
-    prepare, ready: () => !!models, failed: () => bad, begin, tick, pose, worldOf: (local, out) => worldOf(local[0], local[1], local[2], out),
+    prepare, prime, primed: () => primed, ready: () => !!models, failed: () => bad, begin, tick, pose, worldOf: (local, out) => worldOf(local[0], local[1], local[2], out),
     // the four for the squad once they are down: wrapper, model root, mixer and clips (the Airdrop_Land action handed over, the jet and fire hidden)
     mechs: () => mechs.map((mc) => { mc.jet.visible = false; mc.fire.visible = false; return { wrap: mc.wrap, root: mc.root, mixer: mc.mixer, clips: mc.clips, drop: mc.drop, index: mc.index, far: models?.far ?? null }; }),
     release() { for (const c of capsules) { c.wrap.removeFromParent(); c.mixer.stopAllAction(); } capsules = []; mechs = []; },   // the mechs now the squad's

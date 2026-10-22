@@ -16,7 +16,7 @@ import { dropReady, dropCentre, dropPhase } from '../domain/reinforcements.js';
 import { createFeidsDrop } from './feids-drop.js';
 import { BLOCKED } from '../dungeon.js';
 
-const TL = REINFORCEMENTS.timeline, LOAD_WAIT = 10;   // seconds a triggered drop waits for its models before it goes without them
+const TL = REINFORCEMENTS.timeline, LOAD_WAIT = 10, SOUND_WAIT = 3;   // seconds a triggered drop waits for its models, and for its three lazy sounds to decode, before it goes without them
 
 export function createReinforcements(h) {
   const drop = createFeidsDrop({ scene: h.scene, metres: h.metres, sfx: h.sfx, explode: h.explode });
@@ -74,7 +74,7 @@ export function createReinforcements(h) {
     tick(dt) {
       if (disabled || phase === 'landed') return;
       if (phase === 'dropping') {
-        t += dt; drop.tick(t); shot();
+        t += dt; drop.prime(); drop.tick(t); shot();
         if (t > TL.duration) land();
         return;
       }
@@ -86,7 +86,9 @@ export function createReinforcements(h) {
       ticks++;
       if (!dropReady(cond)) { waiting = -1; why = cond.shot ? 'shot' : 'lull'; return; }
       drop.prepare();   // THE ARENA before the due day's preload: fetched now, the drop going once they land (or LOAD_WAIT on)
-      if (!drop.ready() && !drop.failed()) { why = 'loading'; waiting = waiting < 0 ? 0 : waiting + dt; if (waiting < LOAD_WAIT) return; }
+      waiting = waiting < 0 ? 0 : waiting + dt;
+      if (!drop.ready() && !drop.failed()) { why = 'loading'; if (waiting < LOAD_WAIT) return; }
+      if (!drop.prime()) { why = 'sounds'; if (waiting < SOUND_WAIT) return; }   // no context yet (no gesture): it goes silent after SOUND_WAIT, the primes asked again through the drop
       if (!rec() && h.story()) h.story().reinforcements = { calledDay: d, due: d, forced: true };   // a forced drop books itself
       why = begin() ? 'begun' : 'no frame';
     },
@@ -94,7 +96,7 @@ export function createReinforcements(h) {
     show: (on) => drop.show(on),   // the harness's A/B: the capsules and the four drawn or not, the clock running
     state: () => {
       const r = rec();
-      return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, seated: h.seated(), loaded: drop.ready(), failed: drop.failed(),
+      return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, seated: h.seated(), primed: drop.primed(), loaded: drop.ready(), failed: drop.failed(),
         why, ticks, heard: drop.heard(), mechs: h.squad?.()?.state?.() ?? [] };
     },
     restore() { drop.dispose(); phase = 'idle'; t = -1; frame = null; cut = false; },
