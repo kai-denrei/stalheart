@@ -272,7 +272,7 @@ export function createBossRun(c) {
   // (src/domain/boss-fear.js frightRecord, arenaFrightSeconds), an MK-9 within its blast holds her still BOSS_FIGHT.nuke.stun s (stunRecord)
   function landed(gun, point) {
     const b = on ? bossRecord() : null;
-    if (b?.bodyLed && fight) { const took = fight.landed(gun, point); if (took) { if (gun === 'bofors') frights++; else if (gun === 'heavy') stuns++; } return took; }   // THE FIGHT ON THE LAB'S ENGINE
+    if (b?.bodyLed && fight) { const took = fight.landed(gun, point); if (took) { if (gun === 'bofors') frights++; else if (gun === 'heavy') { stuns++; c.damageEnemy?.(b, c.t(), BOSS_FIGHT.nuke.damage, false, 'strike', 'heavy'); } } return took; }   // THE FIGHT ON THE LAB'S ENGINE; an MK-9 within reach deals the fight's own BOSS_FIGHT.nuke.damage (the lab's 60: the strike's 10 at ground zero made her a fifteen-minute fight, merge of 2026-10-23)
     if (!b || !point || (gun !== 'bofors' && gun !== 'heavy') || (gun === 'bofors' && b.ground)) return false;   // on the sinkhole (the ground phase) she stands: no flight off it
     const at = groundAt(b), m = GUNSHIP_PLATFORM.metresPerCell, r0 = CREATURE_TIERS[def.boss.family]?.[def.boss.boss.tier]?.r0 ?? 20, g = GUNSHIP_GUNS[gun];
     const reach = ((r0 + BOSS_FIGHT.fear.reach) / m + (g?.blastCells ?? 0)) * c.cellSide();

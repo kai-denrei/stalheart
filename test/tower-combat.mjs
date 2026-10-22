@@ -56,5 +56,6 @@ for (const keys of [['needle', 'mortar'], ['plasma', 'lancer'], ['quiver', 'rela
 }
 // THE ORIGINAL BLOCK's logs on these fakes (src/td-tab.js before its move in the refactor run, through new Function beside the module)
 // re-pinned 2026-10-16: the Rotor's range 4.6 cells (was 3.6) reaches the lemon pile; the module itself is unchanged by it
-assert.equal(createHash('sha256').update(all).digest('hex').slice(0, 16), '81649e065cd56963', 'the module behaves as the controller block did');
+// re-pinned 2026-10-23: every damageEnemy call carries the tower record as its seventh argument (a Ridgeback's share on the boss, src/td-tab.js damageEnemy); the log gains one 'o' a hit
+assert.equal(createHash('sha256').update(all).digest('hex').slice(0, 16), 'f08180ac6ea19525', 'the module behaves as the controller block did');
 print("Tower combat: the needle, the mortar, the plasma, the lancer, the quiver, the relay and the rotor through 90 frames, the shots, beams and slugs, line of sight and the board cleared, as the controller block did.");

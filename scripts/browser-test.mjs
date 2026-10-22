@@ -1633,11 +1633,11 @@ try{
  const fire=(gun,p)=>evaluate(`${T}.arenaFire(${JSON.stringify(gun)},${JSON.stringify(p)})`);
  const w0=Date.now(),s0=await st(),g0=s0.boss.t;let s=s0,last=null,hullMax=0,bossMax=0,stationLost=null,samples=0;
  const fortys=[],launches=[];const byMode={};let hulls0=s0.hulls,hullsLost=0,hullsWas=s0.hulls,cleanWait=0,scare=null,stunSeen=false,readyAgain=null,busy=false,second=null,dead=null,speeds=[],hullSpeeds=[],gapMin=Infinity,gapMax=0;
- let nextForty=g0+2,nukeAt=g0+12;
+ let nextForty=g0+2,nukeAt=g0+12,labLast=null;
  while(Date.now()-w0<CAP*1000){
   s=await st();const b=s.boss,g=b.t-g0;samples++;
   if(!b.on||b.phase!=='boss'||b.bossHp==null){dead={g:+g.toFixed(1),phase:b.phase,hp:b.bossHp};break;}
-  const f=b.fear,lab=f.lab??{};
+  const f=b.fear,lab=f.lab??{};if(f.lab)labLast=f.lab;   // kept past her death: the fight's counts outlive the record (merge of 2026-10-23)
   if(b.dist.hull!=null)hullMax=Math.max(hullMax,b.dist.hull);if(b.dist.boss!=null)bossMax=Math.max(bossMax,b.dist.boss);if(b.dist.gap!=null){gapMin=Math.min(gapMin,b.dist.gap);gapMax=Math.max(gapMax,b.dist.gap);}
   if(b.speed>0){speeds.push(b.speed);(byMode[lab.mode]??=[]).push(b.speed);}if(b.hullSpeed>0)hullSpeeds.push(b.hullSpeed);
   if(!s.gunship.station&&stationLost==null)stationLost=+g.toFixed(1);
@@ -1658,7 +1658,7 @@ try{
   if(g>=WINDOW)break;
   await delay(150);
  }
- const sf=s.boss.fear?.lab??{},gSpan=last?.g??0,wall=(Date.now()-w0)/1000,mean=(a)=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(2):null;
+ const sf=s.boss.fear?.lab??labLast??{},gSpan=last?.g??0,wall=(Date.now()-w0)/1000,mean=(a)=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(2):null;
  console.log(`ARENA FIGHT clock: ${gSpan} s of game clock in ${wall.toFixed(0)} s of wall clock (${(gSpan/wall).toFixed(2)}x); ${samples} samples${dead?`; the fight ended early ${JSON.stringify(dead)}`:''}`);
  console.log(`ARENA FIGHT (a) MK-9 cadence: launches ${JSON.stringify(launches.map(l=>l.g))} (game s); ready again ${readyAgain} s after the first (limit 12: the reload ${BOSS_FIGHT.arenaGuns.reload} + the fall); a second release in the same pass: ${second!=null?`yes, at ${second} s`:'no'}`);
  console.log(`ARENA FIGHT (b) the disc over ${gSpan} s: the hull at most ${hullMax} cells from the arena's centre, she at most ${bossMax} (disc ${DISC}); the gap ${gapMin}..${gapMax} cells`);

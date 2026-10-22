@@ -235,7 +235,7 @@ export function createTowerCombat(host) {
         // THE SNIPER IS A HEAVY SHOT, not a beam. The beam pair read as a laser (operator ruling), so now the damage still lands
         // this frame — a sniper does not miss — but what you SEE is one fat slug crossing the whole line in ~0.13s, trailing
         // ghosts, with the impact fx landing when the slug does. Straight line, one round.
-        if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
+        if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key, tw);
         const hitP = add3(groundAt(target), scale3(norm3(target.pos), host.cellSide() * 0.3));   // the body's drawn point, where the head now turns (src/fx/tower-aim.js; 2026-10-16)
         spawnSlug(muzzle, hitP, tw.def.color, host.cellIndex()(target.pos));
         host.warnRing(tw.ci, tw.def.color, 0.35, host.cellSide() * 0.9); // muzzle pulse
@@ -272,7 +272,7 @@ export function createTowerCombat(host) {
           if (pr.s < 0 || pr.s > stop.len) continue;
           const r = host.cellSide() * Math.max(0.5, (e.size ?? e.spec.size) * 0.9);
           if (pr.off >= r) continue;
-          host.damageEnemy(e, tNow, eff.dmg, true, 'tower', tw.key);
+          host.damageEnemy(e, tNow, eff.dmg, true, 'tower', tw.key, tw);
           struck++;
         }
         tw.lastStruck = struck;
@@ -280,7 +280,7 @@ export function createTowerCombat(host) {
         host.lanceBeam(tw, from3, dir3, stop.len, tNow, struck, stop.hit);
       } else if (atk === 'beam') {
         // hitscan: damage now, draw the light
-        if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
+        if (!target.pilotAim) host.damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key, tw);
         const at = add3(groundAt(target), scale3(norm3(target.pos), host.cellSide() * 0.3));
         if (shotOf(tw.def).plasma) host.throwPlasma(tw, muzzle, at, tNow);
         else spawnBeam(muzzle, at, tw.def.color);
@@ -298,7 +298,7 @@ export function createTowerCombat(host) {
           if (d > range) continue;
           // A tower with no damage must not call damageEnemy at all: even at 0 it resets a regenerator's out-of-combat clock and
           // fires the on-hit reactions — a barbed ACCELERATES when hit, so a "slow" tower would have been speeding it up.
-          if (eff.dmg > 0) host.damageEnemy(e, tNow, eff.dmg, true, 'tower', tw.key);
+          if (eff.dmg > 0) host.damageEnemy(e, tNow, eff.dmg, true, 'tower', tw.key, tw);
           if (!e.alive) continue;
           e.slowFactor = eff.slowFactor;
           e.slowUntil = tNow + eff.slowDur;
@@ -384,7 +384,7 @@ export function createTowerCombat(host) {
       range: end ? end.len : sd ? host.rayToTerrain(pos, sd, reach, tw.ci).len : Math.min(reach, host.rayToTerrain(scale3(p0, lift0), dir, reach, tw.ci).len), terrain: true, straight: sd ? { p: pos.slice(), d: sd, end } : null,   // a round stops at the first rock it flies into; a straight round carries its own point and direction in space, and its end
       speed: (sfx2.projSpeed ?? 16) * host.cellSide(), // per-tower tempo
       arcTotal, arcH: host.cellSide() * 2.3, color: tw.def.color, // a lob, not a moonshot
-      landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual, key: tw.key, h0: shell ? len3(pos) : 0,
+      landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual, key: tw.key, by: tw, h0: shell ? len3(pos) : 0,
     });
   }
 
@@ -414,7 +414,7 @@ export function createTowerCombat(host) {
   // language as the orbital strike one register down.
   function detonate(p, tNow) {
     for (const e2 of host.enemies) {
-      if (e2.alive && host.chord(p.pos, e2.pos) <= p.splash) host.damageEnemy(e2, tNow, p.dmg, true, 'tower', p.key);
+      if (e2.alive && host.chord(p.pos, e2.pos) <= p.splash) host.damageEnemy(e2, tNow, p.dmg, true, 'tower', p.key, p.by);
     }
     const splashCells = p.splash / host.cellSide();
     const impactCi = host.cellIndex()(p.pos);
@@ -494,7 +494,7 @@ export function createTowerCombat(host) {
         if ((p.straight ? dist3(p.straight.p, add3(e.pos, scale3(norm3(e.pos), host.cellSide() * 0.3))) : host.chord(p.pos, e.pos)) < host.cellSide() * Math.max(p.manual ? 0.6 : 0.42, (e.size ?? e.spec.size) * (p.manual ? 1.1 : 0.8))) {   // a straight round is tested in space against the body's centre; a piloted round hits a little wider: the reticle on the body is the intent, the cloud's edge is the body
           if (p.splash > 0) detonate(p, tNow);
           else {
-            host.damageEnemy(e, tNow, p.dmg, true, 'tower', p.key);
+            host.damageEnemy(e, tNow, p.dmg, true, 'tower', p.key, p.by);
             // HK's hit spark, through the pooled rings — a strike that lands should flash WHERE it landed, and an object per hit
             // would be churn the pool exists to avoid
             host.warnRing(host.cellIndex()(e.pos), p.color, 0.22, host.cellSide() * 0.55);

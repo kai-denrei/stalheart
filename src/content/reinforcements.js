@@ -20,7 +20,8 @@
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 export const REINFORCEMENTS = freeze({
   days: 3, pace: 0.25, gaitCap: 4, roles: ['arena', 'arena', 'base', 'hunt'], offsetCells: 5, scale: 0.75,
-  weapons: ['rotor', 'lancer', 'quiver', 'quiver'], keepFromHull: 2, lodMetres: 140, fade: 20, patrolCells: 14,
+  weapons: ['rotor', 'lancer', 'quiver', 'quiver'], bossShare: 0.1,   // THE PAIR JOINS, THE GUNSHIP DECIDES (2026-10-23, the merge of the two overnight branches: two Ridgebacks' TALON volleys took her 180 in 34 s): their rounds deal this share to a body-led boss (src/td-tab.js damageEnemy); every other enemy takes the full round
+  keepFromHull: 2, lodMetres: 140, fade: 20, patrolCells: 14,
   timeline: {
     duration: 28, release: 6.2, capsuleGap: 0.45, slotGap: 0.18, brake: 0.8, entry: 480, split: 300, splitSink: 4, fallTo: 12, capsuleX: 6,
     landings: [[-6, -4], [-3, 4], [4, -3], [7, 5]], fallTimes: [6, 6.25, 6.55, 11.6], shellGone: 3.5, groundCamera: [16.5, 18], ground: [14, 3.5, 11],

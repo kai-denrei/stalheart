@@ -52,7 +52,7 @@ import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
 import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js';
-import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
+import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js'; import { REINFORCEMENTS } from './content/reinforcements.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
@@ -2804,8 +2804,8 @@ export function initTdTab(root) {
     tankKills = 0; tankEliteKills = 0; tankRank = 0;
     refreshRankVisuals();
   }
-  function damageEnemy(e, tNow, dmg = 1, react = true, src = 'tower', via = null) {   // via: the tower key, gunship gun or strike use, for the story's books
-    if (story && src === 'tower') dmg *= STORY_SENTRIES.dmgMul;
+  function damageEnemy(e, tNow, dmg = 1, react = true, src = 'tower', via = null, by = null) {   // via: the tower key, gunship gun or strike use, for the story's books; by: the tower record (a Ridgeback's share on the boss)
+    if (story && src === 'tower') dmg *= STORY_SENTRIES.dmgMul * (by?.mech && e.bodyLed ? REINFORCEMENTS.bossShare : 1);   // the pair joins the boss fight, the gunship decides it (src/content/reinforcements.js bossShare)
     const spec = e.spec;
     if (react && spec.slowOnHit) { e.behMult = spec.slowOnHit; e.behUntil = tNow + 1.2; }
     if (react && spec.accelOnHit) { e.behMult = spec.accelOnHit; e.behUntil = tNow + 1.2; }
@@ -3629,9 +3629,9 @@ export function initTdTab(root) {
       const arrived=advanceDart(m.pool,m,dt,target?groundAt(target):m.target);   // the body's drawn point, so the round's last turn follows what the player sees (2026-10-16)
       m.p=m.pose.position;
       if(!arrived)continue;
-      if(target){damageEnemy(target,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1),true,'tower',m.by.key);seekerHits++;}   // the story's TALON carries a heavy payload
+      if(target){damageEnemy(target,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1),true,'tower',m.by.key,m.by);seekerHits++;}   // the story's TALON carries a heavy payload
       else seekerLost++;
-      const at=norm3(target?.pos??m.p);if(m.config.mesh==='talon'){for(const e of enemies)if(e.alive&&e!==target&&chord(e.pos,at)<QUIVER_SPLASH.cells*cellSide)damageEnemy(e,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1)*QUIVER_SPLASH.share,true,'tower',m.by.key);if(!target)explode('rock.dust',at);}   // a hit OR a miss: area damage round where it lands, dust on a miss (owner, 2026-10-02)
+      const at=norm3(target?.pos??m.p);if(m.config.mesh==='talon'){for(const e of enemies)if(e.alive&&e!==target&&chord(e.pos,at)<QUIVER_SPLASH.cells*cellSide)damageEnemy(e,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1)*QUIVER_SPLASH.share,true,'tower',m.by.key,m.by);if(!target)explode('rock.dust',at);}   // a hit OR a miss: area damage round where it lands, dust on a miss (owner, 2026-10-02)
       if(!(m.config.mesh==='talon'&&explode('quiver.talon',at))){const burst=makeDotBurst(target?0xffd27f:0x6f8ea0,norm3(m.p),target?22:10);burst.scale.setScalar(cellSide*(target?2.4:1.2));burst.position.fromArray(m.p);scene.add(burst);debris.push(burst);}   // a TALON hit bursts on its target; a miss keeps the small puff
       m.pool.release(m.mesh);towerSeekers.splice(i,1);
     }
@@ -4617,7 +4617,7 @@ export function initTdTab(root) {
   const roadFar = (ci, near = ARENA.road.clear) => dist3(graph.centers[ci], player.pos) >= near * cellSide && laserStation.roadSafe(graph.centers[ci]); const hullCells = () => { const a = story?.arena?.cell; return a >= 0 && player.pos ? dist3(player.pos, graph.centers[a]) / cellSide : Infinity; }; const bossRun = createBossRun({ root, enemies, showBrief, heartCell: () => dungeon.heart, speak: (id) => isaoSpeak(id), callout: (text, cls) => showCallout(text, cls),
     story: () => story, storyViews: () => storyViews, params: () => params, player: () => player, playerHP: () => playerHP, autoMode: () => autoMode, isao: () => isao, cellSide: () => cellSide, t: () => t, pilotMode: () => pilotMode,
     creatures: () => creatureEnemies, centre: (ci) => graph.centers[ci], nuke: () => gunshipRig.nukePoint(),   /* THE FIGHT ON THE LAB'S ENGINE (2026-10-23): her body, the arena's point, the MK-9's ring */
-    setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL), kill: (e, fx) => killCreature(e, fx),
+    setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL), kill: (e, fx) => killCreature(e, fx), damageEnemy,
     shots: () => pilot?.state?.shots ?? 0, station: () => !!gunshipRig.probe().station, gunshipOver: (ci) => gunshipRig.placeOver(ci), briefing: () => !!briefs.queue(), arenaField: () => (story?.arena?.cell >= 0 ? (story.arenaField ??= bfsDist(graph.adj, [story.arena.cell], (ci) => dungeon.tags[ci] !== BLOCKED)) : null),
     dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; },
     gunshipNearArena: () => { const a = story?.arena?.cell, p = gunshipRig.probe().track?.pos; return !(a >= 0) || !p || dist3(p, graph.centers[a]) < ARENA.seatCells * cellSide; },   /* THE ARENA (2026-10-16): the lure's field and its dangers; the seat once the gunship is over the arena */

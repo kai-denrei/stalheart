@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-23-overnight-merge-the-pair-joins-the-gunship-decides",
+  "date": "2026-10-23",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The overnight merge (arena-lab-fight + feids26-drop -> overnight-2026-10-23): the Ridgeback pair joins the boss fight at a tenth (REINFORCEMENTS.bossShare 0.1), an MK-9 within reach deals the fight's own 60 (BOSS_FIGHT.nuke.damage)",
+  "context": "Owner, 2026-10-23: 'the Arena pair DOES join the boss fight' and, of the fight, 'it tries to aggro on the tank, but fears the 40mm, so the gunship fires 40mm between the boss and the auto-moving tank, leaving room for a clean nuke it'. Each branch was green alone. Merged (td-tab and browser-test clean, STATE and DEVLOG by hand), --arena-fight failed on the merged tree: she died at 34 s of a 150 s window with 0 wild scares read (the fear readout is null once the record is gone). Isolated with reinforce=0 on the same tree: 150 s, all five points, her hit points 150 of 180 after two clean MK-9s and 19 40 mm. So (1) the arena pair's TALON volleys (the story's quiver round, 72 a volley at the top tier) took her in 34 s: the fight was theirs, not the gunship's; (2) the game's MK-9 cost her about 10 at ground zero (STRIKE_TUNE.dmgCenter) where the lab's fight deals BOSS_FIGHT.nuke.damage 60: with free MK-9s she was a fifteen-minute fight.",
+  "outcome": "Branch overnight-2026-10-23 from day-42 (c96d6ded), the two agent branches merged, then one commit: src/content/reinforcements.js bossShare 0.1; src/td-tab.js damageEnemy takes the tower record as a seventh argument `by` and scales a tower round on a body-led boss by bossShare when `by.mech`; src/fx/tower-combat.js passes the record on its four direct hits and keeps it on each shot for the splash; the quiver seekers pass m.by; the boss-run host gains damageEnemy and boss-run's landed() deals BOSS_FIGHT.nuke.damage to her through it when the lab's fight says an MK-9 took (src 'strike', via 'heavy'; the strike console's own falloff damage still lands on top); the --arena-fight step keeps its last fear readout past her death. test/tower-combat.mjs re-pinned (one 'o' more a hit). Measured on the final tree: she reads 180, 177 before the first MK-9, 108 after it, a bleed of about 1 a second from the pair (100, 92, 85, 82), 7 then dead at 45 s on the second clean MK-9; 6 of 6 40 mm sent her wild; 2 stuns, 2 panics; the hull never lost; the station held. Both knobs are the owner's to turn: bossShare (0 takes the pair out of the kill) and nuke.damage (60: three MK-9s alone).",
+  "alternatives": [
+    "Leaving the merge as it was: a 34 s boss fight decided by the Ridgebacks contradicts the owner's own description of the fight (the gunship's clean nuke).",
+    "Keeping the mechs off the boss record altogether (bossShare 0): the owner said the pair joins; a share keeps them in it without deciding it.",
+    "Scaling the strike console's dmgCenter for her instead of dealing the fight's own damage: dmgCenter is every enemy's; the lab's nuke.damage is the fight's tuned number and the content comment already says the damage and the stun are the fight's own."
+  ],
+  "evidence": [
+    "npm test 301 programs, npm run check (td-tab 5,322 under 5,450; 179 pure modules) on the merged tree before and after the fix",
+    "STALHEART_BROWSER_PORT=18183 npm run test:browser -- --arena-fight on the merge ed28ec5d: AssertionError (c) ... {g:4.8, gap0:5.47, gapMax:13}; the fight ended early at 34 s, hp null",
+    "the same step with reinforce=0 appended to the step's URL (an untracked copy of the script) on ed28ec5d: PASS, 150.1 s, hull max 10.97 / boss max 10.2 of 12, 19 40 mm / 17 wild, stuns 2, her hit points 150.37",
+    "after the fix: --arena-fight PASS (45.1 s, the fight ended early with her dead; launches 13.4 and 37.6 s, ready again 10.33 s; 6 of 6 wild; stuns 2), --arena PASS (five steps), --reinforcements and --reinforcements-lull PASS on the merge before the fix (the fix changes no mech behaviour but its damage on her)"
+  ],
+  "supersedes": []
+}
