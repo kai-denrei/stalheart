@@ -1676,6 +1676,11 @@ try{
  {const s=await st();assert.equal(s.paused,false,'a live shot: the world runs');}
  const snaps=[[3,'reinforce-entry'],[9,'reinforce-release'],[14.5,'reinforce-trio'],[19.6,'reinforce-laggard']];
  for(const [at,name] of snaps){await until(`(${T}.state().reinforcements?.t??0)>=${at}||${T}.state().reinforcements?.phase==='landed'`,240000);const r=R(await st());console.log(`  reinforcements: ${name} at drop t ${r.t} s, shot ${(await st()).shot}`);current=name;await finish();}
+ // THE FOUR'S DRAW COST: at drop t 24 s the ground camera has the four standing in view (the capsules gone); the drop drawn, then hidden, then drawn again,
+ // two wall seconds each, the renderer's calls and the frame's ms read (headless: software GL, so the ms is an upper bound, the calls exact)
+ {await until(`(${T}.state().reinforcements?.t??0)>=24`,240000);const read=async()=>{const s=await st();return {calls:s.drawCalls,ms:s.performance?.frameMs??null,gpu:s.performance?.gpuMs??null,t:R(s).t};};
+  await delay(1500);const on=await read();await evaluate(`${T}.reinforceShow(false)`);await delay(1500);const off=await read();await evaluate(`${T}.reinforceShow(true)`);
+  console.log(`  reinforcements: the four Ridgebacks (game tier) in view: ${on.calls} draw calls, ${on.ms?.toFixed?.(1)} ms a frame (drop t ${on.t}); hidden: ${off.calls} calls, ${off.ms?.toFixed?.(1)} ms (drop t ${off.t}); the four cost ${on.calls-off.calls} calls`);}
  await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`the four land (${JSON.stringify(R(await st()))})`));
  {const s=await st(),r=R(s),heard=r.heard;
   const by=k=>heard.filter(h=>h.kind===k);

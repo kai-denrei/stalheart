@@ -10,7 +10,7 @@
 // at each touchdown and flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them. The Ridgeback's static far
 // tier (mx06_d0_lod2, one draw) is fetched with them and handed to the squad with the four (mechs()[i].far).
 //   host: scene, metres() (world units a metre), sfx (play), explode(use, point) (optional), load(url) (optional, loadGlbWithClips)
-//   createFeidsDrop(host) -> { prepare(), ready(), failed(), begin(frame), tick(t), pose(t, out), mechs(), heard(), worldOf(local, out), dispose() }
+//   createFeidsDrop(host) -> { prepare(), ready(), failed(), begin(frame), tick(t), pose(t, out), mechs(), release(), heard(), worldOf(local, out), show(on), dispose() }
 //   frame: { origin, x, up, z } (THREE.Vector3s; origin on the ground at the centre)
 import * as THREE from '../../vendor/three.module.js';
 import { loadGlbWithClips } from '../glbmodels.js';
@@ -23,7 +23,7 @@ const additive = (color, opacity = 0.5) => new THREE.MeshBasicMaterial({ color, 
 
 export function createFeidsDrop(h) {
   const load = h.load ?? loadGlbWithClips, M = REINFORCEMENTS.models;
-  let models = null, loading = null, bad = false, frame = null, capsules = [], mechs = [], last = -Infinity, heard = [];
+  let models = null, loading = null, bad = false, hidden = false, frame = null, capsules = [], mechs = [], last = -Infinity, heard = [];
   const basis = new THREE.Matrix4(), qFrame = new THREE.Quaternion(), qLocal = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3();
   const m4 = new THREE.Matrix4(), eye = new THREE.Vector3(), look = new THREE.Vector3();
 
@@ -78,7 +78,7 @@ export function createFeidsDrop(h) {
     if (!frame) return;
     capsules.forEach((c, i) => {
       const s = capsuleState(t, i, TL);
-      c.wrap.visible = !s.gone;
+      c.wrap.visible = !s.gone && !hidden;
       if (s.gone) return;
       placeAt(c.wrap, s.x, s.y, 0, s.pitch, 0, 1);
       if (c.shell) { c.shell.time = Math.min(c.shell.getClip().duration, s.opening); c.mixer.update(0); }
@@ -88,7 +88,7 @@ export function createFeidsDrop(h) {
     });
     mechs.forEach((mc, i) => {
       const s = cargoState(t, i >> 1, i & 1, TL);
-      mc.wrap.visible = !s.held;
+      mc.wrap.visible = !s.held && !hidden;
       if (s.held) return;
       placeAt(mc.wrap, s.x, s.height, s.z, s.pitch, s.yaw, REINFORCEMENTS.scale);
       if (mc.drop) { mc.drop.time = s.clip; mc.mixer.update(0); }
@@ -122,5 +122,6 @@ export function createFeidsDrop(h) {
     mechs: () => mechs.map((mc) => { mc.jet.visible = false; mc.fire.visible = false; return { wrap: mc.wrap, root: mc.root, mixer: mc.mixer, clips: mc.clips, drop: mc.drop, index: mc.index, far: models?.far ?? null }; }),
     release() { for (const c of capsules) { c.wrap.removeFromParent(); c.mixer.stopAllAction(); } capsules = []; mechs = []; },   // the mechs now the squad's
     heard: () => heard.slice(), dispose,
+    show(on) { hidden = !on; },   // the harness's A/B for the drop's draw cost (--reinforcements)
   };
 }

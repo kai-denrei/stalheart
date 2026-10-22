@@ -91,6 +91,7 @@ export function createReinforcements(h) {
       why = begin() ? 'begun' : 'no frame';
     },
     force() { forceNow = true; drop.prepare(); },
+    show: (on) => drop.show(on),   // the harness's A/B: the capsules and the four drawn or not, the clock running
     state: () => {
       const r = rec();
       return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, seated: h.seated(), loaded: drop.ready(), failed: drop.failed(),

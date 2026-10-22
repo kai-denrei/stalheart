@@ -5086,7 +5086,7 @@ export function initTdTab(root) {
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
-      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; },   // FEIDS-26 (2026-10-23): the drop armed now
+      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B
       spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
