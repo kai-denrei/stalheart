@@ -5,7 +5,7 @@
 // `host` hands in the controller: its fixed objects and functions as values (MOVES, breachBlocked, bumpFactor, checkAbsorb,
 // containerBlocked, driveRamp, enemies, floorColorOf, freeBlocked, keys, manualActive, nearestWall, orbMeshes, paintCell, params,
 // pedestalBlocked, player, runContext, spawnOneOrb, steerEase, steeringActive, updateHud, wallCushion, bodyContact), what it rebinds or declares later
-// as getters (cellIndex, towerCells, cellSide, cruise, dungeon, gotoField, graph, kick, playerDown, portalDist, speedBonus, storyBase, stuck,
+// as getters (cellIndex, towerCells, cellSide, cruise, dungeon, gotoField, graph, kick, playerDown, portalDist, storyBase, stuck,
 // throttle, whim) and the lets this writes as setters (setAutoMode) and getters with setters (respawnClock, steerHold).
 import { TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK, HULL_STUCK, LURE } from '../content/tank.js';
 import { lureMode, nearDanger } from '../domain/lure.js';
@@ -169,7 +169,7 @@ export function createHullDrive(host) {
       const kp = stepKick(host.kick(), dt, TANK_KICK);   // THE HOVER KICK (src/domain/hover-kick.js): while it runs it alone moves the hull
       if (kp) { host.player.pos = kp; const ci = host.cellIndex()(kp); if (ci !== -1 && ci !== host.player.cur) arriveAt(ci); }
       else if (drive !== 0) {
-        const v = host.params.speed * host.speedBonus() * host.cellSide() * 1.6 * drive * rampMul
+        const v = host.params.speed * host.cellSide() * 1.6 * drive * rampMul
           * (1 - 0.65 * host.bumpFactor()) * (host.storyBase()?.gateEase(host.player.pos) ?? 1); // run-over drag; a door opening (story-base gateEase)
         { const ahead = norm3(add3(host.player.pos, scale3(host.player.heading, host.cellSide() * TANK_KICK.ahead))), w = !steerRate && host.freeBlocked(ahead) ? host.nearestWall(ahead) : null; if (w) host.player.heading = glideHeading(host.player.pos, host.player.heading, norm3(sub3(w, host.player.pos)), dt, TANK_KICK); }   // THE HOVER GLIDE (src/domain/hover-kick.js), never against the player's own steer (it pinned the hull in bends)
         const step = scale3(host.player.heading, v * dt), before = host.player.pos;
@@ -265,7 +265,7 @@ export function createHullDrive(host) {
     // proportionally longer — the grid offers the space, the motion traverses it. The creature's own locomotion profile modulates
     // the pace on top. manual: motion only while W/S are held; auto: the creature's own pace
     const prof = host.MOVES[host.params.creature];
-    const pace = host.params.speed * host.speedBonus() * (prof ? prof.speed(host.runContext.time) : 1)
+    const pace = host.params.speed * (prof ? prof.speed(host.runContext.time) : 1)
       * (1 - 0.65 * host.bumpFactor()); // the run-over drag
     host.player.prog += (pace * host.cellSide() * dt) / host.player.segLen;
     while (host.player.prog >= 1 && !host.player.won) {

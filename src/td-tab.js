@@ -74,11 +74,11 @@ import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned
   sanitiseRecord }
   from './achievements.js';
 import { applyFontPack, currentFontPack, loadTypeFeel } from './fonts.js';
-import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
+import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, makeBulletCloud, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
 import { LOOKS } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from './enemyspec.js';
-import { PICKUPS } from './pickups.js'; import { hushRotor } from './fx/rotor-voice.js';
+import { hushRotor } from './fx/rotor-voice.js';
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
 import { marchToTerrain, roundEnd, marchAlongArc, arcOf } from './domain/round-path.js';
@@ -163,7 +163,6 @@ export function initTdTab(root) {
                         // The operator's first guess, not a finding.
     waveGap: 7,   // seconds of anticipation between a cleared wave and the next
     waveCap: 30,  // safety: force the next wave if the current isn't cleared in time
-    rewards: 6,
   };
 
   // creature-specific locomotion: a speed profile over time (multiplies the
@@ -423,7 +422,7 @@ export function initTdTab(root) {
   // Which things bloom how much. Read fresh every frame from the live
   // collections, so nothing has to be tagged at creation and no new
   // spawn site can silently miss out. Anything not listed here — tracers,
-  // debris, bursts, orbs, rewards, the Heart, the range ring — falls
+  // debris, bursts, orbs, the Heart, the range ring — falls
   // through to the `effects` weight.
   postfx.setGroups(() => [
     ['map', [floorMesh, wallMesh, edgeMesh, topMesh]],
@@ -819,7 +818,6 @@ export function initTdTab(root) {
       dungeon.spawn = sp;
     }
   }
-  const rewardMeshes = new Map(); // cell -> { obj, type } far-field rewards
   let heartHP = 10;
   const HEART_MAX = 10;
   let playerHP = 3;
@@ -832,12 +830,10 @@ export function initTdTab(root) {
   // A destroyed tank is DOWN, not merely invisible. Without this flag the
   // wreck kept its whole agency through the death hold — it drove (auto),
   // rammed enemies for combo and pay, took touch damage (a second life,
-  // gone — the RED accents), and grabbed pickups — all while hidden. The
+  // gone — the RED accents) — all while hidden. The
   // player then 'respawned where they died' because the ghost had driven
   // itself somewhere in the meantime.
   let playerDown = false;
-  let carryingRegen = false;
-  let speedBonus = 1; // permanent, from power rewards
   // the energy shield: a timed bubble over the hull — touch damage bounces off while it holds. shieldObj is lazy-built,
   // scene-level (positioned each frame like the marker, so parent scale can't warp it)
   // a plain spread, exactly as `mineTune` below — there is no tuner panel for either, and inventing one for the shield alone
@@ -2021,7 +2017,6 @@ export function initTdTab(root) {
     tune: () => tune,   // the panel's drive ramp and lure hops
     playerDown: () => playerDown,
     portalDist: () => portalDist,
-    speedBonus: () => speedBonus,
     storyBase: () => storyBase,
     stuck: () => stuck,
     throttle: () => throttle,
@@ -2456,8 +2451,8 @@ export function initTdTab(root) {
   };
   const unitIcon = (type, tint) => () => buildCreature(type, { walker: tint, walkerHi: 0xffffff });   /* the cards, the triad icon and the tips: src/fx/briefing-cards.js */
 
-  // THE BRIEFING AND ITS GLOSSARIES (src/fx/glossary-modals.js): the cards, the record, the hostiles and the pickups
-  const glossary = createGlossaryModals({ msgEl, pause: () => { paused = true; }, spriteShot, heartIcon, unitIcon, mobile: () => mobileShell, round: () => round, heldAchv: () => heldAchv, towerLook: () => params.towerLook, buildTowerLook, starterTower, look, makeDotBurst, makeRewardSolid, HEART_MAX, DEFAULT_TANK });
+  // THE BRIEFING AND ITS GLOSSARIES (src/fx/glossary-modals.js): the cards, the record, the hostiles and the friendly side
+  const glossary = createGlossaryModals({ msgEl, pause: () => { paused = true; }, spriteShot, heartIcon, unitIcon, mobile: () => mobileShell, round: () => round, heldAchv: () => heldAchv, towerLook: () => params.towerLook, buildTowerLook, starterTower, look, makeDotBurst, HEART_MAX, DEFAULT_TANK });
   const { showBriefing, showRecord, showEnemyGlossary, showFriendGlossary } = glossary;
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
@@ -2570,7 +2565,7 @@ export function initTdTab(root) {
     // THE SHIELD IS ALWAYS ON THE PANEL and says what it is, then the array's reserve (src/fx/shield-array.js)
     const shieldBar = shieldPanel(shield, shieldTune, t, story?.arrayPad?.standing ? arrayStation : null);
     const alerts = [shieldBar,
-      carryingRegen ? '⬤ REGEN CARRIED' : '', story?.expeditions?.carrying ? '⬤ PART CARRIED' : '',
+      story?.expeditions?.carrying ? '⬤ PART CARRIED' : '',
       cannonHeat > 0 ? 'CANNON HOT' : '',
       laserOverheat ? 'LASER COOLING' : ''].filter(Boolean).join(' · ');
     const hearts = `<span class="hp-heart">${'♥'.repeat(Math.max(0, heartHP))}</span>`
@@ -2909,8 +2904,6 @@ export function initTdTab(root) {
     shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
     shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;shield.rackFill=0;refillArray(arrayStation,SHIELD_ARRAY);arrayStation.drawn=0;
     resetTankRank();
-    carryingRegen = false;
-    speedBonus = 1;
     for (let i = projectiles.length - 1; i >= 0; i--) killProjectile(i);
     for (let i = laserShots.length - 1; i >= 0; i--) killLaser(i);
     orbRng = mulberry32((params.seed ^ 0x0b0b5) >>> 0);
@@ -2921,7 +2914,6 @@ export function initTdTab(root) {
     buildActors();
     spawnOrbs();
     spawnEnemies();
-    spawnRewards();
     // EVERY RESET ENTERS THE WORLD THE SAME WAY (new game, reload, reset, retry: all through regenerate, the hull in its berth driving
     // out; not in applyLook, a cosmetic never resets). A RESET ENDS WHATEVER SHOT WAS RUNNING: a reveal surviving it would keep its skip
     // listeners and fire its onEnd against cells of a board that no longer exists (runGen's rule for timers, one level up)
@@ -2984,7 +2976,6 @@ export function initTdTab(root) {
     buildActors();
     spawnOrbs(); // orbs bake look colors at spawn
     spawnEnemies();
-    spawnRewards();
     placeActors();
   }
 
@@ -3461,107 +3452,6 @@ export function initTdTab(root) {
   }
 
 
-  // --- far-field rewards ----------------------------------------------------
-  // no ammo sphere: the bullet triad already IS the ammo pickup — two
-  // shapes meaning the same thing taught nothing (operator cut)
-  // one table, shared with the unit viewer — see src/pickups.js. A second
-  // copy would drift the first time a colour or an effect changed, and the
-  // viewer would start teaching the player something that is not true.
-  const REWARD_TYPES = PICKUPS;
-
-  function clearRewards() {
-    for (const r of rewardMeshes.values()) {
-      scene.remove(r.obj);
-      disposeObj(r.obj); // a solid reward is a GROUP: it has no .geometry
-    }
-    rewardMeshes.clear();
-  }
-
-  function farCells() {
-    let maxD = 0;
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] !== BLOCKED) maxD = Math.max(maxD, dungeon.distToHeart[i]);
-    }
-    const far = [];
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] !== BLOCKED && dungeon.distToHeart[i] >= maxD * 0.55
-        && !rewardMeshes.has(i)) far.push(i);
-    }
-    return far;
-  }
-
-  function placeReward(spec, ci) {
-    const r = cellSide * 0.24;
-    const obj = makeRewardSolid(spec.shape, { body: spec.body, hi: 0xffffff }, whim() * 6.283);
-    obj.scale.setScalar(r);
-    obj.userData.sizeScale = r;
-    const c = graph.centers[ci];
-    const n = graph.normals[ci];
-    obj.position.set(c[0] + n[0] * r * 1.2, c[1] + n[1] * r * 1.2, c[2] + n[2] * r * 1.2);
-    scene.add(obj);
-    rewardMeshes.set(ci, { obj, type: spec.type });
-  }
-
-  function spawnRewards() {
-    clearRewards();
-    regrowQueue.length = 0; // a new board owes nothing to the old one's picks
-    const far = farCells();
-    for (let k = 0; k < params.rewards && far.length > 0; k++) {
-      const ci = far.splice(Math.floor(whim() * far.length), 1)[0];
-      placeReward(REWARD_TYPES[k % REWARD_TYPES.length], ci);
-    }
-  }
-
-  // Consumables REGROW. Health and heart-regen are the two pickups a long
-  // round genuinely runs out of — power stays one-shot (a permanent buff
-  // that respawned would be a farm). Each consumed orb schedules one
-  // replacement on the far field after a beat; placement reuses the same
-  // whim() stream, so a replayed seed regrows identically.
-  const REGROW_TIME = 50; // s from pickup to the replacement appearing
-  const regrowQueue = []; // { type, t } in runContext.time
-  function stepRegrow() {
-    while (regrowQueue.length && runContext.time >= regrowQueue[0].t) {
-      const job = regrowQueue.shift();
-      const spec = REWARD_TYPES.find((sp) => sp.type === job.type);
-      const far = farCells();
-      if (!spec || far.length === 0) continue;
-      const ci = far[Math.floor(whim() * far.length)];
-      placeReward(spec, ci);
-    }
-  }
-
-  function checkRewards() {
-    if (playerDown) return; // a wreck picks nothing up
-    const r = rewardMeshes.get(player.cur);
-    if (r) {
-      scene.remove(r.obj);
-      disposeObj(r.obj); // a solid is a GROUP — .geometry.dispose() would throw
-      rewardMeshes.delete(player.cur);
-      sfx.play('tank_pickup');
-      if (r.type === 'power') speedBonus *= 1.08;
-      else if (r.type === 'health') playerHP = Math.min(PLAYER_MAX, playerHP + 1);
-      else if (r.type === 'regen') carryingRegen = true;
-      else if (r.type === 'shield') {
-        chargeShield(shield, shieldTune.pickup, shieldTune);
-        sfx.play('tank_spool_up'); // the bubble igniting
-        showToast(`<div class="wave-num">SHIELD UP</div>`
-          + `<div class="wave-role">${shieldTune.pickup}s — touch damage bounces off</div>`, 2200);
-      }
-      if (r.type === 'health' || r.type === 'regen' || r.type === 'shield') {
-        regrowQueue.push({ type: r.type, t: runContext.time + REGROW_TIME });
-      }
-      updateHud();
-    }
-    // deliver a carried regen: near the Heart, it heals
-    if (story?.expeditions && automated()) storyApi.expeditionStep(); if (carryingRegen && dungeon.distToHeart[player.cur] <= 2) {
-      carryingRegen = false;
-      heartHP = Math.min(HEART_MAX, heartHP + 4);
-      updateHud();
-    }
-    stepRegrow();
-    for (const orb of rewardMeshes.values()) orb.obj.userData.tick(runContext.time);
-  }
-
   // --- enemy fire ------------------------------------------------------------
   // The tank dying should be an EVENT. Losing hover is the throughline: the
   // hull drops, the wreck rocks hard on its suspension, and the body bursts.
@@ -3767,7 +3657,7 @@ export function initTdTab(root) {
     if (!deploy) return;
     const b = berths[deploy.n];
     if (!b) { deploy = null; return; }
-    const v = params.speed * speedBonus * cellSide * 1.6;
+    const v = params.speed * cellSide * 1.6;
     deploy.age = (deploy.age || 0) + dt;
     const segLen = Math.max(1e-9, dist3(...berthSeg(b)));
     // A DEPLOY WITH NO SPEED IS HUNG BY DEFINITION, so its expected duration is ZERO, not Infinity. The first cut wrote Infinity
@@ -3776,7 +3666,7 @@ export function initTdTab(root) {
     const expect = deploy.clip || (v > 1e-9 ? segLen / v : 0);
     if (deploy.age > expect * 2 + DEPLOY_GRACE) {
       console.warn(`SHOTWATCH deploy hung: ${deploy.age.toFixed(1)}s for a ${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`
-        + ` run (speed=${params.speed} bonus=${speedBonus}) — handed over`);
+        + ` run (speed=${params.speed}) — handed over`);
       shots.hung(`deploy ${deploy.age.toFixed(1)}s/${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`);
       deploy.travelled = segLen;   // finish it where it was going, then hand over
     }
@@ -4722,7 +4612,7 @@ export function initTdTab(root) {
   }
 
   // sector expansion (HokorobiTawaa's fraying): FLASH WHITE, unseal the
-  // next band of the SAME world, re-seed pickups into the new ground,
+  // next band of the SAME world, re-seed the shell triads into the new ground,
   // raise fresh portals farther out. Towers and biomass persist.
   function expandRound() {
     flashEl.classList.remove('on');
@@ -4766,7 +4656,6 @@ export function initTdTab(root) {
     // beat ends (see animate)
     for (const ci of revealCells) paintCell(ci, [1.0, 0.68, 0.16]);
     spawnOrbs();
-    spawnRewards();
     seedPortals(2); // fresh neutral gates in the new band
     // the new sector's budget arrives with its gates; unspent strikes carry —
     // hoarding one for the next sector is a legitimate play
@@ -4851,7 +4740,7 @@ export function initTdTab(root) {
     const moved = dist3(p, enginePrev);
     enginePrev = p.slice();
     const cellsPerSec = moved / dt / cellSide;
-    const top = Math.max(0.001, params.speed * speedBonus * 1.6 * 1.45 * TANK_DRIVE.top); // cruise+boost at a full run-up
+    const top = Math.max(0.001, params.speed * 1.6 * 1.45 * TANK_DRIVE.top); // cruise+boost at a full run-up
     const target = Math.min(1, cellsPerSec / top);
 
     // asymmetric smoothing: spin up fast, spool down slow, like an engine
@@ -5107,11 +4996,11 @@ export function initTdTab(root) {
     if (!frozen && eco) { ecoClockT += dt; if (eco.biomass >= CHEAPEST_TOWER) ecoAffordT += dt; }
     stepShieldDynamics(dt,t); hullRepair.tick(frozen ? 0 : dt);   // the hull mends under the Stålheart (src/fx/hull-repair.js)
     if (!frozen) {
-      runContext.advance(dt);   // THE RUN'S CLOCK RIDES THE WORLD'S (2026-10-01): it advanced only with the hull's motion, so the heart's breathing, the regrow queue, the orbs and the pad rings all stopped while the player sat in a seat or the hull was down
+      runContext.advance(dt);   // THE RUN'S CLOCK RIDES THE WORLD'S (2026-10-01): it advanced only with the hull's motion, so the heart's breathing, the orbs and the pad rings all stopped while the player sat in a seat or the hull was down
       let cpuStart=perfOverlay.on()?performance.now():0;
       if (!(lab.on && lab.freezeEnemies)) updateEnemies(dt, t);
       if(perfOverlay.on())perfCpu.enemies+=performance.now()-cpuStart;
-      checkRewards();
+      if (story?.expeditions && automated()) storyApi.expeditionStep();   // the cargo expeditions' step (src/fx/expedition-glue.js)
       updateProjectiles(dt, t);
       updateLasers(dt, t);
       cpuStart=perfOverlay.on()?performance.now():0;

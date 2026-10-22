@@ -8,7 +8,7 @@
 //   unit    units.js buildUnit()        — the player's machines
 //   tower   towerlooks.js buildTowerLook()
 //   enemy   units.js makeDotEnemy()     — the DOT-CLOUD form
-//   pickup  units.js makeRewardSolid() / makeShellSolid()
+//   pickup  units.js makeShellSolid()
 //   model   a pinned GLB with no builder (the satellites, the gunship), loaded
 //           through src/fx/model-fixture.js from `url`
 //
@@ -19,7 +19,6 @@
 // none of the rammable/not tells, which live only on the cloud.
 import { ENEMY_SPEC } from './enemyspec.js';
 import { TOWERS, towerSound } from './towers.js';
-import { PICKUPS, SHELL_PICKUP } from './pickups.js';
 import { LASER_PLATFORMS } from './content/orbital-laser.js';
 import { SHOWCASE_ELEMENTS } from './content/showcase.js';
 
@@ -112,15 +111,17 @@ const HOSTILE_UNITS = Object.keys(ENEMY_SPEC).map((key) => {
   };
 });
 
-// The neutral side of the board: things on the ground worth driving over.
-// Shells get their own entry because they are not a reward type — they spawn
-// on their own clock and reload rather than upgrade.
+// The neutral side of the board: the one thing on the ground worth driving
+// over. The shells spawn on their own clock, in threes, and reload rather
+// than upgrade. The far-field rewards (overdrive, repair cell, regen charge,
+// energy dome) were the old game's power-ups and went on 2026-10-22.
+export const SHELL_PICKUP = {
+  type: 'shells',
+  label: 'shell rack',
+  effect: '+3 shells',
+  note: 'the main gun is scarce by design — this is where it comes from',
+};
 const PICKUP_UNITS = [
-  ...PICKUPS.map((p) => ({
-    id: `pickup-${p.type}`, kind: 'pickup', pickup: p, label: p.label,
-    note: `${p.effect} — ${p.note}`,
-    sounds: [{ key: 'tank_pickup', label: 'collect' }],
-  })),
   {
     id: 'pickup-shells', kind: 'pickup', pickup: SHELL_PICKUP, label: SHELL_PICKUP.label,
     note: `${SHELL_PICKUP.effect} — ${SHELL_PICKUP.note}`,

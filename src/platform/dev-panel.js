@@ -36,7 +36,6 @@ export function createDevPanel(gui, host) {
   gui.add(host.params, 'waveGap', 3, 20, 1).name('wave gap (s)');
   gui.add(host.params, 'waveCap', 15, 60, 1).name('wave cap (s)');
   gui.add(host.params, 'obstacles', 0.05, 0.4, 0.05).onFinishChange(host.regenerate);
-  gui.add(host.params, 'rewards', 0, 12, 1).onFinishChange(host.regenerate);
   gui.add(host.params, 'orbs', 0, 40, 1).name('missile triads').onFinishChange(host.regenerate);
   gui.add(host.params, 'orbRespawn', 0, 30, 1).name('triad respawn (s)');
   const seedCtrl = gui.add(host.params, 'seed', 0, 99999, 1).onFinishChange(host.regenerate);

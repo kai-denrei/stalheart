@@ -24,7 +24,7 @@ import { OrbitControls } from '../vendor/OrbitControls.js';
 import { GLTFExporter } from '../vendor/GLTFExporter.js';
 import { ENEMY_SPEC } from './enemyspec.js';
 import { buildUnit, preloadMork, makeDebris, makeDotBurst, makeBulletCloud,
-  makeDotEnemy, makeRewardSolid, makeShellSolid,
+  makeDotEnemy, makeShellSolid,
   preloadContainer, makeContainerFixture,
   preloadFabricator, makeFabricatorDrone, makeIsaoDrone } from './units.js';
 import { TANK_FEEL, TANK_FEEL_KNOBS, formatFeelCode, makeTankFeel, stepTankFeel,
@@ -394,19 +394,15 @@ export function initUnitsTab(root) {
       return makeDotEnemy(e.id, { walker: hex ?? cols.walker, walkerHi: accentFor(e.id) }, 6);
     }
     if (e.kind === 'pickup') {
-      const p = e.pickup;
       // shells arrive as a rack of three, exactly as they sit on the ground
-      if (!p.shape) {
-        const g = new THREE.Group();
-        for (let k = -1; k <= 1; k++) {
-          const b = makeShellSolid({ body: LOOKS.tronColors.orb.color, hi: 0xffffff });
-          b.position.set(k * 1.7, 0, 0);
-          g.add(b);
-        }
-        g.userData.baseScale = 1;
-        return g;
+      const g = new THREE.Group();
+      for (let k = -1; k <= 1; k++) {
+        const b = makeShellSolid({ body: LOOKS.tronColors.orb.color, hi: 0xffffff });
+        b.position.set(k * 1.7, 0, 0);
+        g.add(b);
       }
-      return makeRewardSolid(p.shape, { body: p.body, hi: 0xffffff }, 1.7);
+      g.userData.baseScale = 1;
+      return g;
     }
     return buildUnit(e.id, cols);
   }

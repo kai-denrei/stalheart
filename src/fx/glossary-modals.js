@@ -6,7 +6,7 @@ import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from '../enemyspec.js';
 import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './briefing-cards.js';
 
 // h: { msgEl, pause(), spriteShot(key, build), heartIcon(), unitIcon(type, tint), mobile(), round(), heldAchv(), towerLook(), buildTowerLook,
-// starterTower(), look(), makeDotBurst, makeRewardSolid, HEART_MAX, DEFAULT_TANK }
+// starterTower(), look(), makeDotBurst, HEART_MAX, DEFAULT_TANK }
 export function createGlossaryModals(h) {
   // opening briefing: the pieces as cards, the ONE win condition, and two
   // clickable glossaries. The sim stays frozen until the player begins.
@@ -84,16 +84,11 @@ export function createGlossaryModals(h) {
 
   function showFriendGlossary() {
     h.pause();
-    const orbIcon = (shape, body) => () => h.makeRewardSolid(shape, { body, hi: 0xffffff }, 1.7);
     h.msgEl.innerHTML = `<div class="msg-head">glossary · pickups</div>` +
       `<div class="gcards">` +
-      glossCard('#ff6a88', h.spriteShot('heart', h.heartIcon), 'the stalheart', `${h.HEART_MAX} hp · enemy contact drains it · regen charges heal it`) +
+      glossCard('#ff6a88', h.spriteShot('heart', h.heartIcon), 'the stalheart', `${h.HEART_MAX} hp · enemy contact drains it`) +
       glossCard('#9fdcff', h.spriteShot('tower-' + h.towerLook(), () => h.buildTowerLook(h.towerLook(), h.starterTower())), 'towers', 'mount on walls only · tap high ground in BUILD mode · upgrade twice · sell 75%') +
       glossCard('#ffb000', h.spriteShot('triad', makeTriadIcon), 'missile triad', '+3 shells on touch (rack caps at 9) — the ONLY ammo pickup') +
-      glossCard('#9ff8ff', h.spriteShot('orb-power', orbIcon('star', 0x9ff8ff)), 'power sphere', 'far-field reward · +8% speed, permanent') +
-      glossCard('#3dff6e', h.spriteShot('orb-health', orbIcon('cell', 0x3dff6e)), 'health sphere', 'far-field reward · +1 your hp') +
-      glossCard('#ff2df0', h.spriteShot('orb-regen', orbIcon('ring', 0xff2df0)), 'regen charge', 'CARRY it back near the heart: +4 heart hp') +
-      glossCard('#59c8ff', h.spriteShot('orb-shield', orbIcon('dome', 0x59c8ff)), 'energy shield', '12s bubble over the hull — touch damage bounces off') +
       `</div><button class="msg-back">← back to briefing</button>`;
     h.msgEl.classList.remove('hidden');
   }

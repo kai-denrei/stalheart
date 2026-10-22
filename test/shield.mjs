@@ -25,11 +25,12 @@ console.log('the meter:');
 {
   const st = makeShield();
   check('starts empty', st.t === 0);
-  check('a pickup charges it', near(charge(st, SHIELD_TUNE.pickup), SHIELD_TUNE.pickup));
-  check('the meter holds it', near(st.t, SHIELD_TUNE.pickup));
+  const DOSE = 12; // seconds, a single charge under the cap
+  check('a charge fills it', near(charge(st, DOSE), DOSE));
+  check('the meter holds it', near(st.t, DOSE));
   const took = charge(st, 50);
   check('the cap clamps', near(st.t, SHIELD_TUNE.cap));
-  check('and reports what it actually took', near(took, SHIELD_TUNE.cap - SHIELD_TUNE.pickup));
+  check('and reports what it actually took', near(took, SHIELD_TUNE.cap - DOSE));
   check('a zero charge is a no-op', charge(st, 0) === 0 && near(st.t, SHIELD_TUNE.cap));
 }
 
@@ -46,7 +47,7 @@ console.log('the rack and its refusals:');
 {
   // THE SEAM. The cooldown is measured from the DROP, not from the deploy —
   // so it is a fixed coolSecs wherever the bubble came from, and a 12-second
-  // pickup does not hand you a free re-deploy the moment it expires.
+  // charge does not hand you a free re-deploy the moment it expires.
   const st = makeShield();
   deploy(st, 0);
   let dropped = false;

@@ -252,54 +252,6 @@ export const LORE = {
   },
 
   // --- pickups ------------------------------------------------------------
-  'pickup-power': {
-    name: 'OVERDRIVE SPHERE',
-    tag: 'field reward · permanent',
-    body: 'A spiked star of crystallized charge left where the shell’s '
-      + 'power routing pools. Drive through one and the emitters run eight '
-      + 'percent hot forever. The vessel appears to be paying the survey '
-      + 'for reaching far ground. Nobody has invoiced it back.',
-    visual: 'spiked crystalline energy star hovering above stone tiles, '
-      + 'pale cyan light, electric filaments, faint rotation blur, '
-      + 'collectible artifact presentation, dark background, macro focus, '
-      + 'photoreal render, 8k',
-  },
-  'pickup-health': {
-    name: 'REPAIR CELL',
-    tag: 'field reward · hull',
-    body: 'A faceted green cell that dissolves against a damaged hull and '
-      + 'reads, on the manifest, as one life that was not lost after all. '
-      + 'Green means health in every language the expedition brought, and '
-      + 'apparently in the vessel’s as well.',
-    visual: 'glowing green icosahedral capsule floating low over asteroid '
-      + 'ground, soft pulsing emerald light, repair nanite mist around '
-      + 'it, dark terrain, single collectible in frame, product-shot '
-      + 'clarity, photoreal, 8k',
-  },
-  'pickup-regen': {
-    name: 'REGEN CHARGE',
-    tag: 'field reward · carried',
-    body: 'A magenta torus that will not spend itself where you find it. '
-      + 'It rides the hull, humming louder as the pole nears, and gives '
-      + 'itself to the Cardion in one bright transfusion — four beats '
-      + 'restored. The only cargo on S-9, and the only errand.',
-    visual: 'magenta glowing torus ring hovering above a hover tank’s '
-      + 'rear deck, energy tether trailing toward a distant holographic '
-      + 'heart on the horizon, night drive, neon reflections on hull, '
-      + 'cinematic escort-mission atmosphere, photoreal sci-fi, 8k',
-  },
-  'pickup-shield': {
-    name: 'AEGIS DOME',
-    tag: 'field reward · timed',
-    body: 'A half-dome of standing charge that unfolds into a full bubble '
-      + 'over the hull: twelve seconds during which the dangerous tier '
-      + 'may touch, and shove, and mark the paint, and take nothing. The '
-      + 'bubble spends itself blinking, so the crew counts out loud.',
-    visual: 'translucent cyan energy dome pickup on the ground, then a '
-      + 'full spherical particle shield enveloping a hover tank, '
-      + 'hexagonal shimmer where a claw strikes it, impact ripple, '
-      + 'dramatic defensive moment, realistic VFX render, 8k',
-  },
   'pickup-shells': {
     name: 'MISSILE TRIAD',
     tag: 'ammunition drop',

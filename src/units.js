@@ -658,7 +658,7 @@ export function makeDotEnemy(type, cols, dens = 1) {
   // The core is a CHILD of the Points, not a Group wrapping both. Callers
   // reach for `obj.geometry` and `obj.material` on the enemy directly, and
   // wrapping would have silently broken the hit flash and the disposal —
-  // the same trap the pickups fell into. As a child, every existing call
+  // the same trap the old pickups fell into. As a child, every existing call
   // site keeps working and the core just comes along.
   const spec = ENEMY_SPEC[type];
   if (spec && spec.rammable === false) {
@@ -743,7 +743,7 @@ export function makeShieldShell(colorHex = 0x7fe0ff) {
         float ring = smoothstep(0.30, 0.0, abs(ang - uHitAge * 4.5))
                    * smoothstep(0.35, 0.0, uHitAge);
         float a = (fres * 0.85 + grid + sweep + ring * 1.6) * uOpacity;
-        // the blink under 25% is a PROMISE pickups.js prints to the player
+        // the blink under 25% is a PROMISE the shield glossary makes to the player
         if (uFrac < 0.25) a *= (sin(uTime * 14.0) > 0.0) ? 1.0 : 0.25;
         gl_FragColor = vec4(uColor * (1.0 + ring * 2.0), clamp(a, 0.0, 1.0));
       }
@@ -1497,14 +1497,11 @@ export function makeIsaoDrone(tint = 0xbfe6ff) {
 // clone cached glTFs too, and a shared skeleton there draws a sheet across the sky.
 export { cloneSkinned } from './fx/skinned-clone.js';
 
-// --- pickups, as SOLIDS ---------------------------------------------------
-// Half-dotted clouds are the ENEMY language in this game. Pickups were
-// speaking it too, so a power-up on the ground read as something to shoot.
-// Solid bodies with bright additive edges put them firmly on the player's
-// side of the visual grammar, and shape alone tells the three apart before
-// colour does.
-
-// Bright edges, the house Tron read, without the dot cloud.
+// --- solids with bright edges ---------------------------------------------
+// Half-dotted clouds are the ENEMY language in this game; a solid body with
+// bright additive edges is the house Tron read without the dot cloud. The
+// hard cores (makeDotEnemy) are built from it; the far-field pickups that
+// were, went on 2026-10-22.
 function solidWithEdges(geo, body, hi) {
   const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
     color: body, emissive: new THREE.Color(body).multiplyScalar(0.55),
@@ -1514,30 +1511,6 @@ function solidWithEdges(geo, body, hi) {
     blending: THREE.AdditiveBlending, depthWrite: false,
   })));
   return mesh;
-}
-
-// Shape carries the meaning: a spiked star for speed, a rounded cell for
-// health, a ring for the regen charge you carry home.
-const REWARD_GEO = {
-  star: () => new THREE.OctahedronGeometry(1, 0),
-  cell: () => new THREE.IcosahedronGeometry(0.92, 0),
-  ring: () => new THREE.TorusGeometry(0.72, 0.3, 8, 14),
-  dome: () => new THREE.SphereGeometry(0.8, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
-};
-
-export function makeRewardSolid(shape, cols, phase = 0) {
-  const g = new THREE.Group();
-  const geo = (REWARD_GEO[shape] || REWARD_GEO.star)();
-  const core = solidWithEdges(geo, cols.body, cols.hi ?? 0xffffff);
-  g.add(core);
-  // hovers and turns, so it reads as a thing placed there rather than debris
-  g.userData.tick = (t) => {
-    core.rotation.y = t * 0.9 + phase;
-    core.rotation.x = Math.sin(t * 0.7 + phase) * 0.25;
-    core.position.y = Math.sin(t * 1.6 + phase) * 0.18;
-  };
-  g.userData.kind = 'mesh';
-  return g;
 }
 
 // One solid shell: a cone nose on a short body. Three of these make a triad.

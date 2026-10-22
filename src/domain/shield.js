@@ -22,7 +22,6 @@ import { sub3, scale3, dot3, cross3, norm3 } from '../vec3.js';
 
 export const SHIELD_TUNE = {
   cap: 20,            // seconds; the meter ceiling, whatever fed it
-  pickup: 12,         // the dome pickup — the number pickups.js prints to the player
   rackStart: 2,       // charges at the top of a run
   rackCap: 4,         // two spare cases
   caseSize: 2,        // charges in a case
@@ -40,7 +39,6 @@ export const SHIELD_TUNE = {
 
 export const SHIELD_KNOBS = [
   { key: 'cap', label: 'meter cap (s)', group: 'meter', min: 5, max: 60, step: 1 },
-  { key: 'pickup', label: 'pickup (s)', group: 'meter', min: 2, max: 30, step: 1 },
   { key: 'rackStart', label: 'starting charges', group: 'rack', min: 0, max: 8, step: 1 },
   { key: 'rackCap', label: 'rack cap', group: 'rack', min: 1, max: 12, step: 1 },
   { key: 'caseSize', label: 'case size', group: 'rack', min: 1, max: 6, step: 1 },
