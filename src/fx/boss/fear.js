@@ -1,4 +1,4 @@
-// fear.js — the boss lab's fright and stun (2026-10-08; spec docs/superpowers/specs/2026-10-08-boss-fight-next-round-design.md,
+// fear.js — the boss's fright and stun (moved from src/labs/boss/ on 2026-10-23 so THE ARENA's boss in the game, src/fx/boss-run.js, runs the lab's own; the lab imports it from here) (2026-10-08; spec docs/superpowers/specs/2026-10-08-boss-fight-next-round-design.md,
 // section 2). The rule is src/domain/boss-fear.js; this file only feeds it what the friendlies report and says what the creature
 // does now. A Bofors landing or a live SOL beam within radius + `fear.reach` of a floor contact frightens it (`landed`, `beam`), the
 // MK-9's landing within reach stuns it. Each fresh fright and each stun disturb the kit (`motion.disturb()`).

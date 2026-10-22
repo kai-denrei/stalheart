@@ -65,3 +65,25 @@ print('Enemy step: the queue released on its clock, the walk, a kill and the boa
   assert.equal(createHash('sha256').update(JSON.stringify(roomy)).digest('hex').slice(0, 16), GOLDEN, 'with room the run is the controller block\'s, frame for frame');
   print('Enemy step: a release with no room in its creature family waits; with room it goes.');
 }
+
+// THE BODY OWNS HER POSITION (owner, 2026-10-23, b/c/e; src/fx/boss-run.js bodyLed): a body-led record does not walk; its point is its body's and its cell the one
+// under it, frame after frame, the touch and the death paths kept; with no body yet it stays where it is
+{
+  const log = [], w = world(log), host = { ...w.fixed };
+  for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); }
+  let bodyAt = null; const centers = w.st.graph.centers;
+  host.creatures = () => ({ full: () => false, dress: (q) => q, step() {}, kill() {}, body: () => (bodyAt != null ? { point: centers[bodyAt].map((v) => v * 1.0000001) } : null) });
+  host.cellIndex = (p) => { let best = -1, bd = Infinity; centers.forEach((c, i) => { const d = Math.hypot(c[0] - p[0], c[1] - p[1], c[2] - p[2]); if (d < bd) { bd = d; best = i; } }); return best; };
+  const k = createEnemyStep(host); let t = 0;
+  while (!w.fixed.enemies.length && t < 5) { t += 1 / 30; k.updateEnemies(1 / 30, t); }
+  for (let i = 0; i < 60; i++) { t += 1 / 30; k.updateEnemies(1 / 30, t); }
+  const e = w.fixed.enemies.find((x) => x.alive); assert.ok(e, 'a record');
+  e.bodyLed = true; const held = e.pos.slice();
+  for (let i = 0; i < 30; i++) { t += 1 / 30; k.updateEnemies(1 / 30, t); }
+  assert.ok(Math.hypot(...e.pos.map((v, i) => v - held[i])) < 1e-9, 'no body yet: it stays where it is, no walk');
+  bodyAt = 14;
+  for (let i = 0; i < 3; i++) { t += 1 / 30; k.updateEnemies(1 / 30, t); }
+  assert.ok(Math.hypot(...e.pos.map((v, i) => v - centers[14][i])) < 1e-6, 'its point is its body\'s'); assert.deepEqual([e.cur, e.next, e.prog], [14, 14, 0], 'its cell the one under it');
+  bodyAt = 16; t += 1 / 30; k.updateEnemies(1 / 30, t); assert.equal(e.cur, 16, 'and follows it');
+  print('Enemy step: a body-led record takes its body\'s point and the cell under it, and does not walk.');
+}

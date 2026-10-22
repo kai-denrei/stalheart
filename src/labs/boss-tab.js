@@ -15,7 +15,7 @@
 // cradled, covered and absorbed, `taken` rises, and the tank respawns thirty metres from the frame's origin.
 //
 // THE FIGHT (spec section 5): the gunship's rotary, Bofors, MK-9 and SOL-88 on the creature (./boss/friendlies.js), the fear and the arena
-// (./boss/fear.js, ./boss/arena.js), the round's bar, cards and ending (./boss/round.js). KILLED is the v1 death: every movement stops and
+// (src/fx/boss/fear.js, ./boss/arena.js), the round's bar, cards and ending (./boss/round.js). KILLED is the v1 death: every movement stops and
 // the gravity goes to `deathGravity`. LOST is a meal (feeding leaving `hunting`) or a landing on the hull. THE RESET (the round's, or the panel's button) puts the creature back at
 // the frame's origin and the tank `respawn` metres out on the far side; it waits for a meal in progress (MEAL_WAIT at most) so
 // the meal is counted in `taken` and the prey is never moved under the kit.
@@ -27,8 +27,8 @@ import { createPlaneDrive } from './boss/drive.js';
 import { createBodyRules, kitNow, shiftKit } from './boss/body.js';
 import { createCannon } from './boss/cannon.js';
 import { createFriendlies } from './boss/friendlies.js';
-import { createFear } from './boss/fear.js';
-import { createTemperament } from './boss/temperament.js';
+import { createFear } from '../fx/boss/fear.js';
+import { createTemperament } from '../fx/boss/temperament.js';
 import { createArena, deeper } from './boss/arena.js';
 import { createRound } from './boss/round.js';
 import { createBaitMode } from './boss/bait.js';
@@ -335,7 +335,7 @@ export function initBossTab(root) {
   const huntedAim = () => (waving() ? wave.huntedAim() ?? creatureAim() : creatureAim());
   const tankOn = () => state.mode === 'tank';   // the bait mode has no tank: hidden, not driven, nobody's prey, the cannon off
   const tankNow = () => ({ pos: hullLost || !tankOn() ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius });   // a lost hull is no target
-  // THE FEAR (./boss/fear.js, the rules in src/domain/boss-fear.js): what the friendlies report frightens the creature or stuns it
+  // THE FEAR (src/fx/boss/fear.js, the rules in src/domain/boss-fear.js): what the friendlies report frightens the creature or stuns it
   let stunned = false;   // `motion.active` is held false by a stun in progress
   // in the bait mode the fear per gun (wave B): the 25 mm's barrage meter, the 40 mm's wild flight, the MK-9's panic, the arms counting for the reach; the
   // round's first 40 mm fright asks Isao for his stagger line
@@ -344,7 +344,7 @@ export function initBossTab(root) {
     kit: () => creature, on: () => fightOn.fight && fightOn.fear && !waving(),
     gunFear: () => !tankOn(), nodes: () => body.nodes(), onScare: (r) => { if (r.level === 'wild') bait.want('stagger'); },
   });
-  // THE TEMPERAMENT (./boss/temperament.js, wave B): in the bait mode one layer writes the creature's live motion, the panel's knobs its base, with the
+  // THE TEMPERAMENT (src/fx/boss/temperament.js, wave B): in the bait mode one layer writes the creature's live motion, the panel's knobs its base, with the
   // lunges and the fear's flights over it
   const temperament = createTemperament({ tune: () => fightTune, kit: () => creature, base: () => params.motion, on: () => !tankOn() });
   // THE ARENA (./boss/arena.js, the rules in src/domain/boss-arena.js): two rocks that stay and four obstacles the MK-9 breaks, in the

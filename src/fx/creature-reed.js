@@ -15,6 +15,12 @@
 // THE RECORD OWNS THE POSITION. The kit's pursuit hunts the record's aim point (the record's point `follow.lead` s ahead, in the body's
 // frame); a body more than the leash behind for `follow.grace` s (or twice the leash at once) is re-placed on the record's point (its frame
 // moved there and the kit shifted, its pose kept; counted). The record's lift (rising out of a breach) lowers the drawing.
+// THE BODY OWNS HER POSITION (owner, 2026-10-23, b/c/e: "nih-dairia aggro is different ... it tries to aggro on the tank, but fears the 40mm"; spec
+// docs/superpowers/specs/2026-10-23-arena-lab-fight-design.md, decision 3): a track with `led` (THE ARENA's boss, src/fx/boss-run.js) hunts `apos` as it is
+// handed in (the prey point: the hull, the fear's flee point, her own centre while stunned), never the record's, and is never leashed or re-placed; the record
+// takes its point from the body instead (src/fx/enemy-step.js). `body(h)` hands the caller the kit (its live settings, the fear's disturb, the stun's
+// `motion.active`), the body's unit point and its shape in the caller's plane (`toLocal(unitPoint) -> [x, z]`: the centre, the floor contacts, every node
+// [x, z, height]), the lab's kitNow/nodesOf through the body's own frame.
 //
 // THE COST. One parsed cage per variant (loaded on first use), each body a copy with its own surface geometry (the lab's cageCopy); bodies
 // are made `batch` a frame once the cage is in (a record whose body is not made yet is alive and walks, its view inactive). The solver steps
@@ -115,10 +121,11 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     h.frame = carryFrame(h.frame, p); shiftKit(h.kit, 0 - c.x, 0 - c.z);
   }
 
-  function track(h, { pos, apos = pos, lift = 0, dt = 0 }) {
+  function track(h, { pos, apos = pos, lift = 0, dt = 0, led = false }) {
     if (!h || h.dead) return false;
-    h.pos = pos; h.apos = apos; h.lift = lift;
+    h.pos = pos; h.apos = apos; h.lift = lift; h.led = !!led;
     if (!h.kit) return false;
+    if (h.led) { h.behind = 0; aim(h); return false; }   // THE BODY OWNS HER POSITION: no leash, no re-place
     const c = h.kit.motion.center, [rx, rz] = toPlane(h.frame, pos, R), lag = Math.hypot(c.x * h.s - rx, c.z * h.s - rz);
     const leash = Math.max(follow.leashRadii * h.r0, follow.leashMin);
     h.behind = lag > leash ? h.behind + dt : 0;
@@ -225,6 +232,14 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
   function setPlanet(r) { if (r > 0) R = r; }
 
   const hzOf = (def) => Math.round(1 / (def.fine ? STEP : rate));
+  // the body's shape in the caller's plane (THE BODY OWNS HER POSITION, above): the contacts and the nodes listed once a call, on first read
+  function shapeOf(h, toLocal) {
+    const b = h.kit.body, s = h.s, c = h.kit.motion.center, n = b.x.length / 3, at = (i) => toLocal(fromPlane(h.frame, b.x[i * 3] * s, b.x[i * 3 + 2] * s, R));
+    let contacts = null, nodes = null;
+    return { centre: toLocal(fromPlane(h.frame, c.x * s, c.z * s, R)), radius: h.r0,
+      get contacts() { if (!contacts) { contacts = []; for (let i = 0; i < n; i++) if (b.contact[i] > 0) contacts.push(at(i)); } return contacts; },
+      get nodes() { if (!nodes) { nodes = []; for (let i = 0; i < n; i++) { const p = at(i); nodes.push([p[0], p[1], b.x[i * 3 + 1] * s]); } } return nodes; } };
+  }
   return {
     add, track, kill, free, step, setPlanet,
     roots: () => [group],
@@ -242,6 +257,12 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     })),
     // round two (the fable review: the probe counted bodies still being made, or never made, as alive): whether a record's body stands drawn
     drawn: (h) => !!h?.kit && !h.failed,
+    // THE BODY OWNS HER POSITION (2026-10-23): the made, living body's kit, unit point and shape; null before it is made or once it is dead
+    body(h) {
+      if (!h?.kit || h.dead || h.failed) return null;
+      const c = h.kit.motion.center;
+      return { kit: h.kit, point: fromPlane(h.frame, c.x * h.s, c.z * h.s, R), radius: h.r0, shape: (toLocal) => shapeOf(h, toLocal) };
+    },
     // one body's view, for the harness: its centre's unit point (the seam projects it), its radius, made and standing, dead, the collapse
     // and the fade (0..1), the lift, its behaviour's state, the rate
     view(h) {

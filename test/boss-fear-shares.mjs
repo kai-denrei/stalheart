@@ -1,9 +1,9 @@
-// boss-fear-shares.mjs — the lab's fear keeps the round's seconds (src/labs/boss/fear.js): the share of live-fear time spent fleeing
+// boss-fear-shares.mjs — the lab's fear keeps the round's seconds (src/fx/boss/fear.js, the lab's until 2026-10-23): the share of live-fear time spent fleeing
 // and stunned, which the count of fresh episodes cannot say (a beam always in reach is one fright for seconds). Counted only while the
 // fear is live, restarted by reset, and the episode counts stay the run's record.
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
-import { createFear } from '../src/labs/boss/fear.js';
+import { createFear } from '../src/fx/boss/fear.js';
 
 let phase = 'fight', locked = false, disturbs = 0, clock = 0;
 const kit = { motion: { feeding: { get locked() { return locked; } }, disturb: () => { disturbs++; } } };

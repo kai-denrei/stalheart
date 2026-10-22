@@ -39,7 +39,7 @@ import { cutisDamage, contactsOf, reachNodes } from '../../domain/cutis-hits.js'
 import { fanAngle, lipPoint, emergeDepth, hasEmerged } from '../../domain/cutis-emerge.js';
 import { makeTemperament, stepTemperament } from '../../domain/boss-temperament.js';
 import { CUTIS_WAVE, CUTIS_BOSS, CUTIS_HITS, CUTIS_DEATH, CUTIS_EMERGE, CUTIS_LUNGE, CUTIS_LABEL } from '../../content/cutis-maku.js';
-import { createFear } from './fear.js';
+import { createFear } from '../../fx/boss/fear.js';
 import { createCutisFlash } from './cutis-flash.js';
 
 const SINK = 0.25;     // a fading puddle sinks this many radii

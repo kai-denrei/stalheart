@@ -128,7 +128,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     if (e.hitFlash > 0) { o.tint = 2 + e.hitFlash; e.hitFlash = Math.max(0, e.hitFlash - (o.dt || 0) / (follow.flash || 0.18)); }
     return o;
   }
-  const opt = { x: 0, z: 0, ax: 0, az: 0, lift: 0, pos: null, apos: null, dt: 0, hub: 0, cell: -1, opacity: 1, grow: 1, members: 0, speed: 0, tint: 0 }, xz = [0, 0], axz = [0, 0];
+  const opt = { x: 0, z: 0, ax: 0, az: 0, lift: 0, pos: null, apos: null, dt: 0, hub: 0, cell: -1, opacity: 1, grow: 1, members: 0, speed: 0, tint: 0, led: false }, xz = [0, 0], axz = [0, 0];
   // a new record of a creature type (`e.spec.body` the family, `e.tier` its tier): its body, at the record's point
   function spawn(e) {
     place(); refreshBoard();
@@ -224,9 +224,10 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       b.stamp = stamp;
       const a = adapters.get(b.family), hub = hubOf(a, e.pos, b.hub);
       if (hub !== b.hub) { a.rehub(b.h, hub); b.hub = hub; handed++; }
-      const f = frames[hub] ?? frame, apos = aheadOf(e, b.apos);
+      // THE BODY OWNS HER POSITION (2026-10-23, src/fx/boss-run.js): a body-led record's body hunts the point the run hands it (e.bodyAim), `led` to its family
+      const led = !!e.bodyLed, f = frames[hub] ?? frame, apos = led && e.bodyAim ? e.bodyAim : aheadOf(e, b.apos);
       toPlaneInto(f, e.pos, R, xz); toPlaneInto(f, apos, R, axz);
-      opt.x = xz[0]; opt.z = xz[1]; opt.ax = axz[0]; opt.az = axz[1]; opt.lift = liftOf(e, b.r0); opt.pos = e.pos; opt.apos = apos; opt.dt = dt; opt.hub = hub; opt.cell = e.cur ?? -1;
+      opt.x = xz[0]; opt.z = xz[1]; opt.ax = axz[0]; opt.az = axz[1]; opt.lift = liftOf(e, b.r0); opt.pos = e.pos; opt.apos = apos; opt.dt = dt; opt.hub = hub; opt.cell = e.cur ?? -1; opt.led = led;
       if (a.track(b.h, lookInto(e, opt))) replaced++;
       e.bodyPace = a.paceOf ? a.paceOf(b.h) : 1;   // round four: the record waits for its body (src/fx/creature-pearl.js paceOf; the enemy loop's walk x this)
     }
@@ -239,6 +240,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
 
   return {
     has, proxy, spawn, kill, recoil, step, hull, point, phaseOf,
+    // THE BODY OWNS HER POSITION (2026-10-23): a record's body as its family hands it ({ kit, point, radius, shape(toLocal) }; src/fx/creature-reed.js body), else null
+    body: (e) => { const b = live.get(e); return b ? adapters.get(b.family).body?.(b.h) ?? null : null; },
     thermal: (on) => { for (const a of adapters.values()) a.thermal?.(on); },   // the gunship's thermal view (2026-10-16)
     // a family's bodies made ready before the first record (its adapter, and what it makes ahead: the Pearl tiers' swarms)
     prepare: (family, ids) => adapter(family)?.prepare?.(ids),

@@ -1,11 +1,11 @@
-// temperament.js — the boss lab's temperament in the bait mode (wave B, 2026-10-09; owner: "chase speed we need basic speed and a measure of sudden
+// temperament.js — the boss's temperament (moved from src/labs/boss/ on 2026-10-23 so THE ARENA's boss in the game, src/fx/boss-run.js, runs the lab's own; the lab imports it from here) in the bait mode (wave B, 2026-10-09; owner: "chase speed we need basic speed and a measure of sudden
 // accelerations once in a while, the threatening look comes from the tentacles lengthening/reaching, and from sudden bursts of speed"). The rule is
 // src/domain/boss-temperament.js; this file is the one layer that writes the creature's live motion settings while it is on: each frame, before the
 // creature's update, it steps the schedule with the fear's running flight (./fear.js `step`) and writes the blend of the BASE (`base()`, the panel's
 // motion knobs, which stay the owner's) with the lunge and the flight into the kit's settings, within the kit's panel ranges. A due lunge waits for the
 // kit's pursuit to be in its pull, where the chase speed moves the body. Off (the tank mode), it writes nothing; turned off it puts the base back once.
 import { makeTemperament, stepTemperament, liveMotion, TEMPERAMENT_KEYS } from '../../domain/boss-temperament.js';
-import { MOTION_CONTROLS } from '../../fx/nih-dairia/motion-settings.js';
+import { MOTION_CONTROLS } from '../nih-dairia/motion-settings.js';
 
 const LIMITS = Object.fromEntries(MOTION_CONTROLS.map((c) => [c.key, [c.min, c.max]]));
 

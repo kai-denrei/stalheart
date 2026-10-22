@@ -28,6 +28,11 @@
 // creature seam, for the hunters alive), station() (the gunship on station), shots() (the seat's rounds), arenaField() and dangers() (the lure's read),
 // hullNearArena() (the hull within ARENA.reachCells of the arena), hullCells() (its distance in cells, the harness's read), gunshipNearArena() (the gunship's track within ARENA.seatCells of it), arenaOpen()
 // (the arena's breach has opened).
+// THE FIGHT ON THE LAB'S ENGINE (owner, 2026-10-23: "there is a well-tuned version in the lab and we keep reproducing something that does not work"; spec
+// docs/superpowers/specs/2026-10-23-arena-lab-fight-design.md): once her body is made (c.creatures().body(record), src/fx/creature-reed.js) the boss record is
+// `bodyLed`: its body owns her position (src/fx/enemy-step.js ledPoint) and hunts the point ./boss/arena-fight.js hands it each frame of the boss phase (the
+// hull, the lab's fear per gun, the lab's temperament, the disc); landed() feeds that fight every shell. A record whose body is not made (or a family without
+// bodies) keeps the walker's fright and stun (frightRecord / stunRecord). c.centre(ci) the cell's unit point, c.creatures() the creature seam.
 import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
 import { ARENA, ARENA_HANDOVER, ARENA_ROAD_GUARD } from '../content/sectors.js';
@@ -40,6 +45,7 @@ import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../content/gunship.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
+import { createArenaFight } from './boss/arena-fight.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
@@ -60,6 +66,7 @@ export function createBossRun(c) {
   let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
   let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken
   let decoded = false, talkUntil = 0, deadAt = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead (said at deadAt)
+  let fight = null;   // THE FIGHT ON THE LAB'S ENGINE (./boss/arena-fight.js): made with the run, stepped once her body is made
   let brood = null, broodAt = 0, broodI = 0;   // THE BROOD DIES WITH THE MOTHER (tick below): the wave's hunters alive at her death, when she died, how many have gone
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
@@ -93,7 +100,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; cutLog = []; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; fight = createArenaFight({ now: c.t }); cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; cutLog = []; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -216,6 +223,9 @@ export function createBossRun(c) {
     // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss): the first frame she is seen, her record walks onto the sinkhole before the hunt
     // (`ground`, src/fx/enemy-step.js) and takes the guns by her own rule (`ownFear`: the generic impact scare leaves her alone; landed() below)
     { const b = bossRecord(); if (b && !b.ownFear) { b.ownFear = true; b.ground = { ...BOSS_FIGHT.arenaBoss.ground }; } }
+    // THE BODY OWNS HER POSITION (2026-10-23): her body made, the record is body-led and its body hunts what the fight hands it (the hull, a flee point, her centre)
+    { const b = phase === 'boss' ? bossRecord() : null, body = b && c.creatures?.()?.body?.(b), centre = body ? c.centre?.(arenaCell()) : null;
+      if (body && centre) { b.bodyLed = true; b.bodyAim = fight.step(dt, { body, centre, R: c.creatures().metres(), hull: c.player()?.pos ?? null, radius: BOSS_FIGHT.bounds.radius, ground: !!b.ground }) ?? b.bodyAim; } }
     if (phase === 'boss') {
       // ISAO KEEPS THE WHEEL: a seat's entry and any drive input put the hull back on manual (src/fx/hull-drive.js, src/platform/tank-input.js);
       // while the boss is up the hull is his, so the autopilot is re-asserted every frame
@@ -262,6 +272,7 @@ export function createBossRun(c) {
   // (src/domain/boss-fear.js frightRecord, arenaFrightSeconds), an MK-9 within its blast holds her still BOSS_FIGHT.nuke.stun s (stunRecord)
   function landed(gun, point) {
     const b = on ? bossRecord() : null;
+    if (b?.bodyLed && fight) { const took = fight.landed(gun, point); if (took) { if (gun === 'bofors') frights++; else if (gun === 'heavy') stuns++; } return took; }   // THE FIGHT ON THE LAB'S ENGINE
     if (!b || !point || (gun !== 'bofors' && gun !== 'heavy') || (gun === 'bofors' && b.ground)) return false;   // on the sinkhole (the ground phase) she stands: no flight off it
     const at = groundAt(b), m = GUNSHIP_PLATFORM.metresPerCell, r0 = CREATURE_TIERS[def.boss.family]?.[def.boss.boss.tier]?.r0 ?? 20, g = GUNSHIP_GUNS[gun];
     const reach = ((r0 + BOSS_FIGHT.fear.reach) / m + (g?.blastCells ?? 0)) * c.cellSide();
@@ -308,7 +319,10 @@ export function createBossRun(c) {
   const ARENA_ORBIT = Object.freeze({ ...GUNSHIP_ORBIT, station: Infinity });
   const guns = () => (armed() ? ARENA_GUNS : GUNSHIP_GUNS);
   const orbit = () => (on && phase === 'boss' && BOSS_FIGHT.arenaGuns.station ? ARENA_ORBIT : null);
-  const fearState = () => { const b = bossRecord(); return { frights, stuns, scared: !!b && isScared(b, c.t()), stunned: !!b && c.t() < (b.stagUntil ?? -1), ground: b?.ground ? 'ground' : b ? 'hunt' : null }; };
+  const fearState = () => { const b = bossRecord(), f = b?.bodyLed && fight ? fight.state() : null; return { frights, stuns, scared: !!b && (f ? f.mode === 'flee' : isScared(b, c.t())), stunned: !!b && (f ? f.stunned : c.t() < (b.stagUntil ?? -1)), ground: b?.ground ? 'ground' : b ? 'hunt' : null, ...(f ? { lab: f } : {}) }; };
+  // the harness's distances in cells (2026-10-23, spec decision 5): the hull and the boss from the arena's centre, and the gap between them
+  const cells = (a, p) => (a && p ? +(Math.hypot(a[0] - p[0], a[1] - p[1], a[2] - p[2]) / c.cellSide()).toFixed(2) : null);
+  const distState = () => { const b = bossRecord(), a = arenaCell() >= 0 ? c.centre?.(arenaCell()) : null, h = c.player()?.pos ?? null; return { hull: cells(a, h), boss: cells(a, b?.pos), gap: cells(h, b?.pos), at: { centre: a, hull: h, boss: b?.pos ?? null } }; };
   return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })) }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })) }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

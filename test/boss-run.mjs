@@ -7,6 +7,8 @@ import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 import { METRES_PER_CELL } from '../src/core/stage-units.js';
 import { GUNSHIP_SEAT_HINT, GUNSHIP_GUNS, GUNSHIP_ORBIT } from '../src/content/gunship.js';
+import { surfaceFrame, fromPlane, toPlane } from '../src/domain/surface-projection.js';
+import { NIH_DAIRIA_PREDATOR } from '../src/content/nih-dairia.js';
 import { ARENA_ROAD_GUARD as GUARD } from '../src/content/sectors.js';   // the beam's guard in cells (3.1): roadFar(ci, 0) in td-tab asks only that (laserStation.roadSafe)
 
 function host(o = {}) {
@@ -436,5 +438,22 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   b.alive = false; h.now = 3; run.tick(0.1); assert.equal(run.state().phase, 'over');
   assert.equal(run.guns().heavy.perPass, 0, 'over: the seat keeps the lab\'s MK-9 through the secure pause'); assert.equal(run.orbit(), null, 'but the station may end');
   run.end('secure'); assert.equal(run.guns(), GUNSHIP_GUNS); assert.equal(run.orbit(), null); }
+
+// THE BODY OWNS HER POSITION (owner, 2026-10-23, b/c/e): no body, the walker's path as before; her body made, the record is body-led, its body handed a point to
+// hunt each frame (the hull's), and the shells go to the lab's fear (a 40 mm near her body counts a fright); the harness reads led, the distances and the speeds
+{ const R = 1000, f = surfaceFrame([0, 0, 1]), u = (x, z) => fromPlane(f, x, z, R);
+  const kit = { settings: { ...NIH_DAIRIA_PREDATOR }, motion: { active: true, feeding: { locked: false }, pursuit: { phase: 'pull' }, disturb() {} } };
+  let made = false; const body = { kit, point: u(0, 0), radius: 20, shape: (toLocal) => ({ centre: toLocal(u(0, 0)), contacts: [toLocal(u(15, 0))], nodes: [] }) };
+  const h = host({ enemies: [], cellSide: () => 10 / R, player: () => ({ pos: u(50, 0) }), centre: () => [0, 0, 1], creatures: () => ({ body: () => (made ? body : null), metres: () => R }) }), run = createBossRun(h);
+  run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: u(0, 0) }; h.enemies.push(b); h.now = 2; run.tick(0.1);
+  assert.equal(b.bodyLed, undefined, 'no body yet: the record walks'); assert.equal(run.state().led, false);
+  made = true; b.ground = null; h.now = 2.1; run.tick(0.1);
+  assert.equal(b.bodyLed, true, 'her body made: body-led'); assert.ok(Math.hypot(...b.bodyAim.map((v, k) => v - u(50, 0)[k])) < 1e-6, 'her body hunts the hull');
+  assert.equal(run.landed('bofors', u(20, 0)), true, 'a 40 mm by her body: the lab\'s wild flight'); assert.equal(run.state().fear.frights, 1); assert.equal(run.state().fear.lab.wild, 1);
+  h.now = 2.2; run.tick(0.1); assert.equal(run.state().fear.scared, true); assert.ok(toPlane(f, b.bodyAim, R)[0] < -20, 'her body flees away from the shell');
+  const st = run.state(); assert.equal(st.led, true); assert.deepEqual({ hull: st.dist.hull, boss: st.dist.boss, gap: st.dist.gap }, { hull: 5, boss: 0, gap: 5 }, 'the hull 5 cells out, she at the centre'); assert.deepEqual(st.dist.at.hull, u(50, 0), 'and the points for the harness');
+  assert.ok(st.speed != null && st.hullSpeed != null);
+  run.end('secure'); }
 
 console.log('Boss run: the order to investigate the tremor, its callout and reminders, no arena_open and her row whole with no small wave (straight to the mother, note 4); the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then the road\'s first burnable rock between the guard and 10 cells, in the band 6.5 to 10 cells in driving (100 m) ahead of the hull as it drives (note 3), each ask\'s lead logged at the ask and the burn\'s end (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');

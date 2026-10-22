@@ -305,6 +305,15 @@ export function createEnemyStep(host) {
       killCreature(e, false);
     }
   }
+  // THE BODY OWNS HER POSITION: the record's point from its body (null before the body is made: the record stays where it is), its cell the one under it
+  function ledPoint(e) {
+    const p = host.creatures?.()?.body?.(e)?.point;
+    if (!p) return;
+    e.pos = norm3(p);
+    const ci = host.cellIndex?.(e.pos) ?? -1;
+    if (ci >= 0 && ci !== e.cur) { e.prev = e.cur; e.cur = ci; }
+    e.next = e.cur; e.prog = 0;
+  }
   function updateEnemies(dt, tNow) {
     huntField(tNow); unpackSquads(tNow);
     releaseSpawns(dt);
@@ -399,8 +408,11 @@ export function createEnemyStep(host) {
         }
         e.decloaked = vis;
       }
+      // THE BODY OWNS HER POSITION (owner, 2026-10-23, b/c/e; src/fx/boss-run.js `bodyLed`, src/fx/creature-reed.js): a body-led record does not walk; its point is
+      // its body's (ledPoint below), its cell the one under it; the touch, the damage and the death paths below are kept
+      if (e.bodyLed) pace = 0;
       const ringPace = pace; if (softHunt.ringed(e)) pace = 0;   // on the ring round the hull a soft record walks free, not along the lanes (src/fx/soft-hunt.js place, below)
-      if (isScared(e, tNow) && e.prog < 1 && towardScare(host.graph().centers[e.cur], host.graph().centers[e.next], e.scareFrom)) { const back = e.cur; e.cur = e.next; e.next = back; e.prog = 1 - e.prog; } e.walkPace = pace; e.prog += pace * dt;   /* walkPace: the walk as it is this frame, for the body that follows (src/fx/creature-bodies.js) */
+      if (!e.bodyLed && isScared(e, tNow) && e.prog < 1 && towardScare(host.graph().centers[e.cur], host.graph().centers[e.next], e.scareFrom)) { const back = e.cur; e.cur = e.next; e.next = back; e.prog = 1 - e.prog; } e.walkPace = pace; e.prog += pace * dt;   /* walkPace: the walk as it is this frame, for the body that follows (src/fx/creature-bodies.js) */
       while (e.prog >= 1) {
         e.prog -= 1;
         e.prev = e.cur;
@@ -422,11 +434,12 @@ export function createEnemyStep(host) {
       // FROM THE LIP ONTO THE PATH (2026-10-15): a body rose at the crater's rim (emergeOff, EMERGENCE.rim); its record glides from there onto its
       // cell path over EMERGENCE.settle seconds, an offset that decays like the shove's, instead of snapping the moment the rise ends (the snap
       // left a Pearl body a leash behind its record, and the body was put back: the motion audit's pops)
-      if (ground && e.emergeOff) e.pos = norm3(add3(e.pos, scale3(e.emergeOff, ground.off)));   /* the ground phase: from the lip to the centre, over the hole */ else if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
+      if (e.bodyLed) ledPoint(e); else if (ground && e.emergeOff) e.pos = norm3(add3(e.pos, scale3(e.emergeOff, ground.off)));   /* the ground phase: from the lip to the centre, over the hole */ else if (e.emergeOff && e.breachSource) { e.riseLeft ??= EMERGENCE.settle; if (!(e.riseAt >= 0) || dist3(e.pos, host.graph().centers[e.riseAt]) >= CONTENT.breach.craterRadius * (e.breachSource.userData.cells ?? 1) * EMERGENCE.rim * host.cellSide()) e.riseLeft -= dt; if (e.riseLeft <= 0) e.emergeOff = null; else e.pos = norm3(add3(e.pos, scale3(e.emergeOff, e.riseLeft / EMERGENCE.settle))); }   // held whole while the record is still inside the rim (crawling out, not pulled back over the hole: owner, 2026-10-15)
       const ringed = softHunt.place(e, ringPace, dt, tNow);   // a ringed soft record's own step round the hull, or its way back onto the lane eased (src/fx/soft-hunt.js)
       // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
       // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
       // slides back into its own lane.
+      if (e.shove && e.bodyLed) e.shove = null;   // her body is pushed by its own kit, not by an offset on the record
       if (e.shove) {
         e.shove.t -= dt;
         if (e.shove.t <= 0) e.shove = null;

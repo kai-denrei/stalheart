@@ -2697,7 +2697,7 @@ export function initTdTab(root) {
     ramCombo: () => ramCombo,
     setRamCombo: (v) => (ramCombo = v),
     setRamComboT: (v) => (ramComboT = v),
-    creatures: () => creatureEnemies,
+    creatures: () => creatureEnemies, cellIndex: (p) => cellIndex(p),   /* the body-led record's cell (src/fx/enemy-step.js ledPoint, 2026-10-23) */
   });
   const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, tankMesh: () => playerMesh, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
     heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), wide: () => !!storyMonitor?.on() || laserStation.seated() || groundFeed.on(), tank: () => player, jolt: ramJolt, damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
@@ -4608,6 +4608,7 @@ export function initTdTab(root) {
   // THE BOSS SECTOR'S RUN (src/fx/boss-run.js, 2026-10-15): the choice, the hull on its avoid autopilot with Isao docked, the gunship seat, the bar row
   const roadFar = (ci, near = ARENA.road.clear) => dist3(graph.centers[ci], player.pos) >= near * cellSide && laserStation.roadSafe(graph.centers[ci]); const hullCells = () => { const a = story?.arena?.cell; return a >= 0 && player.pos ? dist3(player.pos, graph.centers[a]) / cellSide : Infinity; }; const bossRun = createBossRun({ root, enemies, showBrief, heartCell: () => dungeon.heart, speak: (id) => isaoSpeak(id), callout: (text, cls) => showCallout(text, cls),
     story: () => story, storyViews: () => storyViews, params: () => params, player: () => player, playerHP: () => playerHP, autoMode: () => autoMode, isao: () => isao, cellSide: () => cellSide, t: () => t, pilotMode: () => pilotMode,
+    creatures: () => creatureEnemies, centre: (ci) => graph.centers[ci],   /* THE FIGHT ON THE LAB'S ENGINE (2026-10-23): her body, the arena's point */
     setAutoMode: (v) => { autoMode = !!v; if (v) { cruise = false; throttle = 0; } }, leavePilot: () => leavePilot(), fillCall: () => fillFromKill(gunshipRig.call, 999, GUNSHIP_CALL), kill: (e, fx) => killCreature(e, fx),
     shots: () => pilot?.state?.shots ?? 0, station: () => !!gunshipRig.probe().station, gunshipOver: (ci) => gunshipRig.placeOver(ci), briefing: () => !!briefs.queue(), arenaField: () => (story?.arena?.cell >= 0 ? (story.arenaField ??= bfsDist(graph.adj, [story.arena.cell], (ci) => dungeon.tags[ci] !== BLOCKED)) : null),
     dangers: () => { const d = gunshipRig.dangerPoints(); const b = laserStation.burnAt?.(); if (b) d.push(b); return d; },
@@ -5077,6 +5078,7 @@ export function initTdTab(root) {
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
+      arenaFire: (gun, p) => { const G = pilot?.gunship ? pilotHost?.gunship : null; if (!G || !p) return false; if (gun !== 'heavy') { G.fire(gun, norm3(p), G.guns[gun].travel); return true; } return G.paintHeavy(cellIndex(norm3(p))) && G.launchHeavy() >= 0; },   // THE ARENA FIGHT's harness (2026-10-23): a round from the seat at a unit point, the MK-9 painted and released on its cell
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)
       sectorKeepHolding: () => sectorRun?.test.keepHolding(),

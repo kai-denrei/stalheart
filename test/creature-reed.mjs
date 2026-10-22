@@ -116,5 +116,31 @@ two.forEach((h) => tight.free(h)); tight.dispose();
   const scales = fam3.roots()[0].children.map((o) => o.scale.x).sort((a, b) => a - b);
   assert.equal(scales.length, 2, `both made (${JSON.stringify(fam3.stats().small)})`); assert.ok(Math.abs(scales[1] / scales[0] - 3) < 1e-6, `drawn three times as wide (${scales[1] / scales[0]})`);
   fam3.free(one); fam3.free(three); fam3.dispose(); }
+// THE BODY OWNS HER POSITION (owner, 2026-10-23, b/c/e; src/fx/boss-run.js): a led huge body hunts the point handed in, not its record, and is never re-placed however
+// far its record is; body() hands the kit, the unit point and the shape in the caller's plane; its own pursuit's ground speed, measured over 20 s of a prey 230 m off (the kit stalks within 1.2 native units, ~266 m at her 40 m)
+{ const famL = createReedFamily({ parent, tiers, follow: CREATURE_FOLLOW, budget: null }); famL.setPlanet(R);
+  const boss = famL.add('huge', { pos: at(0, 0), apos: at(0, 0) });
+  for (let k = 0; k < 60 && !famL.view(boss).made; k++) { famL.step(1 / 60); await tick(); }
+  assert.equal(famL.body(famL.add('huge', { pos: at(900, 0), apos: at(900, 0) })), null, 'a body not made yet: none');
+  const bd = famL.body(boss), local = (u) => toPlane(f0, u, R);
+  assert.ok(bd && bd.kit && bd.radius === tiers.huge.r0, 'the made body: its kit and radius');
+  const sh = bd.shape(local); assert.ok(Math.hypot(...sh.centre) < 2, `its centre in the caller's plane (${sh.centre})`);
+  assert.equal(sh.nodes.length, bd.kit.body.x.length / 3, 'every node'); assert.ok(sh.nodes.every((p) => p.length === 3 && Number.isFinite(p[0] + p[1] + p[2])));
+  const prey = [0, 230], far = at(-600, 300), track = []; let fr = 0;
+  for (; fr < 60 * 20; fr++) {
+    famL.track(boss, { pos: far, apos: at(...prey), lift: 0, dt: 1 / 60, led: true }); famL.step(1 / 60);
+    if (fr % 60 === 0) track.push(local(famL.body(boss).point));
+  }
+  const end = local(famL.body(boss).point), moved = end[1] - track[0][1], speeds = track.slice(1).map((p, i) => Math.hypot(p[0] - track[i][0], p[1] - track[i][1]));
+  const mean = speeds.slice(5).reduce((a, v) => a + v, 0) / speeds.slice(5).length;
+  console.log(`  the led Nih-Dairia's own pursuit: ${moved.toFixed(1)} m toward the prey in 20 s; ground speed ${mean.toFixed(2)} m/s (seconds 5-20; per second ${speeds.map((v) => v.toFixed(1)).join(' ')})`);
+  assert.equal(famL.stats().huge.replaced, 0, 'never re-placed on its record, 600 m off');
+  assert.ok(moved > 100, `it hunts the handed point (${moved.toFixed(1)} m)`); assert.ok(Math.hypot(end[0] - -600, end[1] - 300) > 300, 'not its record\'s');
+  // the stun (src/fx/boss-run.js: motion.active false): it stands
+  bd.kit.motion.active = false; const s0 = local(famL.body(boss).point);
+  for (let k = 0; k < 120; k++) { famL.track(boss, { pos: far, apos: at(...prey), lift: 0, dt: 1 / 60, led: true }); famL.step(1 / 60); }
+  const s1 = local(famL.body(boss).point); assert.ok(Math.hypot(s1[0] - s0[0], s1[1] - s0[1]) < mean, `stunned, it does not walk on (${Math.hypot(s1[0] - s0[0], s1[1] - s0[1]).toFixed(2)} m in 2 s)`);
+  famL.kill(boss); assert.equal(famL.body(boss), null, 'dead: none');
+  famL.dispose(); }
 globalThis.fetch = realFetch;
 console.log('Creature Reeds: made a batch a frame, each in a frame of its own following its record across re-anchors, drawn on the sphere, re-placed past the leash, the v1 death, 120 Hz when many, the budget.');

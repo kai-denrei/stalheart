@@ -303,6 +303,8 @@ export function createCreatureEnemies(host) {
       return true;
     },
     kill(e, fx) { bodies?.kill(e, fx); },
+    // THE BODY OWNS HER POSITION (2026-10-23, src/fx/boss-run.js, src/fx/enemy-step.js): a record's body ({ kit, point, radius, shape(toLocal) } or null) and the metres a world unit
+    body: (e) => bodies?.body(e) ?? null, metres: () => bodies?.metres() ?? 0,
     // the game's ram (src/fx/enemy-step.js, just before the record's kill) and a cored body's touch on the tank (below)
     rammed, touched, tap, bodyContact,
     // THE TUNE PANEL'S RETUNE (owner, 2026-10-16: "all instances of it, even those already on screen, should be re-spawned with the new stats"): a live record takes
