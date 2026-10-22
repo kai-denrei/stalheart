@@ -58,7 +58,10 @@ assert.equal(dropPhase(-1, TL), 'idle'); assert.equal(dropPhase(5, TL), 'droppin
   for (const k of ['seated', 'shot', 'card', 'isaoBusy', 'won']) assert.equal(dropReady({ ...calm, [k]: true }), false, k);
   assert.equal(dropReady({ ...calm, alive: false }), false, 'the hull lost');
   assert.equal(dropReady({ ...calm, arena: true, breathing: false }), true, 'THE ARENA reached first: at once, before the boss');
-  assert.equal(dropReady({ ...calm, arena: true, breathing: false, day: 2 }), false, 'but not before the call is due');
+  assert.equal(dropReady({ ...calm, arena: true, breathing: false, day: 2 }), true, 'due or not');
+  assert.equal(dropReady({ ...calm, arena: true, breathing: false, seated: true, isaoBusy: true, card: true }), true, 'a seat, a card or a line does not hold it at the arena');
+  assert.equal(dropReady({ ...calm, arena: true, due: null }), false, 'but never uncalled (no radar, no reinforcements)');
+  assert.equal(dropReady({ ...calm, arena: true, shot: true }), false, 'nor over a running shot');
   assert.equal(dropReady({ ...calm, forced: true, day: 0, due: null, breathing: false, fighting: false, isaoBusy: true }), true, '?reinforce=1: at once');
   assert.equal(dropReady({ ...calm, forced: true, shot: true }), false, 'forced still waits out a running shot');
   assert.equal(dropReady({ ...calm, disabled: true }), false, '?reinforce=0'); }

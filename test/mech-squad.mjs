@@ -18,11 +18,12 @@ const fakeMech = (i) => {
   const root = new THREE.Group(), wrap = new THREE.Group(); wrap.add(root);
   for (const n of ['MINIGUN_YAW', 'MINIGUN_PITCH', 'MINIGUN_SPIN', 'LASER_YAW', 'LASER_PITCH', 'MISSILE_ELEVATION', 'SOCKET_MINIGUN_MUZZLE_1', 'SOCKET_LASER_MUZZLE', 'SOCKET_MISSILE_L_1', 'SOCKET_MISSILE_R_1']) { const o = new THREE.Group(); o.name = n; root.add(o); }
   wrap.position.fromArray(centers[[22, 23, 21, 24][i]]);
-  return { wrap, root, mixer: new THREE.AnimationMixer(root), clips: [], drop: null, index: i };
+  const far = new THREE.Group(); far.name = 'FAR';
+  return { wrap, root, mixer: new THREE.AnimationMixer(root), clips: [], drop: null, index: i, far };
 };
-let id = 100;
+let id = 100; const eye = new THREE.Vector3(...centers[22]).multiplyScalar(1.001);   // the camera beside the drop
 const enemies = [{ alive: true, cur: 40 }];
-const squad = createMechSquad({ metres: () => cs / 10, cellSide: () => cs, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => null, towerDef: (k) => TOWER_BY_KEY[k], towerId: () => id++, seed: 7 });
+const squad = createMechSquad({ metres: () => cs / 10, cellSide: () => cs, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => null, towerDef: (k) => TOWER_BY_KEY[k], towerId: () => id++, seed: 7, eye: () => eye });
 const frame = { origin: new THREE.Vector3(...centers[22]), up: new THREE.Vector3(...centers[22]), z: new THREE.Vector3(0, 0, 1), x: new THREE.Vector3(1, 0, 0) };
 squad.adopt([0, 1, 2, 3].map(fakeMech), frame, 22);
 
@@ -43,6 +44,11 @@ assert.ok(Math.abs(m0root.getObjectByName('MINIGUN_YAW').rotation.y - 0.3) < 1e-
 rotor.obj.userData.head.rotation.y = 2; squad.tick(0, 0);
 assert.ok(Math.abs(m0root.getObjectByName('MINIGUN_YAW').rotation.y - Math.PI / 5) < 1e-9, 'within the model\'s sector');
 
+// the far tier: near the eye the game tier shows; 200 m off the far one; back inside 120 m the game tier again (20 m of hysteresis under 140)
+squad.tick(1 / 30, 0); assert.ok(squad.state().every((m) => m.far === false), 'near: the game tier');
+eye.copy(new THREE.Vector3(...centers[22])).multiplyScalar(1 + 200 * cs / 10); squad.tick(1 / 30, 0); assert.ok(squad.state().every((m) => m.far === true), '200 m: the far tier');
+eye.copy(new THREE.Vector3(...centers[22])).multiplyScalar(1 + 130 * cs / 10); squad.tick(1 / 30, 0); assert.ok(squad.state().every((m) => m.far === true), '130 m: still far (hysteresis)');
+eye.copy(new THREE.Vector3(...centers[22])).multiplyScalar(1.001); squad.tick(1 / 30, 0); assert.ok(squad.state().every((m) => m.far === false), 'near again');
 // the walk: 60 game seconds at 30 Hz
 for (let k = 0; k < 1800; k++) squad.tick(1 / 30, k / 30);
 const st = squad.state(), base = st.find((m) => m.role === 'base'), hunt = st.find((m) => m.role === 'hunt'), arena = st.filter((m) => m.role === 'arena');

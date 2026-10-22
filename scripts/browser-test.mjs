@@ -1712,6 +1712,19 @@ try{
   const ms=R(await st()).mechs;for(const m of ms)console.log(`  reinforcements: firing check, mech ${m.role} at cell ${m.cell}: shots ${m.shots}, last fired at game t ${m.firedAt}`);
   assert.ok(ms.some(m=>m.shots>0),'the Ridgebacks fire on bodies beside them');}
  current='reinforce-firing';await finish();
+ // THE ARENA REACHED FIRST (decision 2: "drop at once as the sector begins ... the owner wants them before the boss fight"): no ?reinforce flag; the grown
+ // base's radar calls them at the load (src/fx/reinforcements-host.js uplink), THE ARENA opens on ?boss=1 before the call is due, and the drop goes at once
+ {const {SECTOR_DOOR}=await import('../src/content/sectors.js');
+  await go('reinforce-arena-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
+  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+  const a0=Date.now();
+  await until(`${T}.state().reinforcements?.phase==='dropping'`,60000).catch(async()=>{const s=await st();assert.fail(`the drop at THE ARENA's start (${JSON.stringify({r:R(s),sector:{n:s.sector?.n,name:s.sector?.name,phase:s.sector?.phase},day:s.day})})`);});
+  const s=await st(),r=R(s);console.log(`  reinforcements: THE ARENA first: called on day ${r.calledDay}, due ${r.due}, the run on day ${s.day}, sector ${s.sector?.n} ${s.sector?.name}; dropping ${((Date.now()-a0)/1000).toFixed(1)} s (wall) after the world stood, shot ${s.shot}`);
+  assert.ok(r.due>s.day,'before the call was due');
+  await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`landed at the arena (${JSON.stringify(R(await st()))})`));
+  {const s2=await st();console.log(`  reinforcements: THE ARENA first: landed, mechs ${R(s2).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}; boss ${JSON.stringify({phase:s2.boss?.phase})}`);}
+  current='reinforce-arena';await finish();}
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see

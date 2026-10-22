@@ -74,14 +74,18 @@ export function dropCamera(t, tl) {
 
 export const dropPhase = (t, tl) => (t < 0 ? 'idle' : t <= tl.duration ? 'dropping' : 'landed');
 
-// THE TRIGGER (decision 2): forced (?reinforce=1) goes at once, a running shot excepted; otherwise the call must be due (`due` a day number, the
-// day reached), the hull alive, no win, no seat, shot, card or line of Isao's, and either a lull (a breath between waves, or a secured sector)
-// or THE ARENA's start (the owner wants them down before the boss fight)
+// THE TRIGGER (decision 2): forced (?reinforce=1) goes at once, a running shot excepted; otherwise the call must have been made (`due` a day
+// number), the hull alive and no win; THE ARENA reached first drops them at once, due or not ("if THE ARENA is reached first, drop at once as the
+// sector begins, before the beacon's drive: the owner wants them before the boss fight"; a seat, a card or Isao's line does not hold it there, the
+// cut is simply not taken over a seat); elsewhere the due day reached, no seat, card or line of Isao's, and a lull (a breath between waves, or a
+// secured sector)
 export function dropReady(c) {
   if (c.disabled || c.shot) return false;
   if (c.forced) return true;
-  if (c.due === null || c.due === undefined || !(c.day >= c.due) || !c.alive || c.won || c.seated || c.card || c.isaoBusy) return false;
-  return !!(c.arena || c.secure || (c.fighting && c.breathing));
+  if (c.due === null || c.due === undefined || !c.alive || c.won) return false;
+  if (c.arena) return true;
+  if (!(c.day >= c.due) || c.seated || c.card || c.isaoBusy) return false;
+  return !!(c.secure || (c.fighting && c.breathing));
 }
 
 // the group's centre: from the arena's cell, `hops` steps each to an open neighbour with a smaller heart distance (the smallest; the lowest index among equals)

@@ -11,7 +11,9 @@
 // park two cells outside the gate, the hunter the shortest way to the nearest live enemy, two cells off the hull. The walk is the enemy walker's shape
 // (cur -> next, a pace in cells a second, REINFORCEMENTS.pace); the in-place Walk_Cycle plays at the ground speed's rate, capped at
 // REINFORCEMENTS.gaitCap (the clip's own speed is 0.27778 m/s at 0.75 scale: 0.25 cells/s is 2.5 m/s, a rate of 12, so at the cap the feet slide).
-//   host: metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), towerDef(key), towerId(), seed
+// THE FAR TIER (the README: "approaching at 140 m with 20 m hysteresis"): beyond REINFORCEMENTS.lodMetres from the eye a mech shows the static one-draw
+// mx06_d0_lod2 instead of the 38-draw game tier, back inside lodMetres - 20 m; the game tier keeps walking and aiming hidden (its sockets still move).
+//   host: metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
 //   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), restore() }
 import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
@@ -58,7 +60,8 @@ export function createMechSquad(h) {
       const cur = nearestFrom(centreCell >= 0 ? centreCell : 0, v);
       const walk = m.clips.find((c) => c.name === 'Walk_Cycle'), act = walk ? m.mixer.clipAction(walk) : null;
       if (act) { act.setLoop(THREE.LoopRepeat, Infinity); act.enabled = true; }
-      const mc = { ...m, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, act, heading: frame.z.clone(), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
+      const farRoot = m.far ? m.far.clone(true) : null; if (farRoot) { farRoot.visible = false; m.wrap.add(farRoot); }
+      const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, act, heading: frame.z.clone(), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
     }
@@ -100,6 +103,10 @@ export function createMechSquad(h) {
     mc.heading.addScaledVector(up, -mc.heading.dot(up)).normalize();
     x.crossVectors(up, mc.heading).normalize(); m4.makeBasis(x, up, mc.heading); mc.wrap.quaternion.setFromRotationMatrix(m4);
     mc.wrap.scale.setScalar(REINFORCEMENTS.scale * m);
+    if (mc.farRoot) {   // the far tier past lodMetres, the game tier back inside lodMetres - 20 m
+      const d = mc.wrap.position.distanceTo(h.eye()) / m, far = mc.isFar ? d > REINFORCEMENTS.lodMetres - 20 : d > REINFORCEMENTS.lodMetres;
+      if (far !== mc.isFar) { mc.isFar = far; mc.farRoot.visible = far; mc.root.visible = !far; }
+    }
     mc.mixer.update(dt);
     mc.wrap.updateMatrixWorld(true);
   }
@@ -125,7 +132,7 @@ export function createMechSquad(h) {
     state: () => mechs.map((mc) => {
       const shots = mc.recs.reduce((n, r) => n + (r.shots ?? 0), 0), fired = Math.max(...mc.recs.map((r) => r.firedAt ?? -1e9));
       return { role: mc.role, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
-        onPlain: plain ? plain.has(mc.cur) : null, park, t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
+        onPlain: plain ? plain.has(mc.cur) : null, park, far: mc.isFar, t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } mechs = []; records = []; plain = null; },
   };

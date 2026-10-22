@@ -7,7 +7,8 @@
 // the rule's height is the only vertical travel (the README: "do not add a second copy of the vertical drop translation"). The mechs are
 // hidden while held in the closed shell (the spec's fallback: the shell is opaque, so the leg fold is not ported). The effects: the shield's
 // glow and the split's flash on each capsule, a fire glow on each falling mech, the braking jet under SOCKET_BRAKE_JET, the game's own dust
-// at each touchdown and flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them.
+// at each touchdown and flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them. The Ridgeback's static far
+// tier (mx06_d0_lod2, one draw) is fetched with them and handed to the squad with the four (mechs()[i].far).
 //   host: scene, metres() (world units a metre), sfx (play), explode(use, point) (optional), load(url) (optional, loadGlbWithClips)
 //   createFeidsDrop(host) -> { prepare(), ready(), failed(), begin(frame), tick(t), pose(t, out), mechs(), heard(), worldOf(local, out), dispose() }
 //   frame: { origin, x, up, z } (THREE.Vector3s; origin on the ground at the centre)
@@ -28,9 +29,9 @@ export function createFeidsDrop(h) {
 
   function prepare() {
     if (loading) return loading;
-    loading = Promise.all([load(M.capsule), load(M.mech)]).then(([cap, mech]) => {
+    loading = Promise.all([load(M.capsule), load(M.mech), load(M.mechFar)]).then(([cap, mech, far]) => {
       if (!cap?.scene || !mech?.scene) { bad = true; console.warn('feids drop: a model did not load'); return; }
-      models = { cap, mech };
+      models = { cap, mech, far: far?.scene ?? null };
     }, () => { bad = true; });
     return loading;
   }
@@ -118,7 +119,7 @@ export function createFeidsDrop(h) {
   return {
     prepare, ready: () => !!models, failed: () => bad, begin, tick, pose, worldOf: (local, out) => worldOf(local[0], local[1], local[2], out),
     // the four for the squad once they are down: wrapper, model root, mixer and clips (the Airdrop_Land action handed over, the jet and fire hidden)
-    mechs: () => mechs.map((mc) => { mc.jet.visible = false; mc.fire.visible = false; return { wrap: mc.wrap, root: mc.root, mixer: mc.mixer, clips: mc.clips, drop: mc.drop, index: mc.index }; }),
+    mechs: () => mechs.map((mc) => { mc.jet.visible = false; mc.fire.visible = false; return { wrap: mc.wrap, root: mc.root, mixer: mc.mixer, clips: mc.clips, drop: mc.drop, index: mc.index, far: models?.far ?? null }; }),
     release() { for (const c of capsules) { c.wrap.removeFromParent(); c.mixer.stopAllAction(); } capsules = []; mechs = []; },   // the mechs now the squad's
     heard: () => heard.slice(), dispose,
   };
