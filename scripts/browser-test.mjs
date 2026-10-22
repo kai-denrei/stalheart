@@ -1610,7 +1610,8 @@ try{
  // 12 s of a launch (the lab's 6 s reload + the 4.2 s fall) and a second one goes in the same pass; over the window neither the hull nor she leaves the 12-cell disc;
  // the station does not end. One line per measured thing; the asserts after every line is printed.
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),{SECTOR_DOOR}=await import('../src/content/sectors.js'),{BOSS_FIGHT}=await import('../src/content/boss-fight.js'),{METRES_PER_CELL}=await import('../src/core/stage-units.js');
- const DISC=BOSS_FIGHT.bounds.radius/METRES_PER_CELL,WINDOW=+(process.env.FIGHT_S||150),CAP=+(process.env.FIGHT_CAP||900);
+ const DISC=BOSS_FIGHT.bounds.radius/METRES_PER_CELL,WINDOW=+(process.env.FIGHT_S||150),CAP=+(process.env.FIGHT_CAP||900),{GUNSHIP_GUNS}=await import('../src/content/gunship.js');
+ const CLEAN=GUNSHIP_GUNS.heavy.blastCells+2;   // a clean nuke (e): the MK-9 goes in only with the hull this many cells from her, its blast and two cells
  await go('arena-fight-load',`index.html?sw=0&acceptance=1&cine=0&intro=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().boss.on && ${T}.state().boss.phase==='beacon'`,90000).catch(async()=>assert.fail(`the beacon phase (${JSON.stringify((await st()).boss)})`));
@@ -1631,26 +1632,28 @@ try{
  const between=(b,m=25)=>{const a=b.dist.at.boss,h=b.dist.at.hull,gapM=b.dist.gap*METRES_PER_CELL,k=Math.min(0.5,m/Math.max(1e-6,gapM));return norm(a.map((v,i)=>v+(h[i]-v)*k));};
  const fire=(gun,p)=>evaluate(`${T}.arenaFire(${JSON.stringify(gun)},${JSON.stringify(p)})`);
  const w0=Date.now(),s0=await st(),g0=s0.boss.t;let s=s0,last=null,hullMax=0,bossMax=0,stationLost=null,samples=0;
- const fortys=[],launches=[];let scare=null,stunSeen=false,readyAgain=null,busy=false,second=null,dead=null,speeds=[],hullSpeeds=[],gapMin=Infinity,gapMax=0;
+ const fortys=[],launches=[];const byMode={};let hulls0=s0.hulls,hullsLost=0,hullsWas=s0.hulls,cleanWait=0,scare=null,stunSeen=false,readyAgain=null,busy=false,second=null,dead=null,speeds=[],hullSpeeds=[],gapMin=Infinity,gapMax=0;
  let nextForty=g0+2,nukeAt=g0+12;
  while(Date.now()-w0<CAP*1000){
   s=await st();const b=s.boss,g=b.t-g0;samples++;
   if(!b.on||b.phase!=='boss'||b.bossHp==null){dead={g:+g.toFixed(1),phase:b.phase,hp:b.bossHp};break;}
   const f=b.fear,lab=f.lab??{};
   if(b.dist.hull!=null)hullMax=Math.max(hullMax,b.dist.hull);if(b.dist.boss!=null)bossMax=Math.max(bossMax,b.dist.boss);if(b.dist.gap!=null){gapMin=Math.min(gapMin,b.dist.gap);gapMax=Math.max(gapMax,b.dist.gap);}
-  if(b.speed>0)speeds.push(b.speed);if(b.hullSpeed>0)hullSpeeds.push(b.hullSpeed);
+  if(b.speed>0){speeds.push(b.speed);(byMode[lab.mode]??=[]).push(b.speed);}if(b.hullSpeed>0)hullSpeeds.push(b.hullSpeed);
   if(!s.gunship.station&&stationLost==null)stationLost=+g.toFixed(1);
   // (c) the 40 mm: fired between them, then the scare's gap watched for 3 s
   if(b.t>=nextForty&&b.dist.at?.boss&&b.dist.at?.hull){const ok=await fire('bofors',between(b));fortys.push({g:+g.toFixed(1),ok,gap:b.dist.gap,wild:lab.wild??0});nextForty=b.t+8;}
   if(!scare&&fortys.length&&(lab.wild??0)>fortys[0].wild)scare={g:+g.toFixed(1),t:b.t,gap0:b.dist.gap,gapMax:b.dist.gap};
   if(scare&&b.t-scare.t<=3)scare.gapMax=Math.max(scare.gapMax,b.dist.gap);
   // (d) and (a) the MK-9 on her: the stun, the reload, a second release the same pass
-  if(b.t>=nukeAt&&launches.length<2&&s.gunship.heavy?.phase==='ready'&&b.dist.at?.boss){const ok=await fire('heavy',b.dist.at.boss);if(ok){launches.push({g:+g.toFixed(1),t:b.t,stuns:lab.stuns??0});if(launches.length===2)second=+g.toFixed(1);}}
-  if(launches.length&&(lab.stunned||(lab.stuns??0)>launches[0].stuns))stunSeen=true;
+  if(s.hulls<hullsWas)hullsLost+=hullsWas-s.hulls;hullsWas=s.hulls;
   if(launches.length===1&&s.gunship.heavy?.phase!=='ready')busy=true;   // the MK-9 away (released, ignited, reloading): only then is 'ready' a reload's end
   if(launches.length===1&&busy&&readyAgain==null&&s.gunship.heavy?.phase==='ready')readyAgain=+(b.t-launches[0].t).toFixed(2);
+  if(b.t>=nukeAt&&launches.length<2&&s.gunship.heavy?.phase==='ready'&&b.dist.at?.boss&&!(b.dist.gap>=CLEAN))cleanWait++;
+  if(b.t>=nukeAt&&launches.length<2&&s.gunship.heavy?.phase==='ready'&&b.dist.at?.boss&&b.dist.gap>=CLEAN){const ok=await fire('heavy',b.dist.at.boss);if(ok){launches.push({g:+g.toFixed(1),t:b.t,stuns:lab.stuns??0});if(launches.length===2)second=+g.toFixed(1);}}
+  if(launches.length&&(lab.stunned||(lab.stuns??0)>launches[0].stuns))stunSeen=true;
   if(readyAgain!=null&&launches.length===1)nukeAt=b.t;
-  last={g:+g.toFixed(1),dist:{hull:b.dist.hull,boss:b.dist.boss,gap:b.dist.gap},mode:lab.mode,speed:b.speed,hullSpeed:b.hullSpeed,heavy:s.gunship.heavy?.phase,station:s.gunship.station,hp:b.bossHp};
+  last={g:+g.toFixed(1),dist:{hull:b.dist.hull,boss:b.dist.boss,gap:b.dist.gap},mode:lab.mode,speed:b.speed,hullSpeed:b.hullSpeed,heavy:s.gunship.heavy?.phase,station:s.gunship.station,hp:b.bossHp,hulls:s.hulls};
   if(samples%20===0)console.log('  fight '+JSON.stringify(last));
   if(g>=WINDOW)break;
   await delay(150);
@@ -1660,9 +1663,11 @@ try{
  console.log(`ARENA FIGHT (a) MK-9 cadence: launches ${JSON.stringify(launches.map(l=>l.g))} (game s); ready again ${readyAgain} s after the first (limit 12: the reload ${BOSS_FIGHT.arenaGuns.reload} + the fall); a second release in the same pass: ${second!=null?`yes, at ${second} s`:'no'}`);
  console.log(`ARENA FIGHT (b) the disc over ${gSpan} s: the hull at most ${hullMax} cells from the arena's centre, she at most ${bossMax} (disc ${DISC}); the gap ${gapMin}..${gapMax} cells`);
  console.log(`ARENA FIGHT (c) the 40 mm between them: ${fortys.length} fired ${JSON.stringify(fortys.map(x=>x.g))}; wild scares ${sf.wild??0}, flinches ${sf.flinch??0}; the first scare at ${scare?.g ?? '-'} s: the gap ${scare?.gap0 ?? '-'} -> ${scare?.gapMax ?? '-'} cells within 3 s`);
- console.log(`ARENA FIGHT (d) the MK-9 on her: stuns ${sf.stuns??0}, panics ${sf.panic??0}, stunned seen ${stunSeen}; her hit points ${s.boss.bossHp}`);
+ console.log(`ARENA FIGHT (d) the MK-9 on her (only with the hull ${CLEAN} cells clear: a clean nuke; ${cleanWait} samples waited for it): stuns ${sf.stuns??0}, panics ${sf.panic??0}, stunned seen ${stunSeen}; her hit points ${s.boss.bossHp}`);
+ console.log(`ARENA FIGHT the hull: ${hullsLost} lost in the window (hulls ${hulls0} -> ${s.hulls})`);
  console.log(`ARENA FIGHT (e) the station: ${stationLost==null?`on station for all ${gSpan} s`:`lost at ${stationLost} s`}; the seat reads ${JSON.stringify(await evaluate(`document.querySelector('[data-f="left"]')?.textContent||null`))}, the strip ${JSON.stringify(await evaluate(`document.querySelector('#story-views [data-mount="gunship"]')?.textContent||null`))}`);
  console.log(`ARENA FIGHT speeds (m/s over a second): hers mean ${mean(speeds)} (fight mean ${sf.speedMean}, peak ${sf.speedPeak}), the hull's mean ${mean(hullSpeeds)} (fight mean ${sf.hullMean}); temperament ${sf.temper}, lunges ${sf.lunges}`);
+ console.log(`ARENA FIGHT her speed by mode (m/s mean, samples): ${Object.entries(byMode).map(([k,v])=>`${k} ${mean(v)} (${v.length})`).join(', ')}`);
  current='arena-fight-end';await finish();
  assert.ok(readyAgain!=null&&readyAgain<=12,`(a) the MK-9 ready again within 12 s of a launch (${readyAgain})`);assert.ok(second!=null,'(a) a second MK-9 in the same pass');
  assert.ok(hullMax<=DISC&&bossMax<=DISC,`(b) neither leaves the disc (hull ${hullMax}, boss ${bossMax}, disc ${DISC})`);assert.ok(gSpan>=Math.min(60,WINDOW)||dead,`(b) watched at least 60 s of game clock (${gSpan})`);

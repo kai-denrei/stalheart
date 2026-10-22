@@ -41,7 +41,10 @@ export const HULL_REPAIR = Object.freeze({ seconds: SHIELD_ARRAY.reserve, maxSpe
 // THE LURE (owner, 2026-10-16, THE ARENA: Isao drives the hull as bait "avoiding both the monster and friendly fire"; src/domain/lure.js, the drive's `lure`
 // directive in src/fx/hull-drive.js): the quarry kept between `near` and `far` hops (nearer: kite away; farther: close in; between: circle), and no
 // exit within `blast` cells of a danger point (a painted or falling MK-9 cell, SOL's burn, a Bofors shell's target) while another remains
-export const LURE = Object.freeze({ near: 5, far: 10, blast: 4 });
+// `nuke` (2026-10-23, THE FIGHT ON THE LAB'S ENGINE: "leaving room for a clean nuke"): the MK-9's own ring, its painted or falling cell, kept off by this many cells
+// (its blast is 5.5; `blast` 4 is the shells' and SOL's), and a hull already inside it flees straight out of it (the first --arena-fight run with the hull moving:
+// an MK-9 painted on her with the hull 2.2 cells off took the hull whole)
+export const LURE = Object.freeze({ near: 5, far: 10, blast: 4, nuke: 7 });
 // the hull's steering (owner, 2026-09-16: "the tank turns too sharply = unnatural"): `rate` is the top yaw rate in rad/s — the pace
 // the tank always turned at — now taken up over `attack` seconds and released over `release` instead of switching on and off with the
 // key, and `bank` is how far the hull rolls into the turn at that full rate, in radians. Not a slower tank: the same rate, eased.

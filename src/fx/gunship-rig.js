@@ -172,6 +172,8 @@ export function createGunshipRig(host) {
     call, onCall, feed, far, lane, tick, reset, pilotBag, probe,
     // THE LURE'S DANGERS (src/fx/boss-run.js, 2026-10-16): the MK-9's cell while it is painted, falling or diving, and the shells in the air
     dangerPoints: () => { const out = []; const hs = heavyState(gunship, guns()); if ((hs.ci ?? -1) >= 0 && ['painted', 'released', 'ignited'].includes(hs.phase)) out.push(host.graph().centers[hs.ci]); for (const r of gunship.rounds) out.push(r.point); return out; },
+    // THE LURE'S MK-9 (2026-10-23): its cell's point while it is painted, falling or diving, else null (src/fx/hull-drive.js keeps the hull LURE.nuke cells off it)
+    nukePoint: () => { const hs = heavyState(gunship, guns()); return (hs.ci ?? -1) >= 0 && ['painted', 'released', 'ignited'].includes(hs.phase) ? host.graph().centers[hs.ci] ?? null : null; },
     // the MK-9 in flight, for the story monitor's feed
     get drop() { return drop; },
     // the base's walls went up: the danger report counts them afresh

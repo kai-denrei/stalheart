@@ -75,6 +75,11 @@ export function createHullDrive(host) {
             if (l > 1e-9) { const q = scale3(flat, 1 / l); if (mode === 'tangent') { goalVec = norm3(cross3(n, q)); goalSign = 1; } else { goalVec = q; goalSign = mode === 'away' ? -1 : 1; } }
           }
           if (L.dangers?.length) { const safe = exits.filter((e2) => !nearDanger(host.graph().centers[e2], L.dangers, LU.blast * host.cellSide())); if (safe.length) exits = safe; }
+          // THE CLEAN NUKE (2026-10-23, LURE.nuke): the MK-9's ring is kept off by its own radius, and a hull inside it drives straight out of it, whatever the quarry
+          if (L.nuke) {
+            const nr = (LU.nuke ?? LU.blast) * host.cellSide(), safe = exits.filter((e2) => !nearDanger(host.graph().centers[e2], [L.nuke], nr)); if (safe.length) exits = safe;
+            if (dist3(host.player.pos, L.nuke) < nr) { const raw = sub3(host.player.pos, L.nuke), flat = sub3(raw, scale3(n, dot3(raw, n))), l = len3(flat); if (l > 1e-9) { goalVec = scale3(flat, 1 / l); goalSign = 1; goalField = null; } }
+          }
         }
       }
       else if (d === 'avoid' || d === 'ram') {

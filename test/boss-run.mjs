@@ -435,6 +435,7 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   assert.equal(run.guns().bofors, GUNSHIP_GUNS.bofors, 'the other guns are the content\'s'); assert.equal(GUNSHIP_GUNS.heavy.perPass, 1, 'the content is untouched');
   assert.equal(run.orbit().station, Infinity, 'the station does not end while she lives'); assert.equal(run.orbit().pass, GUNSHIP_ORBIT.pass);
   assert.equal(run.lure().bound, (BOSS_FIGHT.bounds.radius - BOSS_FIGHT.bounds.baitMargin) / METRES_PER_CELL, 'the lure keeps the hull within the disc less the bait margin (11 cells)');
+  assert.equal(run.lure().nuke, null, 'no MK-9 painted: no ring for the lure');
   assert.equal(run.drives(), false, 'THE MOTHER card up: the hull waits'); await h.choiceCard.take(); await null;
   assert.equal(run.drives(), true, 'the card taken: Isao drives the hull under the seat (the auto-moving tank)');
   b.alive = false; h.now = 3; run.tick(0.1); assert.equal(run.state().phase, 'over');

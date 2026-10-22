@@ -309,7 +309,7 @@ export function createBossRun(c) {
     const q = phase === 'beacon' ? null : (bossRecord() ?? nearestHunter());   // the drive out (isaoDrives): no quarry, the arena's field
     // THE BOUND (owner, 2026-10-23, d: "it should stay in the arena"; BOSS_FIGHT.bounds): in the boss phase the hull keeps within radius - baitMargin of the arena's cell (cells)
     const bound = phase === 'boss' ? (BOSS_FIGHT.bounds.radius - BOSS_FIGHT.bounds.baitMargin) / METRES_PER_CELL : 0;
-    return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [], bound };
+    return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [], bound, nuke: c.nuke?.() ?? null };   // nuke: the MK-9's painted or falling cell (LURE.nuke)
   }
   // THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"; BOSS_FIGHT.arenaGuns, src/fx/gunship-rig.js reads both each call): while the boss phase
   // runs (and `over`, the seat still up through the secure pause) the MK-9 is the lab's, no limit a pass and BOSS_FIGHT.arenaGuns.reload s after each fall; the pass

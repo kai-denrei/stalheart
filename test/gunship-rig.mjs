@@ -148,7 +148,8 @@ const storyAt = (o = {}) => ({ gunshipIn: false, grow: false, programme: null, s
   assert.equal(bag.heavyState().phase, 'spent', 'one release a pass');
   arena = true;
   assert.equal(bag.guns, ARENA_GUNS, 'the same bag reads the arena\'s guns once the host hands them'); assert.equal(bag.heavyState().phase, 'ready', 'no limit a pass in the arena');
-  const t0 = gunship.clock; assert.equal(bag.paintHeavy(6), true); assert.equal(bag.launchHeavy(), 6);
+  assert.equal(rig.nukePoint(), null, 'no MK-9 painted: no ring');
+  const t0 = gunship.clock; assert.equal(bag.paintHeavy(6), true); assert.deepEqual(rig.nukePoint(), centers[6], 'painted: its cell for the lure'); assert.equal(bag.launchHeavy(), 6);
   gunship.clock = t0 + ARENA_GUNS.heavy.travel; assert.equal(bag.stepHeavy(), 6); assert.equal(bag.heavyState().phase, 'reloading');
   gunship.clock = t0 + ARENA_GUNS.heavy.travel + 6 + 0.01; assert.equal(bag.heavyState().phase, 'ready', `ready again ${ARENA_GUNS.heavy.travel + 6} s after the release`);
   assert.equal(rig.probe().heavy.phase, 'ready', 'the probe reads the arena\'s guns too');
