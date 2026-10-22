@@ -32,6 +32,7 @@ import { bodyAt, groundAt } from './lance-follow.js';
 import { seatStatus } from '../domain/seat-status.js';
 
 export function createTowerCombat(host) {
+  const armed = [];   // the frame's towers: the controller's list, then the Ridgebacks' records (host.mechTowers)
   // ONE A6, ONE FRAME. The module owns the decisions; this owns the world.
   // `sense` is the board's own enemy list rather than a second index — the
   // A6 sees what a tower on its cell would see, from wherever it is
@@ -132,7 +133,9 @@ export function createTowerCombat(host) {
     if (dt <= 0) return;
     host.stepPlasmaBeams(tNow);
     host.stepTowerSeekers(dt, tNow);
-    for (const tw of host.towers) {
+    // FEIDS-26's walking batteries (owner, 2026-10-23; src/fx/mech-squad.js): the four Ridgebacks' sixteen records are a second list, fired as sentries
+    armed.length = 0; for (const tw of host.towers) armed.push(tw); for (const tw of host.mechTowers?.() ?? []) armed.push(tw);
+    for (const tw of armed) {
       const manual = host.pilotMode() && !host.automated(); if (manual && tw !== host.pilot()?.state.tower && !host.autoTower?.(tw)) {tw.cooldown=Math.max(0,tw.cooldown-dt);hushRotor(tw);continue;}   // only a HAND on a mount parks the others: past the handover every tower keeps working while the gunship is ridden
       // idle first, aim second: the idle sets rotation.y unconditionally, and
       // a tracking head must have the last word on where it looks

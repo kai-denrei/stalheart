@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "source": "Owner-provided local audio (2026-10-23, FEIDS-26 reinforcements)",
+  "files": [
+    { "path": "assets/audio/feids_reentry.mp3", "originalFilename": "FEIDS_26__Re_entrySound.mp3", "sha256": "058beca7353dca85ac36da9331dc7f0be9190539b30a720facdc9ec0c488c705", "bytes": 44352, "use": "each capsule's atmospheric entry (5.5 s), the second 0.45 s after the first" },
+    { "path": "assets/audio/mech_reentry_woosh.mp3", "originalFilename": "10SecondsMechReentryWooshImpactAt4Seconds_Aftereffect.mp3", "sha256": "434b8ad238ce86008b7c8b929bea36f9cdd5e1013430fee6c02f36ea9cc18da6", "bytes": 322664, "use": "a mech's fall (10.1 s, its impact at 4.0 s), started 4 s before each touchdown" },
+    { "path": "assets/audio/mech_landing_impact.mp3", "originalFilename": "MechLandingImpact2_.mp3", "sha256": "70b3a6cb470333073533921199ed0ff6a51d9dc5321a3f74e42054f2e3c2b2b4", "bytes": 162168, "use": "each mech's touchdown (5.1 s)" }
+  ]
+}

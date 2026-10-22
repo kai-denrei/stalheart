@@ -108,6 +108,13 @@ export const SOUNDS = {
   // Lazy (final review, 2026-10-18): 1.4 MB of mp3 is ~15 MB of PCM decoded up front on every page for a party most runs never reach; the
   // party primes it two days ahead with the ball (src/fx/disco-party.js fetchBall) and asks again while it waits
   day_42_music: { file: `${A}/day_42_music.mp3`, bus: 'music', gain: 0.8, maxVoices: 1, minInterval: 10, rateJitter: 0, lazy: true },
+  // --- FEIDS-26 reinforcements (owner's samples, 2026-10-23; docs/feids26-audio.lock.json; src/fx/feids-drop.js) -------------
+  // the capsule's entry (5.5 s) at each capsule, the second 0.45 s later: kept quieter than the mechs' impacts (the spec). The
+  // woosh (10.1 s) is started 4 s before each touchdown so its impact at 4.0 s lands on it; the landing impact (5.1 s) at the touchdown.
+  // Lazy: most runs never reach the drop, so they decode when the drop asks for them.
+  feids_reentry: { file: `${A}/feids_reentry.mp3`, bus: 'ambient', gain: 0.45, maxVoices: 2, minInterval: 0.3, rateJitter: 0, lazy: true },
+  mech_reentry_woosh: { file: `${A}/mech_reentry_woosh.mp3`, bus: 'ambient', gain: 0.75, maxVoices: 4, minInterval: 0.1, rateJitter: 0, lazy: true },
+  mech_landing_impact: { file: `${A}/mech_landing_impact.mp3`, bus: 'ambient', gain: 0.9, maxVoices: 4, minInterval: 0.1, rateJitter: 0, lazy: true },
 };
 
 export const DEATH_KEYS = ['enemy_die_a', 'enemy_die_b', 'enemy_die_c'];

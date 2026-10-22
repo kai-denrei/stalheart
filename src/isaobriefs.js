@@ -471,6 +471,11 @@ export const BRIEFS = {
   day_42_back: { id: 'day_42_back', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Come back to the base. I have a surprise.'] },
   day_42: { id: 'day_42', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['We survived forty-two days! Congratulations!'] },
   day_42_over: { id: 'day_42_over', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Party\'s over. They heard the bass.'] },
+  // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23: "have Isao call out planetary re-inforcements after having built the radar, and after a few in-game days
+  // the FEIDS26 will come"; src/fx/reinforcements-host.js): the call as the radar stands, the drop as the camera cuts to the arena, the four down
+  reinforcements_called: { id: 'reinforcements_called', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Uplink\'s up. I\'ve asked the colony for planetary reinforcements.', 'They\'ll take a few days to fall.'] },
+  reinforcements_inbound: { id: 'reinforcements_inbound', face: 'awe', title: 'COMMS · ISAO', once: true, lines: ['Here they come. Look at the other side of the planet.'] },
+  reinforcements_landed: { id: 'reinforcements_landed', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['Four Ridgebacks down. Two hold the arena, one walks home, one hunts.'] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
   sector_canyon_again: { id: 'sector_canyon_again', face: 'focused', title: SECTOR_CANYON_AGAIN.name, lines: [...SECTOR_CANYON_AGAIN.brief] },
