@@ -313,16 +313,22 @@ export function createBossRun(c) {
   }
   // THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"; BOSS_FIGHT.arenaGuns, src/fx/gunship-rig.js reads both each call): while the boss phase
   // runs (and `over`, the seat still up through the secure pause) the MK-9 is the lab's, no limit a pass and BOSS_FIGHT.arenaGuns.reload s after each fall; the pass
-  // does not end while she lives (orbit().station Infinity); null outside: the rig falls back to the tune panel's or the content's orbit
+  // does not end while she lives (orbit().station Infinity); null outside: the rig falls back to the tune panel's or the content's orbit. It is read before the
+  // tune panel's (td-tab: bossRun.orbit() ?? tune.orbit ?? GUNSHIP_ORBIT): the panel's applyTune always writes tune.orbit, its default 120 s included, so read after
+  // it the endless station never applied (--arena-fight, 2026-10-23: the station lost at 105 s of the fight)
   const armed = () => on && (phase === 'boss' || phase === 'over');
   const ARENA_GUNS = Object.freeze({ ...GUNSHIP_GUNS, heavy: Object.freeze({ ...GUNSHIP_GUNS.heavy, perPass: 0, reload: BOSS_FIGHT.arenaGuns.reload }) });
   const ARENA_ORBIT = Object.freeze({ ...GUNSHIP_ORBIT, station: Infinity });
   const guns = () => (armed() ? ARENA_GUNS : GUNSHIP_GUNS);
   const orbit = () => (on && phase === 'boss' && BOSS_FIGHT.arenaGuns.station ? ARENA_ORBIT : null);
+  // ISAO DRIVES WHILE YOU SHOOT (owner, 2026-10-23, c/e: "the auto-moving tank"): the controller stopped the hull whenever a seat was manned (td-tab's frame:
+  // advanceMotion only while !pilotMode), so in the boss phase, the player forced into the gunship's seat, Isao's lure never moved the hull (measured: the hull 6.03
+  // cells from the arena's centre for the whole --arena-fight window, 0 m/s). While this is true the frame advances the hull under the seat
+  const drives = () => on && phase === 'boss' && !cardUp && c.autoMode() && c.params().directive === 'lure';
   const fearState = () => { const b = bossRecord(), f = b?.bodyLed && fight ? fight.state() : null; return { frights, stuns, scared: !!b && (f ? f.mode === 'flee' : isScared(b, c.t())), stunned: !!b && (f ? f.stunned : c.t() < (b.stagUntil ?? -1)), ground: b?.ground ? 'ground' : b ? 'hunt' : null, ...(f ? { lab: f } : {}) }; };
   // the harness's distances in cells (2026-10-23, spec decision 5): the hull and the boss from the arena's centre, and the gap between them
   const cells = (a, p) => (a && p ? +(Math.hypot(a[0] - p[0], a[1] - p[1], a[2] - p[2]) / c.cellSide()).toFixed(2) : null);
   const distState = () => { const b = bossRecord(), a = arenaCell() >= 0 ? c.centre?.(arenaCell()) : null, h = c.player()?.pos ?? null; return { hull: cells(a, h), boss: cells(a, b?.pos), gap: cells(h, b?.pos), at: { centre: a, hull: h, boss: b?.pos ?? null } }; };
-  return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, force: () => { dueNow = true; }, on: () => on,
+  return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, drives, force: () => { dueNow = true; }, on: () => on,
     state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })) }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

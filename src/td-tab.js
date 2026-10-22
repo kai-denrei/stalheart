@@ -485,7 +485,7 @@ export function initTdTab(root) {
   // All logic lives in strike.js (pure, tested); this file owns only what it
   // looks and sounds like. strikeTune is the live knob object the GUI writes.
   const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: flags.gunship === 'station' }); let gunshipBriefing = null, foundryFx = null;   /* the platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance */
-  const gunshipRig = createGunshipRig({ orbit: () => tune.orbit ?? bossRun.orbit() ?? GUNSHIP_ORBIT, scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
+  const gunshipRig = createGunshipRig({ orbit: () => bossRun.orbit() ?? tune.orbit ?? GUNSHIP_ORBIT, scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
     story: () => story, storyViews: () => storyViews, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotHost: () => pilotHost, isao: () => isao, t: () => t, gunshipBriefing: () => gunshipBriefing, enemies: () => enemies, spawnPoints: () => spawnPoints, debris: () => debris, player: () => player, towers: () => towers, strikeTune: () => strikeTune, roundLanded: (g, p) => bossRun.landed(g, p), guns: () => bossRun.guns() });
   const strikeTune = makeStrikeParams();
   let strikeGrace = 0;   // s after launch during which a tap cannot skip
@@ -4232,7 +4232,7 @@ export function initTdTab(root) {
       || cruise || throttle !== 0 || keys.fire || keys.laser)) closeShop();
     if (pilotMode) hullDeploy.cancel();
     if (hullDeploy.state()) hullDeploy.step(dt);
-    else if (!driveFrozen && !pilotMode) advanceMotion(dt);
+    else if (!driveFrozen && (!pilotMode || bossRun.drives())) advanceMotion(dt);   /* THE ARENA's lure moves while the player mans the gun (2026-10-23) */
     ctlWatch.tick(dt);
     // Isao keeps his shift through the build downtime — the war may be
     // frozen there, but construction is the thing you came to do. A

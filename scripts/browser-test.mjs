@@ -1631,7 +1631,7 @@ try{
  const between=(b,m=25)=>{const a=b.dist.at.boss,h=b.dist.at.hull,gapM=b.dist.gap*METRES_PER_CELL,k=Math.min(0.5,m/Math.max(1e-6,gapM));return norm(a.map((v,i)=>v+(h[i]-v)*k));};
  const fire=(gun,p)=>evaluate(`${T}.arenaFire(${JSON.stringify(gun)},${JSON.stringify(p)})`);
  const w0=Date.now(),s0=await st(),g0=s0.boss.t;let s=s0,last=null,hullMax=0,bossMax=0,stationLost=null,samples=0;
- const fortys=[],launches=[];let scare=null,stunSeen=false,readyAgain=null,second=null,dead=null,speeds=[],hullSpeeds=[],gapMin=Infinity,gapMax=0;
+ const fortys=[],launches=[];let scare=null,stunSeen=false,readyAgain=null,busy=false,second=null,dead=null,speeds=[],hullSpeeds=[],gapMin=Infinity,gapMax=0;
  let nextForty=g0+2,nukeAt=g0+12;
  while(Date.now()-w0<CAP*1000){
   s=await st();const b=s.boss,g=b.t-g0;samples++;
@@ -1647,7 +1647,8 @@ try{
   // (d) and (a) the MK-9 on her: the stun, the reload, a second release the same pass
   if(b.t>=nukeAt&&launches.length<2&&s.gunship.heavy?.phase==='ready'&&b.dist.at?.boss){const ok=await fire('heavy',b.dist.at.boss);if(ok){launches.push({g:+g.toFixed(1),t:b.t,stuns:lab.stuns??0});if(launches.length===2)second=+g.toFixed(1);}}
   if(launches.length&&(lab.stunned||(lab.stuns??0)>launches[0].stuns))stunSeen=true;
-  if(launches.length===1&&readyAgain==null&&s.gunship.heavy?.phase==='ready')readyAgain=+(b.t-launches[0].t).toFixed(2);
+  if(launches.length===1&&s.gunship.heavy?.phase!=='ready')busy=true;   // the MK-9 away (released, ignited, reloading): only then is 'ready' a reload's end
+  if(launches.length===1&&busy&&readyAgain==null&&s.gunship.heavy?.phase==='ready')readyAgain=+(b.t-launches[0].t).toFixed(2);
   if(readyAgain!=null&&launches.length===1)nukeAt=b.t;
   last={g:+g.toFixed(1),dist:{hull:b.dist.hull,boss:b.dist.boss,gap:b.dist.gap},mode:lab.mode,speed:b.speed,hullSpeed:b.hullSpeed,heavy:s.gunship.heavy?.phase,station:s.gunship.station,hp:b.bossHp};
   if(samples%20===0)console.log('  fight '+JSON.stringify(last));
