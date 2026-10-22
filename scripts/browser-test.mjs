@@ -1723,7 +1723,8 @@ try{
   const s=await st(),r=R(s);console.log(`  reinforcements: THE ARENA first: called on day ${r.calledDay}, due ${r.due}, the run on day ${s.day}, sector ${s.sector?.n} ${s.sector?.name}; dropping ${((Date.now()-a0)/1000).toFixed(1)} s (wall) after the world stood, shot ${s.shot}`);
   assert.ok(r.due>s.day,'before the call was due');
   await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`landed at the arena (${JSON.stringify(R(await st()))})`));
-  {const s2=await st();console.log(`  reinforcements: THE ARENA first: landed, mechs ${R(s2).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}; boss ${JSON.stringify({phase:s2.boss?.phase})}`);}
+  {const s2=await st();console.log(`  reinforcements: THE ARENA first: landed, models loaded ${R(s2).loaded}, mechs ${R(s2).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}; boss ${JSON.stringify({phase:s2.boss?.phase})}`);
+   assert.equal(R(s2).loaded,true,'the models loaded');assert.equal(R(s2).mechs.length,4,'four mechs at the arena');}
   current='reinforce-arena';await finish();}
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies

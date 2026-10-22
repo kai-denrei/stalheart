@@ -85,6 +85,7 @@ export function createReinforcements(h) {
         arena: !!sr?.defNow?.()?.boss, shot: h.shotActive(), seated: h.seated(), card: h.card(), alive: h.alive(), won: h.won(), isaoBusy: h.isaoBusy() };
       ticks++;
       if (!dropReady(cond)) { waiting = -1; why = cond.shot ? 'shot' : 'lull'; return; }
+      drop.prepare();   // THE ARENA before the due day's preload: fetched now, the drop going once they land (or LOAD_WAIT on)
       if (!drop.ready() && !drop.failed()) { why = 'loading'; waiting = waiting < 0 ? 0 : waiting + dt; if (waiting < LOAD_WAIT) return; }
       if (!rec() && h.story()) h.story().reinforcements = { calledDay: d, due: d, forced: true };   // a forced drop books itself
       why = begin() ? 'begun' : 'no frame';
