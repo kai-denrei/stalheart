@@ -1,5 +1,5 @@
 import { createSentryPilot } from './sentry-pilot.js';
-import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_WALL } from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact, threadClearance } from './domain/hull-contact.js'; import { makeSteerEase } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
+import {DEFAULT_TANK, TANK_WALL} from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact, threadClearance } from './domain/hull-contact.js'; import { makeSteerEase } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, tourFrame, tourSeconds } from './domain/story-shots.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; 
@@ -22,7 +22,7 @@ import { createTutorialCard } from './fx/tutorial-card.js';
 import { openStoryAt } from './fx/story-entry.js';
 import { isStoryRoute } from './core/story-route.js';
 // SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in
-import { STORY_SKIP, STORY_MISSION } from './content/story-defaults.js';
+import {STORY_MISSION} from './content/story-defaults.js';
 // THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing
 import { createShowcase } from './fx/showcase.js';
 import { showcaseOn } from './platform/showcase-entry.js';
@@ -55,7 +55,7 @@ import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDisco
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
-import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { createLaserArsenal } from './fx/laser-arsenal.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
+import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { createLaserArsenal } from './fx/laser-arsenal.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import {GAMEPLAY_TIPS} from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; 
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { ARENA } from './content/sectors.js';   /* the arena's seat distance (2026-10-16) */ import { roadAhead } from './domain/arena.js';   /* the road SOL cuts to the arena (2026-10-16) */ import { groundAt } from './fx/lance-follow.js';   /* a body's drawn point (2026-10-16: the seekers steer at it) */ import { createEmergeBlobs } from './fx/emerge-blob.js';
@@ -66,14 +66,13 @@ import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser }
 import { createStrikeConsole } from './fx/strike-console.js'; import { createTerraformerYard } from './fx/terraformer-yard.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
-import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey } from './vec3.js';
+import {sub3, add3, scale3, dot3, cross3, norm3, len3, dist3} from './vec3.js';
 import { waveJelly } from './creatures.js';
 import { BRIEFS } from './isaobriefs.js'; import { createBriefQueue } from './fx/brief-queue.js'; import { createEngineAudio } from './fx/engine-audio.js'; import { createHullDeploy } from './fx/hull-deploy.js'; import { lookIsao } from './fx/isao-look.js';
-import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned,
-  sanitiseRecord }
+import {achievement, blankRun, earned, freshlyEarned, sanitiseRecord}
   from './achievements.js';
 import { applyFontPack, currentFontPack, loadTypeFeel } from './fonts.js';
-import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, makeBulletCloud, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
+import {UNITS, buildCreature, preloadMork, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy} from './units.js';
 import { LOOKS } from './looks.js'; import { createTowerPose } from './fx/tower-pose.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from './enemyspec.js';
@@ -81,24 +80,22 @@ import { hushRotor } from './fx/rotor-voice.js';
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
 import { marchToTerrain, roundEnd, marchAlongArc, arcOf } from './domain/round-path.js';
-import { impactOf } from './sentryfx.js'; // the package's muzzle recipe is the one master setting
-import { makeSeekerMesh, aimSeeker } from './shotfx.js';
+// the package's muzzle recipe is the one master setting
 import { createShellBlast } from './fx/shell-blast.js';
-import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
-  deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
-  makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
+import {SHIELD_TUNE, SHIELD_KNOBS, makeShield, deploy as deployShield, stepShieldFrame, restockShield, towerOffline, makeArrayStation, refillArray} from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 import { parseLabQuery } from './lab.js'; import { tankSight, sightLine } from './platform/tank-sight.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js'; import { garrisonSites as pickGarrisonSites } from './domain/garrison.js';
-import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER } from './towers.js';
+import { wallCushion as cushionWalls, breachBlocked as craterBlocked, CRATER_PAD } from './domain/wall-cushion.js'; import { createCtlWatch } from './platform/ctl-watch.js'; import { createShellFlight } from './fx/shell-flight.js';   /* refactor round 4 (2026-10-22) */
+import {TOWERS, TOWER_BY_KEY, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER} from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js'; import { createAmmoOrbs } from './fx/ammo-orbs.js';
-import { TANK_FEEL, makeTankFeel, landTankFeel, fireTankFeel, applyTankHealth } from './tankfeel.js';
+import {makeTankFeel, landTankFeel, applyTankHealth} from './tankfeel.js';
 import { FEEL } from './feelstore.js'; import { createBoardActors } from './fx/board-actors.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   stepFall, fallProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
@@ -1002,44 +999,11 @@ export function initTdTab(root) {
   // their damage — blocking them would neuter the threat)
   unitBlocker = (cand) => spawnPoints.some((s) => s.alive && dist3(cand, graph.centers[s.ci]) < cellSide * 0.6);
 
-  // WALL CUSHION, corridor-safe: adaptive margins (narrow cells skip diagonals), pushes net-summed and applied once (opposing walls
-  // centre instead of fighting), capped per frame well below drive speed: corrects clipping over a few frames, never pins
-  const CRATER_PAD = 0.6;   // cells beyond a sinkhole's crater the hull keeps off: the ground there is open, not drivable
-  const breachBlocked = (p, pad = CRATER_PAD) => gameBreaches.craters().some((k) => dist3(p, k.p) < (k.r + pad) * cellSide);
+  // THE WALL CUSHION (src/domain/wall-cushion.js): the hull kept off the rock faces, the pedestal and the open craters by nudges, never
+  // pins; the rule is pure, the world it reads is gathered here per call
+  const breachBlocked = (p, pad = CRATER_PAD) => craterBlocked(p, gameBreaches.craters(), cellSide, pad);
   function wallCushion(pos) {
-    const ci = cellIndex(pos);
-    if (ci === -1) return pos;
-    // the pedestal and every open crater first: a hard radial push off the pad or the sinkhole's rim, then the wall cushion
-    for (const { c, rim } of [{ c: graph.centers[dungeon.heart], rim: pedestalRadius() + cellSide * 0.35 }, ...gameBreaches.craters().map((k) => ({ c: k.p, rim: (k.r + CRATER_PAD) * cellSide }))]) {
-      const d = dist3(pos, c); if (d >= rim) continue;
-      const away = sub3(pos, c), n = norm3(pos), tg = sub3(away, scale3(n, dot3(away, n))), l = len3(tg);
-      if (l > 1e-9) pos = norm3(add3(pos, scale3(tg, (rim - d) / l)));
-    }
-    const narrow = openCount(ci) <= 3, margin = cellSide * (narrow ? 0.6 : 0.95);
-    let px = 0, py = 0, pz = 0;
-    const seen = new Set([ci]);
-    const consider = (w, at = pos, m = margin, k = 1) => {
-      const c = graph.centers[w], d = dist3(at, c); if (d >= m) return;
-      const away = sub3(at, c), n = norm3(at), tg = sub3(away, scale3(n, dot3(away, n))), l = len3(tg); if (l < 1e-9) return;
-      const f = k * (m - d) / m; px += (tg[0] / l) * f; py += (tg[1] / l) * f; pz += (tg[2] / l) * f;
-    };
-    for (const nb of graph.adj[ci]) {
-      if (seen.has(nb)) continue; seen.add(nb);
-      if (dungeon.tags[nb] === BLOCKED) { consider(nb); continue; }
-      if (!narrow) for (const nb2 of graph.adj[nb]) { if (seen.has(nb2)) continue; seen.add(nb2); if (dungeon.tags[nb2] === BLOCKED) consider(nb2); }
-    }
-    // THE HULL HAS A NOSE AND A TAIL (operator, 2026-09-12: the tank clips into walls). Each end is cushioned by the rock it is in or beside,
-    // a band of the cell's edge plus the hull's half width, a nudge not a pin: a corner pushes the hull out, a straight lane leaves it
-    const half = unitScale * 0.73, band = cellSide * 0.72;
-    for (const end of [norm3(add3(pos, scale3(player.smoothDir, half))), norm3(sub3(pos, scale3(player.smoothDir, half)))]) {
-      const ce = cellIndex(end); if (ce === -1) continue;
-      if (dungeon.tags[ce] === BLOCKED) consider(ce, end, band, 0.6);
-      for (const nb of graph.adj[ce]) if (dungeon.tags[nb] === BLOCKED) consider(nb, end, band, 0.6);
-    }
-    const mag = Math.hypot(px, py, pz);
-    if (mag < 1e-9) return pos;
-    const step = Math.min(mag * cellSide * 0.3, cellSide * 0.035);
-    return norm3(add3(pos, scale3([px / mag, py / mag, pz / mag], step)));
+    return cushionWalls(pos, { cellIndex, graph, dungeon, blocked: BLOCKED, cellSide, openCount, craters: gameBreaches.craters(), pedestalRadius: pedestalRadius(), unitScale, smoothDir: player.smoothDir });
   }
 
   // held-key state: steering and pace are continuous while held, not nudges
@@ -1102,28 +1066,13 @@ export function initTdTab(root) {
     + ` paused=${paused}`
     + ` shot=${shotId() || '-'}`
     + ` buildMode=${buildMode} active=${active}`;
-  // THE WATCHDOG. It watches for the symptom as the player describes it — asking the tank to move and the tank not moving —
-  // rather than for any one cause, and prints the whole gate row when it happens. Always on: the bug is rare and lives on the
-  // operator's phone, so a probe that only runs under a flag is a probe that will never see it. One line per episode (re-armed
-  // only after the tank moves again), so a genuinely wedged hull cannot flood the console.
-  let ctlStillFor = 0, ctlBarked = false;
-  const ctlLastPos = [0, 0, 0];
-  // RAW INPUT, READ BEFORE ANYTHING CAN SWALLOW IT. The first cut of this
-  // watchdog asked `keys.fast || ...`, which is the game's BELIEF about the
-  // input — so the one failure mode that matters most, a capture-phase
-  // listener eating keydown before the game ever sees it, made the watchdog
-  // go quiet instead of loud. Registered at init, so it sits ahead of any
-  // listener a cinematic adds later and records the press either way.
-  let ctlRawT = -9, ctlRawKey = '';
-  const CTL_DRIVE_KEYS = ['w', 's', 'a', 'd',
-    'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  // THE WATCHDOG (src/platform/ctl-watch.js): asking the tank to move and the tank not moving, barked once per episode with the gate row;
+  // its raw-key listener sits at the capture phase from init, ahead of anything a cinematic adds later
+  const ctlWatch = createCtlWatch({ player, keys, cellSide: () => cellSide, cruise: () => cruise, throttle: () => throttle, paused: () => paused, state: ctlState });
   addEventListener('keydown', (ev) => {
-    const k = (ev.key || '').toLowerCase();
-    if (CTL_DRIVE_KEYS.includes(k)) { ctlRawT = performance.now() / 1000; ctlRawKey = k; }
     if (ev.key === '`') setPerfOverlay(!perfOverlay.on());
     if (ev.key === 'Escape') document.body.classList.remove('vars-open');
   }, true);
-  let ctlSwallowBarked = false;
 
   // THE VIEW WATCHDOG AND THE DIAGNOSTICS OVERLAY (src/platform/diag-overlay.js): viewWatch and tick from the frame, html for captions
   const diagOverlay = createDiagOverlay(root, {
@@ -1159,36 +1108,6 @@ export function initTdTab(root) {
     stick: () => stick,
     t: () => t,
   });
-
-  function ctlWatch(dt) {
-    // what the player is asking for, not what the game decided to do with it
-    const asking = keys.fast || keys.slow || cruise || throttle !== 0;
-    const moved = Math.abs(player.pos[0] - ctlLastPos[0])
-      + Math.abs(player.pos[1] - ctlLastPos[1])
-      + Math.abs(player.pos[2] - ctlLastPos[2]);
-    ctlLastPos[0] = player.pos[0]; ctlLastPos[1] = player.pos[1]; ctlLastPos[2] = player.pos[2];
-    // a real drive step is orders of magnitude above this; the threshold is
-    // here so hover bob and cushion nudges do not read as movement
-    if (moved > cellSide * 1e-4) { ctlStillFor = 0; ctlBarked = false; return; }
-    if (!asking || player.won || paused) { ctlStillFor = 0; return; }
-    ctlStillFor += dt;
-    // INPUT SWALLOWED: the player is pressing a drive key and the game's
-    // key state never sees it. Reported separately because it is a different
-    // fault from a latched gate — something is eating the event.
-    const rawAge = performance.now() / 1000 - ctlRawT;
-    const gameSees = keys.fast || keys.slow || keys.left || keys.right;
-    if (rawAge < 0.5 && !gameSees && !ctlSwallowBarked) {
-      ctlSwallowBarked = true;
-      console.log(`CTL-SWALLOWED raw '${ctlRawKey}' pressed but keys are all`
-        + ` false — something is eating keydown. ${ctlState('swallowed')}`);
-    }
-    if (gameSees) ctlSwallowBarked = false;
-    // a second of asking is well past a wall bump or a frozen beat
-    if (ctlStillFor > 1.0 && !ctlBarked) {
-      ctlBarked = true;
-      console.log(`CTL-DEAD asked ${ctlStillFor.toFixed(1)}s, no motion — ${ctlState('dead')}`);
-    }
-  }
 
   const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ seconds: 1.0, far: 1.8, hold: () => paused, wait: () => shotId() === 'takeControl' });   /* shorter (owner, 2026-10-16: "the time between announcing SOL and getting control is too long"; was 1.4 / 3.2) */
   // two more of the same, for blending between two framings (the cold open)
@@ -3075,71 +2994,13 @@ export function initTdTab(root) {
   }
 
   const shellBlast = createShellBlast({ enemies, damageEnemy, warnRing, explode, scene, debris, sfx, camDist, cellSide: () => cellSide, cellIndex: () => cellIndex });
-  function updateProjectiles(dt, tNow) {
-    const v = SHELL_SPEED * cellSide, maxDist = SHELL_REACH * cellSide;   // content/tank.js: the shell's pace and reach
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-      const p = projectiles[i];
-      p.pos = norm3(add3(p.pos, scale3(p.dir, v * dt)));
-      const n = p.pos;
-      p.dir = norm3(sub3(p.dir, scale3(n, dot3(p.dir, n))));
-      p.dist += v * dt;
-      const lift = 1 + params.wallHeight * 0.5;
-      p.mesh.position.set(p.pos[0] * lift, p.pos[1] * lift, p.pos[2] * lift);
-      // nose along flight, rifling spin about the flight axis
-      tmpV.set(p.dir[0], p.dir[1], p.dir[2]);
-      p.mesh.quaternion.setFromUnitVectors(Y_AXIS, tmpV);
-      p.mesh.rotateY(p.dist * 60);
-
-      // creature contact: fodder dies to one shell, the dangerous tier
-      // soaks its hp and reacts (slows / ACCELERATES) while it lasts
-      let hit = false;
-      for (const e of enemies) {
-        if (!e.alive) continue;
-        if (dist3(p.pos, groundAt(e)) < cellSide * Math.max(0.45, (e.size ?? e.spec.size) * 0.8)) {   /* the body's drawn point, not the record's (owner, 2026-10-16: 'a direct tank shell hit goes right through') */
-          // NINE shells a rack, each one precious, so each one is an EVENT (operator ruling); since 2026-10-13 the gunship's 40 mm landing
-          // at the shell's blast (src/content/tank.js SHELL_BLAST, src/fx/shell-blast.js). Count what THIS shell kills: live bodies before and after
-          const aliveBeforeShell = enemies.reduce((n2, x) => n2 + (x.alive ? 1 : 0), 0);
-          const jolt = shellBlast.land(p.pos, e, tNow, player.pos).jolt; if (jolt > 0) ramJolt.kick({ radius: jolt });   // the 40 mm's landing, hotter; a hull near it jolts (presentation only)
-          if (rs) {
-            const killedByShell = aliveBeforeShell
-              - enemies.reduce((n2, x) => n2 + (x.alive ? 1 : 0), 0);
-            rs.shells++;
-            if (killedByShell > rs.bestShell.kills) rs.bestShell = { kills: killedByShell, wave };
-          }
-          hit = true; sectorRun?.note({ type: 'shot', hit: true });
-          break;
-        }
-      }
-      // spawn points soak 3 hits; a landed shell also marks the source
-      // FOUND — the minimap beacon starts pulsing
-      if (!hit) {
-        for (const sp of spawnPoints) {
-          if (!sp.alive) continue;
-          if (dist3(p.pos, graph.centers[sp.ci]) < cellSide * 0.6) {
-            hit = true; sectorRun?.note({ type: 'shot', hit: true });
-            gateTakesShell(sp);
-            updateHud();
-            break;
-          }
-        }
-      }
-      if (hit) { killProjectile(i); checkVictory(); continue; }
-
-      // wall impact: the shell BREACHES it — one wall per shell.
-      // cellIndex is the voxel hash every other collision query on the board
-      // already uses. This used to scan EVERY cell per shell per frame — with
-      // three shells in the air on a 2,000-cell board that is 6,000 distance
-      // checks a frame for an answer the hash gives in one lookup.
-      const bestCi = cellIndex(norm3(p.pos));
-      if (bestCi !== -1 && dungeon.tags[bestCi] === BLOCKED) {
-        blastWall(bestCi); sectorRun?.note({ type: 'shot', hit: false });
-        killProjectile(i);
-        continue;
-      }
-      if (p.dist > maxDist) { killProjectile(i); sectorRun?.note({ type: 'shot', hit: false }); }
-    }
-  }
-
+  // THE SHELLS IN FLIGHT (src/fx/shell-flight.js): advanced along the sphere, landed on a body, a gate or the rock they breach, spent at their reach
+  const shellFlight = createShellFlight({
+    projectiles, enemies, spawnPoints, params, player, shellBlast, ramJolt,
+    cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, cellIndex: () => cellIndex, rs: () => rs, wave: () => wave, sectorRun: () => sectorRun,
+    groundAt, gateTakesShell, updateHud, killProjectile, checkVictory, blastWall,
+  });
+  function updateProjectiles(dt, tNow) { return shellFlight.update(dt, tNow); }
 
   // --- enemy fire ------------------------------------------------------------
   // The tank dying should be an EVENT. Losing hover is the throughline: the
@@ -4372,7 +4233,7 @@ export function initTdTab(root) {
     if (pilotMode) hullDeploy.cancel();
     if (hullDeploy.state()) hullDeploy.step(dt);
     else if (!driveFrozen && !pilotMode) advanceMotion(dt);
-    ctlWatch(dt);
+    ctlWatch.tick(dt);
     // Isao keeps his shift through the build downtime — the war may be
     // frozen there, but construction is the thing you came to do. A
     // reveal or the cold open still stops him: those are the game
@@ -4503,9 +4364,6 @@ export function initTdTab(root) {
     }
     if (!simSkip && armBtn) syncArmUi();
     stepWarnFx(dt);
-    for (const sp of spawnPoints) {
-      if (!sp.alive) continue;
-    }
     if (simStyle && !simDone) simPolicy(dt);
     if (!pilotMode) { autoSecondary(); autoGunner(t); } else autoLaserWant = false;   // no parked laser under a seat
     checkVictory(); // ram kills and heart-contact deaths can end it too
