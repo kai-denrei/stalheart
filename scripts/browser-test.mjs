@@ -1656,6 +1656,29 @@ try{
   await until(`(${T}.state().sector.breaches||[]).reduce((n,b)=>n+(b.wavesReleased||0),0)>${released(atStart)}`,45000).catch(async()=>assert.fail(`a wave is out after the party (${released(atStart)}/${planned(atStart)} at the start; ${JSON.stringify((await st()).sector.breaches)})`));
  } else console.log(`  day-42: every wave was out before the party (${released(atStart)}/${planned(atStart)}), no next wave to see`);
  current='day-42-done';await finish();
+ } else if(args.includes('--reinforcements-lull')) {
+ // FEIDS-26 REINFORCEMENTS WITHOUT THE FLAG (decisions 1 and 2): the grown base at sector 4 has its radar, so Isao calls them at the load (the call's line
+ // and callout); the drop waits for the due day (calledDay + REINFORCEMENTS.days, 30 s days) and then for a lull (the field culled to a breath, as --day-42
+ // does); the cut, the landing. One line per measured thing: the call's day, the due day, the day and the sector's phase the drop started in
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {REINFORCEMENTS}=await import('../src/content/reinforcements.js'), R=s=>s.reinforcements;
+ await go('reinforce-lull-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td`);await evaluate(SEEN_LOG);
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().reinforcements?.called===true`,20000).catch(async()=>assert.fail(`Isao calls them with the radar standing (${JSON.stringify(R(await st()))})`));
+ {const s=await st(),r=R(s);console.log(`  reinforcements-lull: called on day ${r.calledDay}, due day ${r.due} (${REINFORCEMENTS.days} days), phase ${r.phase}`);assert.equal(r.due,r.calledDay+REINFORCEMENTS.days);assert.equal(r.phase,'idle','not dropped at the call');
+  await until(`(window.__seen?.briefs||[]).some(b=>/planetary reinforcements/.test(b))`,30000).catch(async()=>assert.fail(`Isao's call line (${JSON.stringify(await evaluate('window.__seen'))})`));}
+ let at=null;
+ {const w0=Date.now();let k=0;while(Date.now()-w0<300000){const s=await st(),r=R(s);if(r.phase!=='idle'){at=s;break;}
+   if(s.day>=r.due)await evaluate(`${T}.sectorCull(999)`);
+   if(k++%10===0)console.log(`  reinforcements-lull: t+${((Date.now()-w0)/1000).toFixed(0)}s day ${s.day}/${r.due}, sector ${s.sector?.phase} clock ${s.sector?.clock}, why ${r.why}`);await delay(1000);}
+  assert.ok(at,'the drop starts after the due day at a lull');
+  const r=R(at);console.log(`  reinforcements-lull: dropping on day ${at.day} (due ${r.due}), sector ${at.sector?.phase}${at.sector?.breathing?' (breathing)':''}, shot ${at.shot}`);
+  assert.ok(at.day>=r.due,'not before the due day');}
+ current='reinforce-lull-dropping';await finish();
+ await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`landed (${JSON.stringify(R(await st()))})`));
+ {const s=await st();console.log(`  reinforcements-lull: landed, mechs ${R(s).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}`);assert.equal(R(s).mechs.length,4);
+  assert.ok((await evaluate('window.__seen.briefs')).some(b=>/Here they come/.test(b)),'Isao: here they come');}
+ current='reinforce-lull-landed';await finish();
  } else if(args.includes('--reinforcements')) {
  // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23; spec docs/superpowers/specs/2026-10-23-feids26-reinforcements-design.md): ?reinforce=1 drops them as soon
  // as the world stands: the drop's phase within 10 s, the camera cut to the arena on the cinematic (shot 'feidsDrop', live), the four touchdowns at the
