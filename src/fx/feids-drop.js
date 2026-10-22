@@ -132,8 +132,9 @@ export function createFeidsDrop(h) {
 
   return {
     prepare, prime, primed: () => primed, ready: () => !!models, failed: () => bad, begin, tick, pose, worldOf: (local, out) => worldOf(local[0], local[1], local[2], out),
-    // the four for the squad once they are down: wrapper, model root, mixer and clips (the Airdrop_Land action handed over, the jet and fire hidden)
-    mechs: () => mechs.map((mc) => { mc.jet.visible = false; mc.fire.visible = false; return { wrap: mc.wrap, root: mc.root, mixer: mc.mixer, clips: mc.clips, drop: mc.drop, index: mc.index, far: models?.far ?? null }; }),
+    // the four for the squad once they are down: wrapper, model root, mixer and clips (the Airdrop_Land action handed over; the jet and the fire glow
+    // taken out of the model, so the squad's instancing sees the GLB's own meshes only)
+    mechs: () => mechs.map((mc) => { for (const fx of [mc.jet, mc.fire]) { fx.removeFromParent(); fx.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); } return { wrap: mc.wrap, root: mc.root, mixer: mc.mixer, clips: mc.clips, drop: mc.drop, index: mc.index, far: models?.far ?? null }; }),
     release() { for (const c of capsules) { c.wrap.removeFromParent(); c.mixer.stopAllAction(); } capsules = []; mechs = []; },   // the mechs now the squad's
     heard: () => heard.slice(), dispose,
     show(on) { hidden = !on; },   // the harness's A/B for the drop's draw cost (--reinforcements)

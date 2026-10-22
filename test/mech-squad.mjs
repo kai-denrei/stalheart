@@ -16,17 +16,24 @@ const graph = { centers, adj }, dungeon = { tags: new Array(N).fill(1), distToHe
 const story = { arena: { cell: 30 }, gateCell: 3 };
 const fakeMech = (i) => {
   const root = new THREE.Group(), wrap = new THREE.Group(); wrap.add(root);
+  const part = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()); part.name = 'HULL_PART';
   for (const n of ['MINIGUN_YAW', 'MINIGUN_PITCH', 'MINIGUN_SPIN', 'LASER_YAW', 'LASER_PITCH', 'MISSILE_ELEVATION', 'SOCKET_MINIGUN_MUZZLE_1', 'SOCKET_LASER_MUZZLE', 'SOCKET_MISSILE_L_1', 'SOCKET_MISSILE_R_1']) { const o = new THREE.Group(); o.name = n; root.add(o); }
+  root.getObjectByName('MINIGUN_YAW').add(part.clone());
   wrap.position.fromArray(centers[[22, 23, 21, 24][i]]);
   const far = new THREE.Group(); far.name = 'FAR';
   return { wrap, root, mixer: new THREE.AnimationMixer(root), clips: [], drop: null, index: i, far };
 };
 let id = 100; const eye = new THREE.Vector3(...centers[22]).multiplyScalar(1.001);   // the camera beside the drop
 const enemies = [{ alive: true, cur: 40 }];
-const squad = createMechSquad({ metres: () => cs / 10, cellSide: () => cs, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => null, towerDef: (k) => TOWER_BY_KEY[k], towerId: () => id++, seed: 7, eye: () => eye });
+const scene = new THREE.Scene();
+const squad = createMechSquad({ scene, metres: () => cs / 10, cellSide: () => cs, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => null, towerDef: (k) => TOWER_BY_KEY[k], towerId: () => id++, seed: 7, eye: () => eye });
 const frame = { origin: new THREE.Vector3(...centers[22]), up: new THREE.Vector3(...centers[22]), z: new THREE.Vector3(0, 0, 1), x: new THREE.Vector3(1, 0, 0) };
 squad.adopt([0, 1, 2, 3].map(fakeMech), frame, 22);
 
+// one InstancedMesh a part for the four, their own meshes hidden and lending their matrices
+{ const inst = scene.children.filter((o) => o.isInstancedMesh); assert.equal(squad.parts(), 1); assert.equal(inst.length, 1); assert.equal(inst[0].count, 4, 'four instances');
+  squad.tick(0, 0); const mt = new THREE.Matrix4(); inst[0].getMatrixAt(2, mt); const p = new THREE.Vector3().setFromMatrixPosition(mt);
+  assert.ok(p.distanceTo(new THREE.Vector3(...centers[21])) < 1e-6, 'mech 2\'s part where mech 2 stands'); }
 const recs = squad.towers();
 assert.equal(recs.length, 16, 'sixteen records');
 assert.deepEqual([...new Set(recs.map((r) => r.key))].sort(), ['lancer', 'quiver', 'rotor'], 'rotor, lancer, quivers');
@@ -57,5 +64,5 @@ assert.ok(hunt.cell > 24 && hunt.cell <= 40, `the hunter walks to the enemy at 4
 assert.ok(arena.every((m) => m.onPlain), 'the arena pair on the plain');
 assert.ok(recs.every((r) => r.ci === st[r.mechIndex].cell || adj[st[r.mechIndex].cell].includes(r.ci)), 'the records follow their mech');
 assert.ok(st.every((m) => m.rate === 0 || m.rate === REINFORCEMENTS.gaitCap), 'the gait at its cap while walking');
-squad.restore(); assert.equal(squad.towers().length, 0, 'restored');
+squad.restore(); assert.equal(squad.towers().length, 0, 'restored'); assert.equal(scene.children.filter((o) => o.isInstancedMesh).length, 0, 'the parts gone');
 console.log(`mech-squad: sixteen top-tier records on four mechs, the aim on the model's pivots, the base mech ${base.startDist} -> ${base.heartDist} hops from the heart, the hunter at ${hunt.cell}`);

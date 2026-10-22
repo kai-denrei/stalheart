@@ -13,8 +13,12 @@
 // REINFORCEMENTS.gaitCap (the clip's own speed is 0.27778 m/s at 0.75 scale: 0.25 cells/s is 2.5 m/s, a rate of 12, so at the cap the feet slide).
 // THE FAR TIER (the README: "approaching at 140 m with 20 m hysteresis"): beyond REINFORCEMENTS.lodMetres from the eye a mech shows the static one-draw
 // mx06_d0_lod2 instead of the 38-draw game tier, back inside lodMetres - 20 m; the game tier keeps walking and aiming hidden (its sockets still move).
-//   host: metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
-//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), restore() }
+// ONE DRAW A PART FOR THE FOUR (the --reinforcements A/B, 2026-10-23: the four game-tier Ridgebacks cost 608 calls a frame in the drop's view, the GLB's 38
+// draws times the frame's passes, and 36 of the 38 are separately animated parts, so merging by material saves nothing): after the adoption each of the 38
+// meshes is drawn by one InstancedMesh holding the four mechs' copies of it (their own meshes stay in the tree, hidden, posed by the mixers as before, and
+// lend their world matrices every frame); a mech on its far tier is a zero instance, and the parts hide when all four are far.
+//   host: scene, metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
+//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), show(on), restore() }
 import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
 import { ARENA } from '../content/sectors.js';
@@ -27,7 +31,7 @@ const SECTOR = Math.PI / 5, TURN = 0.8;   // the model's gun sector (the runtime
 const PIVOT = { rotor: ['MINIGUN_YAW', 'MINIGUN_PITCH', /^SOCKET_MINIGUN_MUZZLE_/], lancer: ['LASER_YAW', 'LASER_PITCH', /^SOCKET_LASER_MUZZLE$/], quiver: ['MISSILE_ELEVATION', null, /^SOCKET_MISSILE_[LR]_/] };
 
 export function createMechSquad(h) {
-  let mechs = [], records = [], plain = null, park = 0, last = 0, s = (h.seed >>> 0) || 26;
+  let mechs = [], records = [], plain = null, park = 0, last = 0, parts = null, hidden = false, s = (h.seed >>> 0) || 26;
   const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
   const v = new THREE.Vector3(), up = new THREE.Vector3(), fwd = new THREE.Vector3(), x = new THREE.Vector3(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
   const centre = (ci) => h.graph().centers[ci];
@@ -64,6 +68,28 @@ export function createMechSquad(h) {
       const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, act, heading: frame.z.clone(), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
+    }
+    instance();
+  }
+
+  const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+  function instance() {
+    const lists = mechs.map((mc) => { const out = []; mc.root.traverse((o) => { if (o.isMesh && !o.isInstancedMesh) out.push(o); }); return out; });
+    const n = lists[0]?.length ?? 0;
+    if (!n || !h.scene || lists.some((l) => l.length !== n)) return;
+    parts = lists[0].map((m0, k) => {
+      const inst = new THREE.InstancedMesh(m0.geometry, m0.material, mechs.length); inst.frustumCulled = false; inst.name = `RIDGEBACK_PART_${k}`; h.scene.add(inst);
+      for (const l of lists) l[k].visible = false;
+      return { inst, meshes: lists.map((l) => l[k]) };
+    });
+  }
+  function drawParts() {
+    if (!parts) return;
+    const any = !hidden && mechs.some((mc) => !mc.isFar);
+    for (const p of parts) {
+      p.inst.visible = any; if (!any) continue;
+      for (let i = 0; i < mechs.length; i++) p.inst.setMatrixAt(i, mechs[i].isFar ? ZERO : p.meshes[i].matrixWorld);
+      p.inst.instanceMatrix.needsUpdate = true;
     }
   }
 
@@ -105,7 +131,8 @@ export function createMechSquad(h) {
     mc.wrap.scale.setScalar(REINFORCEMENTS.scale * m);
     if (mc.farRoot) {   // the far tier past lodMetres, the game tier back inside lodMetres - 20 m
       const d = mc.wrap.position.distanceTo(h.eye()) / m, far = mc.isFar ? d > REINFORCEMENTS.lodMetres - 20 : d > REINFORCEMENTS.lodMetres;
-      if (far !== mc.isFar) { mc.isFar = far; mc.farRoot.visible = far; mc.root.visible = !far; }
+      if (far !== mc.isFar) mc.isFar = far;
+      mc.farRoot.visible = far && !hidden; mc.root.visible = !far;
     }
     mc.mixer.update(dt);
     mc.wrap.updateMatrixWorld(true);
@@ -127,13 +154,15 @@ export function createMechSquad(h) {
 
   return {
     adopt,
-    tick(dt, t) { last = t; if (!mechs.length) return; mechs.forEach((mc) => { if (dt > 0) stepMech(mc, dt); stepRecords(mc); }); },
+    tick(dt, t) { last = t; if (!mechs.length) return; mechs.forEach((mc) => { if (dt > 0) stepMech(mc, dt); else mc.wrap.updateMatrixWorld(true); stepRecords(mc); }); drawParts(); },
     towers: () => records,
     state: () => mechs.map((mc) => {
       const shots = mc.recs.reduce((n, r) => n + (r.shots ?? 0), 0), fired = Math.max(...mc.recs.map((r) => r.firedAt ?? -1e9));
       return { role: mc.role, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
         onPlain: plain ? plain.has(mc.cur) : null, park, far: mc.isFar, t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
     }),
-    restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } mechs = []; records = []; plain = null; },
+    restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },
+    parts: () => parts?.length ?? 0,
+    show(on) { hidden = !on; },   // the harness's A/B for the four's draw cost (--reinforcements)
   };
 }

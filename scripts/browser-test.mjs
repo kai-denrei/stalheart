@@ -1742,6 +1742,13 @@ try{
   const ms=R(await st()).mechs;for(const m of ms)console.log(`  reinforcements: firing check, mech ${m.role} at cell ${m.cell}: shots ${m.shots}, last fired at game t ${m.firedAt}`);
   assert.ok(ms.some(m=>m.shots>0),'the Ridgebacks fire on bodies beside them');}
  current='reinforce-firing';await finish();
+ // THE FOUR UP CLOSE, instanced (one InstancedMesh a part for the four, src/fx/mech-squad.js): the hull put two cells from an arena mech so the camera
+ // follows it there; the four drawn, then hidden, the calls read; a frame of them for the owner
+ {const ms=R(await st()).mechs,ar=ms.find(m=>m.role==='arena');await evaluate(`${T}.placeTank(${ar.cell})`);await delay(2500);
+  const read=async()=>{const s=await st();return {calls:s.drawCalls,ms:s.performance?.frameMs,far:R(s).mechs.map(m=>m.far)};};
+  const on=await read();await evaluate(`${T}.reinforceShow(false)`);await delay(1500);const off=await read();await evaluate(`${T}.reinforceShow(true)`);await delay(800);
+  console.log(`  reinforcements: the four up close, instanced: ${on.calls} draw calls (far tier ${JSON.stringify(on.far)}), hidden ${off.calls}: they cost ${on.calls-off.calls} calls, ${on.ms?.toFixed?.(1)} ms vs ${off.ms?.toFixed?.(1)} ms a frame`);}
+ current='reinforce-near';await finish();
  // THE ARENA REACHED FIRST (decision 2: "drop at once as the sector begins ... the owner wants them before the boss fight"): no ?reinforce flag; the grown
  // base's radar calls them at the load (src/fx/reinforcements-host.js uplink), THE ARENA opens on ?boss=1 before the call is due, and the drop goes at once
  {const {SECTOR_DOOR}=await import('../src/content/sectors.js');
