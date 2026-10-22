@@ -29,8 +29,10 @@ export const BOSS_FIGHT = freeze({
   // `keep` (2026-10-23, THE FIGHT ON THE LAB'S ENGINE, src/fx/boss/arena-fight.js): her body hunts the hull's point pulled `keep` m back toward her, the lab's
   // geometry mirrored (its bait keeps BOSS_FIGHT.bait.keep 20 m outside her reach): her own pursuit (the predator preset, ~9 m/s with surges past 30 m/s, the
   // lunges) holds the hull at ~20 m centre to centre with keep 0, under her arms and its touch (a catch: a node kite against a hull circling at 9.4 m/s); at 30
-  // she stalks it at ~45 m (her edge ~25 m off), at 45 at ~57 m. The 40 mm between them then has room
-  arenaBoss: { ground: { cross: 4, hold: 2 }, pace: 1.4, weight: { bofors: 2 }, flee: 3, trail: 1.6, keep: 30 },
+  // she stalks it at ~45 m (her edge ~25 m off), at 45 at ~57 m. The 40 mm between them then has room. 45 (the third --arena-fight run, keep 30: ~43 m is under the
+  // lure's `near` 5 cells, so Isao ran 'away' to the disc's rim and she cornered the hull there): at ~57 m the lure is in its tangent band and circles her; nearer
+  // than keep she backs off to it (src/fx/boss/arena-fight.js short)
+  arenaBoss: { ground: { cross: 4, hold: 2 }, pace: 1.4, weight: { bofors: 2 }, flee: 3, trail: 1.6, keep: 45 },
   // THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"; docs/superpowers/specs/2026-10-23-arena-lab-fight-design.md, decision 1): while THE
   // ARENA's boss phase runs (src/fx/boss-run.js guns(), orbit()) the seat's MK-9 is the lab's (src/labs/boss/game-seat.js RELOAD 6, perPass 0: no limit a pass, each
   // still waits out its fall and `reload` s), and with `station` the pass does not end while she lives (the seat reads ON STATION)

@@ -27,8 +27,9 @@ import { GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../../content/gunship.js';
 
 const SPEED_WINDOW = 1;   // seconds: a speed is the displacement over this long
 const KIND = { rotary: 'rotary', bofors: 'bofors', heavy: 'nuke' };
-// the point `keep` metres short of `h` on the line from `c` (never past `c`)
-const short = (h, c, keep) => { const dx = h[0] - c[0], dz = h[1] - c[1], d = Math.hypot(dx, dz); if (!(keep > 0) || d < 1e-9) return [h[0], h[1]]; const k = Math.min(keep, d) / d; return [h[0] - dx * k, h[1] - dz * k]; };
+// the point `keep` metres from `h` on the line toward `c`: from farther she closes to it, from nearer she backs off to it (the third --arena-fight run: with the
+// aim clamped at her own centre once she was inside `keep`, she stood on the hull pinned at the disc's rim, 1 cell off, for seconds)
+const short = (h, c, keep) => { const dx = c[0] - h[0], dz = c[1] - h[1], d = Math.hypot(dx, dz); if (!(keep > 0)) return [h[0], h[1]]; if (d < 1e-9) return [c[0], c[1]]; return [h[0] + dx * keep / d, h[1] + dz * keep / d]; };
 
 // `now()` the game's clock (seconds), `tune` the fight's numbers (BOSS_FIGHT), `seed` the temperament's lunges
 export function createArenaFight({ now, tune = BOSS_FIGHT, seed = 1 }) {

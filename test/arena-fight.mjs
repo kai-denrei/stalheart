@@ -25,6 +25,7 @@ const DISC = BOSS_FIGHT.bounds.radius, IN = DISC - BOSS_FIGHT.bounds.creatureMar
   const step = (hull, o = {}) => { t += 1 / 60; return loc(fight.step(1 / 60, { body, centre, R, hull, radius: DISC, ...o })); };
   assert.ok(near(step(u(40, 30)), [40 * (1 - KEEP / 50), 30 * (1 - KEEP / 50)]), `the hull inside: she hunts its point, ${KEEP} m short of it (she stalks)`);
   assert.ok(KEEP > 0 && KEEP < 50, 'a keep shorter than the lure\'s near band (5 cells)');
+  body.at = [10, 0]; assert.ok(near(step(u(20, 0)), [20 - KEEP, 0]), 'nearer than keep: she backs off to it'); body.at = [0, 0];
   assert.ok(near(step(u(300, 0)), [IN, 0]), `the hull outside: the aim on the disc less the margin (${IN} m)`);
   assert.ok(near(step(u(40, 30), { ground: true }), [0, 0]), 'on the sinkhole: the centre'); assert.equal(fight.state().mode, 'ground');
   assert.equal(fight.landed('bofors', u(5, 0)), false, 'no fright while she stands on the sinkhole');
