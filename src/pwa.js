@@ -3,12 +3,6 @@
 // Trimmed from ~/Dev/blueprint-to-life/src/pwa/lifecycle.js. The install
 // prompt, the connectivity watcher and the update toast are the dedicated
 // project's; what the mobile shell needs is the hook, and the hook is this.
-export function isStandalone() {
-  return matchMedia('(display-mode: standalone)').matches
-    || matchMedia('(display-mode: fullscreen)').matches
-    || navigator.standalone === true;   // iOS Safari's own flag
-}
-
 // Resolves to the registration, or null with a reason on `registerServiceWorker.why`.
 // The worker never calls skipWaiting() on its own: a new build sits in
 // `waiting` until the user says so (onUpdateReady gets an `apply` that asks).

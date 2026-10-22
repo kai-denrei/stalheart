@@ -30,7 +30,7 @@ import { printPhase, printOffset, printOn } from './printpath.js';
 import { ISAO_MODEL, ISAO_FACE_CLIPS, ISAO_IDLE_CLIPS } from './content/isao-faces.js';
 import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel, tintModel, makeShellRack,
   addEdgeOutlines, makeHeatSleeve } from './glbmodels.js';
-import { CREATURES, thinCloud, spherePts, bulletPts, missilePts, heartPts, torusPts, cloudFormPoints, enemyDotPts } from './creatures.js';
+import { CREATURES, thinCloud, spherePts, bulletPts, heartPts, torusPts, cloudFormPoints, enemyDotPts } from './creatures.js';
 import { ENEMY_SPEC } from './enemyspec.js';
 
 function normalizeToUnit(group) {
@@ -310,85 +310,6 @@ function makeCloud(name, cols) {
   pts.userData.baseScale = 1;
   pts.userData.lift = 0.85;
   pts.userData.kind = 'cloud';
-  return pts;
-}
-
-// --- orb clouds: Braille dotted spheres under five treatments -------------
-// Each orb is ~170 points; treatments re-pose (or re-tint) per frame. At a
-// few dozen orbs this is ~5k point updates/frame — negligible. The hash
-// gives each point a stable random phase.
-const hsh = (i) => {
-  const s = Math.sin(i * 127.1 + 0.7) * 43758.5453;
-  return s - Math.floor(s);
-};
-
-export const ORB_FX = ['spin', 'breathe', 'twinkle', 'wave', 'scatter'];
-
-export function makeOrbCloud(fx, cols, phase = 0) {
-  const base = spherePts(170);
-  const pos = new Float32Array(base.length * 3);
-  const col = new Float32Array(base.length * 3);
-  const cBody = new THREE.Color(cols.body);
-  const cHi = new THREE.Color(cols.hi);
-  const baseCol = new Float32Array(base.length * 3);
-  for (let i = 0; i < base.length; i++) {
-    const c = base[i][3] === 1 ? cHi : cBody;
-    baseCol[i * 3] = c.r; baseCol[i * 3 + 1] = c.g; baseCol[i * 3 + 2] = c.b;
-    pos[i * 3] = base[i][0]; pos[i * 3 + 1] = base[i][1]; pos[i * 3 + 2] = base[i][2];
-  }
-  col.set(baseCol);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: 2, sizeAttenuation: false, vertexColors: true,
-    transparent: true, opacity: 0.95,
-  }));
-
-  const repose = (f) => {
-    for (let i = 0; i < base.length; i++) {
-      const [x, y, z] = f(base[i], i);
-      pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
-    }
-    geo.getAttribute('position').needsUpdate = true;
-  };
-
-  const tick = {
-    spin: (t) => {
-      const a = t * 1.5 + phase, c = Math.cos(a), s = Math.sin(a);
-      repose((p) => [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]);
-    },
-    breathe: (t) => {
-      // transform-only: cheapest treatment of the five
-      pts.scale.setScalar(pts.userData.sizeScale * (1 + 0.16 * Math.sin(t * 2 + phase)));
-    },
-    twinkle: (t) => {
-      const attr = geo.getAttribute('color');
-      for (let i = 0; i < base.length; i++) {
-        const b = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 3.2 + hsh(i) * 6.283));
-        attr.setXYZ(i, baseCol[i * 3] * b, baseCol[i * 3 + 1] * b, baseCol[i * 3 + 2] * b);
-      }
-      attr.needsUpdate = true;
-    },
-    wave: (t) => {
-      repose((p) => {
-        const d = 1 + 0.14 * Math.sin(3 * Math.atan2(p[2], p[0]) + t * 3 - p[1] * 2 + phase);
-        return [p[0] * d, p[1], p[2] * d];
-      });
-    },
-    scatter: (t) => {
-      const k = Math.pow(Math.max(0, Math.sin(t * 0.9 + phase)), 2);
-      repose((p, i) => {
-        const r = 1 + 1.0 * k * (0.25 + 0.75 * hsh(i));
-        return [p[0] * r, p[1] * r, p[2] * r];
-      });
-    },
-  }[fx] || (() => {});
-
-  pts.userData.kind = 'orb';
-  pts.userData.fx = fx;
-  pts.userData.sizeScale = 1;
-  pts.userData.tick = tick;
   return pts;
 }
 
@@ -837,29 +758,6 @@ export function makeBulletCloud(cols) {
     transparent: true, opacity: 0.95,
   }));
   pts.userData.kind = 'bullet';
-  return pts;
-}
-
-// missile dot-cloud — same builder as makeBulletCloud, missile silhouette.
-export function makeMissileCloud(cols) {
-  const base = missilePts();
-  const pos = new Float32Array(base.length * 3);
-  const col = new Float32Array(base.length * 3);
-  const cBody = new THREE.Color(cols.body);
-  const cHi = new THREE.Color(cols.hi);
-  for (let i = 0; i < base.length; i++) {
-    pos[i * 3] = base[i][0]; pos[i * 3 + 1] = base[i][1]; pos[i * 3 + 2] = base[i][2];
-    const c = base[i][3] === 1 ? cHi : cBody;
-    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: 2, sizeAttenuation: false, vertexColors: true,
-    transparent: true, opacity: 0.95,
-  }));
-  pts.userData.kind = 'missile';
   return pts;
 }
 

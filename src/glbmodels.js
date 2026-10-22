@@ -430,19 +430,3 @@ export function makeHeatSleeve(parent, { radius = 0.32, len = 0.5, z = 1.4, colo
   return sleeve;
 }
 
-// Glowing tubes for a pair of guns. Inserted at child index 0 because td-tab reads the heat gauge
-// off guns[0].children[0] — appending would leave it recolouring a chunk of
-// the model instead. One shared material, so both tubes heat together.
-export function addGunTubes(guns, { radius = 0.12, len = 1.0, z = 0.5, color = 0x7df9ff } = {}) {
-  const geo = new THREE.CylinderGeometry(radius, radius * 1.25, len, 8)
-    .rotateX(Math.PI / 2);
-  const mat = new THREE.MeshBasicMaterial({ color });
-  for (const gun of guns) {
-    const tube = new THREE.Mesh(geo, mat);
-    tube.position.z = z;
-    gun.add(tube);
-    gun.children.splice(gun.children.indexOf(tube), 1);
-    gun.children.unshift(tube); // index 0: the gauge td-tab drives
-  }
-  return mat;
-}

@@ -185,26 +185,6 @@ export function createStoryPlanetSurface(planet, look, { wallMetres = 4, rockLin
   return group;
 }
 
-// Instanced 4 m foundation tiles on the pad plane, rotated with the base frame.
-export function buildPadTiles(source, { tiles, tileMetres, padFloor, yaw }) {
-  const group = new THREE.Group(); group.name = 'Pad tiles';
-  const count = tiles * tiles, matrix = new THREE.Matrix4(), rot = new THREE.Matrix4().makeRotationY(yaw);
-  const offsets = [];
-  for (let i = 0; i < tiles; i++) for (let j = 0; j < tiles; j++) offsets.push([(i - tiles / 2 + 0.5) * tileMetres, (j - tiles / 2 + 0.5) * tileMetres]);
-  source.updateMatrixWorld(true);
-  source.traverse((o) => {
-    if (!o.isMesh) return;
-    const inst = new THREE.InstancedMesh(o.geometry, o.material, count);
-    let k = 0;
-    for (const [x, z] of offsets) { matrix.makeTranslation(x, padFloor + 0.38, z).premultiply(rot).multiply(o.matrixWorld); inst.setMatrixAt(k++, matrix); }
-    inst.instanceMatrix.needsUpdate = true; inst.computeBoundingSphere(); inst.receiveShadow = true;
-    group.add(inst);
-  });
-  group.userData.tiles = count;
-  group.userData.dispose = () => group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
-  return group;
-}
-
 // A gate-sized outline in the open lane mouth: 12 x 8 m, the armored gate's
 // plot, laid across the lane with its road axis pointing into the clearing.
 export function buildMouthMarker(planet, look, { plot = [12, 8] } = {}) {

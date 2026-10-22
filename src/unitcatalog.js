@@ -142,11 +142,6 @@ export const UNIT_CATALOG = {
   hostile: [...HOSTILE_UNITS],
 };
 
-export function groupOf(id) {
-  for (const g of GROUPS) if (UNIT_CATALOG[g].some((e) => e.id === id)) return g;
-  return null;
-}
-
 export function entriesIn(group) {
   return UNIT_CATALOG[group] || [];
 }
