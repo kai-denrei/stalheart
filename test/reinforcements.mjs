@@ -43,7 +43,7 @@ assert.deepEqual(touchdowns(TL).map((t) => +t.toFixed(2)), [13, 13.43, 14, 19.23
 { for (let t = 0; t <= 28; t += 0.25) { const c = dropCamera(t, TL); assert.ok([...c.eye, ...c.look, c.fov].every(Number.isFinite), `finite at ${t}`); }
   const early = dropCamera(2, TL); assert.ok(early.look[1] > 300, 'the camera on the capsules high up');
   const trio = dropCamera(15, TL); assert.ok(trio.look[1] < 10 && trio.eye[1] < 25, 'low on the grounded trio');
-  const ground = dropCamera(18.5, TL); assert.ok(near(ground.eye[1], TL.groundEye, 0.3) && ground.fov > 60, 'the ground camera');
+  const ground = dropCamera(18.5, TL); assert.ok(near(ground.eye[1], TL.ground[1], 0.3) && ground.fov > 60, 'the ground camera');
   assert.equal(dropCamera(30, TL).eye.length, 3); }
 // the phases on the drop's own clock
 assert.equal(dropPhase(-1, TL), 'idle'); assert.equal(dropPhase(5, TL), 'dropping'); assert.equal(dropPhase(TL.duration + 0.01, TL), 'landed');

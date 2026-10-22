@@ -14,14 +14,16 @@
 // `timeline` is the owner's cinematic (SentryTowers_A6 feids26/timeline.js), metres and seconds: two capsules at x -/+capsuleX entering from
 // `entry` m nose-down, split at `release` s (the second `capsuleGap` later) at `split` m sinking `splitSink` m/s, each slot released `slotGap` later,
 // the cargo falling `fallTimes` to `fallTo` m, braking `brake` s, landing at `landings` round the centre; the quarters gone `shellGone` s after the
-// split; the camera wide, then a fixed ground camera `groundEye` m up from groundCamera[0] to [1] s (0.2 m upstream; 0.6 here, over the game's relief)
+// split; the camera wide, then a fixed ground camera at `ground` from groundCamera[0] to [1] s: upstream (9.75, 0.2, 7); here 3.5 m up and 9 m from the
+// laggard's spot, because the game camera's near plane is 0.004 units, 3 m at the story's scale (src/td-tab.js): at 1 m up the floor under the lens was
+// clipped and the planet's far side showed through it (the --reinforcements step's laggard frame, 2026-10-23)
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 export const REINFORCEMENTS = freeze({
   days: 3, pace: 0.25, gaitCap: 4, roles: ['arena', 'arena', 'base', 'hunt'], offsetCells: 5, scale: 0.75,
   weapons: ['rotor', 'lancer', 'quiver', 'quiver'], keepFromHull: 2, lodMetres: 140, fade: 20, patrolCells: 14,
   timeline: {
     duration: 28, release: 6.2, capsuleGap: 0.45, slotGap: 0.18, brake: 0.8, entry: 480, split: 300, splitSink: 4, fallTo: 12, capsuleX: 6,
-    landings: [[-6, -4], [-3, 4], [4, -3], [7, 5]], fallTimes: [6, 6.25, 6.55, 11.6], shellGone: 3.5, groundCamera: [16.5, 18], groundEye: 0.6,
+    landings: [[-6, -4], [-3, 4], [4, -3], [7, 5]], fallTimes: [6, 6.25, 6.55, 11.6], shellGone: 3.5, groundCamera: [16.5, 18], ground: [14, 3.5, 11],
   },
   sounds: { entry: 'feids_reentry', woosh: 'mech_reentry_woosh', impact: 'mech_landing_impact', wooshLead: 4 },
   models: { capsule: 'assets/models/feids26/feids26_d0_lod1.glb', mech: 'assets/models/ridgeback/mx06_d0_lod1.glb', mechFar: 'assets/models/ridgeback/mx06_d0_lod2.glb' },

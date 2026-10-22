@@ -104,6 +104,7 @@ export function createProgrammeHost(c) {
       // above came out empty. The flank is his: a kit wall on each shoulder, out to the rock
       if (step.gate === 'back') { for (const sk of c.story().backSockets ?? []) c.story().socketToward[sk.cell] = sk.toward; const m = c.story().backMouth; if (m) c.story().backHoles = m.flank.filter((ci) => !m.cells.includes(ci)); recomputePortalDist(); }
       c.sectorRun()?.note({ type: 'print', id: step.id });   // the sector books Isao's base prints too, not only tower orders
+      if (step.perk === 'uplink') c.reinforce()?.called();   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the radar's uplink up, Isao calls the colony (src/fx/reinforcements-host.js)
       // the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it
       if (step.walls) { for (const ci of c.story().wallCells) { c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }
       if (step.perk === 'station' && c.story().arrayPad) c.story().arrayPad.standing = true;   // the solar array's pad charges once the complex stands

@@ -64,7 +64,7 @@ export function dropCamera(t, tl) {
   const fall = lerp(allFall, firstFall, focus), blend = smooth((t - 5.8) / 0.8), alt = lerp(mid + 3, fall + 1, blend), near = smooth((t - 11) / 3);
   const wide = [-30 + near * 4, alt + 15 - near * 9, 46 - near * 11], target = [0, alt, 0];
   const [g0, g1] = tl.groundCamera, ant = smooth((t - g0) / (g1 - g0)), lag = cargoState(t, 1, 1, tl);
-  const ground = [9.75, tl.groundEye, 7.0], menace = [7.6, Math.max(0.55, lag.height + 0.65), 5.5];
+  const ground = tl.ground, menace = [7.6, Math.max(0.55, lag.height + 0.65), 5.5];
   const eye = wide.map((v, k) => lerp(v, ground[k], ant)), look = target.map((v, k) => lerp(v, menace[k], ant));
   let shake = 0.035 * c0.heat;
   for (let i = 0; i < 2; i++) { shake += capsuleState(t, i, tl).flash * 0.16; for (let j = 0; j < 2; j++) { const age = cargoState(t, i, j, tl).hit; if (age >= 0) shake += (i === 1 && j === 1 ? 0.1 : 0.22) * Math.exp(-age * 5); } }

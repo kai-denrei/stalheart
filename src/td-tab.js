@@ -52,6 +52,7 @@ import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
 import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js';
+import { createReinforcements } from './fx/reinforcements-host.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
@@ -107,6 +108,7 @@ import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
   let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, discoParty = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let reinforcements = null, mechSquad = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -2396,6 +2398,9 @@ export function initTdTab(root) {
     discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, cutBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide),
       daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveClock.in() >= 0, boards: () => story?.boards ?? [],   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen(), alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(), warm: warmShaders }) : null;
+    reinforcements?.restore(); reinforcements = story ? createReinforcements({ scene, camera, metres: () => metresToArc(1, cellSide), sfx, explode, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), graph: () => graph, dungeon: () => dungeon, story: () => story,
+      daylight: () => daylight, sectorRun: () => sectorRun, shotActive, flag: flags.reinforce, uplink: () => programme.hasPerk('uplink'), landed: (m, f, c) => mechSquad?.adopt(m, f, c), squad: () => mechSquad, alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(),   /* FEIDS-26 (2026-10-23) */
+      seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
@@ -4209,7 +4214,7 @@ export function initTdTab(root) {
     briefs.stepClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour|discoReveal)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
@@ -4297,6 +4302,7 @@ export function initTdTab(root) {
       }
     }
     if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? [...(sectorRun?.gates() ?? []), ...bossRun.rows()] : [] }, dt);   /* src/fx/integrity-hud.js */
+    reinforcements?.tick(frozen ? 0 : dt); mechSquad?.tick(frozen ? 0 : dt, t);   // FEIDS-26: the drop's clock and the four (2026-10-23)
     story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); discoParty?.tick(frozen ? 0 : dt); /* DAY 42 after the base's mixers: the paused clip rewrites the arm each update */ story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos((obj.userData.clear??CONTENT.breach.clearRadius)*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
@@ -4678,6 +4684,7 @@ export function initTdTab(root) {
     laserStation,
     startShot,
     sfx,
+    reinforce: () => reinforcements,   // FEIDS-26: the radar's uplink calls them (2026-10-23)
     callout: (x, k) => showCallout(x, k),
     danger: isaoMoments.danger,
     hullHost: makeHullHost,
@@ -4999,6 +5006,7 @@ export function initTdTab(root) {
         screensOpened: syntheticModal?.opened() ?? 0,
         brassLive: brass?.live() ?? 0,
         daylight: daylight?.state() ?? null, day: daylight?.day() ?? null, party: discoParty?.state() ?? null,
+        reinforcements: reinforcements?.state() ?? null,   /* FEIDS-26 (2026-10-23) */
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
@@ -5076,6 +5084,7 @@ export function initTdTab(root) {
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
+      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; },   // FEIDS-26 (2026-10-23): the drop armed now
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)

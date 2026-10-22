@@ -1656,6 +1656,40 @@ try{
   await until(`(${T}.state().sector.breaches||[]).reduce((n,b)=>n+(b.wavesReleased||0),0)>${released(atStart)}`,45000).catch(async()=>assert.fail(`a wave is out after the party (${released(atStart)}/${planned(atStart)} at the start; ${JSON.stringify((await st()).sector.breaches)})`));
  } else console.log(`  day-42: every wave was out before the party (${released(atStart)}/${planned(atStart)}), no next wave to see`);
  current='day-42-done';await finish();
+ } else if(args.includes('--reinforcements')) {
+ // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23; spec docs/superpowers/specs/2026-10-23-feids26-reinforcements-design.md): ?reinforce=1 drops them as soon
+ // as the world stands: the drop's phase within 10 s, the camera cut to the arena on the cinematic (shot 'feidsDrop', live), the four touchdowns at the
+ // rule's times (13.00, 13.43, 14.00, 19.23 s) +- 0.5 s on the drop's clock (game seconds), the three sounds asked (2 entries, 4 wooshes 4 s ahead of
+ // each touchdown, 4 impacts), the camera released, the phase 'landed'. One line per measured thing.
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {REINFORCEMENTS}=await import('../src/content/reinforcements.js'), {touchdowns}=await import('../src/domain/reinforcements.js');
+ const TD=touchdowns(REINFORCEMENTS.timeline), R=s=>s.reinforcements;
+ await go('reinforce-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&reinforce=1#td`);
+ // a real key arms the page's audio before the world stands (a key during the drop is a skip of its cut, as it is for every skippable shot)
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ const w0=Date.now();
+ {const w1=Date.now();while(Date.now()-w1<20000){const s=await st(),r=R(s);if(!r||r.phase!=='idle')break;console.log(`  reinforcements: waiting ${((Date.now()-w0)/1000).toFixed(1)} s: ${JSON.stringify({why:r?.why,ticks:r?.ticks,loaded:r?.loaded,shot:s.shot,paused:s.paused,phase:s.storyPhase??s.phase,frames:s.performance?.frames})}`);await delay(1000);}}
+ await until(`${T}.state().reinforcements?.phase==='dropping'`,20000).catch(async()=>assert.fail(`the drop starts on ?reinforce=1 (${JSON.stringify(R(await st()))})`));
+ {const s=await st(),r=R(s);console.log(`  reinforcements: dropping ${((Date.now()-w0)/1000).toFixed(1)} s (wall) after the world stood; models loaded ${r.loaded}, failed ${r.failed}; centre cell ${r.centre}, arena cell ${s.arena?.cell}; shot ${s.shot}`);
+  assert.ok(Date.now()-w0<10000,'the drop within 10 s of the world standing');assert.equal(r.loaded,true,'the capsule and the Ridgeback loaded');assert.ok(r.centre>=0,'a drop centre');}
+ await until(`${T}.state().shot==='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>{const s=await st();assert.fail(`the camera cuts to the arena (${JSON.stringify({shot:s.shot,r:R(s),view:s.view})})`);});
+ {const s=await st();assert.equal(s.paused,false,'a live shot: the world runs');}
+ const snaps=[[3,'reinforce-entry'],[9,'reinforce-release'],[14.5,'reinforce-trio'],[19.6,'reinforce-laggard']];
+ for(const [at,name] of snaps){await until(`(${T}.state().reinforcements?.t??0)>=${at}||${T}.state().reinforcements?.phase==='landed'`,240000);const r=R(await st());console.log(`  reinforcements: ${name} at drop t ${r.t} s, shot ${(await st()).shot}`);current=name;await finish();}
+ await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`the four land (${JSON.stringify(R(await st()))})`));
+ {const s=await st(),r=R(s),heard=r.heard;
+  const by=k=>heard.filter(h=>h.kind===k);
+  console.log(`  reinforcements: landed at drop t ${r.t} s (${((Date.now()-w0)/1000).toFixed(0)} s wall)`);
+  by('impact').forEach((h,i)=>console.log(`  reinforcements: touchdown ${h.index+1} heard at drop t ${h.t} s (rule ${TD[h.index].toFixed(2)} s, off ${(h.t-TD[h.index]).toFixed(2)} s)`));
+  by('woosh').forEach(h=>console.log(`  reinforcements: woosh ${h.index+1} at drop t ${h.t} s (rule ${(TD[h.index]-4).toFixed(2)} s)`));
+  by('entry').forEach(h=>console.log(`  reinforcements: capsule ${h.index+1} entry at drop t ${h.t} s`));
+  console.log(`  reinforcements: sounds asked ${JSON.stringify(Object.fromEntries(Object.values(REINFORCEMENTS.sounds).filter(k=>typeof k==='string').map(k=>[k,s.sounds?.[k]??0])))}`);
+  assert.equal(by('entry').length,2,'two capsule entries');assert.equal(by('woosh').length,4,'four wooshes');assert.equal(by('impact').length,4,'four impacts');
+  by('impact').forEach(h=>assert.ok(Math.abs(h.t-TD[h.index])<=0.5,`touchdown ${h.index+1} at ${h.t} s, rule ${TD[h.index]}`));
+  for(const k of ['feids_reentry','mech_reentry_woosh','mech_landing_impact'])assert.ok((s.sounds?.[k]??0)>=(k==='feids_reentry'?2:4),`${k} asked (${s.sounds?.[k]})`);}
+ await until(`${T}.state().shot!=='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>assert.fail(`the camera released after the drop (${(await st()).shot})`));
+ {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}`);}
+ current='reinforce-landed';await finish();
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see
