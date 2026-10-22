@@ -6,7 +6,7 @@ import { ARENA, ARENA_SECTOR, ARENA_HANDOVER } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 import { METRES_PER_CELL } from '../src/core/stage-units.js';
-import { GUNSHIP_SEAT_HINT } from '../src/content/gunship.js';
+import { GUNSHIP_SEAT_HINT, GUNSHIP_GUNS, GUNSHIP_ORBIT } from '../src/content/gunship.js';
 import { ARENA_ROAD_GUARD as GUARD } from '../src/content/sectors.js';   // the beam's guard in cells (3.1): roadFar(ci, 0) in td-tab asks only that (laserStation.roadSafe)
 
 function host(o = {}) {
@@ -419,5 +419,20 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   b.alive = false; h.now = 2; run.tick(0.1); for (let k = 1; k <= 10; k++) { h.now = 2 + k * 0.1; run.tick(0.1); }
   assert.deepEqual(kills, [], 'no brood: nothing killed after her'); assert.ok(h.log.briefs.includes('boss_dead'));
   run.end('secure'); assert.equal(carried.alive, true, 'end(secure) leaves a body that is no wave\'s'); }
+
+// THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"): the content's guns and no orbit of its own until the boss phase; then the lab's MK-9
+// (perPass 0, BOSS_FIGHT.arenaGuns.reload) and an endless station; the MK-9 stays the lab's through `over` (the secure pause), the station ends with her
+{ const h = host({ enemies: [] }), run = createBossRun(h);
+  assert.equal(run.guns(), GUNSHIP_GUNS); assert.equal(run.orbit(), null, 'off: no orbit of its own');
+  run.begin(ARENA_SECTOR); assert.equal(run.guns(), GUNSHIP_GUNS, 'the beacon: the content\'s guns'); assert.equal(run.orbit(), null);
+  h.open = true; h.now = 1; run.tick(0.1); assert.equal(run.guns().heavy.perPass, GUNSHIP_GUNS.heavy.perPass, 'the waves: still the content\'s');
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1);
+  assert.equal(run.state().phase, 'boss');
+  assert.deepEqual([run.guns().heavy.perPass, run.guns().heavy.reload], [0, BOSS_FIGHT.arenaGuns.reload], 'the lab\'s MK-9: no limit a pass, its 6 s reload');
+  assert.equal(run.guns().bofors, GUNSHIP_GUNS.bofors, 'the other guns are the content\'s'); assert.equal(GUNSHIP_GUNS.heavy.perPass, 1, 'the content is untouched');
+  assert.equal(run.orbit().station, Infinity, 'the station does not end while she lives'); assert.equal(run.orbit().pass, GUNSHIP_ORBIT.pass);
+  b.alive = false; h.now = 3; run.tick(0.1); assert.equal(run.state().phase, 'over');
+  assert.equal(run.guns().heavy.perPass, 0, 'over: the seat keeps the lab\'s MK-9 through the secure pause'); assert.equal(run.orbit(), null, 'but the station may end');
+  run.end('secure'); assert.equal(run.guns(), GUNSHIP_GUNS); assert.equal(run.orbit(), null); }
 
 console.log('Boss run: the order to investigate the tremor, its callout and reminders, no arena_open and her row whole with no small wave (straight to the mother, note 4); the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then the road\'s first burnable rock between the guard and 10 cells, in the band 6.5 to 10 cells in driving (100 m) ahead of the hull as it drives (note 3), each ask\'s lead logged at the ask and the burn\'s end (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');

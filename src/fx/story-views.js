@@ -25,7 +25,7 @@ export function createStoryViews(root, on) {
   let laser = null, laserLast = null;
   function sol82(s) { laserLast = s; if (!laser) return; laser.hidden = !s.shown; laser.disabled = !s.live; laser.classList.toggle('live', s.live); laser.classList.toggle('warn', s.warn); if (laser.textContent !== s.text) laser.textContent = s.text; }
   // the pass: dark with the next arrival counting down, live while the guns are yours. Nothing here can change either.
-  function station(on, seconds) { if (!ship) return; ship.disabled = !on; ship.classList.toggle('live', on); ship.classList.remove('ready'); const t = `GUNSHIP · ${Math.ceil(seconds)} S${on ? ' LEFT' : ''}`; if (ship.textContent !== t) ship.textContent = t; }
+  function station(on, seconds) { if (!ship) return; ship.disabled = !on; ship.classList.toggle('live', on); ship.classList.remove('ready'); const t = Number.isFinite(seconds) ? `GUNSHIP · ${Math.ceil(seconds)} S${on ? ' LEFT' : ''}` : 'GUNSHIP · ON STATION'; if (ship.textContent !== t) ship.textContent = t; }
   // after the handover: the call-in meter fills; full, the button calls the pass (owner, 2026-09-14)
   function meter(progress, full) { if (!ship) return; ship.disabled = !full; ship.classList.toggle('ready', full); ship.classList.remove('live'); const t = full ? 'GUNSHIP · CALL' : `GUNSHIP · ${Math.round(progress * 100)}%`; if (ship.textContent !== t) ship.textContent = t; }
   mounts([]);

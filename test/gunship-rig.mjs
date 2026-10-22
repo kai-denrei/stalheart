@@ -7,7 +7,7 @@ import * as THREE from '../vendor/three.module.js';
 import { createGunshipRig } from '../src/fx/gunship-rig.js';
 import { makeGunship, startStation, onStation } from '../src/domain/gunship.js';
 import { makeTrack } from '../src/domain/gunship-track.js';
-import { GUNSHIP_CALL, GUNSHIP_ORBIT } from '../src/content/gunship.js';
+import { GUNSHIP_CALL, GUNSHIP_GUNS, GUNSHIP_ORBIT } from '../src/content/gunship.js';
 import { BASE_PERKS } from '../src/content/base-programme.js';
 import { BLOCKED, PATH } from '../src/dungeon.js';
 import { norm3 } from '../src/vec3.js';
@@ -17,7 +17,7 @@ globalThis.location ??= { search: '' };   // reset() reads ?gunship=station, as 
 const cellSide = 0.05, N = 12;
 const centers = Array.from({ length: N }, (_, i) => norm3([0, 1, i * cellSide]));
 const adj = centers.map((_, i) => [i - 1, i + 1].filter((j) => j >= 0 && j < N));
-function controller(o = {}) {
+function controller(o = {}, extra = {}) {
   const log = [], rec = (k, ret) => (...a) => { log.push([k, ...a]); return ret; };
   const s = {
     story: null, storyViews: { meter: rec('meter'), station: rec('station') }, graph: { centers, adj, normals: centers }, dungeon: { heart: 0, spawn: 11, tags: centers.map((_, i) => (i === 3 ? BLOCKED : PATH)) },
@@ -31,6 +31,7 @@ function controller(o = {}) {
     warnRing: rec('warnRing'), showRangeRing: rec('showRangeRing'), hideRangeRing: rec('hideRangeRing'), cellIndex: () => 4,
     setFollowSuspend: (v) => { s.followSuspend = v; }, setBuildDist: (v) => { s.buildDist = v; },
     ...Object.fromEntries(['story', 'storyViews', 'graph', 'dungeon', 'cellSide', 'pilot', 'pilotHost', 'isao', 't', 'gunshipBriefing', 'enemies', 'spawnPoints', 'debris', 'player', 'towers', 'strikeTune'].map((k) => [k, () => (k === 'cellSide' ? cellSide : s[k])])),
+    ...extra,
   });
   return { rig, log, s, scene, gunship };
 }
@@ -132,5 +133,26 @@ const storyAt = (o = {}) => ({ gunshipIn: false, grow: false, programme: null, s
   const p = rig.probe();
   assert.deepEqual({ phase: p.phase, seat: p.seat, briefing: p.briefing, lane: p.lane, aimCell: p.aimCell, nuke: p.nuke, track: p.track, optic: p.optic },
     { phase: 'pass', seat: true, briefing: true, lane: 11, aimCell: 4, nuke: null, track: null, optic: false });
+}
+// THE GUNS AND THE ORBIT FROM THE HOST, read each call (owner, 2026-10-23, a: "not enough nukes on the gunship"; src/fx/boss-run.js guns(), orbit()): the arena's MK-9
+// (perPass 0, reload 6) is the seat's as soon as the host hands it, never spent in a pass, ready again a fall + 6 s after each release; an endless station holds
+// the pass open and a finite orbit back gives a fresh station
+{
+  let arena = false;
+  const ARENA_GUNS = { ...GUNSHIP_GUNS, heavy: { ...GUNSHIP_GUNS.heavy, perPass: 0, reload: 6 } };
+  const { rig, gunship } = controller({}, { guns: () => (arena ? ARENA_GUNS : GUNSHIP_GUNS), orbit: () => (arena ? { ...GUNSHIP_ORBIT, station: Infinity } : GUNSHIP_ORBIT) });
+  startStation(gunship, GUNSHIP_ORBIT); const bag = rig.pilotBag(); bag.mount();
+  assert.equal(bag.guns, GUNSHIP_GUNS, 'outside the arena: the content\'s guns');
+  assert.equal(bag.paintHeavy(5), true); assert.equal(bag.launchHeavy(), 5);
+  gunship.clock += GUNSHIP_GUNS.heavy.travel; bag.stepHeavy(); gunship.clock += GUNSHIP_GUNS.heavy.reload + 0.1;
+  assert.equal(bag.heavyState().phase, 'spent', 'one release a pass');
+  arena = true;
+  assert.equal(bag.guns, ARENA_GUNS, 'the same bag reads the arena\'s guns once the host hands them'); assert.equal(bag.heavyState().phase, 'ready', 'no limit a pass in the arena');
+  const t0 = gunship.clock; assert.equal(bag.paintHeavy(6), true); assert.equal(bag.launchHeavy(), 6);
+  gunship.clock = t0 + ARENA_GUNS.heavy.travel; assert.equal(bag.stepHeavy(), 6); assert.equal(bag.heavyState().phase, 'reloading');
+  gunship.clock = t0 + ARENA_GUNS.heavy.travel + 6 + 0.01; assert.equal(bag.heavyState().phase, 'ready', `ready again ${ARENA_GUNS.heavy.travel + 6} s after the release`);
+  assert.equal(rig.probe().heavy.phase, 'ready', 'the probe reads the arena\'s guns too');
+  rig.tick(1); assert.equal(gunship.left, Infinity, 'the endless station holds the pass open'); rig.tick(500); assert.equal(onStation(gunship), true);
+  arena = false; rig.tick(1); assert.equal(gunship.left, GUNSHIP_ORBIT.station - 1, 'a finite orbit back: a fresh station');
 }
 console.log('Gunship rig: the meter, the frame\'s step, the track, the MK-9, the new run\'s reset, the seat\'s bag and the probe behave as the controller\'s did.');

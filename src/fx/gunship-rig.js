@@ -9,6 +9,9 @@
 // than the rig, as getters (story, storyViews, graph, dungeon, cellSide, pilot, pilotHost, isao, t, gunshipBriefing, enemies,
 // spawnPoints, debris, player, towers, strikeTune); cellIndex as a call-through; and the two lets the seat's framing writes as
 // setters (setFollowSuspend, setBuildDist).
+// THE GUNS AND THE ORBIT ARE READ EACH CALL (owner, 2026-10-23, a: "not enough nukes on the gunship"; src/fx/boss-run.js guns(), orbit()): `host.guns()` the
+// guns now (THE ARENA's boss phase hands the lab's MK-9, perPass 0 and a 6 s reload; the content's guns otherwise), `host.orbit()` the orbit now; an orbit whose
+// `station` is not finite holds the pass open (gunship.left Infinity; a finite one back gives a fresh station)
 import { sub3, scale3, norm3, len3 } from '../vec3.js';
 import { BLOCKED } from '../dungeon.js';
 import { makeDotBurst } from '../units.js';
@@ -26,6 +29,7 @@ import { isaoSpeak } from './isao-voice.js';
 export function createGunshipRig(host) {
   const { scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing } = host;
   let optic = null, track = null, walls = null, drop = null;
+  const guns = () => host.guns?.() ?? GUNSHIP_GUNS;
   // THE CALL METER RUNS after the handover, or once sector 0's free pass has come (src/domain/story-beats.js construction). A
   // kill's biomass feeds it, times the base programme's gunship perk once that is built.
   const onCall = () => automated() || !!host.story()?.gunshipIn;
@@ -38,7 +42,9 @@ export function createGunshipRig(host) {
   // THE FRAME'S GUNSHIP, where the controller's frame steps it: inside `!player.won && !frozen`, after the debris and before the
   // wave clock and the strike's ration. The orbital window fills in game time, like everything else there.
   const tick = (dt) => {
-    const held = (onCall() || !!host.story()?.grow) && !onStation(gunship), ev = held ? null : stepGunship(gunship, dt, host.orbit?.() ?? GUNSHIP_ORBIT);   /* the tune panel's station length (2026-10-16) */
+    const orbit = host.orbit?.() ?? GUNSHIP_ORBIT;   /* the tune panel's station length (2026-10-16); THE ARENA's endless station (2026-10-23) */
+    if (onStation(gunship)) { if (!Number.isFinite(orbit.station)) gunship.left = Infinity; else if (!Number.isFinite(gunship.left)) gunship.left = orbit.station; }
+    const held = (onCall() || !!host.story()?.grow) && !onStation(gunship), ev = held ? null : stepGunship(gunship, dt, orbit);
     if (onCall() && ev === 'depart') passEnded(call, GUNSHIP_CALL);
     // A GROWING PAGE'S GUNSHIP IS IN ORBIT from the start and comes on station when sector 0 calls it (storyApi.gunshipArrive);
     // after that free pass the meter runs as after the handover
@@ -92,7 +98,7 @@ export function createGunshipRig(host) {
     state: gunship,
     strike,
     tune: host.strikeTune(),
-    guns: GUNSHIP_GUNS,
+    get guns() { return guns(); },
     order: GUNSHIP_GUN_ORDER,
     platform: GUNSHIP_PLATFORM,
     centers: host.graph().centers,
@@ -109,8 +115,8 @@ export function createGunshipRig(host) {
     progress: () => passProgress(gunship, host.orbit?.() ?? GUNSHIP_ORBIT),
     mount: () => mountGunship(gunship),
     dismount: () => dismountGunship(gunship),
-    select: (k) => selectGun(gunship, k, GUNSHIP_GUNS),
-    step: (dt, held) => stepGun(gunship, dt, held, GUNSHIP_GUNS),
+    select: (k) => selectGun(gunship, k, guns()),
+    step: (dt, held) => stepGun(gunship, dt, held, guns()),
     fire: (g, p, travel) => fireRound(gunship, g, p, travel),
     landed: () => { const out = stepRounds(gunship); for (const r of out) host.roundLanded?.(r.gun, r.point); return out; },   // THE ARENA hears every shell (2026-10-18, note 8c: "more scare of 40mm"; src/fx/boss-run.js landed)
     aim: aimOnSphere,
@@ -123,7 +129,7 @@ export function createGunshipRig(host) {
       ...(host.isao() ? [{ kind: 'isao', pos: host.isao().obj.position.toArray() }] : []),
     ],
     danger: (p, r) => dangerReport(p, r, host.pilotHost().gunship.bodies()),
-    blast: (ci) => { if (ci >= 0) { host.roundLanded?.('heavy', host.graph().centers[ci]); executeStrike(ci, host.t(), 'gunship.nuke', GUNSHIP_GUNS.heavy.blastCells); host.story()?.nukes?.push(ci); } },   // the MK-9 heard before its blast: the stun takes a boss the blast leaves alive   // the story counts them: its first hands over the tank
+    blast: (ci) => { if (ci >= 0) { host.roundLanded?.('heavy', host.graph().centers[ci]); executeStrike(ci, host.t(), 'gunship.nuke', guns().heavy.blastCells); host.story()?.nukes?.push(ci); } },   // the MK-9 heard before its blast: the stun takes a boss the blast leaves alive   // the story counts them: its first hands over the tank
     drop: { release: (from, to, up, vel) => !!drop?.release(from, to, up, vel), steer: (to) => drop?.steer(to) },
     vel: () => track ? scale3(track.heading, track.speed * host.cellSide()) : [0, 0, 0],
     explode: (use, p) => explode(use, p),
@@ -132,11 +138,11 @@ export function createGunshipRig(host) {
     burst: (p, hex, n, scale) => { const b = makeDotBurst(hex, norm3(p), n); b.scale.setScalar(host.cellSide() * scale); b.position.set(p[0], p[1], p[2]); scene.add(b); host.debris().push(b); },
     laser: (ci) => { if (ci >= 0) showRangeRing(ci, host.strikeTune().blastCells, 0xff2a1a); else hideRangeRing(); },
     loop: (name, o) => sfx.loop(name, o),
-    paintHeavy: (ci, o) => paintHeavy(gunship, ci, GUNSHIP_GUNS, o),
-    launchHeavy: (o) => { const lc = launchHeavy(gunship, GUNSHIP_GUNS, o); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05); the automated one is booked apart ({ auto: true })
+    paintHeavy: (ci, o) => paintHeavy(gunship, ci, guns(), o),
+    launchHeavy: (o) => { const lc = launchHeavy(gunship, guns(), o); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05); the automated one is booked apart ({ auto: true })
     nudgeHeavy: (ci) => nudgeHeavy(gunship, ci),
     stepHeavy: () => stepHeavy(gunship),
-    heavyState: () => heavyState(gunship, GUNSHIP_GUNS),
+    heavyState: () => heavyState(gunship, guns()),
     get optic() { return optic ??= createGunshipOptic(scene, { cellSide: host.cellSide(), metresPerCell: GUNSHIP_PLATFORM.metresPerCell }); },
   });
 
@@ -150,7 +156,7 @@ export function createGunshipRig(host) {
     optic: !!optic?.active(),
     station: onStation(gunship),
     seat: !!host.pilot()?.gunship,
-    heavy: heavyState(gunship, GUNSHIP_GUNS),
+    heavy: heavyState(gunship, guns()),
     nuke: drop ? { ready: drop.ready(), flying: !!drop.mesh(), ignited: drop.ignited() } : null,
     heat: +gunship.heat.toFixed(2),
     overheated: gunship.overheated,
@@ -165,7 +171,7 @@ export function createGunshipRig(host) {
   return {
     call, onCall, feed, far, lane, tick, reset, pilotBag, probe,
     // THE LURE'S DANGERS (src/fx/boss-run.js, 2026-10-16): the MK-9's cell while it is painted, falling or diving, and the shells in the air
-    dangerPoints: () => { const out = []; const hs = heavyState(gunship, GUNSHIP_GUNS); if ((hs.ci ?? -1) >= 0 && ['painted', 'released', 'ignited'].includes(hs.phase)) out.push(host.graph().centers[hs.ci]); for (const r of gunship.rounds) out.push(r.point); return out; },
+    dangerPoints: () => { const out = []; const hs = heavyState(gunship, guns()); if ((hs.ci ?? -1) >= 0 && ['painted', 'released', 'ignited'].includes(hs.phase)) out.push(host.graph().centers[hs.ci]); for (const r of gunship.rounds) out.push(r.point); return out; },
     // the MK-9 in flight, for the story monitor's feed
     get drop() { return drop; },
     // the base's walls went up: the danger report counts them afresh

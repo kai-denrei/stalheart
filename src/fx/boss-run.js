@@ -38,7 +38,7 @@ import { roadField, roadKept, roadRock } from '../domain/arena.js';
 import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
 import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
-import { GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../content/gunship.js';
+import { GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../content/gunship.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
@@ -298,7 +298,15 @@ export function createBossRun(c) {
     const q = phase === 'beacon' ? null : (bossRecord() ?? nearestHunter());   // the drive out (isaoDrives): no quarry, the arena's field
     return { arena: arenaCell(), arenaField: c.arenaField?.() ?? null, quarry: q ? groundAt(q) : null, dangers: c.dangers?.() ?? [] };
   }
+  // THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"; BOSS_FIGHT.arenaGuns, src/fx/gunship-rig.js reads both each call): while the boss phase
+  // runs (and `over`, the seat still up through the secure pause) the MK-9 is the lab's, no limit a pass and BOSS_FIGHT.arenaGuns.reload s after each fall; the pass
+  // does not end while she lives (orbit().station Infinity); null outside: the rig falls back to the tune panel's or the content's orbit
+  const armed = () => on && (phase === 'boss' || phase === 'over');
+  const ARENA_GUNS = Object.freeze({ ...GUNSHIP_GUNS, heavy: Object.freeze({ ...GUNSHIP_GUNS.heavy, perPass: 0, reload: BOSS_FIGHT.arenaGuns.reload }) });
+  const ARENA_ORBIT = Object.freeze({ ...GUNSHIP_ORBIT, station: Infinity });
+  const guns = () => (armed() ? ARENA_GUNS : GUNSHIP_GUNS);
+  const orbit = () => (on && phase === 'boss' && BOSS_FIGHT.arenaGuns.station ? ARENA_ORBIT : null);
   const fearState = () => { const b = bossRecord(); return { frights, stuns, scared: !!b && isScared(b, c.t()), stunned: !!b && c.t() < (b.stagUntil ?? -1), ground: b?.ground ? 'ground' : b ? 'hunt' : null }; };
-  return { begin, tick, end, rows, lure, arenaDue, landed, talking, force: () => { dueNow = true; }, on: () => on,
+  return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, force: () => { dueNow = true; }, on: () => on,
     state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })) }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

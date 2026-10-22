@@ -54,7 +54,7 @@ export const phaseLeft = (st) => Math.max(0, st.left);
 // 0..1 across the station phase while overhead; 0 otherwise. The platform's ground
 // track is a function of this and nothing else.
 export function passProgress(st, orbit) {
-  if (st.phase !== 'station') return 0;
+  if (st.phase !== 'station' || !Number.isFinite(st.left)) return 0;   // an endless station (THE ARENA, 2026-10-23) has no progress
   return Math.min(1, Math.max(0, 1 - st.left / Math.max(1e-6, orbit.station)));
 }
 

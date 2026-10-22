@@ -53,7 +53,7 @@ export function createGunshipHud(root) {
       if (key !== last) { last = key; svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.innerHTML = reticle(w, h, gun, hot, painted, spin, state, warn); }
       put('gun', { rotary: '25MM ROTARY', bofors: '40MM BOFORS', heavy: 'MK-9 MINI NUKE' }[gun] ?? gun.toUpperCase(), true);
       put('range', range > 0 ? `${Math.round(range)} m` : '—'); put('coords', coords); put('contacts', String(contacts), contacts > 0);
-      put('nearest', nearest != null ? `${Math.round(nearest)} m from base` : '—'); put('blast', blast, blast !== 'clear'); put('left', `${Math.ceil(left)} s`); put('state', state, hot || painted); put('mag', `${zoom.toFixed(1)}x`); put('barLabel', barLabel); fill.style.width = `${Math.round(Math.max(0, Math.min(1, bar)) * 100)}%`; meter.classList.toggle('hot', barHot);
+      put('nearest', nearest != null ? `${Math.round(nearest)} m from base` : '—'); put('blast', blast, blast !== 'clear'); put('left', Number.isFinite(left) ? `${Math.ceil(left)} s` : 'ON STATION'); put('state', state, hot || painted); put('mag', `${zoom.toFixed(1)}x`); put('barLabel', barLabel); fill.style.width = `${Math.round(Math.max(0, Math.min(1, bar)) * 100)}%`; meter.classList.toggle('hot', barHot);
     },
     dispose() { layer.remove(); },
   };

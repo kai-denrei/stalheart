@@ -27,6 +27,10 @@ export const BOSS_FIGHT = freeze({
   // `trail` (the generic scare's 2.4 and 1.3): about 35 m, the lab's 40 mm flight, so the 40 mm pushes her aside; a fright running is re-aimed at the newest
   // shell and extended, never restarted. The MK-9 within its blast holds her still `nuke.stun` s (1.5, the lab's): the window to time the big one
   arenaBoss: { ground: { cross: 4, hold: 2 }, pace: 1.4, weight: { bofors: 2 }, flee: 3, trail: 1.6 },
+  // THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"; docs/superpowers/specs/2026-10-23-arena-lab-fight-design.md, decision 1): while THE
+  // ARENA's boss phase runs (src/fx/boss-run.js guns(), orbit()) the seat's MK-9 is the lab's (src/labs/boss/game-seat.js RELOAD 6, perPass 0: no limit a pass, each
+  // still waits out its fall and `reload` s), and with `station` the pass does not end while she lives (the seat reads ON STATION)
+  arenaGuns: { reload: 6, station: true },
   bait: {                  // bait mode (2026-10-09-boss-bait-mode-design.md): Isao the drone flies on autopilot as the creature's prey, the player in the gunship
     health: 12,            // his hit points
     keep: 20,              // he keeps this far outside the creature's reach toward himself (the outermost body node, arms included, when the lab gives the nodes; else the floor contacts' front edge)
