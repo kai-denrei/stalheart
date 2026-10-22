@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-16-board-actors-fx-module",
+  "date": "2026-10-16",
+  "type": "change",
+  "status": "accepted",
+  "title": "The board's actors are an fx module (src/fx/board-actors.js): buildActors and placeActors leave the controller, their state stays",
+  "context": "Refactor round 3 (branch refactor-round-3 from main dedce7e3, after round 2 merged). Method of the 2026-10-07 plan: a host literal per factory, one member per line, the original region run beside the module over recording fakes, undef-diff, tdz-check, comments-kept, host contracts. buildActors (140 lines: the heart with its async model, the life containers, the hull, the dot-cloud creature, the map marker) and placeActors (72 lines, every frame: the heart on its pedestal, the hull on the ground with recoil and feel, the shield shell, the marker) were the two largest world-building functions after regenerate, with 47 closure names between them (64 with imports).",
+  "outcome": "createBoardActors(host) holds both functions as the controller had them, every comment with them, and returns { buildActors, placeActors }; td-tab keeps the state (heartSprite, playerMesh, markerMesh, shieldObj, lifeContainers, creatureBase/Geo/Pos, heartGen, containerGen) and hands getters and setters for it, getters for the board's lets (graph, dungeon, cellSide, unitScale, berths, heartHP, playerHP, recoilLeft, t, the four board meshes), the late consts storyMode and ramJolt as getters, recoilFactor as a lazy call, the rest as values; buildActors and placeActors stay as hoisted one-liners, so every caller is unchanged. The units/creatures/tankfeel/feelstore imports move with the code (five leave td-tab). src/td-tab.js 5,900 -> 5,749 (-151).",
+  "alternatives": [
+    "Move the state into the module: rejected for this round; playerMesh alone has dozens of readers in the controller and its hosts, which would all become getters.",
+    "Leave world construction in the controller (the 2026-10-07 plan kept it there): these two have a subject of their own and a narrow enough closure to leave."
+  ],
+  "evidence": [
+    "side by side: the original region (main dedce7e3, verbatim) through new Function over `with (E)` beside the module over a host evaluated from the literal text in td-tab, units/tankfeel/feelstore/creatures stubbed by a loader hook for both; 300 seeded scenarios x 40 operations (rebuilds across mork/amoeba/phage and cloud/model hearts, places with the shield and recoil, async loads landing, generation bumps, a missing dungeon, story mode flips), 72,410 log and state entries equal including 1,454 throws and 10 rejected async callbacks; two mutants caught",
+    "test/board-actors.mjs (named assertions); undef-diff, tdz-check, comments-kept clean; host contracts 64 factories; npm test, check, build",
+    "browser suites from snapshot actors-204026: --opening --seats --grow --chapters --story-world pass; --defense red as on main (no unpiloted tower kill)"
+  ],
+  "supersedes": []
+}

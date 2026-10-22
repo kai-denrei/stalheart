@@ -2657,6 +2657,39 @@ try{
  const k1=(await st()).kicks;console.log(`  round13: drove ${moved.toFixed(4)} units in 12 s, ${still} still samples of 119, kicks ${k1-k0}`);
  assert.ok(moved>0.05,'the hull drives');assert.ok(still<40,`it never sits ground against a wall for long (${still} still samples)`);
  current='round13-drive';await finish();
+ } else if(args.includes('--nest-guards')) {
+ // THE SMALL REED AT EACH NEST (owner, 2026-10-16: 'let's put a small Reed at each cargo spot too'; STORY_EXPEDITIONS.sites guards with family/tier,
+ // src/fx/expedition-glue.js openSite): on the expedition page each open site has its guards up, one of them a Reed of the small tier with a creature
+ // body (a record whose spec names its family), and the Reed chases the hull like any guard once the hull is within the nest's aggro radii. Measured first,
+ // asserted after: the owner never saw the nest guards in play (2026-10-16)
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),{STORY_EXPEDITIONS}=await import('../src/content/story-defaults.js');
+ await go('nest-guards','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await evaluate(`${T}.sectorQuiet(true)`);
+ const sites=STORY_EXPEDITIONS.sites.filter(s=>!s.reveal).map(s=>s.id);
+ const report=async()=>{const o={};for(const id of sites)o[id]=await evaluate(`${T}.showcase.guards("${id}")`);return o;};
+ await until(`${sites.map(id=>`${T}.showcase.guards("${id}").length>0`).join('&&')}`,60000).catch(async()=>assert.fail(`every open site has guards up (${JSON.stringify(await report())})`));
+ await delay(3000);   // the queue drips a guard every 0.3 s: the whole nest up
+ let g=await report();const summary=Object.fromEntries(Object.entries(g).map(([id,list])=>[id,{guards:list.length,reeds:list.filter(x=>x.type==='reed').map(({type,tier,tierKey,body,size,cells})=>({type,tier,tierKey,body,size,cells}))}]));
+ console.log('NEST GUARDS '+JSON.stringify(summary));
+ console.log('NEST GUARDS bodies '+JSON.stringify((await st()).creatureProbe?.bodies?.families??null));
+ for(const id of sites){const want=STORY_EXPEDITIONS.sites.find(s=>s.id===id).guards.filter(x=>x.family==='reed').reduce((a,x)=>a+x.count,0),reeds=g[id].filter(x=>x.type==='reed');
+  assert.equal(reeds.length,want,`${id}: ${want} small Reed guard(s) up (${JSON.stringify(g[id].map(x=>x.type))})`);
+  for(const r of reeds){assert.ok(r.tier==='small'||r.tierKey==='reed:small',`${id}: the Reed is the small tier (${JSON.stringify(r)})`);assert.equal(r.body,'reed',`${id}: the Reed's record names its family, so a Reed body is made for it (${JSON.stringify(r)})`);assert.ok(Number.isFinite(r.size)&&r.size>0,`${id}: the Reed has a size (${JSON.stringify(r)})`);}}
+ current='nest-guards-up';await finish();
+ // THE CHASE: the hull put down at a site's stand (inside the nest's aggro radii); the Reed comes for it like the soft bodies do
+ const site=process.env.SITE||'rocket-b',stand=await evaluate(`${T}.cargoStand("site","${site}")`);assert.ok(stand>=0,`a stand cell for ${site}`);
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);   // the hull out of its bay first: a bay's roll-out owns the hull's place until it hands over
+ await evaluate(`${T}.placeTank(${stand})`);await delay(300);
+ {const ps=await evaluate(`${T}.showcase.probeSite("${site}")`),s=await st();console.log(`NEST GUARDS hull at the stand ${stand}: ${JSON.stringify({cur:s.playerCell,deploying:s.deploying,site:ps})}`);assert.ok(ps&&ps.dist<(ps.clear/10+2)*STORY_EXPEDITIONS.aggro,`the hull stands inside the nest's aggro radii (${ps?.dist} cells of ${(ps?.clear/10+2)*STORY_EXPEDITIONS.aggro})`);}
+ const reed0=(await evaluate(`${T}.showcase.guards("${site}")`)).find(x=>x.type==='reed');assert.ok(reed0,`the ${site} Reed is alive at the chase's start`);
+ const others0=(await evaluate(`${T}.showcase.guards("${site}")`)).filter(x=>x.type!=='reed');
+ let best=reed0.cells,bestOther=Math.min(...others0.map(x=>x.cells)),moves=0,lastCur=reed0.cur;const t0=Date.now();
+ while(Date.now()-t0<25000){await delay(500);const list=await evaluate(`${T}.showcase.guards("${site}")`),r=list.find(x=>x.type==='reed');if(!r)break;if(r.cur!==lastCur){moves++;lastCur=r.cur;}best=Math.min(best,r.cells);for(const o of list)if(o.type!=='reed')bestOther=Math.min(bestOther,o.cells);if(best<1.5)break;}
+ console.log(`NEST GUARDS chase ${site}: reed ${reed0.cells.toFixed(2)} -> ${best.toFixed(2)} cells in ${moves} cell moves over ${((Date.now()-t0)/1000).toFixed(1)} s; the nearest soft guard came to ${bestOther.toFixed(2)} cells`);
+ assert.ok(moves>0,`the Reed guard moves at all (${moves} cell moves)`);
+ assert.ok(best<reed0.cells-0.5||best<2,`the Reed closes on the hull in the nest (${reed0.cells.toFixed(2)} -> ${best.toFixed(2)} cells)`);
+ current='nest-guards-chase';await finish();
  } else if(args.includes('--arena-road')) {
  // THE ROAD SOL CUTS (owner, 2026-10-16: 'have SOL shoot ahead of it here and there to open the maze'; ARENA.road, src/domain/arena.js roadAhead,
  // src/fx/boss-run.js, td-tab's solRoad): on the arena's drive out, every ARENA.road.every seconds the first rock within ARENA.road.ahead cells on the hull's
@@ -2770,7 +2803,7 @@ try{
  // rocket-b), steering toward the next route cell and holding W, and the probe reports how far along it got, how long it took, the
  // kicks, the still samples and every cell it took more than STUCK_S seconds to leave, with the cell's open-neighbour count (2 = a corridor).
  // No assertions unless ASSERT=1: a measure first, then the fix
- const T='window.__stalheartTest',site=process.env.SITE||'rocket-b',secs=+(process.env.SECS||90),stuckS=+(process.env.STUCK_S||2.5);
+ const T='window.__stalheartTest',site=process.env.SITE||'rocket-b',secs=+(process.env.SECS||90),stuckS=+(process.env.STUCK_S||2.5),through=!!process.env.THROUGH;let secured=false;
  await go('corridor-probe','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief{display:none!important}</style>")');
@@ -2786,7 +2819,7 @@ try{
  await evaluate(`${T}.showcase.aimHull(${ids[1]})`);await delay(200);
  const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
  await K('keyDown','w','KeyW',87);
- let turning=null,best=0,still=0,samples=0,lastPos=null,lastCur=-1,since=0,sinceK=0,behind=0,backing=0;const slow=[],trace=[],t0=Date.now(),k0=(await evaluate(`${T}.state()`)).kicks;let reached=false;
+ let pocket=0,pocketCell=-1,turning=null,best=0,still=0,samples=0,lastPos=null,lastCur=-1,since=0,sinceK=0,behind=0,backing=0;const slow=[],trace=[],t0=Date.now(),k0=(await evaluate(`${T}.state()`)).kicks;let reached=false;
  while(Date.now()-t0<secs*1000){
   const d=await evaluate(`(()=>{const s=${T}.state();return {...${T}.showcase.drive(),kicks:s.kicks,shot:s.shot,paused:s.paused,carrying:s.expeditions?.carrying??null};})()`);const idx=at(d.cur);samples++;
   const moved=lastPos?Math.hypot(d.pos[0]-lastPos[0],d.pos[1]-lastPos[1],d.pos[2]-lastPos[2]):0;if(lastPos&&moved<1e-6)still++;lastPos=d.pos;
@@ -2797,10 +2830,15 @@ try{
   const beside=idx>=0?idx:Math.max(-1,...d.adj.map(at));const next=idx>=0?ids[Math.min(ids.length-1,idx+1)]:beside>=0?ids[beside]:ids[Math.min(ids.length-1,best+1)];
   const b=await evaluate(`${T}.showcase.bearing(${next})`);
   if(trace.length&&d.kicks>trace.at(-1).kicks)sinceK++;
-  trace.push({t:+((Date.now()-t0)/1000).toFixed(1),cur:d.cur,i:idx,open:d.open,moved:+moved.toExponential(2),b:+b.toFixed(2),turn:turning,back:backing>0,kicks:d.kicks,shot:d.shot,paused:d.paused});
-  if(idx>=ids.length-1||d.cur===to||d.carrying===site){reached=true;if(d.carrying===site)console.log(`CORRIDOR PROBE ${site}: PART SECURED at route cell ${idx+1} of ${ids.length} (cell ${d.cur}), ${trace.at(-1).t} s`);break;}
+  trace.push({t:+((Date.now()-t0)/1000).toFixed(1),cur:d.cur,i:idx,open:d.open,moved:+moved.toExponential(2),b:+b.toFixed(2),turn:turning,back:backing>0,kicks:d.kicks,shot:d.shot,paused:d.paused,block:d.block,pos:d.pos.map((x)=>+x.toFixed(7)),hd:d.heading.map((x)=>+x.toFixed(4))});
+  // THROUGH=1 (2026-10-16): the part secured is noted and the drive goes on to the route's last cell, the clearing itself (the wedge the pickup radius hid)
+  if(d.carrying===site&&!secured){secured=true;console.log(`CORRIDOR PROBE ${site}: PART SECURED at route cell ${idx+1} of ${ids.length} (cell ${d.cur}), ${trace.at(-1).t} s`);}
+  if(idx>=ids.length-1||d.cur===to||(d.carrying===site&&!through)){reached=true;break;}
   // THE DRIVER: steer toward the target; a target behind for a second is backed out of (S with the steer reversed, 1.2 s), as a player would
   behind=Math.abs(b)>2.2?behind+0.1:0;
+  // OFF THE ROUTE AND GOING NOWHERE (2026-10-16): the target beside a pocket can lie across a rock corner, and W into the corner is the driver's
+  // fault, not the hull's; 1.5 s of crawling off the route backs out as a target behind does (a wedge ON the route is never backed out of: it is the measure)
+  pocket=idx<0&&d.cur===pocketCell&&moved<0.0015?pocket+0.1:0;pocketCell=d.cur;if(pocket>=1.5){behind=1;pocket=0;}
   if(backing<=0&&behind>=1){backing=1.2;behind=0;await K('keyUp','w','KeyW',87);await K('keyDown','s','KeyS',83);}
   if(backing>0){backing-=0.1;if(backing<=0){await K('keyUp','s','KeyS',83);await K('keyDown','w','KeyW',87);}}
   const fwd=backing<=0,want=b>0.12?(fwd?'a':'d'):b<-0.12?(fwd?'d':'a'):null;
@@ -2812,7 +2850,7 @@ try{
  if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);await K('keyUp','w','KeyW',87);
  const k1=(await evaluate(`${T}.state()`)).kicks,took=((Date.now()-t0)/1000).toFixed(1);
  console.log(`CORRIDOR PROBE ${site}: at the end ${JSON.stringify(await evaluate(`${T}.showcase.probeSite("${site}")`))}`);
- const {writeFileSync}=await import('node:fs');writeFileSync('artifacts/corridor-trace.json',JSON.stringify({site,route,trace},null,0));
+ const {writeFileSync}=await import('node:fs');const gci=process.env.GEOM?+process.env.GEOM:slow.length?slow.reduce((a,b)=>b.s>a.s?b:a).ci:null,geom=gci!==null?await evaluate(`${T}.showcase.cellsNear(${gci},3)`):null;writeFileSync('artifacts/corridor-trace.json',JSON.stringify({site,route,trace,geom},null,0));
  console.log(`CORRIDOR PROBE ${site}: ${reached?'REACHED':'stopped'} at cell ${best+1} of ${ids.length} in ${took} s; kicks ${k1-k0}; still ${still} of ${samples} samples; slow cells ${JSON.stringify(slow)}; trace artifacts/corridor-trace.json`);
  current='corridor-probe-end';await finish();
  if(process.env.ASSERT){assert(reached,`the hull reaches ${site} (${best+1} of ${ids.length})`);assert(slow.length===0,`no cell holds the hull ${stuckS} s (${JSON.stringify(slow)})`);}

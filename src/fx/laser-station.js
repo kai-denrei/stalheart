@@ -5,12 +5,13 @@
 // The views strip's SOL-82 button is caught here, before the strip's own handler: it opens the seat while a pass is
 // overhead (the first time behind SOL-82's briefing, the game paused under it, as the gunship's seat does), and any
 // other strip button leaves the seat first and then does what it says.
-import { createLaserArsenal } from './laser-arsenal.js';
 import { createLaserSeat } from './laser-seat.js';
 import { createSol82Briefing } from './sol82-briefing.js';
 import { LASER_GAME, LASER_STRUCTURES } from '../content/orbital-laser.js';
 
-// host: everything createLaserArsenal takes, plus views() (the story strip or null), canvas() (the game canvas),
+// host: arsenal (the arsenal td-tab builds over its own literal, refactor round 2: the station no longer hands its host on,
+// and everything createLaserArsenal takes is named there; its passEnded calls this station's leave()), breaches(), centers(),
+// enemies(), heart(), structures() and walls() (the harness's aims), plus views() (the story strip or null), canvas() (the game canvas),
 // mobile, paused(value?) (sets the game's pause when given, returns what it was), enter() and leave() (the game's
 // camera and tank on the way in and out), fov() (the game camera's lens, for the harness)
 // THE BILL (td-tab's burnStructure): the toast when the beam takes one of our buildings, and what it switched off with it
@@ -18,7 +19,7 @@ export const structureLostHtml = (id, gone) => `<div class="wave-num">${LASER_ST
 
 export function createLaserStation(root, scene, host) {
   let seat = null, briefing = null, camOn = true;
-  const arsenal = createLaserArsenal(scene, { ...host, passEnded: () => leave() });
+  const arsenal = host.arsenal;
   const overhead = () => arsenal.online() && arsenal.state().overhead;
 
   function sit() {
@@ -91,6 +92,7 @@ export function createLaserStation(root, scene, host) {
     render: (renderer, scene) => seat?.render(renderer, scene),
     seated: () => !!seat,
     burnAt: () => arsenal.burnAt(),   // the beam's point on the ground while it burns (src/fx/boss-run.js lure)
+    leave: () => leave(),   // the arsenal's passEnded (td-tab): a pass that closes leaves the seat
     briefingOpen: () => !!briefing?.isOpen(),
     setOnline: (on) => arsenal.setOnline(on),
     // THE CANYON'S PASS (src/fx/sector-run.js): the pass laid over a place with its own numbers, and the player in the seat at once, no

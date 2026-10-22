@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-13-brief-queue-fx-module",
+  "date": "2026-10-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The brief queue is an fx module (src/fx/brief-queue.js)",
+  "context": "Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 5). Isao's panel (ISAO SPEAKING) was about eighty controller lines: the five #td-brief elements and the bar, the seen list of the once-beats in storage, the queue, the line clock, the one-deep pending beat, paint/show/step/stepClock/end/clear and the panel's tap. showBrief is called from 21 sites and held as a value by host literals above the region (td-tab 392, 3033, 4073).",
+  "outcome": "src/fx/brief-queue.js createBriefQueue(root, host) holds the region as it was, every comment with it (the panel's elements are still looked up on root in the same order, the seen list still read through src/storage.js, the tap still wired at creation), and returns { el, seen, paint, show, step, stepClock, end, clear, queue, pending }. Its host is { sfx, isao: () => isao } (the drone is declared later in initTdTab: a getter). td-tab: createBriefQueue at the region's place; showBrief stays a hoisted one-liner over briefs.show; the frame calls briefs.stepClock(dt); the three clearBriefs() sites call briefs.clear(); the five briefQ reads (the expedition's ready gate, the briefing probe, three hosts' briefQ getters) read briefs.queue(); the ?brief= replay edits briefs.seen; the boot probes' literal takes briefEl: briefs.el. brief, lineDwell and drawEmotion leave td-tab's imports. td-tab 6,036 -> 5,957 lines. No behaviour change.",
+  "alternatives": [
+    "const { showBrief } = createBriefQueue(...): rejected (the plan's rule), host literals evaluated earlier in initTdTab hold showBrief as a value, so it stays a hoisted function.",
+    "Keep hoisted one-liners for clearBriefs and stepBriefClock too: rejected, their four call sites are inside functions run after init and read briefs directly."
+  ],
+  "evidence": [
+    "Side-by-side proof (scratch harness, not committed): the ORIGINAL region (td-tab 665-748 at 1858abf0) through new Function under `with` beside the module over the same fake root, storage, sfx and a recording isaoSay (the module's import replaced through a loader hook); 200 seeded scenarios x 300 operations (show of every brief id and an unknown one, clock steps including dt 0, taps, clear, end, the drone present or absent, the seen list edited, the bar or the panel element missing, the stored seen list valid, malformed or not an array): 2,988,521 log entries (element writes, classList, the 2D context's calls, storage writes, clicks, the lines said, the queue/pending/seen after every operation) equal, 7,121 lines said; two mutants (the face not released on end, clear keeping the pending beat) caught.",
+    "node test/brief-queue.mjs: a seen once-beat is silent; a brief paints its title, line and dots with a full bar, clicks and says its first line, is marked seen in storage; one beat pending and the rest dropped; the bar drains on the frame clock and a retiring line makes no click; a tap clicks; the pending beat shows when the panel frees; clear hides the panel, drops the pending beat and releases Isao's face; per-line faces lock the drone; the seen list survives into a new queue.",
+    "tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the call: none in the dead zone; node test/host-contracts.mjs: hold for 55 factories.",
+    "npm test 257 programs; npm run check (5957 lines under 6400); npm run build.",
+    "Browser suites from snapshot t5-briefs-000759 (tools/refactor/suites.sh): --sectors, --opening, --chapters pass; --story fails at 'twelve landmarks at stage 8' 15 s in, the same step and values as the untouched base's battery."
+  ],
+  "supersedes": []
+}
