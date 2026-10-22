@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "38eed564831b1be30e406f261da7052485eeeb87",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/38eed564831b1be30e406f261da7052485eeeb87/",
+  "credit": "Models by jelaludo (the owner's own; https://jelaludo.github.io/SentryTowers_A6/feids26/ and /ridgeback-mech/): FEIDS-26 delivery capsule and MX-06 Ridgeback, D0, game tier LOD1 and static distance tier LOD2, plain GLB (the build meshopt-packs them)",
+  "files": [
+    { "path": "assets/models/feids26/feids26_d0_lod1.glb", "sourcePath": "assets/feids26/feids26_d0_lod1.glb", "sha256": "1c57a8eedaa3fbc2b14c9b481c936a86b06edf2988ecc5885dda3db635166472", "bytes": 126428, "clips": ["Shell_Separate"] },
+    { "path": "assets/models/feids26/feids26_d0_lod2.glb", "sourcePath": "assets/feids26/feids26_d0_lod2.glb", "sha256": "85ee908ef693d0183c819d9fe7b0eb791cc2dab0e84f7bf787110ecf8246c4fd", "bytes": 30324 },
+    { "path": "assets/models/ridgeback/mx06_d0_lod1.glb", "sourcePath": "assets/ridgeback-mech/mx06_d0_lod1.glb", "sha256": "6ed3777ce5935f117dfc3d2585db005ad6f105450f247d32673468faab059306", "bytes": 967180, "clips": ["Walk_Cycle", "Airdrop_Land"] },
+    { "path": "assets/models/ridgeback/mx06_d0_lod2.glb", "sourcePath": "assets/ridgeback-mech/mx06_d0_lod2.glb", "sha256": "655d21aca433b7a36402e40cfa76bec45f35cacf9f025e8e435a43bdacfbe25c", "bytes": 201112 }
+  ]
+}

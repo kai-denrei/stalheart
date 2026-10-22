@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/orbital-finale-assets.lock.json','docs/isao-birudoron-assets.lock.json','docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json','docs/landmark-tiers-assets.lock.json','docs/korp-assets.lock.json','docs/sol82-assets.lock.json','docs/arrival-foundry-assets.lock.json','docs/cargo-assets.lock.json','docs/colony-assets.lock.json','docs/scoreboard-assets.lock.json','docs/livery-assets.lock.json','docs/nih-dairia-assets.lock.json']) {
+for(const lockFile of ['docs/orbital-finale-assets.lock.json','docs/isao-birudoron-assets.lock.json','docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json','docs/landmark-tiers-assets.lock.json','docs/korp-assets.lock.json','docs/sol82-assets.lock.json','docs/arrival-foundry-assets.lock.json','docs/cargo-assets.lock.json','docs/colony-assets.lock.json','docs/scoreboard-assets.lock.json','docs/livery-assets.lock.json','docs/nih-dairia-assets.lock.json','docs/feids26-assets.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
@@ -101,6 +101,13 @@ for(const file of gunshipAudio.files){
  if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Gunship audio checksum mismatch');
 }
 console.log('Pinned owner-provided gunship audio verified.');
+const feidsAudio=JSON.parse(readFileSync(resolve(root,'docs/feids26-audio.lock.json'),'utf8'));
+for(const file of feidsAudio.files){
+ if(!['assets/audio/feids_reentry.mp3','assets/audio/mech_reentry_woosh.mp3','assets/audio/mech_landing_impact.mp3'].includes(file.path))throw Error('Unexpected FEIDS-26 audio path');
+ const bytes=readFileSync(resolve(root,file.path));
+ if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('FEIDS-26 audio checksum mismatch: '+file.path);
+}
+console.log('Pinned owner-provided FEIDS-26 audio verified.');
 const rocketAudio=JSON.parse(readFileSync(resolve(root,'docs/rocket-audio.lock.json'),'utf8'));
 for(const file of rocketAudio.files){
  if(file.path!=='assets/audio/rocket_thrust.mp3')throw Error('Unexpected rocket audio path');
