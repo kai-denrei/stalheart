@@ -8,8 +8,9 @@
 // hidden while held in the closed shell (the spec's fallback: the shell is opaque, so the leg fold is not ported). The effects (THE DROP'S LOOK,
 // 2026-10-23, the owner's four notes; spec docs/superpowers/specs/2026-10-23-drop-fx-design.md, the demo's effects ported in src/fx/feids-heat.js):
 // each capsule's heat group (the blue glow, the white rim, the 24 flame trails) and the shell's thermal emissive, the split's flash; each falling
-// mech's re-entry fire and smoke streaming up behind it (no more orange bubble), the braking jet under SOCKET_BRAKE_JET; the game's own dust at
-// each touchdown and flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them. The Ridgeback's static far
+// mech's re-entry fire and smoke streaming up behind it (no more orange bubble), the braking jet under SOCKET_BRAKE_JET; at each touchdown the
+// demo's smoke ring, its cracks and 24 rock chunks that stay as rubble until release(), with the game's own dust (twice for the laggard) and
+// flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them. The Ridgeback's static far
 // tier (mx06_d0_lod2, one draw) is fetched with them and handed to the squad with the four (mechs()[i].far).
 //   host: scene, metres() (world units a metre), sfx (play, prime, activeVoices), explode(use, point) (optional), load(url) (optional, loadGlbWithClips)
 //   createFeidsDrop(host) -> { prepare(), prime(), primed(), ready(), failed(), begin(frame), tick(t), pose(t, out), mechs(), release(), heard(), worldOf(local, out), show(on), dispose() }
@@ -18,10 +19,11 @@ import * as THREE from '../../vendor/three.module.js';
 import { loadGlbWithClips } from '../glbmodels.js';
 import { capsuleState, cargoState, dropCues, cuesIn, dropCamera } from '../domain/reinforcements.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
-import { createFeidsKit, capsuleHeat, thermalShell, mechBurn } from './feids-heat.js';
+import { createFeidsKit, capsuleHeat, thermalShell, mechBurn, touchdownFx } from './feids-heat.js';
 
 const TL = REINFORCEMENTS.timeline, CUES = dropCues(TL, REINFORCEMENTS.sounds);
 const AXIS_Y = 3.8;   // the capsule's shell axis above its ground-centred root, in its metres (its leading shield is local +Z)
+const LAGGARD = 3;   // the late fourth: the heavy impact (the game's dust twice), its smoke thinner as in the demo (smokeOpacity 0.3 vs 0.65)
 const additive = (color, opacity = 0.5) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending });
 
 export function createFeidsDrop(h) {
@@ -76,10 +78,10 @@ export function createFeidsDrop(h) {
       const jet = new THREE.Group();
       for (const [r, len, c] of [[0.45, 3, 0x62aaff], [0.18, 2.1, 0xffe9c3]]) { const cone = new THREE.Mesh(new THREE.ConeGeometry(r, len, 12, 1, true), additive(c, 0.8)); cone.position.y = -len / 2; jet.add(cone); }
       (root.getObjectByName('SOCKET_BRAKE_JET') ?? root).add(jet);
-      const burn = mechBurn(kit, i);   // in the scene, in the drop's frame, not in the model
-      h.scene.add(wrap, burn.group);
+      const burn = mechBurn(kit, i), rubble = touchdownFx(kit, i, i === LAGGARD ? 0.3 : 0.65);   // in the scene, in the drop's frame, not in the model
+      h.scene.add(wrap, burn.group, rubble.group);
       const mixer = new THREE.AnimationMixer(root);
-      mechs.push({ wrap, root, jet, burn, mixer, drop: clipAction(mixer, models.mech.clips, 'Airdrop_Land'), dropRoot: root.getObjectByName('DROP_ROOT'), clips: models.mech.clips, landed: false, index: i });
+      mechs.push({ wrap, root, jet, burn, rubble, mixer, drop: clipAction(mixer, models.mech.clips, 'Airdrop_Land'), dropRoot: root.getObjectByName('DROP_ROOT'), clips: models.mech.clips, landed: false, index: i });
     }
   }
 
@@ -105,14 +107,17 @@ export function createFeidsDrop(h) {
     });
     mechs.forEach((mc, i) => {
       const s = cargoState(t, i >> 1, i & 1, TL);
-      mc.wrap.visible = !s.held && !hidden; mc.burn.group.visible = false;
+      mc.wrap.visible = !s.held && !hidden; mc.burn.group.visible = mc.rubble.group.visible = false;
       if (s.held) return;
       placeAt(mc.wrap, s.x, s.height, s.z, s.pitch, s.yaw, REINFORCEMENTS.scale);
       if (mc.drop) { mc.drop.time = s.clip; mc.mixer.update(0); }
       if (mc.dropRoot) mc.dropRoot.position.set(0, 0, 0);   // the rule's height is the only vertical travel
       mc.jet.visible = s.jet > 0; mc.jet.scale.setScalar(Math.max(1e-3, s.jet));
-      if (!hidden) { fxAt(mc.burn.group, s.x, s.height + 0.7, s.z); mc.burn.update(s, t); }
-      if (s.landed && !mc.landed) { mc.landed = true; h.explode?.('rock.dust', worldOf(s.x, 0, s.z, v).toArray()); }
+      if (!hidden) { fxAt(mc.burn.group, s.x, s.height + 0.7, s.z); mc.burn.update(s, t); fxAt(mc.rubble.group, s.x, 0, s.z); mc.rubble.update(s); }
+      if (s.landed && !mc.landed) {
+        mc.landed = true; const at = worldOf(s.x, 0, s.z, v).toArray();
+        h.explode?.('rock.dust', at); if (i === LAGGARD) h.explode?.('rock.dust', at);   // the laggard's is the heavy impact
+      }
     });
     for (const cue of cuesIn(CUES, last, t)) {   // `voiced`: a voice of the key is live after the ask (the engine refuses a sound not decoded or a context not running)
       h.sfx?.play?.(cue.key);
@@ -130,10 +135,10 @@ export function createFeidsDrop(h) {
     return true;
   }
 
-  // the drop's effects let go: the capsules' heat and thermal clones and flash, the mechs' burn, the kit (the mechs' jets go with mechs())
+  // the drop's effects let go: the capsules' heat and thermal clones and flash, the mechs' burn and rubble, the kit (the mechs' jets go with mechs())
   function releaseFx() {
     for (const c of capsules) { c.wrap.removeFromParent(); c.mixer.stopAllAction(); c.heat.dispose(); c.thermal.dispose(); c.flash.geometry.dispose(); c.flash.material.dispose(); }
-    for (const mc of mechs) mc.burn.dispose();
+    for (const mc of mechs) { mc.burn.dispose(); mc.rubble.dispose(); }
     kit?.dispose(); kit = null; capsules = [];
   }
   function dispose() {
@@ -144,9 +149,9 @@ export function createFeidsDrop(h) {
   return {
     prepare, prime, primed: () => primed, ready: () => !!models, failed: () => bad, begin, tick, pose, worldOf: (local, out) => worldOf(local[0], local[1], local[2], out),
     // the four for the squad once they are down: wrapper, model root, mixer and clips (the Airdrop_Land action handed over; the jet taken out of the
-    // model, so the squad's instancing sees the GLB's own meshes only; the burn is the scene's, let go at release())
+    // model, so the squad's instancing sees the GLB's own meshes only; the burn and the rubble are the scene's, let go at release())
     mechs: () => mechs.map((mc) => { for (const fx of [mc.jet]) { fx.removeFromParent(); fx.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); } return { wrap: mc.wrap, root: mc.root, mixer: mc.mixer, clips: mc.clips, drop: mc.drop, index: mc.index, far: models?.far ?? null }; }),
-    release() { releaseFx(); mechs = []; },   // the mechs now the squad's
+    release() { releaseFx(); mechs = []; },   // the mechs now the squad's; the rubble goes with the scene
     heard: () => heard.slice(), dispose,
     show(on) { hidden = !on; },   // the harness's A/B for the drop's draw cost (--reinforcements)
   };
