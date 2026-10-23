@@ -89,7 +89,9 @@ function host(o = {}) {
   assert.equal(h.log.road.at(-1), 4, 'the next ask: the next rock on the same road');
   h.now += ARENA.road.burn + 0.1; run.tick(0.1);
   assert.equal(run.state().roadCuts, 1, 'a burn that left the rock standing is no cut');
-  tags[4] = 1; tags[17] = 0; h.now = 2 * ARENA.road.every + 0.02; run.tick(0.1);   // 17: a rock beside the road (released at once were it open)
+  assert.equal(h.log.road.at(-1), 4, 'the rock still standing and burnable: held once more (2026-10-23, the hold ends on the rock gone)');
+  h.now += ARENA.road.burn + 0.1; run.tick(0.1); assert.equal(h.log.road.at(-1), -1, 'released after the second hold'); assert.equal(run.state().roadCuts, 1);
+  tags[4] = 1; tags[17] = 0; h.now += ARENA.road.every + 0.02; run.tick(0.1);   // 17: a rock beside the road (released at once were it open)
   assert.equal(h.log.road.at(-1), 17, 'the road open: the second version\'s shortcut and flank (roadNext)'); assert.equal(run.state().road.planned, false);
   h.now += ARENA.road.burn + 0.1; tags[17] = 1; run.tick(0.1);
   assert.equal(h.log.callouts.filter((x) => x === 'SOL CUTS THE ROAD').length, 1, 'the callout once only'); }
@@ -106,7 +108,7 @@ function host(o = {}) {
 // comes at once, on the nearest rock wherever it lies; after it nothing beyond the reach (10 cells) nor inside `clear` is asked for, the parked hull's beam waits,
 // and as the hull drives each rock is asked for the moment it comes into reach (not on the `every` cadence); the flank is held to it too
 { const R = ARENA.road.aheadMetres / METRES_PER_CELL, clear = ARENA.road.clear;
-  assert.equal(ARENA.road.aheadMetres, 100, 'a hundred metres (note 3, 2026-10-19)'); assert.equal(R, 10, 'ten cells of METRES_PER_CELL'); assert.equal(clear, 6.5, 'nothing nearer than 6.5 cells');
+  assert.equal(ARENA.road.aheadMetres, 140, 'a hundred and forty metres (2026-10-23, the road cleared wide; 100 since note 3, 2026-10-19)'); assert.equal(R, 14, 'fourteen cells of METRES_PER_CELL'); assert.equal(clear, 6.5, 'nothing nearer than 6.5 cells');
   assert.ok(clear - 3.2 >= 3 && R - 5 >= 3, 'the band at least three cells further than round 3\'s 3.2 to 5'); assert.ok(ARENA.road.leadMin >= 4 && ARENA.road.leadMin < clear, 'the promise at a burn\'s end');
   const adj = Array.from({ length: 62 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 59; i++) link(i, i + 1);
   link(8, 60); link(38, 61);
@@ -139,7 +141,7 @@ function host(o = {}) {
   const cuts = run.state().road.cuts; assert.deepEqual(cuts.map((c) => c.cell), asked(), 'one entry an ask'); assert.ok(cuts.slice(1).every((c) => c.ask >= clear && c.end != null && c.cleared), JSON.stringify(cuts));
   // a flank burn gives the beam up to a planned rock that comes into reach (probe r3-f: road rocks crossed the reach while the flank held the beam)
   tags[61] = 0; flank.length = 0; flank.push(61); from = 31; h.now += ARENA.road.every; run.tick(0.25);
-  assert.equal(h.log.road.at(-1), 61, 'a flank burn on'); assert.equal(run.state().road.planned, false);
+  assert.equal(h.log.road.at(-1), 61, 'a flank burn on'); assert.equal(run.state().road.cuts.at(-1).flank, true, 'the swath\'s flank of road cell 38 (2026-10-23, ARENA.road.width)');
   from = 42; h.now += 0.25; run.tick(0.25);
   assert.deepEqual(h.log.road.slice(-2), [-1, 52], 'the planned rock in reach takes the beam at the next look'); assert.equal(run.state().road.planned, true);
   const e61 = run.state().road.cuts.at(-2); assert.equal(e61.cell, 61); assert.equal(e61.cleared, false, 'the flank\'s rock left standing'); assert.equal(e61.end, -4, 'the hull 4 cells past it down the road: negative'); }

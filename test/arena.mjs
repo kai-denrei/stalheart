@@ -1,6 +1,6 @@
 // arena.mjs — the arena's cell: reachable, outside, unblocked, the farthest band, the farthest first
 import assert from 'node:assert/strict';
-import { pickArenaCell, arenaFloor, roadAhead, roadField, roadPath, roadRock, roadKept } from '../src/domain/arena.js';
+import { pickArenaCell, arenaFloor, roadAhead, roadField, roadPath, roadRock, roadKept, roadSwath } from '../src/domain/arena.js';
 const dist = [0, 1, 2, 3, 4, 5, 6, 7, 8, Infinity, 9, 9];
 assert.equal(pickArenaCell({ dist }), 10, 'the farthest, the lowest index among equals');
 assert.equal(pickArenaCell({ dist, blocked: (i) => i === 10 }), 11, 'a blocked cell is skipped');
@@ -75,4 +75,15 @@ assert.equal(pickArenaCell({ dist, blocked: (i) => i === 11, farHops: 4 }), 10);
   assert.equal(roadRock({ adj, tags, blocked: 0, field, from: 6 }), 7, 'where the bare descent would have named the rock three cells from a hull');
   k = roadKept({ adj, field, from: 8, route: k.route }); assert.deepEqual(k.route, [8, 6, 7, 5], 'two cells off: laid again from the hull'); assert.deepEqual(k.ahead, [6, 7, 5]);
   assert.deepEqual(roadKept({ adj: [[], []], field: roadField({ adj: [[], []], tags: new Int8Array(2).fill(1), blocked: 0, to: 1 }), from: 0 }), { route: null, ahead: [] }, 'no way: nothing kept'); }
+// THE ROAD CLEARED WIDE (2026-10-23, arena-road spec decision 1): a 5x3 grid, the road along the middle row; the road's rock, then its rock flanks one either side, each
+// rock once, a one-cell corridor's first flank marked `need`; width 0 the road alone
+{ const W = 5, H = 3, id = (x, y) => y * W + x, adj = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) adj.push([[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [x + dx, y + dy]).filter(([X, Y]) => X >= 0 && X < W && Y >= 0 && Y < H).map(([X, Y]) => id(X, Y)));
+  const tags = new Array(W * H).fill(0); for (let x = 0; x < W; x++) tags[id(x, 1)] = 1; tags[id(2, 0)] = 1; tags[id(3, 1)] = 0;
+  const path = [0, 1, 2, 3, 4].map((x) => id(x, 1)), sw = roadSwath({ path, adj, tags, blocked: 0, width: 1 });
+  assert.deepEqual(sw.map((x) => x.cell), [10, 0, 11, 1, 12, 8, 13, 3, 14, 4], 'road order: the road rock, then its flanks, each once');
+  assert.deepEqual(sw.filter((x) => x.road).map((x) => x.cell), [8], 'the road\'s own rock');
+  assert.deepEqual(sw.filter((x) => x.need).map((x) => x.cell), [10, 11, 8, 13, 14], 'the road rock and each one-cell corridor\'s first flank');
+  assert.ok(!sw.find((x) => x.cell === 12).need, 'a cell with a clear side (2,0) needs none');
+  assert.deepEqual(roadSwath({ path, adj, tags, blocked: 0, width: 0 }).map((x) => x.cell), [8], 'width 0: the road alone'); }
 console.log('Arena: the farthest reachable cell outside the walls, its floor fourteen cells round, the road SOL cuts to it (the shortcut, else the flank), and the planned road through rock.');

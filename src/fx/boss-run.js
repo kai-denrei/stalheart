@@ -39,7 +39,7 @@ import { ARENA, ARENA_HANDOVER, ARENA_ROAD_GUARD } from '../content/sectors.js';
 import { createChoiceCard } from './choice-card.js';
 import { brief, lineDwell } from '../isaobriefs.js';
 import { groundAt } from './lance-follow.js';
-import { roadField, roadKept, roadRock } from '../domain/arena.js';
+import { roadField, roadKept, roadSwath } from '../domain/arena.js';
 import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
 import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
@@ -61,8 +61,8 @@ export function createBossRun(c) {
   let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss | over (the mother dead, the sector not ended yet)
   let remindAt = 0, reminders = 0, remindDist = Infinity, drove = false;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind), how many fired, the hull's road distance then, Isao took the wheel (ARENA.remindMax)
   let plan = null, route = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the road kept (roadKept, 2026-10-19), the cuts landed, whether the last ask was on it, the last marks
-  let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
-  let lookAt = -99, lead = null, leadMax = 0, cutLog = [];   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
+  let roadHeld = false; let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
+  let lookAt = -99, lead = null, leadMax = 0, cutLog = [], roadFlank = false, arriveCell = -1, arrivals = { cells: 0, narrow: 0, last: [] };   // roadFlank: the last ask a swath flank (2026-10-23); arrivals: the road cells the hull reached and those with no clear side (the corridor one wide)   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
   let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
   let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken
   let decoded = false, talkUntil = 0, deadAt = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead (said at deadAt)
@@ -100,7 +100,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; fight = createArenaFight({ now: c.t }); cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; cutLog = []; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; fight = createArenaFight({ now: c.t }); cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; cutLog = []; roadFlank = false; arriveCell = -1; arrivals = { cells: 0, narrow: 0, last: [] }; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -173,7 +173,14 @@ export function createBossRun(c) {
       // first left a rock 3.1 to 6.5 cells off for later or for good (Isao driving while the player sat in SOL's seat; a rock dropped mid-burn): the road's
       // first rock is the one that blocks it first. The first cut: the same rule at any distance (the nearest road rock, at once)
       const burnable = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (ci === roadCell || !(c.fromHull?.(ci) < GUARD + ROAD_HYST)) && (!roadCuts || inLead(ci));   // a rock not yet held is asked only from GUARD + ROAD_HYST; the held one keeps the beam to the guard itself: a hull sitting at the guard's edge does not re-ask each look (review, 2026-10-19)
-      let pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: burnable, path: roadAhead() }) : -1;
+      // THE ROAD CLEARED WIDE (owner, 2026-10-23, note 2; spec 2026-10-23-arena-road-and-blob-design.md decision 1): the swath, not the road alone (src/domain/arena.js
+      // roadSwath, ARENA.road.width): the road's rocks and every rock flank within `width` of it, in road order; the road's own rocks first (a road rock
+      // stops the hull outright), then a one-cell corridor's first flank (`need`: the corridor two wide there), then the rest; a flank only from ARENA.road.clear out (inside it the hull is on it before a burn ends: 0.5 s
+      // at ~3.5 cells/s from the guard's 3.35 cells), a road rock as before (the first burnable, outside the guard)
+      const sw = p ? roadSwath({ path: roadAhead().slice(0, ARENA.road?.plan ?? Infinity), adj: p.g.adj, tags: p.g.tags, blocked: p.g.blocked, width: ARENA.road?.width ?? 0 }) : [];
+      const swathOk = (x) => burnable(x.cell) && (x.road || x.cell === roadCell || !(c.fromHull?.(x.cell) < (ARENA.road?.clear ?? 0)));
+      const pick = sw.find((x) => x.road && swathOk(x)) ?? sw.find((x) => x.need && swathOk(x)) ?? sw.find(swathOk) ?? null;   // a road rock blocks the hull outright: it goes first
+      let pc = pick ? pick.cell : -1;
       // THE HAND-OFF NEVER DROPS THE ROAD'S FIRST: during a planned burn the look only moves the beam on once the held rock is no longer the road's first burnable
       // rock (the hull inside the guard of it, or the rock gone); while it still is, the beam stays on it
       if (held && pc === roadCell) pc = -1;
@@ -181,14 +188,20 @@ export function createBossRun(c) {
       const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
       if (pc >= 0 || due) {
         if (roadUntil) release();
-        roadAt = t; roadPlanned = pc >= 0; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
-        if (roadLaid) { cutLog.push({ cell: ci, planned: roadPlanned, band: !roadPlanned || inBand, at: +t.toFixed(2), ask: signedLead(ci), road: roadLeft() }); if (cutLog.length > 60) cutLog.shift(); lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
+        roadAt = t; roadPlanned = pc >= 0; roadFlank = !!pick && pc >= 0 && !pick.road; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
+        if (roadLaid) { cutLog.push({ cell: ci, planned: roadPlanned, flank: roadFlank, band: !roadPlanned || inBand, at: +t.toFixed(2), ask: signedLead(ci), road: roadLeft() }); if (cutLog.length > 60) cutLog.shift(); lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); roadHeld = false; if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
       }
     }
     // the hold ends at ARENA.road.burn, or as soon as the rock is gone (2026-10-19: the beam is free for the next cell in reach at once)
     // ...or as soon as the beam can no longer burn it (2026-10-19, the merged --arena-drive): the hull inside its guard (roadFar(ci, 0) false), so the beam is held
     // off and a 2.5 s hold only kept the next rock and the flank waiting while the hull, quicker since rammed bodies no longer drag it (r4-a), closed on them
+    // THE HOLD ENDS ON THE ROCK GONE (2026-10-23, decision 1: burn 2.5 -> 1.6 s, "if a rock needs longer to burn, the hold must still end on the rock gone"): a rock
+    // still standing and still burnable at the hold's end is held once more, another ARENA.road.burn
+    if (roadUntil && t >= roadUntil && !roadHeld && roadCell >= 0 && !isOpen(roadCell) && (!c.roadFar || c.roadFar(roadCell, 0))) { roadHeld = true; roadUntil = t + (ARENA.road?.burn ?? 2.5); }
     if (roadUntil && (t >= roadUntil || (roadCell >= 0 && (isOpen(roadCell) || (c.roadFar && !c.roadFar(roadCell, 0)))))) release();
+    // THE CORRIDOR ON ARRIVAL (decision 1's acceptance: every kept road cell with at least one clear side neighbour when the hull reaches it): each road cell the hull
+    // enters on the drive out, and those whose side neighbours (off the road) were all rock
+    if (phase === 'beacon') { const g = c.roadGraph?.(); if (g && g.from >= 0 && g.from !== arriveCell) { arriveCell = g.from; if (route?.includes(g.from)) { const on = new Set(route), side = g.adj[g.from].filter((x) => !on.has(x)); arrivals.cells++; if (side.length && side.every((x) => g.tags[x] === g.blocked)) { arrivals.narrow++; arrivals.last.push({ cell: g.from, at: +t.toFixed(2), sides: side.length }); if (arrivals.last.length > 30) arrivals.last.shift(); } } } }
     // THE ROAD READS (2026-10-18): the planned road's next cells ringed ahead of the hull every ARENA.road.markEvery seconds, the colour of the tap-to-go "here"
     if (phase === 'beacon' && c.roadMark && t - markAt >= (ARENA.road?.markEvery ?? Infinity)) {
       markAt = t; const p = planned();
@@ -330,5 +343,5 @@ export function createBossRun(c) {
   const cells = (a, p) => (a && p ? +(Math.hypot(a[0] - p[0], a[1] - p[1], a[2] - p[2]) / c.cellSide()).toFixed(2) : null);
   const distState = () => { const b = bossRecord(), a = arenaCell() >= 0 ? c.centre?.(arenaCell()) : null, h = c.player()?.pos ?? null; return { hull: cells(a, h), boss: cells(a, b?.pos), gap: cells(h, b?.pos), at: { centre: a, hull: h, boss: b?.pos ?? null } }; };
   return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, drives, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })) }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, blob: bossRecord() ? !!bossRecord().blob : null, rubble: bossRecord() ? !!bossRecord().rubble : null, fear: fearState(), led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })), arrivals: { ...arrivals, last: arrivals.last.slice() } }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, blob: bossRecord() ? !!bossRecord().blob : null, rubble: bossRecord() ? !!bossRecord().rubble : null, fear: fearState(), led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }
