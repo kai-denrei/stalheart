@@ -4,7 +4,8 @@
 // to the main base, the other roams and hunts enemies. they are equipped with rotor + lancer + 2x quivers at max upgraded specs.")
 // Spec: docs/superpowers/specs/2026-10-23-feids26-reinforcements-design.md. The numbers of the drop and the four after it:
 //   days        in-game days from the call (the radar step printed) to the drop's earliest moment
-//   pace        a mech's walk in cells a second; `gaitCap` the Walk_Cycle's rate cap (the clip's own ground speed is 0.27778 m/s at rate 1)
+//   pace        a mech's walk in cells a second: 0.08 (0.8 m/s) since the heavy gait (round 2, 2026-10-23: the owner, "no gliding, feeling of heaviness";
+//               src/fx/mech-gait.js steps at ground speed / (0.2778 m/s x scale), a rate of ~3.8, one leg cycle ~1.05 s; it was 0.25 on a capped clip)
 //   roles       the four in drop order (capsule 1 slot 1, capsule 1 slot 2, capsule 2 slot 1, capsule 2 slot 2: the laggard hunts)
 //   offsetCells the group's centre from the arena's cell, down the heart's field toward the base (the crater is ARENA.craterCells round the centre)
 //   scale       the mechs' cargo scale in the cinematic (0.75 of the MX-06's 8 m plot); the capsule is drawn at 1
@@ -23,7 +24,7 @@
 // `shot.hint` line shown from the lock's end to the cut's end
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 export const REINFORCEMENTS = freeze({
-  days: 3, pace: 0.25, gaitCap: 4, roles: ['arena', 'arena', 'base', 'hunt'], offsetCells: 5, scale: 0.75,
+  days: 3, pace: 0.08, roles: ['arena', 'arena', 'base', 'hunt'], offsetCells: 5, scale: 0.75,
   weapons: ['rotor', 'lancer', 'quiver', 'quiver'], bossShare: 0.1,   // THE PAIR JOINS, THE GUNSHIP DECIDES (2026-10-23, the merge of the two overnight branches: two Ridgebacks' TALON volleys took her 180 in 34 s): their rounds deal this share to a body-led boss (src/td-tab.js damageEnemy); every other enemy takes the full round
   keepFromHull: 2, lodMetres: 140, fade: 20, patrolCells: 14,
   timeline: {

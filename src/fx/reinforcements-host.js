@@ -16,7 +16,7 @@ import { dropReady, dropCentre, dropPhase } from '../domain/reinforcements.js';
 import { createFeidsDrop } from './feids-drop.js';
 import { BLOCKED } from '../dungeon.js';
 
-const TL = REINFORCEMENTS.timeline, LOAD_WAIT = 10, SOUND_WAIT = 3;   // seconds a triggered drop waits for its models, and for its three lazy sounds to decode, before it goes without them
+const TL = REINFORCEMENTS.timeline, LOAD_WAIT = 10, SOUND_WAIT = 3, LOOK = [11, 3.2, 5];   // seconds a triggered drop waits for its models, and for its three lazy sounds to decode, before it goes without them
 
 export function createReinforcements(h) {
   const drop = createFeidsDrop({ scene: h.scene, metres: h.metres, sfx: h.sfx, explode: h.explode });
@@ -115,7 +115,20 @@ export function createReinforcements(h) {
       why = begin() ? 'begun' : 'no frame';
     },
     force() { forceNow = true; drop.prepare(); },
-    show: (on) => { drop.show(on); h.squad?.()?.show?.(on); },   // the harness's A/B: the capsules and the four drawn or not, the clocks running
+    show: (on) => { drop.show(on); h.squad?.()?.show?.(on); },
+    // THE GAIT'S LOOK (the harness's frame of a walking mech, round 2): a live shot beside mech i, 3/4 front at LOOK metres (x right, up, z forward of
+    // its facing), on its body; any key ends it. look(-1) or no mech: false
+    look(i) {
+      const sq = h.squad?.(), p = new THREE.Vector3(), q = new THREE.Quaternion(), eye = new THREE.Vector3(), at = new THREE.Vector3(), m4 = new THREE.Matrix4();
+      if (!(i >= 0) || !sq?.frameOf?.(i, p, q)) return false;
+      h.startShot({ id: 'mechLook', dur: 600, skippable: true, poseAt(u, out) {
+        if (!sq.frameOf(i, p, q)) return;
+        const m = h.metres(), up = p.clone().normalize();
+        eye.set(LOOK[0], LOOK[1], LOOK[2]).applyQuaternion(q).multiplyScalar(m).add(p); at.copy(p).addScaledVector(up, 1.6 * m);
+        m4.lookAt(eye, at, up); out.pos.copy(eye); out.quat.setFromRotationMatrix(m4);
+      } });
+      return true;
+    },   // the harness's A/B: the capsules and the four drawn or not, the clocks running
     state: () => {
       const r = rec();
       return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, lens: lens ? { near: +h.camera.near.toFixed(6), fov: +h.camera.fov.toFixed(2) } : null, hint: !!hint, seated: h.seated(), primed: drop.primed(), loaded: drop.ready(), failed: drop.failed(),

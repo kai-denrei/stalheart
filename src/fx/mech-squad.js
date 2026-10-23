@@ -9,16 +9,19 @@
 // sector; past it a parked mech turns its body. Shots leave from the model's own muzzle sockets (userData.muzzles). Their `ci` follows the mech.
 // THE ROLES (src/domain/mech-roles.js): the arena pair a random walk on the arena's floor (off the crater), the base mech down the heart's field to
 // park two cells outside the gate, the hunter the shortest way to the nearest live enemy, two cells off the hull. The walk is the enemy walker's shape
-// (cur -> next, a pace in cells a second, REINFORCEMENTS.pace); the in-place Walk_Cycle plays at the ground speed's rate, capped at
-// REINFORCEMENTS.gaitCap (the clip's own speed is 0.27778 m/s at 0.75 scale: 0.25 cells/s is 2.5 m/s, a rate of 12, so at the cap the feet slide).
+// (cur -> next, a pace in cells a second, REINFORCEMENTS.pace). THE HEAVY GAIT (round 2, 2026-10-23, the owner: "no gliding, feeling of heaviness"):
+// the in-place Walk_Cycle clip is gone (it slid its claws at the rates the pace asked for); each mech's hidden rig is posed by the demo's procedural
+// gait (src/fx/mech-gait.js: a stance claw anchored at the world point where it landed), its phase at the ground speed's rate (ground speed /
+// (0.2778 m/s x the cargo scale)) at a slower pace (0.08 cells/s, 0.8 m/s, a rate of ~3.8); the heading turns at WALK_TURN, not at once, so
+// the anchored feet carry a turn; a parked body that turns steps in place.
 // THE FAR TIER (the README: "approaching at 140 m with 20 m hysteresis"): beyond REINFORCEMENTS.lodMetres from the eye a mech shows the static one-draw
 // mx06_d0_lod2 instead of the 38-draw game tier, back inside lodMetres - 20 m; the game tier keeps walking and aiming hidden (its sockets still move).
 // ONE DRAW A PART FOR THE FOUR (the --reinforcements A/B, 2026-10-23: the four game-tier Ridgebacks cost 608 calls a frame in the drop's view, the GLB's 38
 // draws times the frame's passes, and 36 of the 38 are separately animated parts, so merging by material saves nothing): after the adoption each of the 38
-// meshes is drawn by one InstancedMesh holding the four mechs' copies of it (their own meshes stay in the tree, hidden, posed by the mixers as before, and
+// meshes is drawn by one InstancedMesh holding the four mechs' copies of it (their own meshes stay in the tree, hidden, posed by the gait as before, and
 // lend their world matrices every frame); a mech on its far tier is a zero instance, and the parts hide when all four are far.
 //   host: scene, metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
-//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), show(on), restore() }
+//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), frameOf(i, pos, quat), show(on), restore() }
 import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
 import { ARENA } from '../content/sectors.js';
@@ -26,8 +29,10 @@ import { MAX_TIER } from '../towers.js';
 import { nextCell, parkCell } from '../domain/mech-roles.js';
 import { arenaFloor } from '../domain/arena.js';
 import { BLOCKED } from '../dungeon.js';
+import { createGait, rigOf, applyGait, gaitRate } from './mech-gait.js';
 
-const SECTOR = Math.PI / 5, TURN = 0.8;   // the model's gun sector (the runtime's aimYaw clamp) and a parked body's turn, radians a second
+const SECTOR = Math.PI / 5, TURN = 0.8, WALK_TURN = 0.6;   // the model's gun sector (the runtime's aimYaw clamp), a parked body's turn and a walking body's, radians a second
+const SPEED_EASE = 0.5;   // the measured ground speed's smoothing, seconds (state().mechs[i].gait.speed, the harness's check of the rate)
 const PIVOT = { rotor: ['MINIGUN_YAW', 'MINIGUN_PITCH', /^SOCKET_MINIGUN_MUZZLE_/], lancer: ['LASER_YAW', 'LASER_PITCH', /^SOCKET_LASER_MUZZLE$/], quiver: ['MISSILE_ELEVATION', null, /^SOCKET_MISSILE_[LR]_/] };
 
 export function createMechSquad(h) {
@@ -62,10 +67,9 @@ export function createMechSquad(h) {
       const role = REINFORCEMENTS.roles[m.index] ?? 'hunt';
       m.wrap.getWorldPosition(v);
       const cur = nearestFrom(centreCell >= 0 ? centreCell : 0, v);
-      const walk = m.clips.find((c) => c.name === 'Walk_Cycle'), act = walk ? m.mixer.clipAction(walk) : null;
-      if (act) { act.setLoop(THREE.LoopRepeat, Infinity); act.enabled = true; }
+      m.mixer.stopAllAction();   // the landing clip let go: the gait poses the rig from here (its first pose is the park's, this tick)
       const farRoot = m.far ? m.far.clone(true) : null; if (farRoot) { farRoot.visible = false; m.wrap.add(farRoot); }
-      const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, act, heading: frame.z.clone(), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
+      const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
     }
@@ -100,12 +104,6 @@ export function createMechSquad(h) {
     return nextCell({ role: mc.role, cur: mc.cur, prev: mc.prev, adj: g.adj, open, rand, plain, dist: h.dungeon().distToHeart, park, targets, avoid });
   }
 
-  function setGait(mc, walking, rate) {
-    if (walking && !mc.walking) { mc.drop?.stop(); mc.act?.reset().play(); }
-    if (!walking && mc.walking) { mc.act?.stop(); if (mc.drop) { mc.drop.reset(); mc.drop.play(); mc.drop.paused = true; mc.drop.time = mc.drop.getClip().duration; } }
-    mc.walking = walking; if (mc.act) mc.act.timeScale = rate;
-  }
-
   function stepMech(mc, dt) {
     const m = h.metres(), cs = h.cellSide(), speed = REINFORCEMENTS.pace * cs;   // world units a second along the chord
     mc.wait -= dt;
@@ -117,14 +115,17 @@ export function createMechSquad(h) {
     }
     const moving = mc.prog < 1;
     if (moving) { mc.prog = Math.min(1, mc.prog + speed * dt / mc.seg); v.fromArray(centre(mc.next)); mc.wrap.position.lerpVectors(mc.from, v, mc.prog).normalize(); }   // on the floor: the unit sphere
-    // the gait: the clip's ground speed at the model's scale, the rate to match the pace, capped
-    const clipSpeed = 0.27778 * REINFORCEMENTS.scale, rate = Math.min(REINFORCEMENTS.gaitCap, (REINFORCEMENTS.pace * 10) / clipSpeed);
-    setGait(mc, moving, rate); mc.rate = moving ? rate : 0;
+    // the gait's rate: the ground speed in metres a second over the demo's walk at the cargo scale
+    const rate = moving ? gaitRate(speed / m, REINFORCEMENTS.scale) : 0;
+    mc.walking = moving; mc.rate = rate;
     up.copy(mc.wrap.position).normalize();
-    if (moving) { fwd.fromArray(centre(mc.next)).sub(mc.wrap.position); fwd.addScaledVector(up, -fwd.dot(up)); if (fwd.lengthSq() > 1e-14) mc.heading.copy(fwd.normalize()); }
-    else {   // parked: the body turns to keep the minigun's bearing inside the model's sector
+    let turning = false;
+    if (moving) {   // toward the next cell, turning at WALK_TURN
+      fwd.fromArray(centre(mc.next)).sub(mc.wrap.position); fwd.addScaledVector(up, -fwd.dot(up));
+      if (fwd.lengthSq() > 1e-14) { fwd.normalize(); const a = Math.atan2(x.crossVectors(mc.heading, fwd).dot(up), mc.heading.dot(fwd)); mc.heading.applyAxisAngle(up, Math.max(-WALK_TURN * dt, Math.min(WALK_TURN * dt, a))); }
+    } else {   // parked: the body turns to keep the minigun's bearing inside the model's sector
       const r = mc.recs[0], yaw = r?.obj.userData.head.rotation.y ?? 0;
-      if (Math.abs(yaw) > SECTOR) { const turn = Math.sign(yaw) * Math.min(Math.abs(yaw) - SECTOR, TURN * dt); mc.heading.applyAxisAngle(up, turn); for (const rr of mc.recs) rr.obj.userData.head.rotation.y -= turn; }
+      if (Math.abs(yaw) > SECTOR) { const turn = Math.sign(yaw) * Math.min(Math.abs(yaw) - SECTOR, TURN * dt); mc.heading.applyAxisAngle(up, turn); for (const rr of mc.recs) rr.obj.userData.head.rotation.y -= turn; turning = Math.abs(turn) > 1e-6; }
     }
     mc.heading.addScaledVector(up, -mc.heading.dot(up)).normalize();
     x.crossVectors(up, mc.heading).normalize(); m4.makeBasis(x, up, mc.heading); mc.wrap.quaternion.setFromRotationMatrix(m4);
@@ -134,8 +135,10 @@ export function createMechSquad(h) {
       if (far !== mc.isFar) mc.isFar = far;
       mc.farRoot.visible = far && !hidden; mc.root.visible = !far;
     }
-    mc.mixer.update(dt);
     mc.wrap.updateMatrixWorld(true);
+    if (mc.rig) mc.contacts = applyGait(mc.rig, mc.gait, dt, { moving, rate, turning }).contacts;   // the rig posed under its placed wrap
+    if (mc.last) { const k = 1 - Math.exp(-dt / SPEED_EASE); mc.speed += (mc.wrap.position.distanceTo(mc.last) / m / dt - mc.speed) * k; } else mc.last = new THREE.Vector3();
+    mc.last.copy(mc.wrap.position);
   }
 
   // the records follow: the rig at its pivot with the model's heading; the angles tower-aim left on the rig go back onto the model's pivots
@@ -158,11 +161,12 @@ export function createMechSquad(h) {
     towers: () => records,
     state: () => mechs.map((mc) => {
       const shots = mc.recs.reduce((n, r) => n + (r.shots ?? 0), 0), fired = Math.max(...mc.recs.map((r) => r.firedAt ?? -1e9));
-      return { role: mc.role, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
-        onPlain: plain ? plain.has(mc.cur) : null, park, far: mc.isFar, t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
+      return { role: mc.role, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), gait: { rate: +(mc.rate ?? 0).toFixed(3), contacts: mc.contacts, speed: +mc.speed.toFixed(3), mode: mc.gait.mode }, heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
+        onPlain: plain ? plain.has(mc.cur) : null, park, parkDist: park >= 0 ? h.dungeon().distToHeart[park] : null, far: mc.isFar, eyeM: Math.round(mc.wrap.position.distanceTo(h.eye()) / h.metres()), t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },
     parts: () => parts?.length ?? 0,
+    frameOf(i, pos, quat) { const mc = mechs[i]; if (!mc) return false; pos.copy(mc.wrap.position); quat.copy(mc.wrap.quaternion); return true; },   // a mech's place and facing (the harness's look, src/fx/reinforcements-host.js)
     show(on) { hidden = !on; },   // the harness's A/B for the four's draw cost (--reinforcements)
   };
 }

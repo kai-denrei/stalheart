@@ -1733,7 +1733,8 @@ try{
  } else if(args.includes('--feids-shots')) {
  // THE DROP'S LOOK (owner, 2026-10-23: "I could not take screenshots because any key press cancels the animation"; spec
  // docs/superpowers/specs/2026-10-23-drop-fx-design.md): ?reinforce=1, the drop's frames at its clock t = 3, 7, 13, 17, 19.6 and 22 s as PNGs
- // (artifacts/browser/feids-<t>.png: the capsules' burn, the release, the first touchdowns, the ground camera, the laggard's touchdown, the rubble);
+ // (artifacts/browser/feids-<t>.png: the capsules' burn, the release, the first touchdowns, the ground camera, the laggard's touchdown, the rubble; and
+ // feids-40.png, the base mech walking, round 2);
  // the cut live through 19.6 s with the lowered lens; the four handed over at the end. One line per frame: the drop's clock, the shot, the lens
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {REINFORCEMENTS}=await import('../src/content/reinforcements.js'), R=s=>s.reinforcements;
  await go('feids-load',`index.html?sw=0&acceptance=1&cine=0&intro=0&world=story&skip=defence&reinforce=1#td`);
@@ -1749,6 +1750,15 @@ try{
   current=`feids-${at}`;await finish();}
  await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`the four land (${JSON.stringify(R(await st()))})`));
  {const s=await st(),r=R(s);console.log(`  feids-shots: landed, mechs ${r.mechs.length}, shot ${s.shot}`);assert.equal(r.mechs.length,4,'four mechs at the end');assert.equal(r.lens,null,'the lens put back');}
+ // THE HEAVY GAIT (round 2, decision 2): the base mech walking at drop t 40 s (12 game s after the landing at 28), framed by a live look beside it
+ // (src/fx/reinforcements-host.js look), as artifacts/browser/feids-40.png for the owner; its gait read at the frame
+ {const ms=R(await st()).mechs,bi=ms.findIndex(m=>m.role==='base'),t0=ms[0].t-(R(await st()).t-REINFORCEMENTS.timeline.duration);
+  await until(`(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+40-REINFORCEMENTS.timeline.duration-1.5}`,240000);
+  assert.equal(await evaluate(`${T}.reinforceLook(${bi})`),true,'the look at the base mech');
+  await until(`(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+40-REINFORCEMENTS.timeline.duration}`,240000);
+  const s=await st(),b=R(s).mechs[bi];console.log(`  feids-shots: t 40 s (game t ${b.t}): shot ${s.shot}, the base mech at cell ${b.cell} (heart ${b.heartDist}, park ${b.parkDist}), walking ${b.walking}, gait ${JSON.stringify(b.gait)}, far ${b.far} (${b.eyeM} m from the eye; all ${JSON.stringify(R(s).mechs.map(m=>[m.role,m.far,m.eyeM]))})`);
+  assert.equal(s.shot,'mechLook','the look live');assert.ok(b.walking&&b.gait.contacts>=3,'the base mech walking on three claws or more');assert.equal(b.far,false,'the base mech on its game tier in the look (the world runs under it)');
+  current='feids-40';await finish();}
  } else if(args.includes('--reinforcements-lull')) {
  // FEIDS-26 REINFORCEMENTS WITHOUT THE FLAG (decisions 1 and 2): the grown base at sector 4 has its radar, so Isao calls them at the load (the call's line
  // and callout); the drop waits for the due day (calledDay + REINFORCEMENTS.days, 30 s days) and then for a lull (the field culled to a breath, as --day-42
@@ -1832,9 +1842,17 @@ try{
   assert.equal(ms.length,4,'four mechs');assert.deepEqual(ms.map(m=>m.role),REINFORCEMENTS.roles,'their roles');
   assert.ok(ms.every(m=>m.records.length===4&&m.records.every(r=>/:2$/.test(r))),'four records each at the top tier');}
  {const s0=await st(),t0=s0.reinforcements.mechs[0].t;
-  await until(`(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+30}`,240000).catch(async()=>assert.fail(`30 game seconds after the landing (${JSON.stringify(R(await st()).mechs.map(m=>m.t))})`));
+  // THE HEAVY GAIT (round 2, decision 2): the hunter's gait sampled over the 30 s, { rate, contacts, speed } (speed: its measured ground speed, m/s):
+  // three claws down at every sample, and walking for 2 s or more its rate within 10 % of speed / (0.2778 m/s x scale)
+  const per=0.27778*REINFORCEMENTS.scale,samples=[];
+  {const w=Date.now();let since=null;while(Date.now()-w<240000){const ms0=R(await st()).mechs,hu=ms0.find(m=>m.role==='hunt'),tt=ms0[0]?.t??0;
+    if(hu){const g=hu.gait;since=g.mode==='walk'?(since??tt):null;samples.push({t:tt,...g,steady:since!=null&&tt-since>=2});}
+    if(tt>=t0+30)break;await delay(250);}}
+  {const steady=samples.filter(x=>x.steady),off=steady.map(x=>Math.abs(x.rate-x.speed/per)/(x.speed/per));
+   console.log(`  reinforcements: the hunter's gait over 30 s: ${samples.length} samples, contacts min ${Math.min(...samples.map(x=>x.contacts))}, modes ${[...new Set(samples.map(x=>x.mode))].join('/')}; steady walking ${steady.length}: rate ${steady.length?Math.min(...steady.map(x=>x.rate)).toFixed(2)+'..'+Math.max(...steady.map(x=>x.rate)).toFixed(2):'-'}, speed ${steady.length?Math.min(...steady.map(x=>x.speed)).toFixed(3)+'..'+Math.max(...steady.map(x=>x.speed)).toFixed(3):'-'} m/s, worst off ${off.length?(Math.max(...off)*100).toFixed(1):'-'} %`);
+   assert.ok(samples.every(x=>x.contacts>=3),'three claws down at every sample');assert.ok(steady.length>0,'the hunter walked 2 s or more');assert.ok(off.every(x=>x<=0.1),'the gait rate within 10 % of the ground speed over the demo walk');}
   const s=await st(),ms=R(s).mechs;
-  for(const m of ms)console.log(`  reinforcements: +30 s mech ${m.role}: cell ${m.start} -> ${m.cell}, ${m.cells} cells walked, heart ${m.startDist} -> ${m.heartDist}, on the plain ${m.onPlain}, walking ${m.walking} rate ${m.rate}, shots ${m.shots}, last fired ${m.firedAt}`);
+  for(const m of ms)console.log(`  reinforcements: +30 s mech ${m.role}: cell ${m.start} -> ${m.cell}, ${m.cells} cells walked, heart ${m.startDist} -> ${m.heartDist} (park ${m.parkDist}), on the plain ${m.onPlain}, walking ${m.walking} gait ${JSON.stringify(m.gait)}, shots ${m.shots}, last fired ${m.firedAt}`);
   const base=ms.find(m=>m.role==='base'),hunt=ms.find(m=>m.role==='hunt'),arena=ms.filter(m=>m.role==='arena');
   assert.ok(base.heartDist<base.startDist,`the base mech nearer the heart (${base.startDist} -> ${base.heartDist})`);
   assert.ok(hunt.cells>0,`the hunter moved (${hunt.cells} cells)`);

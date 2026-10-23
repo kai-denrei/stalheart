@@ -63,6 +63,8 @@ assert.ok(base.heartDist < base.startDist, `the base mech walks toward the heart
 assert.ok(hunt.cell > 24 && hunt.cell <= 40, `the hunter walks to the enemy at 40 (${hunt.cell})`);
 assert.ok(arena.every((m) => m.onPlain), 'the arena pair on the plain');
 assert.ok(recs.every((r) => r.ci === st[r.mechIndex].cell || adj[st[r.mechIndex].cell].includes(r.ci)), 'the records follow their mech');
-assert.ok(st.every((m) => m.rate === 0 || m.rate === REINFORCEMENTS.gaitCap), 'the gait at its cap while walking');
+const want = REINFORCEMENTS.pace * 10 / (0.27778 * REINFORCEMENTS.scale);   // the heavy gait (round 2): ground speed / (the demo's walk x scale), ~3.84
+assert.ok(st.every((m) => (m.walking ? Math.abs(m.rate - want) < 0.01 : m.rate === 0) && m.gait.rate === m.rate), `the gait's rate at the pace (${st.map((m) => m.rate)} vs ${want.toFixed(2)})`);
+assert.ok(st.filter((m) => m.walking).every((m) => Math.abs(m.gait.speed - REINFORCEMENTS.pace * 10) < 0.05), `the measured ground speed (${st.map((m) => m.gait.speed)} m/s)`);
 squad.restore(); assert.equal(squad.towers().length, 0, 'restored'); assert.equal(scene.children.filter((o) => o.isInstancedMesh).length, 0, 'the parts gone');
 console.log(`mech-squad: sixteen top-tier records on four mechs, the aim on the model's pivots, the base mech ${base.startDist} -> ${base.heartDist} hops from the heart, the hunter at ${hunt.cell}`);

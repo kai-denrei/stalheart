@@ -4216,7 +4216,7 @@ export function initTdTab(root) {
     briefs.stepClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
@@ -5087,7 +5087,7 @@ export function initTdTab(root) {
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
-      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B
+      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on), reinforceLook: (i) => !!reinforcements?.look(i),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B; a live look at mech i
       spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
       arenaFire: (gun, p) => { const G = pilot?.gunship ? pilotHost?.gunship : null; if (!G || !p) return false; if (gun !== 'heavy') { G.fire(gun, norm3(p), G.guns[gun].travel); return true; } return G.paintHeavy(cellIndex(norm3(p))) && G.launchHeavy() >= 0; },   // THE ARENA FIGHT's harness (2026-10-23): a round from the seat at a unit point, the MK-9 painted and released on its cell

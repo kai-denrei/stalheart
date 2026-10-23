@@ -72,5 +72,5 @@ assert.equal(dropPhase(-1, TL), 'idle'); assert.equal(dropPhase(5, TL), 'droppin
   assert.equal(dropCentre({ adj, dist, from: 9, hops: 20 }), 0, 'stops at the heart');
   assert.equal(dropCentre({ adj, dist, from: 9, hops: 5, open: (c) => c !== 6 }), 7, 'never onto a closed cell');
   assert.equal(dropCentre({ adj, dist, from: -1, hops: 5 }), -1); }
-assert.ok(REINFORCEMENTS.days === 3 && REINFORCEMENTS.pace === 0.25 && REINFORCEMENTS.roles.length === 4);
+assert.ok(REINFORCEMENTS.days === 3 && REINFORCEMENTS.pace === 0.08 && REINFORCEMENTS.roles.length === 4);
 console.log('reinforcements: the timeline, the cues, the camera, the trigger and the centre hold');
