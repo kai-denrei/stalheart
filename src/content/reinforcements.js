@@ -14,9 +14,10 @@
 // `timeline` is the owner's cinematic (SentryTowers_A6 feids26/timeline.js), metres and seconds: two capsules at x -/+capsuleX entering from
 // `entry` m nose-down, split at `release` s (the second `capsuleGap` later) at `split` m sinking `splitSink` m/s, each slot released `slotGap` later,
 // the cargo falling `fallTimes` to `fallTo` m, braking `brake` s, landing at `landings` round the centre; the quarters gone `shellGone` s after the
-// split; the camera wide, then a fixed ground camera at `ground` from groundCamera[0] to [1] s: upstream (9.75, 0.2, 7); here 3.5 m up and 9 m from the
-// laggard's spot, because the game camera's near plane is 0.004 units, 3 m at the story's scale (src/td-tab.js): at 1 m up the floor under the lens was
-// clipped and the planet's far side showed through it (the --reinforcements step's laggard frame, 2026-10-23)
+// split; the camera wide, then the demo's fixed ground camera at `ground` (9.75, 0.2, 7 m: the "ant" view, the laggard's leg in the foreground; the
+// owner, 2026-10-23: "I insist on having the same ant-view extreme low angle ... as in the demo") from groundCamera[0] to [1] s. The game camera's near
+// plane (0.004 units, ~3 m at the story's scale, src/td-tab.js) clipped the floor under a lens 1 m up, so the cut lowers it: `shot.near` world units
+// (~0.19 m) and the rule's fov while the cut runs, both put back at its end (src/fx/reinforcements-host.js); `shot.shake` scales the demo's shake (1 = the demo)
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 export const REINFORCEMENTS = freeze({
   days: 3, pace: 0.25, gaitCap: 4, roles: ['arena', 'arena', 'base', 'hunt'], offsetCells: 5, scale: 0.75,
@@ -24,10 +25,10 @@ export const REINFORCEMENTS = freeze({
   keepFromHull: 2, lodMetres: 140, fade: 20, patrolCells: 14,
   timeline: {
     duration: 28, release: 6.2, capsuleGap: 0.45, slotGap: 0.18, brake: 0.8, entry: 480, split: 300, splitSink: 4, fallTo: 12, capsuleX: 6,
-    landings: [[-6, -4], [-3, 4], [4, -3], [7, 5]], fallTimes: [6, 6.25, 6.55, 11.6], shellGone: 3.5, groundCamera: [16.5, 18], ground: [14, 3.5, 11],
+    landings: [[-6, -4], [-3, 4], [4, -3], [7, 5]], fallTimes: [6, 6.25, 6.55, 11.6], shellGone: 3.5, groundCamera: [16.5, 18], ground: [9.75, 0.2, 7],
   },
   sounds: { entry: 'feids_reentry', woosh: 'mech_reentry_woosh', impact: 'mech_landing_impact', wooshLead: 4 },
   models: { capsule: 'assets/models/feids26/feids26_d0_lod1.glb', mech: 'assets/models/ridgeback/mx06_d0_lod1.glb', mechFar: 'assets/models/ridgeback/mx06_d0_lod2.glb' },
-  shot: { id: 'feidsDrop', easeIn: 1.2 },
+  shot: { id: 'feidsDrop', easeIn: 1.2, near: 0.00025, shake: 1 },
   briefs: { called: 'reinforcements_called', inbound: 'reinforcements_inbound' }, callout: 'REINFORCEMENTS CALLED', landedCallout: 'REINFORCEMENTS LANDED',
 });

@@ -1730,6 +1730,25 @@ try{
   await until(`(${T}.state().sector.breaches||[]).reduce((n,b)=>n+(b.wavesReleased||0),0)>${released(atStart)}`,45000).catch(async()=>assert.fail(`a wave is out after the party (${released(atStart)}/${planned(atStart)} at the start; ${JSON.stringify((await st()).sector.breaches)})`));
  } else console.log(`  day-42: every wave was out before the party (${released(atStart)}/${planned(atStart)}), no next wave to see`);
  current='day-42-done';await finish();
+ } else if(args.includes('--feids-shots')) {
+ // THE DROP'S LOOK (owner, 2026-10-23: "I could not take screenshots because any key press cancels the animation"; spec
+ // docs/superpowers/specs/2026-10-23-drop-fx-design.md): ?reinforce=1, the drop's frames at its clock t = 3, 7, 13, 17, 19.6 and 22 s as PNGs
+ // (artifacts/browser/feids-<t>.png: the capsules' burn, the release, the first touchdowns, the ground camera, the laggard's touchdown, the rubble);
+ // the cut live through 19.6 s with the lowered lens; the four handed over at the end. One line per frame: the drop's clock, the shot, the lens
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {REINFORCEMENTS}=await import('../src/content/reinforcements.js'), R=s=>s.reinforcements;
+ await go('feids-load',`index.html?sw=0&acceptance=1&cine=0&intro=0&world=story&skip=defence&reinforce=1#td`);
+ // a real key closes the controls card and arms the page's audio before the world stands (a key during the drop would skip its cut)
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().reinforcements?.phase==='dropping'`,30000).catch(async()=>assert.fail(`the drop starts on ?reinforce=1 (${JSON.stringify(R(await st()))})`));
+ await until(`${T}.state().shot==='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>assert.fail(`the cut (${(await st()).shot})`));
+ for(const at of [3,7,13,17,19.6,22]){
+  await until(`(${T}.state().reinforcements?.t??0)>=${at}||${T}.state().reinforcements?.phase==='landed'`,240000);
+  const s=await st(),r=R(s);console.log(`  feids-shots: t ${at} s at drop t ${r.t} s, shot ${s.shot}, lens ${JSON.stringify(r.lens)}`);
+  if(at<=19.6){assert.equal(s.shot,REINFORCEMENTS.shot.id,`the cut live at ${at} s`);assert.ok(r.lens&&Math.abs(r.lens.near-REINFORCEMENTS.shot.near)<1e-9,`the lowered near plane at ${at} s`);}
+  current=`feids-${at}`;await finish();}
+ await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`the four land (${JSON.stringify(R(await st()))})`));
+ {const s=await st(),r=R(s);console.log(`  feids-shots: landed, mechs ${r.mechs.length}, shot ${s.shot}`);assert.equal(r.mechs.length,4,'four mechs at the end');assert.equal(r.lens,null,'the lens put back');}
  } else if(args.includes('--reinforcements-lull')) {
  // FEIDS-26 REINFORCEMENTS WITHOUT THE FLAG (decisions 1 and 2): the grown base at sector 4 has its radar, so Isao calls them at the load (the call's line
  // and callout); the drop waits for the due day (calledDay + REINFORCEMENTS.days, 30 s days) and then for a lull (the field culled to a breath, as --day-42
@@ -1771,6 +1790,10 @@ try{
   assert.ok(Date.now()-w0<10000,'the drop within 10 s of the world standing');assert.equal(r.loaded,true,'the capsule and the Ridgeback loaded');assert.ok(r.centre>=0,'a drop centre');}
  await until(`${T}.state().shot==='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>{const s=await st();assert.fail(`the camera cuts to the arena (${JSON.stringify({shot:s.shot,r:R(s),view:s.view})})`);});
  {const s=await st();assert.equal(s.paused,false,'a live shot: the world runs');}
+ // A SCREENSHOT IS NOT A SKIP (2026-10-23, src/fx/camera-shot.js skipsOn): a lone Cmd, Cmd+Shift+4 (modifiers 4 Meta + 8 Shift) and a lone Shift leave the cut running
+ const keyEv=async(o)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',...o});await send('Input.dispatchKeyEvent',{type:'keyUp',...o});await delay(300);};
+ {await keyEv({key:'Meta',code:'MetaLeft',modifiers:4});await keyEv({key:'4',code:'Digit4',modifiers:12});await keyEv({key:'Shift',code:'ShiftLeft',modifiers:8});
+  const s=await st();console.log(`  reinforcements: after Cmd, Cmd+Shift+4 and Shift at drop t ${R(s).t} s: shot ${s.shot}, lens ${JSON.stringify(R(s).lens)}`);assert.equal(s.shot,REINFORCEMENTS.shot.id,'a screenshot chord does not end the cut');}
  const snaps=[[3,'reinforce-entry'],[9,'reinforce-release'],[14.5,'reinforce-trio'],[19.6,'reinforce-laggard']];
  for(const [at,name] of snaps){await until(`(${T}.state().reinforcements?.t??0)>=${at}||${T}.state().reinforcements?.phase==='landed'`,240000);const r=R(await st());console.log(`  reinforcements: ${name} at drop t ${r.t} s, shot ${(await st()).shot}`);current=name;await finish();}
  // THE FOUR'S DRAW COST: at drop t 24 s the ground camera has the four standing in view (the capsules gone); the drop drawn, then hidden, then drawn again,
@@ -1778,6 +1801,9 @@ try{
  {await until(`(${T}.state().reinforcements?.t??0)>=24`,240000);const read=async()=>{const s=await st();return {calls:s.drawCalls,ms:s.performance?.frameMs??null,gpu:s.performance?.gpuMs??null,t:R(s).t};};
   await delay(1500);const on=await read();await evaluate(`${T}.reinforceShow(false)`);await delay(1500);const off=await read();await evaluate(`${T}.reinforceShow(true)`);
   console.log(`  reinforcements: the four Ridgebacks (game tier) in view: ${on.calls} draw calls, ${on.ms?.toFixed?.(1)} ms a frame (drop t ${on.t}); hidden: ${off.calls} calls, ${off.ms?.toFixed?.(1)} ms (drop t ${off.t}); the four cost ${on.calls-off.calls} calls`);}
+ // a plain key still skips (the cut's last seconds), the lens put back with it
+ if(R(await st()).phase==='dropping'&&(await st()).shot===REINFORCEMENTS.shot.id){await keyEv({key:'k',code:'KeyK',text:'k'});const s=await st();console.log(`  reinforcements: after a plain K at drop t ${R(s).t} s: shot ${s.shot}, cutDone ${R(s).cutDone}, lens ${JSON.stringify(R(s).lens)}`);
+  assert.notEqual(s.shot,REINFORCEMENTS.shot.id,'a plain key ends the cut');assert.equal(R(s).lens,null,'the lens put back on the skip');} else console.log('  reinforcements: the cut ended before the plain-key check');
  await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`the four land (${JSON.stringify(R(await st()))})`));
  {const s=await st(),r=R(s),heard=r.heard;
   const by=k=>heard.filter(h=>h.kind===k);

@@ -7,7 +7,8 @@
 //   cargoState(t, capsule, slot, tl)  -> { age, hit, held, landed, height, x, z, yaw, pitch, jet, heat, fold, clip }
 //                                        (clip: the MX-06's Airdrop_Land clock: tucked in the fall, its braking burn over the brake, 2.6 s at the touchdown)
 //   dropCues(tl, sounds)              -> [{ t, kind: 'entry'|'woosh'|'impact', key, index }] in time order; cuesIn(cues, t0, t1): those in (t0, t1]
-//   dropCamera(t, tl)                 -> { eye, look, fov, shake }  the cinematic's camera: wide on the falling group, the ground camera on the laggard
+//   dropCamera(t, tl, shakeK = 1)     -> { eye, look, fov, shake }  the cinematic's camera: wide on the falling group, the ground camera on the laggard
+//                                        (shakeK scales the demo's shake: 1 = the demo)
 //   dropPhase(t, tl)                  -> 'idle' | 'dropping' | 'landed'
 //   dropReady(cond)                   -> whether the drop starts now (decision 2: the first lull after `due`, or THE ARENA's start, or forced)
 //   dropCentre({ adj, dist, from, hops, open }) -> the cell `hops` steps down the heart's field from the arena's cell (off the crater, toward the base)
@@ -56,8 +57,10 @@ export function dropCues(tl, sounds) {
 export const cuesIn = (cues, t0, t1) => cues.filter((c) => c.t > t0 && c.t <= t1);
 
 // the cinematic's camera (feids26/viewer.js, cinema on), in the drop's metres: wide on the capsules, then on the falling cargo (a held mech is
-// where its capsule is), closing on the first three, the grounded trio held, then down to the fixed ground camera before the laggard lands
-export function dropCamera(t, tl) {
+// where its capsule is), closing on the first three, the grounded trio held, then down to the fixed ground camera before the laggard lands: the
+// demo's "ant" view exactly (tl.ground = 9.75, 0.2, 7 m, fov 48 -> 67; the owner, 2026-10-23: "I insist on having the same ant-view extreme low angle
+// with one leg of the last Mech in the foreground, as in the demo"), the host lowering the game camera's near plane for it
+export function dropCamera(t, tl, shakeK = 1) {
   const c0 = capsuleState(t, 0, tl), c1 = capsuleState(t, 1, tl), mid = (c0.y + c1.y) / 2, ys = [];
   for (let i = 0; i < 4; i++) { const s = cargoState(t, i >> 1, i & 1, tl); ys.push(s.held ? (i < 2 ? c0.y : c1.y) : s.height); }
   const allFall = (ys[0] + ys[1] + ys[2] + ys[3]) / 4, firstFall = (ys[0] + ys[1] + ys[2]) / 3, focus = smooth((t - 10.5) / 1.8);
@@ -68,6 +71,7 @@ export function dropCamera(t, tl) {
   const eye = wide.map((v, k) => lerp(v, ground[k], ant)), look = target.map((v, k) => lerp(v, menace[k], ant));
   let shake = 0.035 * c0.heat;
   for (let i = 0; i < 2; i++) { shake += capsuleState(t, i, tl).flash * 0.16; for (let j = 0; j < 2; j++) { const age = cargoState(t, i, j, tl).hit; if (age >= 0) shake += (i === 1 && j === 1 ? 0.1 : 0.22) * Math.exp(-age * 5); } }
+  shake *= shakeK;
   eye[0] += Math.cos(t * 73) * shake; eye[1] += Math.sin(t * 81) * shake * (1 - ant * 0.6);
   return { eye, look, fov: 48 + ant * 19, shake };
 }

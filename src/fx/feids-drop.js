@@ -115,12 +115,12 @@ export function createFeidsDrop(h) {
     last = t;
   }
 
-  // the cinematic's camera at the drop's clock, into out.pos / out.quat (the shot's poseAt), up along the planet's normal
+  // the cinematic's camera at the drop's clock, into out.pos / out.quat (the shot's poseAt) and out.fov, up along the planet's normal
   function pose(t, out) {
     if (!frame) return false;
-    const c = dropCamera(t, TL);
+    const c = dropCamera(t, TL, REINFORCEMENTS.shot.shake ?? 1);
     worldOf(c.eye[0], c.eye[1], c.eye[2], eye); worldOf(c.look[0], c.look[1], c.look[2], look);
-    m4.lookAt(eye, look, frame.up); out.pos.copy(eye); out.quat.setFromRotationMatrix(m4);
+    m4.lookAt(eye, look, frame.up); out.pos.copy(eye); out.quat.setFromRotationMatrix(m4); out.fov = c.fov;
     return true;
   }
 

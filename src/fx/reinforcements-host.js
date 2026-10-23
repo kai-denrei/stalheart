@@ -8,7 +8,7 @@
 // cell, off the crater), Isao's `reinforcements_inbound`, and a live shot on the cinematic's camera for its 28 s, never over a manned seat or
 // another shot (the drop goes on without its cut); then the four handed to the squad (host.landed(mechs, frame), src/fx/mech-squad.js).
 //   host: scene, metres(), sfx, explode, startShot, snapCamera, showBrief, callout(text, cls), graph(), dungeon(), story(), daylight(),
-//         sectorRun(), shotActive(), seated(), card(), alive(), won(), isaoBusy(), flag (the ?reinforce value), uplink() (the radar's perk stands),
+//         sectorRun(), shotActive() (a shot or the hull's deploy: both own the camera, and the drop's cut waits for either), seated(), card(), alive(), won(), isaoBusy(), flag (the ?reinforce value), uplink() (the radar's perk stands),
 //         landed(mechs, frame, centre), squad(), camera (the shot's start pose)
 import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
@@ -22,6 +22,20 @@ export function createReinforcements(h) {
   const drop = createFeidsDrop({ scene: h.scene, metres: h.metres, sfx: h.sfx, explode: h.explode });
   const forced = h.flag === '1', disabled = h.flag === '0';
   let phase = 'idle', t = -1, waiting = -1, why = 'idle', ticks = 0, frame = null, centre = -1, cut = false, cutDone = false, forceNow = false;
+  // THE CUT'S LENS (the owner's ant view, 2026-10-23): the near plane lowered to shot.near and the rule's fov (eased in from the camera's) each tick
+  // of the cut, the values found put back at its end, on a seat taken over it (the near only: the seat owns the fov) and on restore
+  let lens = null;
+  const lensAt = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fov: 0 };
+  function lensOn() {
+    if (!h.camera || !drop.pose(Math.max(0, t), lensAt)) return;
+    if (!lens) lens = { fov: h.camera.fov, near: h.camera.near };
+    const k = Math.min(1, Math.max(0, t) / REINFORCEMENTS.shot.easeIn), e = k * k * (3 - 2 * k);
+    h.camera.near = REINFORCEMENTS.shot.near; h.camera.fov = lens.fov + (lensAt.fov - lens.fov) * e; h.camera.updateProjectionMatrix();
+  }
+  function lensOff(fov = true) {
+    if (!lens) return;
+    h.camera.near = lens.near; if (fov) h.camera.fov = lens.fov; h.camera.updateProjectionMatrix(); lens = null;
+  }
   if (forced) drop.prepare();   // ?reinforce=1: the models on their way with the world, so the drop can go the moment it stands
 
   const rec = () => h.story()?.reinforcements ?? null;
@@ -49,7 +63,7 @@ export function createReinforcements(h) {
     if (cutDone || cut || h.seated() || h.shotActive() || t > TL.duration - 2) return;
     const start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() }, at = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
     cut = true;
-    h.startShot({ id: REINFORCEMENTS.shot.id, dur: TL.duration - Math.max(0, t), skippable: true, onEnd: () => { cut = false; cutDone = true; h.snapCamera(); }, poseAt(u, out) {
+    h.startShot({ id: REINFORCEMENTS.shot.id, dur: TL.duration - Math.max(0, t), skippable: true, onEnd: () => { cut = false; cutDone = true; lensOff(); h.snapCamera(); }, poseAt(u, out) {
       if (!drop.pose(Math.max(0, t), at)) return;
       const k = Math.min(1, Math.max(0, t) / REINFORCEMENTS.shot.easeIn), e = k * k * (3 - 2 * k);
       out.pos.lerpVectors(start.pos, at.pos, e); out.quat.slerpQuaternions(start.quat, at.quat, e);
@@ -60,7 +74,7 @@ export function createReinforcements(h) {
     drop.begin(frame); phase = 'dropping'; t = 0; cut = false; cutDone = false;
     h.showBrief(REINFORCEMENTS.briefs.inbound);
     shot();
-    drop.tick(0);
+    drop.tick(0); if (cut) lensOn();
     return true;
   }
   function land() {
@@ -75,6 +89,7 @@ export function createReinforcements(h) {
       if (disabled || phase === 'landed') return;
       if (phase === 'dropping') {
         t += dt; drop.prime(); drop.tick(t); shot();
+        if (cut && !h.seated()) lensOn(); else lensOff(!h.seated());
         if (t > TL.duration) land();
         return;
       }
@@ -96,9 +111,9 @@ export function createReinforcements(h) {
     show: (on) => { drop.show(on); h.squad?.()?.show?.(on); },   // the harness's A/B: the capsules and the four drawn or not, the clocks running
     state: () => {
       const r = rec();
-      return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, seated: h.seated(), primed: drop.primed(), loaded: drop.ready(), failed: drop.failed(),
+      return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, lens: lens ? { near: +h.camera.near.toFixed(6), fov: +h.camera.fov.toFixed(2) } : null, seated: h.seated(), primed: drop.primed(), loaded: drop.ready(), failed: drop.failed(),
         why, ticks, heard: drop.heard(), mechs: h.squad?.()?.state?.() ?? [] };
     },
-    restore() { drop.dispose(); phase = 'idle'; t = -1; frame = null; cut = false; },
+    restore() { lensOff(); drop.dispose(); phase = 'idle'; t = -1; frame = null; cut = false; },
   };
 }
