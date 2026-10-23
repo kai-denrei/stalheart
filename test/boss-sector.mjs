@@ -18,6 +18,9 @@ assert.ok(wave.every((e) => e.hunter && e.tier === 'small' && e.type === 'reed' 
 assert.deepEqual(pups.map((e) => [e.tier, e.count, e.spec.hp, e.hunter]), [['pup', 6, 6, true]], 'then the pups (2026-10-16: THE ARENA)');
 assert.deepEqual(boss.map((e) => [e.tier, e.count, e.spec.hp, e.hunter]), [['huge', 1, 180, true]], 'then the boss, one, at 180');
 assert.equal(plans.length, WITH_WAVES.waves, 'one plan a wave');
+// NO BLOB FOR HER (2026-10-23, arena-road spec decision 3): the boss entry, and only it, is marked `boss` (src/fx/enemy-step.js gives it no emerge blob)
+assert.ok(boss.every((e) => e.boss === true) && [...wave, ...pups].every((e) => !e.boss), 'only the boss entry is the boss');
+assert.equal(bossWaves(BOSS_SECTOR, { tierSpec })[0][0].boss, true, 'THE ARENA\'s mother is the boss entry');
 assert.deepEqual(bossWaves({ name: 'x' }, { tierSpec }), [[], []], 'a row without a boss sends nothing of its own');
 assert.deepEqual(bossWaves({ boss: { family: 'cutis', wave: { count: 2, tier: 'small', hp: 1 }, boss: { tier: 'huge', hp: 9 } } }, { tierSpec }).map((p) => p[0].tier), ['small', 'huge'], 'a single wave still reads');
 assert.equal(phaseScale('COIL', CUTIS_HITS), CUTIS_HITS.reach); assert.equal(phaseScale('EXTEND', CUTIS_HITS), 1); assert.equal(phaseScale('ANCHOR', CUTIS_HITS), 1);

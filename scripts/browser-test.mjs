@@ -1551,6 +1551,9 @@ try{
   assert.ok(s.boss.bossSeen&&s.boss.boss===1,`the Nih-Dairia is up, one (${JSON.stringify(s.boss)})`);assert.equal(s.boss.bossHp,BOSS_SECTOR.boss.boss.hp,'at its hit points');
   assert.ok(s.integrity.gates.some(g=>g.id==='boss'&&/100%/.test(g.text)),`the boss row reads its hit points, whole (${JSON.stringify(s.integrity.gates)})`);
   assert.ok(s.boss.phase==='boss'&&s.boss.auto&&s.boss.directive==='lure',`Isao drives the hull on its lure autopilot (${JSON.stringify(s.boss)})`);assert.equal(s.programme.colony.gunship.auto,false,'the gunship\'s autopilot is off: the seat is the player\'s');}
+ // NO BLOB FOR HER (owner, 2026-10-23, note 3: "a giant green blob preceding the large boss"; arena-road spec decision 3): her record rose with no emerge blob,
+ // the drop's rubble thrown from the lip instead
+ {const s=await st();console.log(`  her entrance: blob ${s.boss.blob}, rubble ${s.boss.rubble}`);assert.equal(s.boss.blob,false,`no emerge blob for the boss record (${JSON.stringify({blob:s.boss.blob,rubble:s.boss.rubble})})`);assert.equal(s.boss.rubble,true,'the rock chunks thrown from the lip as she breaks the surface');}
  current='boss-rise';await finish();
  // THE MOTHER (owner, 2026-10-19, third round, note 8a: "we lost the scene explaining that we need to manually control the gunship while Isao plays Lure with the
  // tank"): the hand-over card over the paused game as she rises, Isao's lines and the seat's controls on it; no seat until the step presses TAKE THE GUN
@@ -2894,9 +2897,17 @@ try{
  let best=reed0.cells,bestOther=Math.min(...others0.map(x=>x.cells)),moves=0,lastCur=reed0.cur;const t0=Date.now();
  while(Date.now()-t0<25000){await delay(500);const list=await evaluate(`${T}.showcase.guards("${site}")`),r=list.find(x=>x.type==='reed');if(!r)break;if(r.cur!==lastCur){moves++;lastCur=r.cur;}best=Math.min(best,r.cells);for(const o of list)if(o.type!=='reed')bestOther=Math.min(bestOther,o.cells);if(best<1.5)break;}
  console.log(`NEST GUARDS chase ${site}: reed ${reed0.cells.toFixed(2)} -> ${best.toFixed(2)} cells in ${moves} cell moves over ${((Date.now()-t0)/1000).toFixed(1)} s; the nearest soft guard came to ${bestOther.toFixed(2)} cells`);
- assert.ok(moves>0,`the Reed guard moves at all (${moves} cell moves)`);
+ // a Reed already beside the hull at the chase's start (1.49 cells on the shipped planet since the stand moved, red on overnight-2026-10-23 itself, 2026-10-23) has nothing to
+ // walk: the loop ends at once below 1.5 cells; its closing is the measure then
+ assert.ok(moves>0||best<1.5,`the Reed guard moves at all (${moves} cell moves; nearest ${best.toFixed(2)} cells)`);
  assert.ok(best<reed0.cells-0.5||best<2,`the Reed closes on the hull in the nest (${reed0.cells.toFixed(2)} -> ${best.toFixed(2)} cells)`);
  current='nest-guards-chase';await finish();
+ // THE WAVES KEEP THEIR BLOBS (2026-10-23, arena-road spec decision 3: only the boss record lost hers): a breach's wave still climbs out behind its blobs
+ {const cell=await evaluate(`${T}.backBreach(6)`);assert.ok(cell>=0,'a breach opened for a wave');const w0=Date.now();let bodies=[];
+  while(Date.now()-w0<20000){bodies=(await evaluate(`${T}.aliveBodies()`)).filter(e=>!e.guard);if(bodies.filter(e=>e.blob).length>=6)break;await delay(500);}
+  console.log(`NEST GUARDS the wave at breach ${cell}: ${bodies.length} bodies, ${bodies.filter(e=>e.blob).length} with a blob at the lip`);
+  assert.ok(bodies.filter(e=>e.blob).length>=1,`the wave's bodies still get their blobs (${JSON.stringify(bodies.slice(0,8))})`);}
+ current='nest-guards-blobs';await finish();
  } else if(args.includes('--arena-road')) {
  // THE ROAD SOL CUTS (owner, 2026-10-16: 'have SOL shoot ahead of it here and there to open the maze'; ARENA.road, src/domain/arena.js roadAhead,
  // src/fx/boss-run.js, td-tab's solRoad): on the arena's drive out, every ARENA.road.every seconds the first rock within ARENA.road.ahead cells on the hull's

@@ -9,6 +9,7 @@ import { stampScare, scarePace, isScared, towardScare, awayExits, seekExits } fr
 import { groundAt } from './lance-follow.js';
 import { SCARE_FREEZE_S } from '../content/explosions.js';
 import { STORY_EXPEDITIONS, EMERGENCE, WALK_BIAS } from '../content/story-defaults.js';
+import { METRES_PER_CELL } from '../core/stage-units.js';
 import { sinkholeGroundHeight } from '../core/sinkhole-shape.js';
 import { CONTENT } from '../content/runtime.js';
 import { record } from '../diagnostics.js';
@@ -247,10 +248,14 @@ export function createEnemyStep(host) {
       const atHole = !!sp.obj.userData.breach && ci === sp.ci, holeCells = sp.obj.userData.cells ?? 1;   // a wide hole (the arena's) has a wide lip
       const emergeOff = entry.spread ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * entry.spread * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * holeCells * EMERGENCE.out * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
       // THE BLOB (src/fx/emerge-blob.js): the picture of this one climbing out, in its tint, from the lip to where the record waits; the record itself pops up when it is done
-      if (atHole && emergeOff) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
+      // NO BLOB FOR HER (owner, 2026-10-23, note 3: "a giant green blob preceding the large boss"; BOSS_RUBBLE): the boss record (src/domain/boss-sector.js bossWaves' `boss`)
+      // rises with no blob; as she breaks the surface (the climb's wait over) the drop's rock chunks are thrown from the lip toward her (src/fx/rock-chunks.js)
+      const blob = atHole && !!emergeOff && !entry.boss; let rubble = false;
+      if (atHole && emergeOff && entry.boss) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]), metre = host.cellSide() / METRES_PER_CELL; rubble = !!host.rubble?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), offset: lip / metre, metre, delay: (entry.delay ?? 0) + EMERGENCE.climb }); }
+      if (blob) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),tierKey,sizeMul:grow,ownSize:entry.sizeMul??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),blob,rubble,boss:!!entry.boss,tierKey,sizeMul:grow,ownSize:entry.sizeMul??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
         cur: ci, prev: -1,
         next,
         prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
