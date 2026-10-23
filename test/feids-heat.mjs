@@ -21,4 +21,9 @@ for (let index = 0; index < 4; index++) for (let i = 0; i < 24; i++) {
   for (let tau = 0; tau <= 3; tau += 0.05) assert.ok(chunkAt(i, index, tau).y >= 0, 'never under the ground');
   assert.deepEqual(chunkAt(i, index, 0.7), chunkAt(i, index, 0.7), 'a function of the clock');
 }
+// the chunks lifted out (src/fx/rock-chunks.js, 2026-10-23): the same flight re-exported, and from a wider ring (the arena's lip) the same throw, offset by the ring
+{ const { chunkAt: lifted, chunkSize, CHUNKS } = await import('../src/fx/rock-chunks.js');
+  assert.equal(lifted, chunkAt, 'feids-heat re-exports the one chunkAt'); assert.equal(CHUNKS, 24);
+  for (let i = 0; i < 24; i++) { const a = chunkAt(i, 0, 0.6), b = chunkAt(i, 0, 0.6, undefined, 5.8); assert.ok(near(Math.hypot(b.x, b.z) - Math.hypot(a.x, a.z), 5), 'the ring adds its radius'); assert.equal(b.y, a.y);
+    assert.ok(chunkSize(i, 0) >= 0.14 && chunkSize(i, 0) <= 0.34); } }
 console.log('feids-heat: the spindle the trails follow; 96 chunks thrown, landing 5..19 m out, resting and staying');

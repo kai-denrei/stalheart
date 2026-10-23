@@ -2,14 +2,17 @@
 // out"; EMERGENCE in src/content/story-defaults.js, the pose src/domain/emerge-climb.js): a pool of dark blobs in the tint of what is coming.
 // The enemy loop spawns one per record made at a breach's own cell (src/fx/enemy-step.js): it starts in the hole at the lip, crests it, slides
 // out to where the record waits under the ground and fades as the record pops up. Nothing here is a target, a body or a record: it is a picture.
-//   createEmergeBlobs(scene, { capacity }) -> { spawn({ center, dir, lip, out, size, tint, delay, climb }), step(dt), count(), dispose() }
+//   createEmergeBlobs(scene, { capacity }) -> { spawn({ center, dir, lip, out, size, tint, delay, climb }), rubble(o), step(dt), count(), dispose() }
+// THE BOSS HAS NO BLOB (2026-10-23, BOSS_RUBBLE): rubble(o) throws the drop's rock chunks from the lip instead (src/fx/rock-chunks.js createRockBursts' burst)
 //     center: the breach cell's centre (unit sphere), dir: the unit tangent toward the record's start, lip/out: world distances from the centre
 //     to the lip and to the record's start, size: the record's drawn scale (world), tint: hex, delay: seconds before it starts, climb: seconds
 import * as THREE from '../../vendor/three.module.js';
 import { climbPose } from '../domain/emerge-climb.js';
+import { createRockBursts } from './rock-chunks.js';
+import { BOSS_RUBBLE } from '../content/story-defaults.js';
 
 export function createEmergeBlobs(scene, { capacity = 64 } = {}) {
-  const geo = new THREE.SphereGeometry(1, 12, 9), free = [], live = [], v = new THREE.Vector3(), c = new THREE.Color();
+  const geo = new THREE.SphereGeometry(1, 12, 9), free = [], live = [], v = new THREE.Vector3(), c = new THREE.Color(), rocks = createRockBursts(scene, { hold: BOSS_RUBBLE.hold });
   for (let i = 0; i < capacity; i++) {
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false }));
     m.visible = false; m.frustumCulled = false; scene.add(m); free.push(m);
@@ -21,6 +24,7 @@ export function createEmergeBlobs(scene, { capacity = 64 } = {}) {
     return true;
   }
   function step(dt) {
+    rocks.step(dt);
     for (let i = live.length - 1; i >= 0; i--) {
       const b = live[i]; b.t += dt;
       if (b.t < 0) { b.m.visible = false; continue; }
@@ -33,6 +37,6 @@ export function createEmergeBlobs(scene, { capacity = 64 } = {}) {
       b.m.material.opacity = 0.92 * p.opacity; b.m.visible = true;
     }
   }
-  function dispose() { for (const m of [...free, ...live.map((b) => b.m)]) { scene.remove(m); m.material.dispose(); } geo.dispose(); free.length = 0; live.length = 0; }
-  return { spawn, step, count: () => live.length, dispose };
+  function dispose() { for (const m of [...free, ...live.map((b) => b.m)]) { scene.remove(m); m.material.dispose(); } geo.dispose(); rocks.dispose(); free.length = 0; live.length = 0; }
+  return { spawn, rubble: (o) => rocks.burst({ scale: BOSS_RUBBLE.scale, ...o }), rubbles: () => rocks.count(), step, count: () => live.length, dispose };
 }

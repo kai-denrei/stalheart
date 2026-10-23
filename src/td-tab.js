@@ -2612,6 +2612,7 @@ export function initTdTab(root) {
     enemies,
     scene,
     emerge: (o) => emergeBlobs.spawn(o),
+    rubble: (o) => emergeBlobs.rubble(o),   // the boss breaks the surface: the drop's rock chunks from the lip, no blob (2026-10-23)
     hullKmh: () => hullConsole.kmh(),   // a Reed is rammable by a hull fast enough (2026-10-16)
     disposeObj,
     gameBreaches,
@@ -4589,6 +4590,7 @@ export function initTdTab(root) {
   // THE FIRE SUPPORT ON AUTO (src/fx/auto-support.js): the gunship flying itself, Isao's missile, the envelope
   const autoSupport = createAutoSupport({
     showBrief,
+    roadNuke: () => bossRun.roadNukeTarget(),   // THE NUKES ON THE ROAD (2026-10-23): the drive out's rock cluster for the automated MK-9 (src/fx/boss-run.js)
     updateHud,
     gunshipRig,
     camera,
@@ -5091,7 +5093,7 @@ export function initTdTab(root) {
       spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
       arenaFire: (gun, p) => { const G = pilot?.gunship ? pilotHost?.gunship : null; if (!G || !p) return false; if (gun !== 'heavy') { G.fire(gun, norm3(p), G.guns[gun].travel); return true; } return G.paintHeavy(cellIndex(norm3(p))) && G.launchHeavy() >= 0; },   // THE ARENA FIGHT's harness (2026-10-23): a round from the seat at a unit point, the MK-9 painted and released on its cell
-      aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
+      aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, blob: !!e.blob, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)
       sectorKeepHolding: () => sectorRun?.test.keepHolding(),
       sectorQuiet: (on) => sectorRun?.test.quiet(on),

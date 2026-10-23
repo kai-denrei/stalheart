@@ -37,4 +37,23 @@ function guns(pileAt) {
 }
 assert.ok(guns(Math.PI / 2 - 0.2) > 0, 'a pile under the ship is fired on');
 assert.equal(guns(-0.3), 0, 'a pile beyond reach (the far landers) is not');
+// THE NUKES ON THE ROAD (2026-10-23, arena-road spec decision 2): a road target takes an MK-9 every travel + reload with no pile in sight, never beside a friend
+// (nukeSafeCells + 2 clear of its blast), and a pile of at least nukePile / roadWeight bodies on screen still wins the pass
+function road({ at = [0.6, 0.6], pile = 0, friend = [0, 0] } = {}) {
+  const launched = [], painted = [], cs = 0.0133, st = { passes: 1, heavyPass: 0, mounted: true, clock: 0 };
+  const enemies = Array.from({ length: pile }, (_, i) => ({ alive: true, pos: unit(-0.6 + (i % 5) * 0.001, -0.6 + Math.floor(i / 5) * 0.001) }));
+  const G = {
+    state: st, cs, centers: [[0, 1, 0], unit(...at)],
+    guns: { heavy: { blastCells: 5.5, ringHex: 0, travel: 4.2, reload: 6, sound: 'x' }, rotary: { blastCells: 0.45, travel: 1 }, bofors: { blastCells: 1.1, travel: 1 } },
+    onStation: () => true, mount() {}, enemies: () => enemies, cell: () => 0, select: () => true, paintHeavy: (ci) => { painted.push(ci); return true; },
+    launchHeavy: () => { launched.push(painted.at(-1)); st.heavyAutoPass = st.passes; return painted.at(-1); }, optic: { muzzle: () => [0, 2, 0], flight() {} }, drop: { release: () => true },
+    sfx() {}, step: () => 0, landed: () => [], stepHeavy: () => -1,
+  };
+  const auto = createGunshipAuto({ G, tune: GUNSHIP_AUTO, onScreen: () => true, callout() {}, friends: () => [unit(...friend)], road: () => ({ cell: 1, point: unit(...at), rocks: 9 }) });
+  for (let k = 0; k <= 300; k++) { st.clock = k * 0.1; auto.tick(0.1, false); }
+  return { launched, drops: auto.state().roadDrops };
+}
+{ const r = road(); assert.equal(r.drops, 3, `30 s of the drive out: an MK-9 at 0, 10.2 and 20.4 s (${JSON.stringify(r)})`); assert.ok(r.launched.every((ci) => ci === 1), 'on the road\'s cell'); }
+assert.equal(road({ friend: [0.6, 0.62] }).drops, 0, 'never beside a friend');
+{ const r = road({ pile: 30 }); assert.equal(r.launched[0], 0, 'a pile of 30 on screen wins the pass'); assert.ok(r.drops >= 2, 'the road after it'); }
 console.log('gunship-auto-safe: the auto MK-9 only lands clear of the base and the hull; its guns stay within reach.');

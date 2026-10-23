@@ -12,8 +12,10 @@
 //                                   smoke sprites farther up, pulled along -x by a constant wind; the group sits at the body's point, not turned with it
 //   touchdownFx(kit, index, k)   -> { group, update(s), dispose() } at the touchdown: the demo's 42 smoke sprites (opacity x k), its crack lines, and 24
 //                                   rock chunks thrown from the feet in a ring, ballistic, settling and staying as rubble
-//   chunkAt(i, index, tau, out)  -> a chunk's offset from the feet (metres, y up) and its tumble angle `tau` s after the touchdown (pure, tested)
+//   chunkAt(i, index, tau, out)  -> a chunk's offset from the feet (metres, y up) and its tumble angle `tau` s after the touchdown (pure, tested; src/fx/rock-chunks.js, re-exported)
 import * as THREE from '../../vendor/three.module.js';
+import { ROCK, createRockChunks } from './rock-chunks.js';   // the chunks' flight lifted out for THE ARENA's lip too (2026-10-23, arena-road spec decision 3)
+export { chunkAt } from './rock-chunks.js';
 
 // the capsule's spindle (the demo's assets/feids26/runtime.js PROFILE): [z, radius] in metres, z along the shell's axis, +Z the leading shield
 const AXIAL_STRETCH = 1.4;
@@ -24,7 +26,7 @@ export function radiusAt(z) {
 }
 
 const FIRE = 45, FIRE_HOT = 0xff6a16, FIRE_CORE = 0xffdca0, SMOKE = 16, SMOKE_TINTS = [0x71695c, 0x55585a], WIND = 0.8;
-const DUST = 42, CHUNKS = 24, ROCK = 0x515d64, G = 9.8;
+const DUST = 42;
 const frac = (x) => x - Math.floor(x);
 
 export function createFeidsKit() {
@@ -141,23 +143,12 @@ export function mechBurn(kit, index) {
   };
 }
 
-// a chunk's flight: from a ring 0.8 m round the feet at angle i*2.399 (+ the mech's index), 6..11 m/s out, 4..8 m/s up, under G; after its flight
-// it rests where it fell (y 0, the caller lifting it by its size), its tumble frozen with it
-export function chunkAt(i, index, tau, out = { x: 0, y: 0, z: 0, spin: 0, resting: false }) {
-  const a = i * 2.399 + index * 0.9, speed = 6 + 5 * frac(i * 0.618 + index * 0.31), up = 4 + 4 * frac(i * 0.427 + index * 0.17), flight = 2 * up / G;
-  const k = Math.max(0, Math.min(tau, flight)), r = 0.8 + speed * k;
-  out.x = Math.cos(a) * r; out.z = Math.sin(a) * r; out.resting = tau >= flight; out.y = out.resting ? 0 : Math.max(0, up * k - 0.5 * G * k * k); out.spin = k * (4 + (i % 5));
-  return out;
-}
-
 export function touchdownFx(kit, index, smokeK = 0.65) {
   const group = new THREE.Group(); group.visible = false;
   const dust = Array.from({ length: DUST }, (_, i) => sprite(kit, i % 2 ? 0x71695c : 0x55585a, false));
   const cracks = new THREE.LineSegments(kit.cracks, new THREE.LineBasicMaterial({ color: 0x151515 }));
-  const rocks = new THREE.InstancedMesh(kit.chunk, kit.rock, CHUNKS); rocks.frustumCulled = false; rocks.userData.shared = true;
-  group.add(cracks, rocks, ...dust);
-  const o = new THREE.Object3D(), c = { x: 0, y: 0, z: 0, spin: 0, resting: false };
-  const sizes = Array.from({ length: CHUNKS }, (_, i) => 0.14 + 0.2 * frac(i * 0.733 + index * 0.29));
+  const rocks = createRockChunks({ geometry: kit.chunk, material: kit.rock, index });
+  group.add(cracks, rocks.mesh, ...dust);
   return {
     group,
     // s: the cargo's state (hit: seconds since its touchdown, yaw); the group placed by the caller on the ground at the landing spot, in the drop's frame
@@ -170,12 +161,7 @@ export function touchdownFx(kit, index, smokeK = 0.65) {
         m.position.set(Math.cos(a) * spread, 0.2 + Math.max(0, age) * (0.3 + (i % 3) * 0.13), Math.sin(a) * spread);
         m.scale.setScalar(0.7 + Math.max(0, age) * 1.3); m.material.opacity = Math.max(0, 0.5 - age * 0.1) * smokeK;
       });
-      for (let i = 0; i < CHUNKS; i++) {
-        chunkAt(i, index, s.hit, c); const r = sizes[i];
-        o.position.set(c.x, c.y + r * 0.45, c.z); o.rotation.set(c.spin, c.spin * 0.7 + i, c.spin * 0.4); o.scale.set(r, r * 0.75, r * 1.1); o.updateMatrix();
-        rocks.setMatrixAt(i, o.matrix);
-      }
-      rocks.instanceMatrix.needsUpdate = true;
+      rocks.update(s.hit);   // src/fx/rock-chunks.js: the 24 chunks thrown from the feet, resting and staying
     },
     dispose() { rocks.dispose(); disposeOwn(group); group.removeFromParent(); },
   };

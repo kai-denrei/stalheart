@@ -14,7 +14,7 @@ export function bossWaves(row, { tierSpec }) {
   if (!b) return [[], []];
   const entry = (t, count) => ({ type: b.family, tier: t.tier, spec: { ...tierSpec(b.family, t.tier), hp: t.hp }, count, hunter: true, pace: t.pace ?? 1, ...(t.size && t.size !== 1 ? { size: t.size } : {}) });   // size: the wave's own scale (2026-10-18, note 8b)
   const waves = b.waves ?? (b.wave ? [b.wave] : []);
-  return [...waves.map((w) => [entry(w, w.count)]), [entry(b.boss, 1)]];
+  return [...waves.map((w) => [entry(w, w.count)]), [{ ...entry(b.boss, 1), boss: true }]];   // boss: the row's boss entry (2026-10-23: no emerge blob for her, src/fx/enemy-step.js)
 }
 
 const REACH = new Set(['COIL', 'EXTEND', 'ANCHOR']), REST = new Set(['REST', 'SETTLE']);

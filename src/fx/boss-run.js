@@ -39,11 +39,12 @@ import { ARENA, ARENA_HANDOVER, ARENA_ROAD_GUARD } from '../content/sectors.js';
 import { createChoiceCard } from './choice-card.js';
 import { brief, lineDwell } from '../isaobriefs.js';
 import { groundAt } from './lance-follow.js';
-import { roadField, roadKept, roadRock } from '../domain/arena.js';
+import { roadField, roadKept, roadSwath } from '../domain/arena.js';
 import { frightRecord, stunRecord, arenaFrightSeconds } from '../domain/boss-fear.js';
 import { isScared } from '../domain/impact-scare.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
-import { GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../content/gunship.js';
+import { GUNSHIP_AUTO, GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../content/gunship.js';
+import { TANK_DRIVE } from '../content/tank.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
 import { createArenaFight } from './boss/arena-fight.js';
 
@@ -54,6 +55,7 @@ const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (o
 const BROOD_STAGGER = 0.1;   // seconds between the brood's deaths once the mother is dead (review of note 10, 2026-10-19)
 const ROAD_CUT = 'SOL CUTS THE ROAD';   // the callout once, as the first cut lands (owner, 2026-10-18, note 6: "a clear fast path (cleared by nukes and SOL)")
 const GUARD = ARENA_ROAD_GUARD, ROAD_HYST = 0.25;   // ROAD_HYST: the cells past the guard before a rock is asked for (the release is at the guard itself)   // the beam's guard in cells (src/content/sectors.js): a rock nearer than this cannot be burned; td-tab's roadFar(ci, 0) asks only that
+const ROAD_NUKE_LOOK = 0.5, ROAD_NUKE_SPAN = 20;   // THE NUKES ON THE ROAD (2026-10-23): seconds between looks for the road's rock cluster, and the road cells weighed
 const ROAD_LOOK = 0.25;   // seconds between looks for a planned rock inside the beam's lead while the beam is free (2026-10-19, note 7b: one crosses the reach's outer cell in about half a second at the hull's corridor pace)
 
 export function createBossRun(c) {
@@ -61,8 +63,9 @@ export function createBossRun(c) {
   let phase = 'off', forcedAt = 0, dueNow = false;   // phase: off | beacon | waves | boss | over (the mother dead, the sector not ended yet)
   let remindAt = 0, reminders = 0, remindDist = Infinity, drove = false;   // the last INVESTIGATE THE TREMOR callout (ARENA.remind), how many fired, the hull's road distance then, Isao took the wheel (ARENA.remindMax)
   let plan = null, route = null, roadCuts = 0, roadPlanned = false, markAt = -99;   // THE PLANNED ROAD (2026-10-18): the walking field to the arena once a sector, the road kept (roadKept, 2026-10-19), the cuts landed, whether the last ask was on it, the last marks
-  let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
-  let lookAt = -99, lead = null, leadMax = 0, cutLog = [];   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
+  let roadHeld = false; let roadAt = -99, roadUntil = 0, roadSaid = false, roadAsks = 0, roadCell = -2, roadLaid = null;   // THE ROAD SOL CUTS (ARENA.road): the last burn asked, when the hold ends, Isao's line once; asks, the last cell asked for (-2: never) and whether SOL took it (the harness reads them)
+  let lookAt = -99, lead = null, leadMax = 0, cutLog = [], roadFlank = false, arriveCell = -1, arrivals = { cells: 0, narrow: 0, last: [] };   // roadFlank: the last ask a swath flank (2026-10-23); arrivals: the road cells the hull reached and those with no clear side (the corridor one wide)   // THE BEAM LEADS THE HULL (2026-10-19, note 7b): the last look for a planned rock in reach; the last ask's distance from the hull in cells and the farthest after the first cut (the harness reads them)
+  let nukeAt = -99, nukeHit = null, roadNukes = [], nukeAims = new Set();   // THE NUKES ON THE ROAD (2026-10-23): the last look, its target, the road MK-9s landed, the cells handed out
   let frights = 0, stuns = 0;   // THE ARENA'S FEAR (2026-10-18, note 8c): the 40 mm frights and MK-9 stuns that took the mother
   let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken
   let decoded = false, talkUntil = 0, deadAt = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead (said at deadAt)
@@ -92,6 +95,29 @@ export function createBossRun(c) {
   // at the burn's end (the release: the rock gone or ARENA.road.burn out), the harness's per-cut table (--arena-drive)
   const signedLead = (ci) => { const d = c.fromHull?.(ci); if (!Number.isFinite(d)) return null; const p = planned(); return +(p && p.field[p.g.from] < p.field[ci] ? -d : d).toFixed(2); };
   const roadLeft = () => { const d = roadDist(); return Number.isFinite(d) ? +d.toFixed(1) : null; };
+  // the rock cells within `cells` of a cell's centre (the chord), by a walk over the lattice from it (THE NUKES ON THE ROAD: what an MK-9 there takes)
+  const rocksNear = (g, ci, cells) => { const cs = c.cellSide(), o = c.centre?.(ci); if (!o) return 0; const seen = new Set([ci]), q = [ci]; let n = 0;
+    for (let i = 0; i < q.length; i++) { const x = q[i], p = c.centre(x); if (Math.hypot(p[0] - o[0], p[1] - o[1], p[2] - o[2]) >= cells * cs) continue; if (g.tags[x] === g.blocked) n++; for (const nb of g.adj[x]) if (!seen.has(nb)) { seen.add(nb); q.push(nb); } }
+    return n; };
+  // THE NUKES ON THE ROAD (owner, 2026-10-23, note 2b: "the gunship dropping nukes to destroy a large path"; spec 2026-10-23-arena-road-and-blob-design.md decision 2):
+  // during the drive out, the automated gunship's road target (src/fx/gunship-auto.js `road`): of the next ROAD_NUKE_SPAN kept road cells far enough ahead, the one
+  // with the most rock cells within the MK-9's blastCells. Far enough: GUNSHIP_AUTO.nukeSafeCells + blastCells + 2 cells by the chord (the spec's rule) PLUS the
+  // ground the hull can cover while the round falls (its top speed, td-tab's params.speed x hull-drive's 1.6 x TANK_DRIVE.top, times the MK-9's travel): the hull
+  // drives toward it, and the harness holds every landing at least blastCells + 1 from it. The auto checks the base's structures (friends) at the same margin
+  function roadNukeTarget() {
+    if (!on || phase !== 'beacon') return null;
+    const t = c.t(); if (t - nukeAt < ROAD_NUKE_LOOK) return nukeHit; nukeAt = t; nukeHit = null;
+    const p = planned(); if (!p || !c.fromHull) return null;
+    const heavy = guns().heavy, blast = heavy.blastCells, lead = GUNSHIP_AUTO.nukeSafeCells + blast + 2 + c.params().speed * 1.6 * TANK_DRIVE.top * heavy.travel;
+    const ahead = roadKept({ adj: p.g.adj, field: p.field, from: p.g.from, route }).ahead;
+    let n = 0, best = null;
+    for (let i = 0; i < ahead.length && n < ROAD_NUKE_SPAN; i++) {
+      const ci = ahead[i]; if (!(c.fromHull(ci) >= lead)) continue; n++;
+      const rocks = rocksNear(p.g, ci, blast); if (rocks > (best?.rocks ?? 0)) best = { cell: ci, point: c.centre(ci), rocks };
+    }
+    if (best) nukeAims.add(best.cell);
+    nukeHit = best; return best;
+  }
   function dock() {
     const isao = c.isao(), p = c.player()?.pos;
     if (!isao?.obj || !p) return;
@@ -100,7 +126,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; fight = createArenaFight({ now: c.t }); cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; lookAt = -99; lead = null; leadMax = 0; cutLog = []; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; fight = createArenaFight({ now: c.t }); cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; nukeAt = -99; nukeHit = null; roadNukes = []; nukeAims = new Set(); lookAt = -99; lead = null; leadMax = 0; cutLog = []; roadFlank = false; arriveCell = -1; arrivals = { cells: 0, narrow: 0, last: [] }; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -173,7 +199,14 @@ export function createBossRun(c) {
       // first left a rock 3.1 to 6.5 cells off for later or for good (Isao driving while the player sat in SOL's seat; a rock dropped mid-burn): the road's
       // first rock is the one that blocks it first. The first cut: the same rule at any distance (the nearest road rock, at once)
       const burnable = (ci) => (c.roadFar ? c.roadFar(ci, 0) : true) && (ci === roadCell || !(c.fromHull?.(ci) < GUARD + ROAD_HYST)) && (!roadCuts || inLead(ci));   // a rock not yet held is asked only from GUARD + ROAD_HYST; the held one keeps the beam to the guard itself: a hull sitting at the guard's edge does not re-ask each look (review, 2026-10-19)
-      let pc = p ? roadRock({ ...p.g, field: p.field, max: ARENA.road?.plan ?? Infinity, far: burnable, path: roadAhead() }) : -1;
+      // THE ROAD CLEARED WIDE (owner, 2026-10-23, note 2; spec 2026-10-23-arena-road-and-blob-design.md decision 1): the swath, not the road alone (src/domain/arena.js
+      // roadSwath, ARENA.road.width): the road's rocks and every rock flank within `width` of it, in road order; the road's own rocks first (a road rock
+      // stops the hull outright), then a one-cell corridor's first flank (`need`: the corridor two wide there), then the rest; a flank only from ARENA.road.clear + 1 out (nearer, the hull is on it before a burn ends), a road rock as before (the first burnable, outside the guard)
+      const sw = p ? roadSwath({ path: roadAhead().slice(0, ARENA.road?.plan ?? Infinity), adj: p.g.adj, tags: p.g.tags, blocked: p.g.blocked, width: ARENA.road?.width ?? 0 }) : [];
+      // a flank from `clear` + 1 (the swath measured, 2026-10-23: the hull at 5.4 cells/s under the cleared road ate 2.8 cells of a 0.52 s burn, and a flank asked at 6.63 ended 3.95 short, under leadMin)
+      const swathOk = (x) => burnable(x.cell) && (x.road || x.cell === roadCell || !(c.fromHull?.(x.cell) < (ARENA.road?.clear ?? 0) + 1));
+      const pick = sw.find((x) => x.road && swathOk(x)) ?? sw.find((x) => x.need && swathOk(x)) ?? sw.find(swathOk) ?? null;   // a road rock blocks the hull outright: it goes first
+      let pc = pick ? pick.cell : -1;
       // THE HAND-OFF NEVER DROPS THE ROAD'S FIRST: during a planned burn the look only moves the beam on once the held rock is no longer the road's first burnable
       // rock (the hull inside the guard of it, or the rock gone); while it still is, the beam stays on it
       if (held && pc === roadCell) pc = -1;
@@ -181,14 +214,20 @@ export function createBossRun(c) {
       const ci = pc >= 0 ? pc : due ? c.roadNext(roadOk) : -1;
       if (pc >= 0 || due) {
         if (roadUntil) release();
-        roadAt = t; roadPlanned = pc >= 0; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
-        if (roadLaid) { cutLog.push({ cell: ci, planned: roadPlanned, band: !roadPlanned || inBand, at: +t.toFixed(2), ask: signedLead(ci), road: roadLeft() }); if (cutLog.length > 60) cutLog.shift(); lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
+        roadAt = t; roadPlanned = pc >= 0; roadFlank = !!pick && pc >= 0 && !pick.road; roadAsks++; roadCell = ci; roadLaid = ci >= 0 ? !!c.solRoad?.(ci) : null;
+        if (roadLaid) { cutLog.push({ cell: ci, planned: roadPlanned, flank: roadFlank, band: !roadPlanned || inBand, at: +t.toFixed(2), ask: signedLead(ci), road: roadLeft() }); if (cutLog.length > 60) cutLog.shift(); lead = c.fromHull ? +c.fromHull(ci).toFixed(2) : null; if (roadCuts && lead != null) leadMax = Math.max(leadMax, lead); roadUntil = t + (ARENA.road?.burn ?? 2.5); roadHeld = false; if (!roadSaid) { roadSaid = true; c.showBrief('arena_road'); c.speak('arena_road'); } }
       }
     }
     // the hold ends at ARENA.road.burn, or as soon as the rock is gone (2026-10-19: the beam is free for the next cell in reach at once)
     // ...or as soon as the beam can no longer burn it (2026-10-19, the merged --arena-drive): the hull inside its guard (roadFar(ci, 0) false), so the beam is held
     // off and a 2.5 s hold only kept the next rock and the flank waiting while the hull, quicker since rammed bodies no longer drag it (r4-a), closed on them
+    // THE HOLD ENDS ON THE ROCK GONE (2026-10-23, decision 1: burn 2.5 -> 1.6 s, "if a rock needs longer to burn, the hold must still end on the rock gone"): a rock
+    // still standing and still burnable at the hold's end is held once more, another ARENA.road.burn
+    if (roadUntil && t >= roadUntil && !roadHeld && roadCell >= 0 && !isOpen(roadCell) && (!c.roadFar || c.roadFar(roadCell, 0))) { roadHeld = true; roadUntil = t + (ARENA.road?.burn ?? 2.5); }
     if (roadUntil && (t >= roadUntil || (roadCell >= 0 && (isOpen(roadCell) || (c.roadFar && !c.roadFar(roadCell, 0)))))) release();
+    // THE CORRIDOR ON ARRIVAL (decision 1's acceptance: every kept road cell with at least one clear side neighbour when the hull reaches it): each road cell the hull
+    // enters on the drive out, and those whose side neighbours (off the road) were all rock
+    if (phase === 'beacon') { const g = c.roadGraph?.(); if (g && g.from >= 0 && g.from !== arriveCell) { arriveCell = g.from; if (route?.includes(g.from)) { const on = new Set(route), side = g.adj[g.from].filter((x) => !on.has(x)); arrivals.cells++; if (side.length && side.every((x) => g.tags[x] === g.blocked)) { arrivals.narrow++; arrivals.last.push({ cell: g.from, at: +t.toFixed(2), sides: side.length }); if (arrivals.last.length > 30) arrivals.last.shift(); } } } }
     // THE ROAD READS (2026-10-18): the planned road's next cells ringed ahead of the hull every ARENA.road.markEvery seconds, the colour of the tap-to-go "here"
     if (phase === 'beacon' && c.roadMark && t - markAt >= (ARENA.road?.markEvery ?? Infinity)) {
       markAt = t; const p = planned();
@@ -271,6 +310,9 @@ export function createBossRun(c) {
   // 40mm, launch big nuke, time it"): a 40 mm within her radius + BOSS_FIGHT.fear.reach m (+ the shell's blast) of her drawn point frightens her away from it
   // (src/domain/boss-fear.js frightRecord, arenaFrightSeconds), an MK-9 within its blast holds her still BOSS_FIGHT.nuke.stun s (stunRecord)
   function landed(gun, point) {
+    // a road MK-9 landed (the drive out): where, the hull's distance from it in cells, the rocks within its blast (counted before the strike breaks them)
+    if (on && phase === 'beacon' && gun === 'heavy' && point) { const g = c.roadGraph?.(), cs = c.cellSide(), h = c.player()?.pos, ci = [...nukeAims].find((a) => { const o = c.centre?.(a); return o && Math.hypot(o[0] - point[0], o[1] - point[1], o[2] - point[2]) < cs * 0.5; });
+      if (ci != null && g) { roadNukes.push({ at: +c.t().toFixed(2), cell: ci, hull: h ? +(Math.hypot(h[0] - point[0], h[1] - point[1], h[2] - point[2]) / cs).toFixed(2) : null, rocks: rocksNear(g, ci, guns().heavy.blastCells) }); if (roadNukes.length > 30) roadNukes.shift(); } return false; }
     const b = on ? bossRecord() : null;
     if (b?.bodyLed && fight) { const took = fight.landed(gun, point); if (took) { if (gun === 'bofors') frights++; else if (gun === 'heavy') { stuns++; c.damageEnemy?.(b, c.t(), BOSS_FIGHT.nuke.damage, false, 'strike', 'heavy'); } } return took; }   // THE FIGHT ON THE LAB'S ENGINE; an MK-9 within reach deals the fight's own BOSS_FIGHT.nuke.damage (the lab's 60: the strike's 10 at ground zero made her a fifteen-minute fight, merge of 2026-10-23)
     if (!b || !point || (gun !== 'bofors' && gun !== 'heavy') || (gun === 'bofors' && b.ground)) return false;   // on the sinkhole (the ground phase) she stands: no flight off it
@@ -316,7 +358,7 @@ export function createBossRun(c) {
   // does not end while she lives (orbit().station Infinity); null outside: the rig falls back to the tune panel's or the content's orbit. It is read before the
   // tune panel's (td-tab: bossRun.orbit() ?? tune.orbit ?? GUNSHIP_ORBIT): the panel's applyTune always writes tune.orbit, its default 120 s included, so read after
   // it the endless station never applied (--arena-fight, 2026-10-23: the station lost at 105 s of the fight)
-  const armed = () => on && (phase === 'boss' || phase === 'over');
+  const armed = () => on && (phase === 'beacon' || phase === 'boss' || phase === 'over');   // beacon too (2026-10-23, decision 2): the road gets an MK-9 every reload + fall
   const ARENA_GUNS = Object.freeze({ ...GUNSHIP_GUNS, heavy: Object.freeze({ ...GUNSHIP_GUNS.heavy, perPass: 0, reload: BOSS_FIGHT.arenaGuns.reload }) });
   const ARENA_ORBIT = Object.freeze({ ...GUNSHIP_ORBIT, station: Infinity });
   const guns = () => (armed() ? ARENA_GUNS : GUNSHIP_GUNS);
@@ -329,6 +371,6 @@ export function createBossRun(c) {
   // the harness's distances in cells (2026-10-23, spec decision 5): the hull and the boss from the arena's centre, and the gap between them
   const cells = (a, p) => (a && p ? +(Math.hypot(a[0] - p[0], a[1] - p[1], a[2] - p[2]) / c.cellSide()).toFixed(2) : null);
   const distState = () => { const b = bossRecord(), a = arenaCell() >= 0 ? c.centre?.(arenaCell()) : null, h = c.player()?.pos ?? null; return { hull: cells(a, h), boss: cells(a, b?.pos), gap: cells(h, b?.pos), at: { centre: a, hull: h, boss: b?.pos ?? null } }; };
-  return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, drives, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })) }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, fear: fearState(), led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+  return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, drives, roadNukeTarget, force: () => { dueNow = true; }, on: () => on,
+    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })), arrivals: { ...arrivals, last: arrivals.last.slice() }, nukes: roadNukes.map((e) => ({ ...e })), nukeTarget: nukeHit ? { cell: nukeHit.cell, rocks: nukeHit.rocks } : null }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, blob: bossRecord() ? !!bossRecord().blob : null, rubble: bossRecord() ? !!bossRecord().rubble : null, fear: fearState(), led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

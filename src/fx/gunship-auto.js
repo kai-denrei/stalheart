@@ -12,6 +12,9 @@ import { densestTarget } from '../domain/laser-auto.js';
 // gunship nor orbital laser should fire too close to friendly units"). The guns cannot hurt a wall or a sentry, so the gate's pile stays theirs
 // `hull()`: the tank's unit position; the MK-9 only goes down on a pile within `nukeFacing` (a dot product) of it, so the player sees the
 // strike from the hull (owner, 2026-10-03: "a tactical nuke launched, and from the tank PoV it is nowhere to be seen")
+// `road()`: THE NUKES ON THE ROAD (owner, 2026-10-23, note 2b; spec docs/superpowers/specs/2026-10-23-arena-road-and-blob-design.md decision 2): THE ARENA's drive
+// out hands a road target ({ cell, point, rocks }: src/fx/boss-run.js roadNukeTarget) or null; it takes an MK-9 every reload + fall, the friends `nukeSafeCells` + 2
+// clear of its blast, on screen and facing the hull as the pile's rule; a pile of more than `roadWeight` bodies (and at least `nukePile`) still wins the pass's
 // what lands this tick with nobody in the seat: the rounds still in the air and a released MK-9, the seat's own landing rules (the seat
 // lands them itself while it is taken); the auto pass and the controller with no auto both call it (src/fx/programme-host.js)
 export function landGunshipRounds(G) {
@@ -23,8 +26,17 @@ export function landGunshipRounds(G) {
     }
     const lc = G.stepHeavy(); if (lc >= 0) { G.blast(lc); G.laser(-1); }
   }
-export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [], hull = () => null }) {
-  let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null;
+export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [], hull = () => null, road = () => null }) {
+  let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null, roadReady = -Infinity, roadDrops = 0;
+  // the release's picture and sound, the pile's and the road's alike (Isao's mk9_release is the rig's launchHeavy's)
+  function release(lc) {
+    const from = G.optic.muzzle('heavy'), up = Math.hypot(...from) ? from.map((v) => v / Math.hypot(...from)) : [0, 1, 0];
+    if (!G.drop?.release(from, G.centers[lc], up, G.vel?.() ?? [0, 0, 0])) G.optic.flight(from, G.centers[lc], G.guns.heavy.ringHex, G.guns.heavy.travel, 1.2);
+    G.sfx(G.guns.heavy.sound, from);
+    callout(tune.callout);
+    const key = tune.nukeCalls[Math.floor(Math.random() * tune.nukeCalls.length)];
+    if (!hasCue || hasCue(key)) sfx?.play?.(key);
+  }
   return {
     // seated: the player is in the seat (the seat runs the guns); returns whether auto flew this tick
     tick(dt, seated) {
@@ -35,23 +47,21 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
       t += dt;
       const live = G.enemies();
       // the MK-9, once a pass, on a pile the player is looking at: the odd dummy nuke "that just happens to be in the line of sight"
-      if (nukePass !== st.passes && st.heavyPass !== st.passes && st.heavyAutoPass !== st.passes) {   // its own one a pass, never after the gunner's, and the gunner's is left to the gunner
-        const keep = (G.guns.heavy.blastCells + (tune.nukeSafeCells ?? 3)) * G.cs, near = friends(), safe = (q) => near.every((f) => Math.hypot(q[0] - f[0], q[1] - f[1], q[2] - f[2]) > keep);
-        const h = hull(), hl = h ? Math.hypot(h[0], h[1], h[2]) || 1 : 1, near2 = (q) => !h || (q[0] * h[0] + q[1] * h[1] + q[2] * h[2]) / (hl * (Math.hypot(q[0], q[1], q[2]) || 1)) > (tune.nukeFacing ?? 0);
-        const seen = live.filter((e) => onScreen(e.pos, tune.nukeView) && safe(e.pos) && near2(e.pos));
-        if (seen.length >= tune.nukePile) {
-          const p0 = densestTarget(seen, { radius: G.guns.heavy.blastCells * G.cs * 10, metres: 10 }), p = p0 && safe(p0) ? p0 : null, ci = p ? G.cell(p) : -1;
+      let nearL = null; const near = () => (nearL ??= friends()), dist = (q, f) => Math.hypot(q[0] - f[0], q[1] - f[1], q[2] - f[2]), keep = (G.guns.heavy.blastCells + (tune.nukeSafeCells ?? 3)) * G.cs, safe = (q) => near().every((f) => dist(q, f) > keep);
+      const h = hull(), hl = h ? Math.hypot(h[0], h[1], h[2]) || 1 : 1, near2 = (q) => !h || (q[0] * h[0] + q[1] * h[1] + q[2] * h[2]) / (hl * (Math.hypot(q[0], q[1], q[2]) || 1)) > (tune.nukeFacing ?? 0);
+      const pileOpen = nukePass !== st.passes && st.heavyPass !== st.passes && st.heavyAutoPass !== st.passes;   // its own one a pass, never after the gunner's, and the gunner's is left to the gunner
+      let seen = null; const pile = () => (seen ??= live.filter((e) => onScreen(e.pos, tune.nukeView) && safe(e.pos) && near2(e.pos)));
+      // THE NUKES ON THE ROAD (2026-10-23): the drive out's rock cluster, every reload + fall, unless a pile of more than roadWeight bodies wins the pass
+      const rt = road?.() ?? null, roadKeep = keep + 2 * G.cs;
+      if (rt && rt.cell >= 0 && st.clock >= roadReady && !st.heavyFalling && !(pileOpen && pile().length >= Math.max(tune.nukePile, tune.roadWeight ?? 0)) && near().every((f) => dist(rt.point, f) > roadKeep) && onScreen(rt.point, tune.nukeView) && near2(rt.point)) {
+        if (G.select('heavy') !== false && G.paintHeavy(rt.cell, { auto: true })) { const lc = G.launchHeavy({ auto: true }); if (lc >= 0) { roadReady = st.clock + G.guns.heavy.travel + G.guns.heavy.reload; roadDrops++; release(lc); } }
+        G.select(gun);
+      } else if (pileOpen) {
+        if (pile().length >= tune.nukePile) {
+          const p0 = densestTarget(pile(), { radius: G.guns.heavy.blastCells * G.cs * 10, metres: 10 }), p = p0 && safe(p0) ? p0 : null, ci = p ? G.cell(p) : -1;
           if (ci >= 0 && G.select('heavy') !== false && G.paintHeavy(ci, { auto: true })) {
             const lc = G.launchHeavy({ auto: true });
-            if (lc >= 0) {
-              nukePass = st.passes;
-              const from = G.optic.muzzle('heavy'), up = Math.hypot(...from) ? from.map((v) => v / Math.hypot(...from)) : [0, 1, 0];
-              if (!G.drop?.release(from, G.centers[lc], up, G.vel?.() ?? [0, 0, 0])) G.optic.flight(from, G.centers[lc], G.guns.heavy.ringHex, G.guns.heavy.travel, 1.2);
-              G.sfx(G.guns.heavy.sound, from);
-              callout(tune.callout);
-              const key = tune.nukeCalls[Math.floor(Math.random() * tune.nukeCalls.length)];
-              if (!hasCue || hasCue(key)) sfx?.play?.(key);
-            }
+            if (lc >= 0) { nukePass = st.passes; release(lc); }
           }
           G.select(gun);
         }
@@ -79,6 +89,6 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
       if (t >= tune.burst) { phase = 'rest'; t = 0; }
       return true;
     },
-    state: () => ({ gun, phase, nukePass, rounds }),
+    state: () => ({ gun, phase, nukePass, rounds, roadDrops }),
   };
 }

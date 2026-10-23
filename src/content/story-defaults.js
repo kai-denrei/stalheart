@@ -130,6 +130,11 @@ export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1
 // (src/fx/emerge-blob.js, src/domain/emerge-climb.js), then pops up whole over `pop` seconds and walks; nothing of it is ever drawn over the hole.
 // A body risen up the lane (the head start, the canyon's column) keeps its spread and the old 1.2 s rise.
 export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2, out: 1.35, climb: 1.1, pop: 0.3 });
+// NO BLOB FOR HER (owner, 2026-10-23, note 3: "there's a giant green blob preceding the large boss ... it does not work when scaled to a large boss"; spec
+// docs/superpowers/specs/2026-10-23-arena-road-and-blob-design.md decision 3): the boss record never gets the lip's blob; as she breaks the surface the drop's
+// rubble (src/fx/rock-chunks.js: 24 chunks, its flight) is thrown from the lip toward where she rises, `scale` times the drop's (a FEIDS-26 mech is 8 m, she
+// is a tier `huge` creature: the drop's 0.14..0.34 m chunks thrown 5..19 m read as nothing beside her), kept `hold` s as rubble
+export const BOSS_RUBBLE = Object.freeze({ scale: 3, hold: 60 });
 // THE WALK LEANS ON THE HEART (owner, 2026-10-15: "all enemies must be a bit faster. And with a much stronger bias to head towards the base"):
 // at a cell a record strays onto any exit `stray` of the time (was 0.05) and otherwise takes an exit nearer the heart, `straight` of those times
 // the nearest of them (src/domain/impact-scare.js seekExits; src/fx/enemy-step.js)

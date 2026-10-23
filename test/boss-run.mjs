@@ -1,12 +1,13 @@
 // boss-run.mjs — THE ARENA'S RUN through a fake controller (src/fx/boss-run.js): the beacon phase's order (owner, 2026-10-18, note 6: "it's not quite
 // clear what we must do ... 'Go investigate that area, I'll clear a way there'"), the opening only with the hull there, the road SOL cuts from the start
 import assert from 'node:assert/strict';
+import { TANK_DRIVE } from '../src/content/tank.js';
 import { createBossRun } from '../src/fx/boss-run.js';
 import { ARENA, ARENA_SECTOR, ARENA_HANDOVER } from '../src/content/sectors.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { BOSS_FIGHT } from '../src/content/boss-fight.js';
 import { METRES_PER_CELL } from '../src/core/stage-units.js';
-import { GUNSHIP_SEAT_HINT, GUNSHIP_GUNS, GUNSHIP_ORBIT } from '../src/content/gunship.js';
+import { GUNSHIP_SEAT_HINT, GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_AUTO } from '../src/content/gunship.js';
 import { surfaceFrame, fromPlane, toPlane } from '../src/domain/surface-projection.js';
 import { NIH_DAIRIA_PREDATOR } from '../src/content/nih-dairia.js';
 import { ARENA_ROAD_GUARD as GUARD } from '../src/content/sectors.js';   // the beam's guard in cells (3.1): roadFar(ci, 0) in td-tab asks only that (laserStation.roadSafe)
@@ -89,7 +90,9 @@ function host(o = {}) {
   assert.equal(h.log.road.at(-1), 4, 'the next ask: the next rock on the same road');
   h.now += ARENA.road.burn + 0.1; run.tick(0.1);
   assert.equal(run.state().roadCuts, 1, 'a burn that left the rock standing is no cut');
-  tags[4] = 1; tags[17] = 0; h.now = 2 * ARENA.road.every + 0.02; run.tick(0.1);   // 17: a rock beside the road (released at once were it open)
+  assert.equal(h.log.road.at(-1), 4, 'the rock still standing and burnable: held once more (2026-10-23, the hold ends on the rock gone)');
+  h.now += ARENA.road.burn + 0.1; run.tick(0.1); assert.equal(h.log.road.at(-1), -1, 'released after the second hold'); assert.equal(run.state().roadCuts, 1);
+  tags[4] = 1; tags[17] = 0; h.now += ARENA.road.every + 0.02; run.tick(0.1);   // 17: a rock beside the road (released at once were it open)
   assert.equal(h.log.road.at(-1), 17, 'the road open: the second version\'s shortcut and flank (roadNext)'); assert.equal(run.state().road.planned, false);
   h.now += ARENA.road.burn + 0.1; tags[17] = 1; run.tick(0.1);
   assert.equal(h.log.callouts.filter((x) => x === 'SOL CUTS THE ROAD').length, 1, 'the callout once only'); }
@@ -106,7 +109,7 @@ function host(o = {}) {
 // comes at once, on the nearest rock wherever it lies; after it nothing beyond the reach (10 cells) nor inside `clear` is asked for, the parked hull's beam waits,
 // and as the hull drives each rock is asked for the moment it comes into reach (not on the `every` cadence); the flank is held to it too
 { const R = ARENA.road.aheadMetres / METRES_PER_CELL, clear = ARENA.road.clear;
-  assert.equal(ARENA.road.aheadMetres, 100, 'a hundred metres (note 3, 2026-10-19)'); assert.equal(R, 10, 'ten cells of METRES_PER_CELL'); assert.equal(clear, 6.5, 'nothing nearer than 6.5 cells');
+  assert.equal(ARENA.road.aheadMetres, 140, 'a hundred and forty metres (2026-10-23, the road cleared wide; 100 since note 3, 2026-10-19)'); assert.equal(R, 14, 'fourteen cells of METRES_PER_CELL'); assert.equal(clear, 6.5, 'nothing nearer than 6.5 cells');
   assert.ok(clear - 3.2 >= 3 && R - 5 >= 3, 'the band at least three cells further than round 3\'s 3.2 to 5'); assert.ok(ARENA.road.leadMin >= 4 && ARENA.road.leadMin < clear, 'the promise at a burn\'s end');
   const adj = Array.from({ length: 62 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 59; i++) link(i, i + 1);
   link(8, 60); link(38, 61);
@@ -138,8 +141,8 @@ function host(o = {}) {
   { const copy = run.state().road.cuts, n = copy.length; copy[0].cell = -9; copy.length = 0; assert.equal(run.state().road.cuts.length, n, 'state() hands out a copy of the log'); assert.notEqual(run.state().road.cuts[0].cell, -9); }
   const cuts = run.state().road.cuts; assert.deepEqual(cuts.map((c) => c.cell), asked(), 'one entry an ask'); assert.ok(cuts.slice(1).every((c) => c.ask >= clear && c.end != null && c.cleared), JSON.stringify(cuts));
   // a flank burn gives the beam up to a planned rock that comes into reach (probe r3-f: road rocks crossed the reach while the flank held the beam)
-  tags[61] = 0; flank.length = 0; flank.push(61); from = 31; h.now += ARENA.road.every; run.tick(0.25);
-  assert.equal(h.log.road.at(-1), 61, 'a flank burn on'); assert.equal(run.state().road.planned, false);
+  tags[61] = 0; flank.length = 0; flank.push(61); from = 30; h.now += ARENA.road.every; run.tick(0.25);   // 8 cells: a flank from clear + 1 (2026-10-23)
+  assert.equal(h.log.road.at(-1), 61, 'a flank burn on'); assert.equal(run.state().road.cuts.at(-1).flank, true, 'the swath\'s flank of road cell 38 (2026-10-23, ARENA.road.width)');
   from = 42; h.now += 0.25; run.tick(0.25);
   assert.deepEqual(h.log.road.slice(-2), [-1, 52], 'the planned rock in reach takes the beam at the next look'); assert.equal(run.state().road.planned, true);
   const e61 = run.state().road.cuts.at(-2); assert.equal(e61.cell, 61); assert.equal(e61.cleared, false, 'the flank\'s rock left standing'); assert.equal(e61.end, -4, 'the hull 4 cells past it down the road: negative'); }
@@ -422,11 +425,27 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   assert.deepEqual(kills, [], 'no brood: nothing killed after her'); assert.ok(h.log.briefs.includes('boss_dead'));
   run.end('secure'); assert.equal(carried.alive, true, 'end(secure) leaves a body that is no wave\'s'); }
 
-// THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"): the content's guns and no orbit of its own until the boss phase; then the lab's MK-9
+// THE NUKES ON THE ROAD (2026-10-23, arena-road spec decision 2): the chain 0..79 to the arena at 79, ten rock cells (80..89) clustered beside road cell 50; the hull at
+// 0. The target is the first of the next 20 road cells at least nukeSafeCells + blastCells + 2 + the hull's top speed x the MK-9's travel (34.15 cells) ahead with the
+// most rocks within blastCells; its landing is logged with the hull's distance and the rocks it took; none outside the drive out
+{ const cs = 0.01, adj = Array.from({ length: 90 }, () => []), link = (a, b) => { adj[a].push(b); adj[b].push(a); }; for (let i = 0; i < 79; i++) link(i, i + 1); for (let k = 80; k < 90; k++) link(50, k);
+  const tags = new Int8Array(90).fill(1); for (let k = 80; k < 90; k++) tags[k] = 0;
+  const at = (ci) => (ci >= 80 ? 50 + (ci - 85) * 0.1 : ci), centre = (ci) => { const x = at(ci) * cs, y = ci >= 80 ? cs * 0.5 : 0, l = Math.hypot(x, y, 1); return [x / l, y / l, 1 / l]; };
+  const h = host({ roadGraph: () => ({ adj, tags, blocked: 0, from: 0, to: 79 }), fromHull: (ci) => Math.abs(at(ci)), centre, player: () => ({ pos: centre(0) }), params: () => ({ directive: 'wander', speed: 1.1 }) });
+  h.story().arena.cell = 79; const run = createBossRun(h);
+  assert.equal(run.roadNukeTarget(), null, 'off: no target'); run.begin(ARENA_SECTOR); run.tick(0.016);
+  const tg = run.roadNukeTarget(), lead = GUNSHIP_AUTO.nukeSafeCells + GUNSHIP_GUNS.heavy.blastCells + 2 + 1.1 * 1.6 * TANK_DRIVE.top * GUNSHIP_GUNS.heavy.travel;
+  assert.ok(tg && tg.rocks === 10, `the cluster's ten rocks (${JSON.stringify(tg)})`); assert.ok(at(tg.cell) >= lead && at(tg.cell) <= 55, `far enough ahead, within the cluster's reach (${tg.cell}, lead ${lead.toFixed(2)})`);
+  run.landed('heavy', centre(tg.cell)); const n = run.state().road.nukes;
+  assert.equal(n.length, 1, 'the landing logged'); assert.equal(n[0].rocks, 10); assert.ok(n[0].hull > GUNSHIP_GUNS.heavy.blastCells + 1 && Math.abs(n[0].hull - at(tg.cell)) < at(tg.cell) * 0.1, `the hull distance in cells (${n[0].hull} at ${tg.cell})`);
+  run.landed('heavy', centre(20)); assert.equal(run.state().road.nukes.length, 1, 'an MK-9 elsewhere is not a road one'); }
+
+// THE GUNS IN THE ARENA (owner, 2026-10-23, a: "not enough nukes on the gunship"): the arena's MK-9 on the drive out too (note 2b, the nukes on the road), the content's
+// guns while the hole opens, and no orbit of its own until the boss phase; then the lab's MK-9
 // (perPass 0, BOSS_FIGHT.arenaGuns.reload) and an endless station; the MK-9 stays the lab's through `over` (the secure pause), the station ends with her
 { let auto = false; const h = host({ enemies: [], autoMode: () => auto, setAutoMode: (v) => { auto = v; } }), run = createBossRun(h);
   assert.equal(run.guns(), GUNSHIP_GUNS); assert.equal(run.orbit(), null, 'off: no orbit of its own');
-  run.begin(ARENA_SECTOR); assert.equal(run.guns(), GUNSHIP_GUNS, 'the beacon: the content\'s guns'); assert.equal(run.orbit(), null);
+  run.begin(ARENA_SECTOR); assert.deepEqual([run.guns().heavy.perPass, run.guns().heavy.reload], [0, BOSS_FIGHT.arenaGuns.reload], 'the beacon: the arena\'s MK-9 already (2026-10-23, the nukes on the road)'); assert.equal(run.orbit(), null, 'the station still the content\'s on the drive out');
   assert.equal(run.lure().bound, 0, 'the drive out: no bound');
   h.open = true; h.now = 1; run.tick(0.1); assert.equal(run.guns().heavy.perPass, GUNSHIP_GUNS.heavy.perPass, 'the waves: still the content\'s');
   const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1);

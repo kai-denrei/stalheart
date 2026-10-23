@@ -127,3 +127,23 @@ export function roadKept({ adj, field, from, route = null }) {
   if (i < 0) { route = [from, ...roadPath({ adj, field, from })]; i = 0; }
   return { route, ahead: route.slice(i + 1) };
 }
+
+// THE ROAD CLEARED WIDE (owner, 2026-10-23, note 2: "we clear a path ... to destroy a large path at least 2 cells wide for the tank to speed up to full speed
+// without being impeded"; spec docs/superpowers/specs/2026-10-23-arena-road-and-blob-design.md decision 1): the road SOL cuts is a swath. For every road cell in
+// `path` (road order), the cell when it is rock, then its rock flanks: the cells within `width` hops of it that are not on the road (width 1: the neighbours one
+// cell either side, so the corridor is three cells wide). A road cell whose flanks are all rock (a one-cell corridor) has its first flank rock first and marked
+// `need`: one of them gone makes the corridor two wide there. Each rock once, at its first road cell.
+//   roadSwath({ path, adj, tags, blocked, width }) -> [{ cell, road, need }]   (road: the road's own rock; need: road rocks and a narrow cell's first flank)
+export function roadSwath({ path, adj, tags, blocked = 0, width = 1 }) {
+  const on = new Set(path), seen = new Set(), out = [];
+  for (const c of path) {
+    if (tags[c] === blocked && !seen.has(c)) { seen.add(c); out.push({ cell: c, road: true, need: true }); }
+    if (!(width > 0)) continue;
+    // the flanks: off the road within `width` hops of c (hops through any cell), the nearest first
+    const hop = new Map([[c, 0]]), q = [c], side = [];
+    for (let i = 0; i < q.length; i++) { const x = q[i], k = hop.get(x); if (k >= width) continue; for (const nb of adj[x]) if (!hop.has(nb) && !on.has(nb)) { hop.set(nb, k + 1); q.push(nb); side.push(nb); } }
+    const rocks = side.filter((x) => tags[x] === blocked), narrow = side.length > 0 && !adj[c].some((x) => !on.has(x) && tags[x] !== blocked);
+    rocks.forEach((r, i) => { if (seen.has(r)) return; seen.add(r); out.push({ cell: r, road: false, need: narrow && i === 0 }); });
+  }
+  return out;
+}
