@@ -14,6 +14,10 @@
 // starts audio on the first gesture, and any gesture skipped a shot, so a shot that opens a page (the arrival) was always silent.
 // `unlock: true` spends the first gesture on the sound; the next one skips.
 const SHOT_GRACE = 4.0;
+// A SCREENSHOT IS NOT A SKIP (owner, 2026-10-23: "I could not take screenshots because any key press cancels the animation"; macOS
+// Cmd+Shift+4/5 arrives as keydowns): a key held with Cmd, Ctrl or Alt, or a modifier key alone, lets the shot run; every other key and every tap skips
+const MODIFIER_KEYS = new Set(['Shift', 'Meta', 'Control', 'Alt', 'AltGraph', 'CapsLock', 'Fn', 'FnLock', 'OS', 'Super', 'Hyper']);
+export const skipsOn = (ev) => !(ev && (ev.metaKey || ev.ctrlKey || ev.altKey || MODIFIER_KEYS.has(ev.key)));
 
 // `target`: the element whose taps skip; `snap()`: put the camera on the shot's first pose now; `pass(shot, ev)`: true lets a
 // gesture through without skipping (a card's own button)
@@ -21,6 +25,7 @@ export function createCameraShots({ target, snap, pass = () => false }) {
   let shot = null, fires = 0, last = '';   // shot: { id, dur, left, poseAt, onEnd, skippable, unlock, age }
   const skip = (ev, key) => {
     if (!shot || !shot.skippable) return;
+    if (key && !skipsOn(ev)) return;   // a screenshot's chord (Cmd+Shift+4), a lone modifier: the shot runs on
     if (shot.id === 'breach') { end(); return; }
     if (!key && pass(shot, ev)) return;
     if (key) ev.preventDefault();
