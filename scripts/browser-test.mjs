@@ -2969,7 +2969,7 @@ try{
  console.log(`ARENA DRIVE from cell ${s0.playerCell}, ${s0.boss.hullCells} cells from the arena (reach ${ARENA.reachCells})`);
  const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
  await evaluate(`${T}.showcase.aimHull(${s0.boss.road.path[0]})`);await delay(200);await K('keyDown','w','KeyW',87);
- let turning=null,backing=0,behind=0,cellWas=-1,cellSince=Date.now(),backs=0,cullAt=Date.now(),stuckS=+(process.env.STUCK_S||3),look=Math.max(1,+(process.env.DRIVE_LOOK||1)),minCells=Infinity,openedAt=null,openCells=null,early=null,last=null;const t0=Date.now(),kmhs=[];
+ let turning=null,backing=0,behind=0,cellWas=-1,cellSince=Date.now(),backs=0,cullAt=Date.now(),stuckS=+(process.env.STUCK_S||3),look=Math.max(1,+(process.env.DRIVE_LOOK||3)),backsHere=0,turns=0,minCells=Infinity,openedAt=null,openCells=null,early=null,last=null;const t0=Date.now(),kmhs=[];
  while(Date.now()-t0<secs*1000){
   const s=await st(),d=await evaluate(`${T}.showcase.drive()`),t=+((Date.now()-t0)/1000).toFixed(1);
   if(Number.isFinite(s.boss.hullCells))minCells=Math.min(minCells,s.boss.hullCells);
@@ -2978,19 +2978,22 @@ try{
   if(Date.now()-cullAt>5000){cullAt=Date.now();await evaluate(`${T}.sectorCull(999)`);}   // the jump's leftovers still emerging at the first cull
   if(arenaOpen(s)){openedAt=t;openCells=s.boss.hullCells;if(minCells>ARENA.reachCells)early=last;break;}
   const path=s.boss.road.path??[],ids=[d.cur,...path];if(ids.length<2){await delay(100);continue;}
-  // DRIVE_LOOK (2026-10-23, the road cleared wide): the driver aims that many road cells ahead (1: the next cell, as before); a player on a three-wide corridor looks down it
+  // DRIVE_LOOK (2026-10-23, the road cleared wide): the driver aims that many road cells ahead (3, a player's line down a three-wide corridor; 1: the next cell, as before)
   const idx=ids.indexOf(d.cur),next=ids[Math.min(ids.length-1,idx+look)],b=await evaluate(`${T}.showcase.bearing(${next})`);
   if(Math.round(t*10)%(process.env.DRIVE_LOG?10:100)===0)console.log('  drive '+JSON.stringify({...last,next,b:+b.toFixed(2),turning,backing:+backing.toFixed(1),paused:s.paused,deploying:s.deploying,pos:d.pos.map(v=>+v.toFixed(4))}));
-  behind=Math.abs(b)>2.2?behind+0.1:0;if(d.cur!==cellWas){cellWas=d.cur;cellSince=Date.now();}
+  behind=Math.abs(b)>2.2?behind+0.1:0;if(d.cur!==cellWas){cellWas=d.cur;cellSince=Date.now();backsHere=0;}
   // backed out, as a player would: the target behind for a second, or the hull held in one cell for STUCK_S (3) seconds against a corner
-  if(backing<=0&&(behind>=1||Date.now()-cellSince>stuckS*1000)){backing=1.2;behind=0;cellSince=Date.now();backs++;await K('keyUp','w','KeyW',87);await K('keyDown','s','KeyS',83);}
+  // TURNED ROUND (2026-10-23): a hull backed out three times in one cell (a corner of the base's clearing by cell 3656 held one run 140 s, 94 back-outs, the target
+  // behind each time) is turned to face its target, as a player turns the hull round; counted as `turns`
+  if(backing<=0&&(behind>=1||Date.now()-cellSince>stuckS*1000)&&backsHere>=3){await evaluate(`${T}.showcase.aimHull(${next})`);turns++;backsHere=0;behind=0;cellSince=Date.now();}
+  if(backing<=0&&(behind>=1||Date.now()-cellSince>stuckS*1000)){backing=1.2;behind=0;cellSince=Date.now();backs++;backsHere++;await K('keyUp','w','KeyW',87);await K('keyDown','s','KeyS',83);}
   if(backing>0){backing-=0.1;if(backing<=0){await K('keyUp','s','KeyS',83);await K('keyDown','w','KeyW',87);}}
   const fwd=backing<=0,want=b>0.12?(fwd?'a':'d'):b<-0.12?(fwd?'d':'a'):null;
   if(want!==turning){if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);if(want)await K('keyDown',want,want==='a'?'KeyA':'KeyD',want==='a'?65:68);turning=want;}
   await delay(100);
  }
  if(backing>0)await K('keyUp','s','KeyS',83);if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);await K('keyUp','w','KeyW',87);
- console.log(`ARENA DRIVE: backed out ${backs} times; ${openedAt!=null?`the hole opened at ${openedAt} s with the hull ${openCells} cells out (nearest ${minCells})`:'never opened'}; last ${JSON.stringify(last)}`);
+ console.log(`ARENA DRIVE: looking ${look} road cells ahead, backed out ${backs} times, turned round ${turns}; ${openedAt!=null?`the hole opened at ${openedAt} s with the hull ${openCells} cells out (nearest ${minCells})`:'never opened'}; last ${JSON.stringify(last)}`);
  assert.equal(early,null,`the hole stayed shut while the hull had never come within ${ARENA.reachCells} cells (${JSON.stringify(early)})`);
  assert.ok(openedAt!=null,`the hull reached the arena and the hole opened within ${secs} s (${JSON.stringify(last)})`);
  // THE BEAM LEADS THE HULL (owner, 2026-10-19, third round, note 7b: "always 50m ahead of the tank clearing the path"): after the first cut no ask lay farther
@@ -3014,6 +3017,9 @@ try{
   {const {TANK_DRIVE}=await import('../src/content/tank.js'),top=1.1*1.6*TANK_DRIVE.top*METRES_PER_CELL*3.6,drive=kmhs.filter(k=>k.gt<=(r.t??Infinity)),mean=drive.reduce((a,k)=>a+k.kmh,0)/Math.max(1,drive.length),peak=Math.max(...drive.map(k=>k.kmh)),ar=r.road.arrivals??{};
    const flanks=raw.filter(c=>c.flank),swath={cuts:raw.length,flanks:flanks.length,flanksCleared:flanks.filter(c=>c.cleared).length,road:raw.filter(c=>c.planned&&!c.flank).length};
    console.log(`ARENA DRIVE: the hull's speed ${JSON.stringify({mean:+mean.toFixed(1),top:+top.toFixed(1),share:+(mean/top).toFixed(3),peak,peakShare:+(peak/top).toFixed(3),samples:drive.length})}; the corridor on arrival ${JSON.stringify(ar)}; the swath ${JSON.stringify(swath)}`);
+   // THE NUKES ON THE ROAD (note 2b, decision 2): the automated MK-9s on the road's rock clusters (state().boss.road.nukes: each landing, the hull's distance, the rocks it took)
+   {const {GUNSHIP_GUNS}=await import('../src/content/gunship.js'),nk=r.road.nukes??[],blast=GUNSHIP_GUNS.heavy.blastCells;console.log(`ARENA DRIVE: the road MK-9s ${JSON.stringify({n:nk.length,rocks:nk.reduce((a,e)=>a+e.rocks,0),hullMin:nk.length?Math.min(...nk.map(e=>e.hull)):null,list:nk})}`);
+    assert.ok(nk.every(e=>e.hull>=blast+1),`the hull never within blastCells + 1 of a road MK-9's landing (${JSON.stringify(nk)})`);if(!process.env.NO_NUKE_COUNT)assert.ok(nk.length>=2,`at least two road MK-9s over the drive (${nk.length})`);}
    if(process.env.ROAD_ASSERT){assert.ok(mean>=0.8*top,`the hull's mean speed at least 80 % of its top (${mean.toFixed(1)} of ${top.toFixed(1)} km/h)`);assert.equal(ar.narrow,0,`every road cell the hull reached had a clear side neighbour (${JSON.stringify(ar)})`);}}
   assert.ok(done.length>=3,`the road asked and burned on the drive (${done.length} finished)`);
   assert.equal(plannedLeft.length,0,`every planned rock asked for was burned (${JSON.stringify(plannedLeft)})`);

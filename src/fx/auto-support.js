@@ -15,6 +15,9 @@ import { SOUNDS } from '../content/audio-defaults.js';
 import { strikeDue, pickStrikeTarget } from '../domain/isao-strike.js';
 import { ISAO_STRIKE } from '../content/base-programme.js';
 
+// the pilot bag with its `guns` getter kept live (2026-10-23: a spread froze it at the content's guns, so THE ARENA's MK-9 reload, src/fx/boss-run.js guns(), never reached the auto)
+const liveBag = (b, cs) => Object.defineProperties({ ...b, cs }, { guns: Object.getOwnPropertyDescriptor(b, 'guns') });
+
 export function createAutoSupport(c) {
   const { showBrief, updateHud } = c;
   return {
@@ -23,7 +26,7 @@ export function createAutoSupport(c) {
       // THE GUNSHIP ON AUTO (src/fx/gunship-auto.js, GUNSHIP_AUTO): the passes the player sits in and fires are Isao's calibration; once
       // he has two, a full meter calls the ship by itself and a pass nobody is seated for flies itself. The seat is always the player's
       if (c.gunshipRig && c.camera) {
-        const G0 = c.gunshipRig.pilotBag ? (s.gsBag ??= { ...c.gunshipRig.pilotBag(), cs: c.cellSide() }) : null, gs = G0?.state, seated = !!c.pilot?.()?.gunship;
+        const G0 = c.gunshipRig.pilotBag ? (s.gsBag ??= liveBag(c.gunshipRig.pilotBag(), c.cellSide())) : null, gs = G0?.state, seated = !!c.pilot?.()?.gunship;
         if (gs) {
           if (s.gsManned == null && typeof location !== 'undefined' && new URLSearchParams(location.search).get('gunship') === 'auto') s.gsManned = GUNSHIP_AUTO.afterManned;   // ?gunship=auto: a playtest starts calibrated
           const up = onStation(gs);
@@ -36,7 +39,8 @@ export function createAutoSupport(c) {
             const view = (p, lim) => { const q = new THREE.Vector3(...p).project(c.camera); return q.z < 1 && Math.abs(q.x) < lim && Math.abs(q.y) < lim; };
             s.gsFly ??= createGunshipAuto({ G: G0, tune: GUNSHIP_AUTO, onScreen: view, callout: (t) => c.callout?.(t, 'co-victory'), sfx: c.sfx, hasCue: (k) => !!SOUNDS[k],
               friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : [])]; },
-              units: () => [c.playerPos(), c.isao()?.obj?.position.toArray()].filter(Boolean), hull: () => (c.playerHP() > 0 ? c.playerPos() : null) });
+              units: () => [c.playerPos(), c.isao()?.obj?.position.toArray()].filter(Boolean), hull: () => (c.playerHP() > 0 ? c.playerPos() : null),
+              road: () => c.roadNuke?.() ?? null });   // THE NUKES ON THE ROAD (2026-10-23): THE ARENA's drive out hands its rock cluster (src/fx/boss-run.js roadNukeTarget)
             s.gsFly.tick(dt, seated);
           } else if (!seated) { G0.optic?.fade?.(dt); landGunshipRounds(G0); }   // before the auto pass exists, the player's rounds and MK-9 still land after they leave the seat
         }

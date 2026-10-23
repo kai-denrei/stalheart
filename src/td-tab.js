@@ -4590,6 +4590,7 @@ export function initTdTab(root) {
   // THE FIRE SUPPORT ON AUTO (src/fx/auto-support.js): the gunship flying itself, Isao's missile, the envelope
   const autoSupport = createAutoSupport({
     showBrief,
+    roadNuke: () => bossRun.roadNukeTarget(),   // THE NUKES ON THE ROAD (2026-10-23): the drive out's rock cluster for the automated MK-9 (src/fx/boss-run.js)
     updateHud,
     gunshipRig,
     camera,
