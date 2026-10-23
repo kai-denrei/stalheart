@@ -7,8 +7,9 @@
 // the rule's height is the only vertical travel (the README: "do not add a second copy of the vertical drop translation"). The mechs are
 // hidden while held in the closed shell (the spec's fallback: the shell is opaque, so the leg fold is not ported). The effects (THE DROP'S LOOK,
 // 2026-10-23, the owner's four notes; spec docs/superpowers/specs/2026-10-23-drop-fx-design.md, the demo's effects ported in src/fx/feids-heat.js):
-// the shield's glow and the split's flash on each capsule; each falling mech's re-entry fire and smoke streaming up behind it (no more orange
-// bubble), the braking jet under SOCKET_BRAKE_JET; the game's own dust at each touchdown and flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them. The Ridgeback's static far
+// each capsule's heat group (the blue glow, the white rim, the 24 flame trails) and the shell's thermal emissive, the split's flash; each falling
+// mech's re-entry fire and smoke streaming up behind it (no more orange bubble), the braking jet under SOCKET_BRAKE_JET; the game's own dust at
+// each touchdown and flash at each split (host.explode). The sounds fire on the rule's cues as the clock crosses them. The Ridgeback's static far
 // tier (mx06_d0_lod2, one draw) is fetched with them and handed to the squad with the four (mechs()[i].far).
 //   host: scene, metres() (world units a metre), sfx (play, prime, activeVoices), explode(use, point) (optional), load(url) (optional, loadGlbWithClips)
 //   createFeidsDrop(host) -> { prepare(), prime(), primed(), ready(), failed(), begin(frame), tick(t), pose(t, out), mechs(), release(), heard(), worldOf(local, out), show(on), dispose() }
@@ -17,7 +18,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { loadGlbWithClips } from '../glbmodels.js';
 import { capsuleState, cargoState, dropCues, cuesIn, dropCamera } from '../domain/reinforcements.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
-import { createFeidsKit, mechBurn } from './feids-heat.js';
+import { createFeidsKit, capsuleHeat, thermalShell, mechBurn } from './feids-heat.js';
 
 const TL = REINFORCEMENTS.timeline, CUES = dropCues(TL, REINFORCEMENTS.sounds);
 const AXIS_Y = 3.8;   // the capsule's shell axis above its ground-centred root, in its metres (its leading shield is local +Z)
@@ -64,11 +65,11 @@ export function createFeidsDrop(h) {
     kit = createFeidsKit();
     for (let i = 0; i < 2; i++) {
       const root = models.cap.scene.clone(true), wrap = new THREE.Group(); wrap.add(root);
-      const glow = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), additive(0x2689ff, 0.3)); glow.scale.set(1.7, 1.7, 1.5); glow.position.set(0, AXIS_Y, 8.8);
+      const heat = capsuleHeat(kit); heat.group.position.set(0, AXIS_Y, 0);   // at the shell's axis, in the capsule's frame: the shield local +Z, the trails to -Z
       const flash = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), additive(0xffffff, 0)); flash.position.set(0, AXIS_Y, 0);
-      wrap.add(glow, flash); h.scene.add(wrap);
+      wrap.add(heat.group, flash); h.scene.add(wrap);
       const mixer = new THREE.AnimationMixer(root);
-      capsules.push({ wrap, root, glow, flash, mixer, shell: clipAction(mixer, models.cap.clips, 'Shell_Separate'), split: false });
+      capsules.push({ wrap, root, heat, thermal: thermalShell(root), flash, mixer, shell: clipAction(mixer, models.cap.clips, 'Shell_Separate'), split: false });
     }
     for (let i = 0; i < 4; i++) {
       const root = models.mech.scene.clone(true), wrap = new THREE.Group(); wrap.add(root); wrap.visible = false;
@@ -98,7 +99,7 @@ export function createFeidsDrop(h) {
       if (s.gone) return;
       placeAt(c.wrap, s.x, s.y, 0, s.pitch, 0, 1);
       if (c.shell) { c.shell.time = Math.min(c.shell.getClip().duration, s.opening); c.mixer.update(0); }
-      c.glow.visible = s.heat > 0.001; c.glow.material.opacity = 0.3 * s.heat; c.glow.scale.set(1.7, 1.7, 1.5).multiplyScalar(1 + 0.025 * Math.sin(t * 71));
+      c.heat.update(s.heat, t); c.thermal.update(s.split < 0 ? s.heat : Math.exp(-s.split * 1.8), t);
       c.flash.visible = s.flash > 0; c.flash.material.opacity = s.flash * 0.85; c.flash.scale.setScalar(2 + Math.max(0, s.split) * 17);
       if (!c.split && s.split >= 0) { c.split = true; h.explode?.('tank.flash', worldOf(s.x, s.y, 0, v).toArray()); }
     });
@@ -129,9 +130,9 @@ export function createFeidsDrop(h) {
     return true;
   }
 
-  // the drop's effects let go: the capsules' glow and flash, the mechs' burn, the kit (the mechs' jets go with mechs())
+  // the drop's effects let go: the capsules' heat and thermal clones and flash, the mechs' burn, the kit (the mechs' jets go with mechs())
   function releaseFx() {
-    for (const c of capsules) { c.wrap.removeFromParent(); c.mixer.stopAllAction(); for (const o of [c.glow, c.flash]) { o.geometry.dispose(); o.material.dispose(); } }
+    for (const c of capsules) { c.wrap.removeFromParent(); c.mixer.stopAllAction(); c.heat.dispose(); c.thermal.dispose(); c.flash.geometry.dispose(); c.flash.material.dispose(); }
     for (const mc of mechs) mc.burn.dispose();
     kit?.dispose(); kit = null; capsules = [];
   }
