@@ -1794,16 +1794,21 @@ try{
  const keyEv=async(o)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',...o});await send('Input.dispatchKeyEvent',{type:'keyUp',...o});await delay(300);};
  {await keyEv({key:'Meta',code:'MetaLeft',modifiers:4});await keyEv({key:'4',code:'Digit4',modifiers:12});await keyEv({key:'Shift',code:'ShiftLeft',modifiers:8});
   const s=await st();console.log(`  reinforcements: after Cmd, Cmd+Shift+4 and Shift at drop t ${R(s).t} s: shot ${s.shot}, lens ${JSON.stringify(R(s).lens)}`);assert.equal(s.shot,REINFORCEMENTS.shot.id,'a screenshot chord does not end the cut');}
- const snaps=[[3,'reinforce-entry'],[9,'reinforce-release'],[14.5,'reinforce-trio'],[19.6,'reinforce-laggard']];
- for(const [at,name] of snaps){await until(`(${T}.state().reinforcements?.t??0)>=${at}||${T}.state().reinforcements?.phase==='landed'`,240000);const r=R(await st());console.log(`  reinforcements: ${name} at drop t ${r.t} s, shot ${(await st()).shot}`);current=name;await finish();}
- // THE FOUR'S DRAW COST: at drop t 24 s the ground camera has the four standing in view (the capsules gone); the drop drawn, then hidden, then drawn again,
- // two wall seconds each, the renderer's calls and the frame's ms read (headless: software GL, so the ms is an upper bound, the calls exact)
- {await until(`(${T}.state().reinforcements?.t??0)>=24`,240000);const read=async()=>{const s=await st();return {calls:s.drawCalls,ms:s.performance?.frameMs??null,gpu:s.performance?.gpuMs??null,t:R(s).t};};
-  await delay(1500);const on=await read();await evaluate(`${T}.reinforceShow(false)`);await delay(1500);const off=await read();await evaluate(`${T}.reinforceShow(true)`);
-  console.log(`  reinforcements: the four Ridgebacks (game tier) in view: ${on.calls} draw calls, ${on.ms?.toFixed?.(1)} ms a frame (drop t ${on.t}); hidden: ${off.calls} calls, ${off.ms?.toFixed?.(1)} ms (drop t ${off.t}); the four cost ${on.calls-off.calls} calls`);}
- // a plain key still skips (the cut's last seconds), the lens put back with it
- if(R(await st()).phase==='dropping'&&(await st()).shot===REINFORCEMENTS.shot.id){await keyEv({key:'k',code:'KeyK',text:'k'});const s=await st();console.log(`  reinforcements: after a plain K at drop t ${R(s).t} s: shot ${s.shot}, cutDone ${R(s).cutDone}, lens ${JSON.stringify(R(s).lens)}`);
-  assert.notEqual(s.shot,REINFORCEMENTS.shot.id,'a plain key ends the cut');assert.equal(R(s).lens,null,'the lens put back on the skip');} else console.log('  reinforcements: the cut ended before the plain-key check');
+ // THE MANDATORY FIVE SECONDS (round 2, 2026-10-23; spec docs/superpowers/specs/2026-10-23-drop-round-2-design.md decision 1): a plain key at drop t 2 s leaves
+ // the cut running (no hint yet), a frame at 3 s, then at 6 s the SPACE · SKIP hint stands, a plain K still leaves the cut running and Space ends it, the lens
+ // put back and the hint gone. (The cut's later frames are --feids-shots'; the four's draw cost is measured up close below.)
+ {await until(`(${T}.state().reinforcements?.t??0)>=2`,240000);await keyEv({key:'k',code:'KeyK',text:'k'});const s=await st();
+  console.log(`  reinforcements: after a plain K at drop t ${R(s).t} s (inside the ${REINFORCEMENTS.shot.lock} s lock): shot ${s.shot}, hint ${R(s).hint}`);assert.equal(s.shot,REINFORCEMENTS.shot.id,'a plain key inside the lock leaves the cut');assert.equal(R(s).hint,false,'no hint inside the lock');}
+ {await until(`(${T}.state().reinforcements?.t??0)>=3`,240000);const r=R(await st());console.log(`  reinforcements: reinforce-entry at drop t ${r.t} s, shot ${(await st()).shot}`);current='reinforce-entry';await finish();}
+ {await until(`(${T}.state().reinforcements?.t??0)>=6`,240000);let s=await st();
+  console.log(`  reinforcements: at drop t ${R(s).t} s (the lock over): shot ${s.shot}, hint ${R(s).hint} (${JSON.stringify(await evaluate(`document.getElementById('feids-skip-hint')?.textContent??null`))})`);
+  assert.equal(s.shot,REINFORCEMENTS.shot.id,'the cut runs past the lock');assert.equal(R(s).hint,true,'the hint after the lock');
+  current='reinforce-hint';await finish();
+  await keyEv({key:'k',code:'KeyK',text:'k'});s=await st();console.log(`  reinforcements: after a plain K at drop t ${R(s).t} s: shot ${s.shot}`);assert.equal(s.shot,REINFORCEMENTS.shot.id,'after the lock a plain key still leaves the cut');
+  await keyEv({key:' ',code:'Space',text:' '});s=await st();
+  console.log(`  reinforcements: after Space at drop t ${R(s).t} s: shot ${s.shot}, cutDone ${R(s).cutDone}, lens ${JSON.stringify(R(s).lens)}, hint ${R(s).hint}`);
+  assert.notEqual(s.shot,REINFORCEMENTS.shot.id,'Space ends the cut');assert.equal(R(s).lens,null,'the lens put back on the skip');assert.equal(R(s).hint,false,'the hint gone with the cut');
+  assert.equal(await evaluate(`!!document.getElementById('feids-skip-hint')`),false,'the hint node removed');}
  await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`the four land (${JSON.stringify(R(await st()))})`));
  {const s=await st(),r=R(s),heard=r.heard;
   const by=k=>heard.filter(h=>h.kind===k);

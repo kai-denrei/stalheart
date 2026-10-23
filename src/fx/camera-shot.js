@@ -18,14 +18,20 @@ const SHOT_GRACE = 4.0;
 // Cmd+Shift+4/5 arrives as keydowns): a key held with Cmd, Ctrl or Alt, or a modifier key alone, lets the shot run; every other key and every tap skips
 const MODIFIER_KEYS = new Set(['Shift', 'Meta', 'Control', 'Alt', 'AltGraph', 'CapsLock', 'Fn', 'FnLock', 'OS', 'Super', 'Hyper']);
 export const skipsOn = (ev) => !(ev && (ev.metaKey || ev.ctrlKey || ev.altKey || MODIFIER_KEYS.has(ev.key)));
+// A LOCK, THEN ONE KEY (owner, 2026-10-23: "it is too easy to skip the animation without meaning to, let's have the first 5 seconds mandatory,
+// then a skip with spacebar is feasible"): `lockFor` seconds of the shot's own age during which nothing skips, `skipKey` the one key that skips
+// after it (taps never do). Such a shot eats the gestures it does not obey (a screenshot's chord still passes), so a stray key neither skips
+// nor reaches the game behind the cut. Every other shot keeps the rule above: any key, any tap
+export const skipsShot = (shot, ev, key) => (shot.age >= (shot.lockFor ?? 0)) && (shot.skipKey == null || (key && ev?.key === shot.skipKey));
 
 // `target`: the element whose taps skip; `snap()`: put the camera on the shot's first pose now; `pass(shot, ev)`: true lets a
 // gesture through without skipping (a card's own button)
 export function createCameraShots({ target, snap, pass = () => false }) {
-  let shot = null, fires = 0, last = '';   // shot: { id, dur, left, poseAt, onEnd, skippable, unlock, age }
+  let shot = null, fires = 0, last = '';   // shot: { id, dur, left, poseAt, onEnd, skippable, unlock, age, lockFor, skipKey }
   const skip = (ev, key) => {
     if (!shot || !shot.skippable) return;
     if (key && !skipsOn(ev)) return;   // a screenshot's chord (Cmd+Shift+4), a lone modifier: the shot runs on
+    if (!skipsShot(shot, ev, key)) { if (key) ev.preventDefault(); if (key || !pass(shot, ev)) ev.stopImmediatePropagation(); return; }   // the lock, or not its key: eaten, the shot runs on
     if (shot.id === 'breach') { end(); return; }
     if (!key && pass(shot, ev)) return;
     if (key) ev.preventDefault();
@@ -34,9 +40,9 @@ export function createCameraShots({ target, snap, pass = () => false }) {
     end();
   };
   const onKey = (ev) => skip(ev, true), onTap = (ev) => skip(ev, false);
-  function start({ id, dur, poseAt, onEnd = null, skippable = true, unlock = false }) {
+  function start({ id, dur, poseAt, onEnd = null, skippable = true, unlock = false, lockFor = 0, skipKey = null }) {
     end();   // one at a time, and the outgoing one always tears down
-    shot = { id, dur: Math.max(1e-3, dur), left: Math.max(1e-3, dur), poseAt, onEnd, skippable, unlock, age: 0 };
+    shot = { id, dur: Math.max(1e-3, dur), left: Math.max(1e-3, dur), poseAt, onEnd, skippable, unlock, age: 0, lockFor, skipKey };
     if (skippable) { addEventListener('keydown', onKey, true); target.addEventListener('pointerdown', onTap, true); }
     snap();   // no glide in: the shot owns frame one
   }

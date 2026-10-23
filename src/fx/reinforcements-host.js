@@ -24,7 +24,13 @@ export function createReinforcements(h) {
   let phase = 'idle', t = -1, waiting = -1, why = 'idle', ticks = 0, frame = null, centre = -1, cut = false, cutDone = false, forceNow = false;
   // THE CUT'S LENS (the owner's ant view, 2026-10-23): the near plane lowered to shot.near and the rule's fov (eased in from the camera's) each tick
   // of the cut, the values found put back at its end, on a seat taken over it (the near only: the seat owns the fov) and on restore
-  let lens = null;
+  let lens = null, hint = null, cutAt = 0;
+  // THE SKIP'S HINT (round 2, 2026-10-23): from the lock's end to the cut's end, the gunship briefing's footer line (its markup, its colours)
+  function hintOn() {
+    if (hint || typeof document === 'undefined') return;
+    hint = document.createElement('div'); hint.id = 'feids-skip-hint'; hint.innerHTML = `<footer><span>${REINFORCEMENTS.shot.hint}</span></footer>`; document.body.append(hint);
+  }
+  function hintOff() { hint?.remove(); hint = null; }
   const lensAt = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fov: 0 };
   function lensOn() {
     if (!h.camera || !drop.pose(Math.max(0, t), lensAt)) return;
@@ -62,8 +68,8 @@ export function createReinforcements(h) {
   function shot() {
     if (cutDone || cut || h.seated() || h.shotActive() || t > TL.duration - 2) return;
     const start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() }, at = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
-    cut = true;
-    h.startShot({ id: REINFORCEMENTS.shot.id, dur: TL.duration - Math.max(0, t), skippable: true, onEnd: () => { cut = false; cutDone = true; lensOff(); h.snapCamera(); }, poseAt(u, out) {
+    cut = true; cutAt = Math.max(0, t);
+    h.startShot({ id: REINFORCEMENTS.shot.id, dur: TL.duration - cutAt, skippable: true, lockFor: REINFORCEMENTS.shot.lock, skipKey: REINFORCEMENTS.shot.skipKey, onEnd: () => { cut = false; cutDone = true; hintOff(); lensOff(); h.snapCamera(); }, poseAt(u, out) {
       if (!drop.pose(Math.max(0, t), at)) return;
       const k = Math.min(1, Math.max(0, t) / REINFORCEMENTS.shot.easeIn), e = k * k * (3 - 2 * k);
       out.pos.lerpVectors(start.pos, at.pos, e); out.quat.slerpQuaternions(start.quat, at.quat, e);
@@ -90,6 +96,7 @@ export function createReinforcements(h) {
       if (phase === 'dropping') {
         t += dt; drop.prime(); drop.tick(t); shot();
         if (cut && !h.seated()) lensOn(); else lensOff(!h.seated());
+        if (cut && t - cutAt >= REINFORCEMENTS.shot.lock) hintOn(); else hintOff();
         if (t > TL.duration) land();
         return;
       }
@@ -111,9 +118,9 @@ export function createReinforcements(h) {
     show: (on) => { drop.show(on); h.squad?.()?.show?.(on); },   // the harness's A/B: the capsules and the four drawn or not, the clocks running
     state: () => {
       const r = rec();
-      return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, lens: lens ? { near: +h.camera.near.toFixed(6), fov: +h.camera.fov.toFixed(2) } : null, seated: h.seated(), primed: drop.primed(), loaded: drop.ready(), failed: drop.failed(),
+      return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, lens: lens ? { near: +h.camera.near.toFixed(6), fov: +h.camera.fov.toFixed(2) } : null, hint: !!hint, seated: h.seated(), primed: drop.primed(), loaded: drop.ready(), failed: drop.failed(),
         why, ticks, heard: drop.heard(), mechs: h.squad?.()?.state?.() ?? [] };
     },
-    restore() { lensOff(); drop.dispose(); phase = 'idle'; t = -1; frame = null; cut = false; },
+    restore() { lensOff(); hintOff(); drop.dispose(); phase = 'idle'; t = -1; frame = null; cut = false; },
   };
 }

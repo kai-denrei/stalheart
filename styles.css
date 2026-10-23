@@ -4098,6 +4098,9 @@ body.showcase-on #ground-feed, body.seat-gliding #ground-feed { display: none !i
 #gunship-briefing footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: #6fa8c8; font-size: 10px; letter-spacing: 1px; }
 #gunship-briefing footer button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: .12em; color: #5fe6d6; background: #07141a; border: 1px solid #5fe6d6; padding: 7px 14px; cursor: pointer; }
 @media (max-width: 720px) { #gunship-briefing .body { grid-template-columns: 1fr; } }
+/* the drop's skip hint (FEIDS-26 round 2, 2026-10-23): the gunship briefing's footer line, its font and colours, at the bottom centre over the cut */
+#feids-skip-hint { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 60; pointer-events: none; background: #07141a; border: 1px solid #2b6b96; padding: 6px 14px; font-family: ui-monospace, Menlo, monospace; }
+#feids-skip-hint footer { color: #6fa8c8; font-size: 10px; letter-spacing: 1px; }
 #synthetic-modal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.82); font-family: 'Courier New', ui-monospace, monospace; color: #aaa; }
 #synthetic-modal .sheet { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: #000; border: 1px solid #444; padding: 14px 18px 12px; box-shadow: 0 0 40px rgba(0, 255, 65, 0.08); }
 #synthetic-modal header { border-bottom: 1px solid #444; padding-bottom: 6px; margin-bottom: 10px; }
