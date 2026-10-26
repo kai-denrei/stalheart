@@ -1499,8 +1499,9 @@ try{
   assert.equal(await evaluate('!!document.querySelector("iframe.descent-frame")'),false,'no frame in the DOM');
   assert.deepEqual(d.descent.said,['descent_brief','descent_back'],`the brief, then Isao's decoding joke (${JSON.stringify(d.descent.said)})`);}
  // ...and out the same way (decision 3): the camera rises up the hole's axis to the rim (DESCENT.door.rise s of game time), then the ending as before
- await until(`(${T}.state().descent.door?.fromRim??9)<2&&${T}.state().descent.door?.phase==='rise'`,30000).catch(async()=>assert.fail(`the camera rises to the rim (${JSON.stringify((await st()).descent)})`));
- {const d=(await st()).descent;console.log(`  the return: ${JSON.stringify(d.door)}`);assert.ok(d.door.fromRim<2,`within 2 cells of the rim (${d.door.fromRim})`);}
+ /* the end of the rise, not its start (2026-10-26): on the axis under the lip fromRim already reads 1.5 cells looking UP (along -1); the rim view is 1.04 cells looking down into the hole (along 0.64) */
+ await until(`(${T}.state().descent.door?.fromRim??9)<1.2&&(${T}.state().descent.door?.along??-1)>0.5&&${T}.state().descent.door?.phase==='rise'`,30000).catch(async()=>assert.fail(`the camera rises to the rim view (${JSON.stringify((await st()).descent)})`));
+ {const d=(await st()).descent;console.log(`  the return: ${JSON.stringify(d.door)}`);assert.ok(d.door.fromRim<1.2,`at the rim view (${d.door.fromRim})`);assert.ok(d.door.along>0.5,`looking down into the hole, not up at the sky (${d.door.along})`);}
  current='descent-back';await finish();
  } else if(args.includes('--boss-start')) {
  // ?boss=1 (2026-10-16): a run opened past the door's earliest opens ON THE BOSS, the door counted as the sector before (the owner's morning entry)
