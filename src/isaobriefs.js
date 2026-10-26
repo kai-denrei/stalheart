@@ -432,6 +432,11 @@ export const BRIEFS = {
     lines: ['Base is printed, and the Relay and the Mortar are ours.', 'They are already out on the lane. Build, and hold the gate.'],
   },
 
+  // THE STREAK'S LORE (owner, 2026-10-26, round 3 note 5: "when they die closer to each other, the dying cells of various organisms bound in a way
+  // that preserves more mass, otherwise it seeps into the ground"): said once, the first time the streak multiplier reaches `at` (src/td-tab.js
+  // noteStreak); the campaign debrief's 'longest streak' tile carries the one-line version. A caption until recorded
+  streak_lore: { id: 'streak_lore', face: 'curious', title: 'COMMS · ISAO', once: true, at: 1.5, lines: ['When they die close together, their cells bind as they go. More of the mass holds.', 'Alone, it just seeps into the ground. Keep the kills tight.'] },
+
   // THE SECTORS (docs/superpowers/specs/2026-09-15-v1-session-design.md): Isao's two lines on each sector's brief. The lines
   // are the content table's (src/content/sectors.js), so the brief and the debrief's "next sector" lines cannot drift.
   ...Object.fromEntries(SECTORS.map((s) => [`sector_${s.n}`, { id: `sector_${s.n}`, face: s.n === 1 ? 'determined' : 'focused', title: `SECTOR ${s.n} · ${s.name}`, lines: [...s.brief] }])),
@@ -473,9 +478,9 @@ export const BRIEFS = {
   day_42_over: { id: 'day_42_over', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Party\'s over. They heard the bass.'] },
   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23: "have Isao call out planetary re-inforcements after having built the radar, and after a few in-game days
   // the FEIDS26 will come"; src/fx/reinforcements-host.js): the call as the radar stands, the drop as the camera cuts to the arena, the four down
-  reinforcements_called: { id: 'reinforcements_called', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Uplink\'s up. I\'ve asked the colony for planetary reinforcements.', 'They\'ll take a few days to fall.'] },
+  reinforcements_called: { id: 'reinforcements_called', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Radar\'s up! We can ask the colony for reinforcements.', 'I\'ve sent the call. They\'ll take a few days to fall.'] },   // round 3, 2026-10-26: the owner's lines, a caption until recorded
   reinforcements_inbound: { id: 'reinforcements_inbound', face: 'awe', title: 'COMMS · ISAO', once: true, lines: ['Here they come. Look at the other side of the planet.'] },
-  reinforcements_landed: { id: 'reinforcements_landed', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['Four Ridgebacks down. Two hold the arena, one walks home, one hunts.'] },
+  reinforcements_landed: { id: 'reinforcements_landed', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Hmm. These mechs were all they could send as support.', 'Two hold the arena, one walks home, one hunts.'] },   // round 3: the owner's line
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
   sector_canyon_again: { id: 'sector_canyon_again', face: 'focused', title: SECTOR_CANYON_AGAIN.name, lines: [...SECTOR_CANYON_AGAIN.brief] },

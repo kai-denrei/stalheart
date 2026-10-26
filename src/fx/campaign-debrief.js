@@ -106,7 +106,7 @@ export function createCampaignDebrief({ msgEl, sitrepEl, ctx, spriteShot, makeDo
     return `<div class="dbf-win"><div class="dbf-head">RECORDS</div><div class="dbf-tiles">`
       + tile(bs.kills, `most by one shell${bs.wave ? ` · w${bs.wave}` : ''}`)
       + tile(bk.kills, `most by one strike${bk.wave ? ` · w${bk.wave}` : ''}`)
-      + tile(run.bestStreak || 0, 'longest streak')
+      + tile(run.bestStreak || 0, 'longest streak<i class="dbf-lore">kills close together hold more mass</i>')   /* the streak's lore in one line (round 3, 2026-10-26) */
       + tile((rs && rs.maxCombo) || 0, 'best ram combo')
       + `</div></div>`;
   }

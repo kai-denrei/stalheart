@@ -47,15 +47,17 @@ assert.deepEqual(touchdowns(TL).map((t) => +t.toFixed(2)), [13, 13.43, 14, 19.23
   assert.equal(dropCamera(30, TL).eye.length, 3); }
 // the phases on the drop's own clock
 assert.equal(dropPhase(-1, TL), 'idle'); assert.equal(dropPhase(5, TL), 'dropping'); assert.equal(dropPhase(TL.duration + 0.01, TL), 'landed');
-// THE TRIGGER (spec decision 2): at the first lull after `due` (a breath or a secured sector), never over a seat, a shot, a card or one of
-// Isao's lines, never in the arena sector unless it begins there (then at once), never after the win or with the hull lost; forced: at once
+// THE TRIGGER (spec decision 2; a timer since round 3, 2026-10-26): AT `due` (the day counter crossing it), no lull asked, never over a seat, a
+// shot, a card or one of Isao's lines, never in the arena sector unless it begins there (then at once), never after the win or with the hull lost; forced: at once
 { const calm = { due: 10, day: 10, fighting: true, breathing: true, secure: false, seated: false, shot: false, card: false, isaoBusy: false, alive: true, won: false, arena: false, forced: false, disabled: false };
   assert.equal(dropReady(calm), true);
-  assert.equal(dropReady({ ...calm, day: 9 }), false, 'not before the due day');
+  assert.equal(dropReady({ ...calm, day: 9.99 }), false, 'not before the due day');
   assert.equal(dropReady({ ...calm, due: null }), false, 'not before the call');
-  assert.equal(dropReady({ ...calm, breathing: false }), false, 'not mid-wave');
-  assert.equal(dropReady({ ...calm, breathing: false, secure: true }), true, 'a secured sector is a lull');
-  for (const k of ['seated', 'shot', 'card', 'isaoBusy', 'won']) assert.equal(dropReady({ ...calm, [k]: true }), false, k);
+  assert.equal(dropReady({ ...calm, breathing: false }), true, 'the timer: mid-wave, no lull waited for');
+  assert.equal(dropReady({ ...calm, fighting: false, breathing: false }), true, 'between sectors too');
+  assert.equal(dropReady({ ...calm, breathing: false, day: 10.01 }), true, 'the day counter crossing `due` is enough');
+  assert.equal(dropReady({ ...calm, breathing: false, secure: true }), true, 'a secured sector');
+  for (const k of ['seated', 'shot', 'card', 'isaoBusy', 'won']) { assert.equal(dropReady({ ...calm, [k]: true }), false, k); assert.equal(dropReady({ ...calm, breathing: false, day: 12, [k]: true }), false, `${k} holds it past due`); }
   assert.equal(dropReady({ ...calm, alive: false }), false, 'the hull lost');
   assert.equal(dropReady({ ...calm, arena: true, breathing: false }), true, 'THE ARENA reached first: at once, before the boss');
   assert.equal(dropReady({ ...calm, arena: true, breathing: false, day: 2 }), true, 'due or not');

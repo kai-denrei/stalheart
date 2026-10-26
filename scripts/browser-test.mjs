@@ -1762,29 +1762,45 @@ try{
   const s=await st(),b=R(s).mechs[bi];console.log(`  feids-shots: t 40 s (game t ${b.t}): shot ${s.shot}, the base mech at cell ${b.cell} (heart ${b.heartDist}, park ${b.parkDist}), walking ${b.walking}, gait ${JSON.stringify(b.gait)}, far ${b.far} (${b.eyeM} m from the eye; all ${JSON.stringify(R(s).mechs.map(m=>[m.role,m.far,m.eyeM]))})`);
   assert.equal(s.shot,'mechLook','the look live');assert.ok(b.walking&&b.gait.contacts>=3,'the base mech walking on three claws or more');assert.equal(b.far,false,'the base mech on its game tier in the look (the world runs under it)');
   current='feids-40';await finish();}
- } else if(args.includes('--reinforcements-lull')) {
- // FEIDS-26 REINFORCEMENTS WITHOUT THE FLAG (decisions 1 and 2): the grown base at sector 4 has its radar, so Isao calls them at the load (the call's line
- // and callout); the drop waits for the due day (calledDay + REINFORCEMENTS.days, 30 s days) and then for a lull (the field culled to a breath, as --day-42
- // does); the cut, the landing. One line per measured thing: the call's day, the due day, the day and the sector's phase the drop started in
+ } else if(args.includes('--reinforcements-timer')) {
+ // FEIDS-26 REINFORCEMENTS ON A TIMER (round 3, 2026-10-26, decision 1; was --reinforcements-lull): the grown base at sector 4 has its radar, so Isao
+ // calls them at the load (the owner's line, the callout); the drop goes AT the due day (calledDay + REINFORCEMENTS.days, 30 s days), no lull waited
+ // for, held only by a seat, a card or Isao's panel: one of Isao's two-line briefs is put on the panel 3 s before the day turns, and the drop must
+ // hold while it is up, then start within 2 game s of the moment nothing holds it (lateBy - heldFor <= 2). The cut, the landing, the landed line.
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {REINFORCEMENTS}=await import('../src/content/reinforcements.js'), R=s=>s.reinforcements;
- await go('reinforce-lull-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td`);await evaluate(SEEN_LOG);
+ await go('reinforce-timer-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td`);await evaluate(SEEN_LOG);
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().reinforcements?.called===true`,20000).catch(async()=>assert.fail(`Isao calls them with the radar standing (${JSON.stringify(R(await st()))})`));
- {const s=await st(),r=R(s);console.log(`  reinforcements-lull: called on day ${r.calledDay}, due day ${r.due} (${REINFORCEMENTS.days} days), phase ${r.phase}`);assert.equal(r.due,r.calledDay+REINFORCEMENTS.days);assert.equal(r.phase,'idle','not dropped at the call');
-  await until(`(window.__seen?.briefs||[]).some(b=>/planetary reinforcements/.test(b))`,30000).catch(async()=>assert.fail(`Isao's call line (${JSON.stringify(await evaluate('window.__seen'))})`));}
- let at=null;
+ {const s=await st(),r=R(s);console.log(`  reinforcements-timer: called on day ${r.calledDay}, due day ${r.due} (${REINFORCEMENTS.days} days), phase ${r.phase}`);assert.equal(r.due,r.calledDay+REINFORCEMENTS.days);assert.equal(r.phase,'idle','not dropped at the call');
+  await until(`(window.__seen?.briefs||[]).some(b=>/We can ask the colony for reinforcements/.test(b))`,30000).catch(async()=>assert.fail(`Isao's call line (${JSON.stringify(await evaluate('window.__seen'))})`));}
+ let at=null,briefed=false,heldSeen=null;
  {const w0=Date.now();let k=0;while(Date.now()-w0<300000){const s=await st(),r=R(s);if(r.phase!=='idle'){at=s;break;}
-   if(s.day>=r.due)await evaluate(`${T}.sectorCull(999)`);
-   if(k++%10===0)console.log(`  reinforcements-lull: t+${((Date.now()-w0)/1000).toFixed(0)}s day ${s.day}/${r.due}, sector ${s.sector?.phase} clock ${s.sector?.clock}, why ${r.why}`);await delay(1000);}
-  assert.ok(at,'the drop starts after the due day at a lull');
-  const r=R(at);console.log(`  reinforcements-lull: dropping on day ${at.day} (due ${r.due}), sector ${at.sector?.phase}${at.sector?.breathing?' (breathing)':''}, shot ${at.shot}`);
-  assert.ok(at.day>=r.due,'not before the due day');}
- current='reinforce-lull-dropping';await finish();
+   const left=(r.due-s.day-s.daylight.phase)*30;   // game seconds to the day turning (30 s days on this route; the phase is the day's share)
+   if(!briefed&&s.day===r.due-1&&left<=3){briefed=true;await evaluate(`${T}.isaoBrief('arena_open')`);console.log(`  reinforcements-timer: a brief put on the panel ${left.toFixed(1)} game s before the due day`);}
+   if(briefed&&!heldSeen&&s.day>=r.due&&r.why==='brief'){heldSeen={day:s.day,sinceDue:r.sinceDue};console.log(`  reinforcements-timer: day ${s.day} reached, held by the brief (since due ${r.sinceDue} s), phase ${r.phase}`);}
+   if(k++%10===0)console.log(`  reinforcements-timer: t+${((Date.now()-w0)/1000).toFixed(0)}s day ${s.day}/${r.due} phase ${s.daylight.phase}, sector ${s.sector?.phase}${s.sector?.breathing?' (breathing)':''}, why ${r.why}`);await delay(briefed?250:1000);}
+  assert.ok(at,'the drop starts after the due day');
+  const r=R(at);console.log(`  reinforcements-timer: dropping on day ${at.day} (due ${r.due}), sector ${at.sector?.phase}${at.sector?.breathing?' (breathing)':' (not a breath)'}, ${r.lateBy} game s after the day turned, ${r.heldFor} of them held (seat, card or brief), shot ${at.shot}`);
+  assert.ok(at.day>=r.due,'not before the due day');
+  assert.ok(heldSeen,'the brief on the panel held the drop past the due day');
+  assert.ok(r.heldFor>0,'held while the brief was up');
+  assert.ok(r.lateBy-r.heldFor<=2,`within 2 game s of nothing holding it (${r.lateBy} - ${r.heldFor})`);}
+ current='reinforce-timer-dropping';await finish();
  await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`landed (${JSON.stringify(R(await st()))})`));
- {const s=await st();console.log(`  reinforcements-lull: landed, mechs ${R(s).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}`);assert.equal(R(s).mechs.length,4);
-  assert.ok((await evaluate('window.__seen.briefs')).some(b=>/Here they come/.test(b)),'Isao: here they come');}
- current='reinforce-lull-landed';await finish();
+ {const s=await st();console.log(`  reinforcements-timer: landed, mechs ${R(s).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}`);assert.equal(R(s).mechs.length,4);
+  assert.ok((await evaluate('window.__seen.briefs')).some(b=>/Here they come/.test(b)),'Isao: here they come');
+  await until(`(window.__seen?.briefs||[]).some(b=>/all they could send as support/.test(b))`,60000).catch(async()=>assert.fail(`Isao's landed line (${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-6))})`));}
+ current='reinforce-timer-landed';await finish();
+ // THE STREAK'S LORE (round 3, decision 2): every kill counts toward a streak (the sentries' and the mechs' too) until a leak ends it; with the sector
+ // quiet and its field cleared (the unmanned base leaks into the Stålheart), sixteen bodies beside the hunter and an arena mech make one; Isao's
+ // once-brief is asked at 1.5x (the tenth kill) and lands on his panel when it is free
+ {const s=await st(),ms=R(s).mechs,hunt=ms.find(m=>m.role==='hunt'),ar=ms.find(m=>m.role==='arena');console.log(`  reinforcements-timer: streak before ${JSON.stringify(s.streak)}`);
+  await evaluate(`${T}.sectorQuiet(true)`);await evaluate(`${T}.sectorClearField()`);await delay(2000);
+  await evaluate(`${T}.spawnHere(${hunt.cell},16)`);await evaluate(`${T}.spawnHere(${ar.cell},16)`);}
+ await until(`(window.__seen?.briefs||[]).some(b=>/their cells bind as they go/.test(b))`,120000).catch(async()=>assert.fail(`Isao's streak lore (streak ${JSON.stringify((await st()).streak)}; ${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-8))})`));
+ console.log(`  reinforcements-timer: streak at the lore ${JSON.stringify((await st()).streak)}`);
+ console.log(`  reinforcements-timer: the streak's lore said (${(await evaluate('window.__seen.briefs')).filter(b=>/their cells bind|seeps into the ground/.test(b)).length} of its 2 lines seen)`);
  } else if(args.includes('--reinforcements')) {
  // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23; spec docs/superpowers/specs/2026-10-23-feids26-reinforcements-design.md): ?reinforce=1 drops them as soon
  // as the world stands: the drop's phase within 10 s, the camera cut to the arena on the cinematic (shot 'feidsDrop', live), the four touchdowns at the

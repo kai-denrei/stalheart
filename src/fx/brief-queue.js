@@ -28,6 +28,10 @@ export function createBriefQueue(root, host) {
   // frame-loop accumulator cannot outlive anything. `briefDwell` is kept only to size the progress bar.
   let briefLeft = 0, briefDwell = 1;
   let briefPending = null;   // at most one beat waiting its turn
+  // A BEAT THAT MUST LAND (round 3, 2026-10-26: the streak's lore was asked on kills while the panel cycled other beats, and the one-deep slot
+  // dropped it every time): want(id, wait) takes the pending slot if it is free, else waits in this list for the panel to end a beat with nothing
+  // pending, for `wait` seconds of panel time at most
+  let wanted = [];
   const briefSeen = (() => {
     try { const v = JSON.parse(localStorage.getItem(BRIEF_SEEN) || '[]'); return Array.isArray(v) ? v : []; }
     catch { return []; }
@@ -81,6 +85,7 @@ export function createBriefQueue(root, host) {
   // PASS against a fix it had never exercised for exactly that reason.
   function stepBriefClock(dt) {
     if (!briefQ) return;
+    if (wanted.length) { for (const w of wanted) w.left -= dt; wanted = wanted.filter((w) => w.left > 0); }
     briefFaceT += dt;
     briefLeft -= dt;
     if (briefLeft <= 0) stepBrief(true); else paintBrief();
@@ -89,6 +94,13 @@ export function createBriefQueue(root, host) {
     briefQ = null; briefLeft = 0; if (isao()) isao().faceLock = null;
     if (briefEl) briefEl.classList.add('hidden');
     if (briefPending) { const nxt = briefPending; briefPending = null; showBrief(nxt); }
+    else if (wanted.length) showBrief(wanted.shift().id);
+  }
+  function wantBrief(id, wait = 90) {
+    const b = brief(id);
+    if (!b || (b.once && briefSeen.includes(id)) || briefPending === id || (briefQ && briefQ.id === id) || wanted.some((w) => w.id === id)) return;
+    if (!briefQ || !briefPending) { showBrief(id); return; }   // a free panel shows it, a busy one with a free slot holds it there
+    wanted.push({ id, left: wait });
   }
   function cutBrief(id) { briefPending = null; if (briefQ) endBrief(); showBrief(id); }   // DAY 42 (round 4, 2026-10-19): the party's over line goes out with the alarm, over whatever gate line holds the panel (src/fx/disco-party.js sayOver)
   function clearBriefs() { briefPending = null; endBrief(); }
@@ -96,7 +108,7 @@ export function createBriefQueue(root, host) {
 
   return {
     el: briefEl, seen: briefSeen,
-    paint: paintBrief, show: showBrief, step: stepBrief, stepClock: stepBriefClock, end: endBrief, clear: clearBriefs, cut: cutBrief,
+    paint: paintBrief, show: showBrief, want: wantBrief, step: stepBrief, stepClock: stepBriefClock, end: endBrief, clear: clearBriefs, cut: cutBrief,
     queue: () => briefQ, pending: () => briefPending,
   };
 }
