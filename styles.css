@@ -5060,6 +5060,8 @@ body.seat-gliding #seat-vignette { display: none; }
 #terminal .t-row[data-state="unseen"] { cursor: default; color: #4d625d; }
 #terminal .t-row[data-state="unseen"] .t-sw { opacity: 0.25; }
 #terminal .t-row[data-state="silhouette"] .t-nm { color: #9bb3ad; }
+#terminal .t-sec { margin: 10px 6px 2px; padding-bottom: 2px; color: #6f9a8f; font-size: 0.75em; letter-spacing: 0.16em; border-bottom: 1px solid rgba(150, 230, 205, 0.18); }   /* THE WHOLE TERMINAL (2026-10-27): a section's head in the list */
+#terminal .t-sec:first-child { margin-top: 2px; }
 #terminal .t-sw { display: inline-block; width: 10px; height: 10px; background: var(--sw); box-shadow: 0 0 6px var(--sw); }
 #terminal .t-stage { grid-column: 2; grid-row: 2; position: relative; z-index: 0; background: transparent; box-shadow: 0 0 0 300vmax #020405; border-radius: 3px; }
 #terminal .t-stage::after { content: ''; position: absolute; inset: -1px; border: 1px solid rgba(150, 230, 205, 0.35); border-radius: 3px; pointer-events: none; }
@@ -5080,6 +5082,9 @@ body.seat-gliding #seat-vignette { display: none; }
 #terminal .t-data td { padding: 2px 4px 2px 0; }
 #terminal .t-data td.t-cored { color: #ffb347; }
 #terminal .t-met { color: #8fb8ad; font-size: 0.85em; margin-bottom: 8px; }
+#terminal .t-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; margin: 0 0 10px; font-size: 0.85em; }   /* a colony entry's rows (the drawing's data block) */
+#terminal .t-facts dt { color: #5f8279; letter-spacing: 0.1em; white-space: nowrap; }
+#terminal .t-facts dd { margin: 0; color: #dff3ec; }
 #terminal .t-warn { color: #ffb347; text-shadow: 0 0 8px rgba(255, 179, 71, 0.45); border: 1px solid rgba(255, 179, 71, 0.5); padding: 4px 6px; margin-bottom: 10px; font-size: 0.9em; }
 #terminal .t-warn.blink { animation: t-blink 0.9s steps(2, jump-none) 1; }
 @keyframes t-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }

@@ -1463,9 +1463,9 @@ try{
  console.log('PROBE',await evaluate(`JSON.stringify({dom:[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent),navs:document.querySelectorAll("#story-views").length,laser:(l=>({auto:l.auto,platform:l.platform,strip:l.strip}))(${T}.state().laser)})`));
  await finish();
  } else if(args.includes('--wire')) {
- // ?wire=1 (owner, 2026-10-26): the hull, every sentry and the four Ridgebacks drawn as wireframes; the gunship and SOL untouched
+ // THE WIREFRAME, THE DEFAULT (owner, 2026-10-26 as ?wire=1, 2026-10-27 the default): the hull, every sentry and the four Ridgebacks drawn as wireframes with no flag; the gunship and SOL untouched; ?wire=0 the solids
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
- await go('wire',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&reinforce=1&wire=1#td`);
+ await go('wire',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&reinforce=1#td`);   // no flag: the wireframe is the default (2026-10-27)
  await until(`!!${T} && ${T}.state().wire?.hull?.[1]>0`,120000).catch(async()=>assert.fail(`the hull built (${JSON.stringify((await st()).wire)})`));
  {const placed=await evaluate(`(()=>{const T=${T},s=T.state(),tried=[];for(const ci of [s.storyHome,...(s.berthCells||[]),s.hull?.cell,s.hull?.door].filter(c=>c>=0)){const ok=T.commitTower('rotor',ci);tried.push([ci,ok]);if(ok)return tried;}return tried;})()`);console.log('  sentry placed: '+JSON.stringify(placed));}
  await until(`${T}.state().wire?.towers?.[1]>0`,10000).catch(async()=>assert.fail(`a sentry built (${JSON.stringify((await st()).wire)})`));
@@ -2605,10 +2605,15 @@ try{
  // the Stålheart's cell (its standing landmark) and one well away from it, through the laser station's own structure list
  const cells=async()=>evaluate(`(()=>{const s=${T}.laserStructures?.()??null;return s;})()`);
  await go('bestiary-unseen',url);await ready();
- {const s=await st();assert.equal(s.open,false);assert(s.entries.every(e=>e.state==='unseen'),`no contact yet: every entry unseen (${JSON.stringify(s.entries)})`);}
+ // THE WHOLE TERMINAL (2026-10-27): the colony's always-open entries (the hull, Isao, the foundry, the lander, the field) are full from the start, so the
+ // terminal opens on the hull; the hostiles are the contacts this step is about
+ const hostile=(s)=>s.entries.filter(e=>e.section==='hostile');
+ {const s=await st();assert.equal(s.open,false);assert(hostile(s).every(e=>e.state==='unseen'),`no contact yet: every hostile unseen (${JSON.stringify(hostile(s))})`);}
  const pausedBefore=await evaluate(`${T}.paused?.()??null`);
  await press('b','KeyB');await until(`${S}.open`,5000).catch(async()=>assert.fail(`B opens the terminal (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
- {const s=await st();assert(s.entries.every(e=>e.state==='unseen'),'every entry unseen');assert.equal(s.selected,'white','the first entry');assert.equal(s.card.state,'unseen');
+ {const s0=await st();assert(hostile(s0).every(e=>e.state==='unseen'),'every hostile unseen');assert.equal(s0.selected,'mork','opens on the first open entry: the hull');assert.equal(s0.card.state,'full');assert(s0.entries.some(e=>e.id==='mork'&&e.state==='full'),'the hull is always on the books');}
+ await evaluate(`${B}.select('white')`);await delay(300);
+ {const s=await st();assert.equal(s.selected,'white','the first hostile');assert.equal(s.card.state,'unseen');
   assert.equal(s.card.note,'NO READING · NOT YET MET','the first entry\'s card says so');assert.equal(s.card.name,'— — —');assert.equal(s.stage.mode,'none');assert.equal(s.pause,true,'the game paused under it');
   assert(s.box&&s.box.w>200&&s.box.h>150&&s.box.target[0]>=Math.floor(s.box.w),`the stage's box and its target (${JSON.stringify(s.box)})`);}
  await delay(400);await finish();
@@ -2619,7 +2624,7 @@ try{
  await press('b','KeyB');await until(`${S}.open`,5000);
  await until(`${S}.stage.bodies===3`,20000).catch(async()=>assert.fail(`white's pack of three on the stage (${JSON.stringify(await st())})`));
  {const s=await st();const by=Object.fromEntries(s.entries.map(e=>[e.id,e.state]));assert.equal(by.white,'full');assert.equal(by.orange,'full');
-  assert(Object.entries(by).filter(([k])=>!['white','orange'].includes(k)).every(([,v])=>v==='unseen'),`the others unseen (${JSON.stringify(by)})`);
+  assert(hostile(s).filter(e=>!['white','orange'].includes(e.id)).every(e=>e.state==='unseen'),`the other hostiles unseen (${JSON.stringify(by)})`);
   assert.equal(s.selected,'white');assert.equal(s.card.state,'full');assert(s.card.lines>=3,'Isao\'s lines');assert.equal(s.card.warning,null,'white is soft: no warning');
   assert.equal(s.stage.mode,'full');assert.equal(s.stage.force,0,'the high hull forced');assert.equal(s.stage.levels[0],3,`every body at the high hull (${s.stage.levels})`);assert(Array.isArray(s.stage.lure),'the lure runs');}
  await delay(1500);current='bestiary-white';await finish();
@@ -2638,7 +2643,7 @@ try{
  await press('Escape','Escape');await until(`!${S}.open`,5000);
  // a reload: the log is empty, the record is not
  await go('bestiary-console',url);await ready();
- {const s=await st();assert(s.entries.every(e=>e.state!=='full'),'the log is empty after a reload');console.log(`  after the reload the hull is ${s.console.shown?'under the gantry (the bays are behind the Stålheart)':'away from the gantry'}`);}
+ {const s=await st();assert(hostile(s).every(e=>e.state!=='full'),'the log is empty after a reload');console.log(`  after the reload the hull is ${s.console.shown?'under the gantry (the bays are behind the Stålheart)':'away from the gantry'}`);}
  // the console: away from the Stålheart's gantry no prompt; under it the prompt, and Isao's first line (the terminal never opened this run)
  const spot=(await st()).console.cell,away=(await evaluate(`${T}.state().sector?.sockets??[]`))[0];assert(spot>=0&&away>=0,`the gantry's cell ${spot} and one away ${away}`);
  await evaluate(`${T}.placeTank(${away})`);await until(`!${S}.console.shown`,5000).catch(async()=>assert.fail(`no prompt away from the gantry (${JSON.stringify((await st()).console)})`));
@@ -2668,6 +2673,62 @@ try{
  await press('ArrowDown','ArrowDown');await until(`window.__stalheartUnits.bestiary.state().selected==='reed'`,5000);
  {const s=await evaluate('window.__stalheartUnits.bestiary.state()');assert.equal(s.stage.mode,'none','the Reeds: a card without a stage');assert(s.card.lines>=2);}
  await press('Escape','Escape');await until('!window.__stalheartUnits.bestiary.state().open',5000);
+ } else if(args.includes('--bestiary-units')) {
+ // THE WHOLE TERMINAL (owner, 2026-10-27: "make the wireframe look the default, not a flag. and expand the B Bestiary to have ALL the units, including
+ // the friendlies and neutral, buildings, etc."; src/fx/terminal-screen.js, src/fx/unit-bench.js, src/content/bestiary.js UNIT_ENTRIES): the finished
+ // base with the four landed, no flag: the hull, the sentry and the Ridgebacks are wireframes by default; B opens the terminal: the hull, the Rotor,
+ // the Ridgeback and the Stålheart open (always / unlocked / landed / the perk), the ball locked (no DAY 42 yet) with the locked note, the hostiles as
+ // before; the Rotor on the bench as the drawing with every mesh wired, its top-tier rows on the card, the footer's WIRE / SOLID; Enter -> the solid;
+ // the Ridgeback walking (Walk_Cycle), the Stålheart's cycle at its size; Escape closes. The lab: every entry full, the gunship and a Heptapod on the bench.
+ const T='window.__stalheartTest',B=`${T}.bestiary`,S=`${B}.state()`,st=()=>evaluate(S);
+ const press=async(key,code)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key,code,windowsVirtualKeyCode:key.length===1?key.toUpperCase().charCodeAt(0):undefined});await send('Input.dispatchKeyEvent',{type:'keyUp',key,code});await delay(250);};
+ const FOOT_UNIT='↑↓ ENTRIES · ⏎ WIRE / SOLID · ESC CLOSE',FOOT='↑↓ ENTRIES · ⏎ PACK 3/6 · ESC CLOSE';
+ await go('bestiary-units',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&reinforce=1#td`);
+ await until(`!!${T} && !!${T}.bestiary && ${T}.state().wire?.hull?.[1]>0`,120000).catch(async()=>assert.fail(`the hull built (${JSON.stringify((await evaluate(`${T}.state().wire`)))})`));
+ {const w=await evaluate(`${T}.state().wire`);assert.equal(w.on,true,'the wireframe is the default, no flag');assert.equal(w.mode,'tint');assert.equal(w.hull[0],w.hull[1],`the hull wired by default (${JSON.stringify(w)})`);}
+ await until(`${T}.state().reinforcements?.phase==='landed'`,150000).catch(async()=>assert.fail(`the four landed (${JSON.stringify((await evaluate(`${T}.state().reinforcements`))?.phase)})`));
+ await evaluate(`document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card,#sector-card{display:none!important}</style>")`);
+ await delay(1500);
+ await press('b','KeyB');await until(`${S}.open`,5000).catch(async()=>{await evaluate(`${B}.open()`);await until(`${S}.open`,5000);console.log('  (opened through the harness: the key was gated)');});
+ {const s=await st();const by=Object.fromEntries(s.entries.map(e=>[e.id,e.state]));
+  for(const id of ['mork','isao','rotor','mx06','feids26','stalheart','korp','foundry','container','shells'])assert.equal(by[id],'full',`${id} open (${JSON.stringify(by)})`);
+  assert.equal(by.ball,'unseen','no DAY 42 yet: the ball locked');assert.equal(by.white,'unseen','no contact yet: the hostiles as before');
+  console.log(`  entries: ${s.entries.length}, open ${s.entries.filter(e=>e.state==='full').length}; sol88 ${by.sol88}, board ${by.board}, launcher ${by.launcher}, needle ${by.needle}, heptapod ${by.heptapod}`);
+  assert(s.entries.findIndex(e=>e.id==='mork')>s.entries.findIndex(e=>e.id==='nih-dairia'),'the colony after the hostiles');}
+ // the Rotor on the bench: the drawing, every mesh wired, its rows, the footer
+ await evaluate(`${B}.select('rotor')`);await until(`${S}.stage?.unit?.loaded===true`,30000).catch(async()=>assert.fail(`the Rotor on the bench (${JSON.stringify((await st()).stage?.unit)})`));
+ {const s=await st();assert.equal(s.stage.mode,'unit');assert.equal(s.wire,true);const m=s.stage.unit.meshes;assert(m[1]>0&&m[0]===m[1],`every mesh of the Rotor wired (${m})`);assert.equal(s.footer,FOOT_UNIT);
+  assert(s.card.facts>=3,`the Rotor's rows: build, cost, top tier (${s.card.facts})`);assert.equal(s.card.state,'full');assert(s.card.lines>=2);assert(s.stage.unit.box.r>0.5&&s.stage.unit.box.r<6,`a 5 m sentry (${JSON.stringify(s.stage.unit.box)})`);
+  console.log(`  rotor: ${JSON.stringify(s.stage.unit)}`);}
+ await delay(1500);await finish();
+ await press('Enter','Enter');await until(`${S}.stage?.unit?.meshes?.[0]===0&&!${S}.wire`,5000).catch(async()=>assert.fail(`Enter: the solid (${JSON.stringify((await st()).stage?.unit)})`));
+ await delay(800);current='bestiary-units-solid';await finish();
+ await press('Enter','Enter');await until(`${S}.wire&&${S}.stage?.unit?.meshes?.[0]>0`,5000);
+ // the Ridgeback walking, the Stålheart at its size
+ await evaluate(`${B}.select('mx06')`);await until(`${S}.stage?.unit?.id==='mx06'&&${S}.stage?.unit?.loaded===true`,60000).catch(async()=>assert.fail(`the Ridgeback on the bench (${JSON.stringify((await st()).stage?.unit)})`));
+ {const s=await st();assert.equal(s.stage.unit.clip,'Walk_Cycle',`the walk cycle (${s.stage.unit.clip})`);const m=s.stage.unit.meshes;assert(m[1]>0&&m[0]===m[1]);console.log(`  mx06: ${JSON.stringify(s.stage.unit)}`);}
+ await delay(2000);current='bestiary-units-mech';await finish();
+ await evaluate(`${B}.select('stalheart')`);await until(`${S}.stage?.unit?.id==='stalheart'&&${S}.stage?.unit?.loaded===true`,90000).catch(async()=>assert.fail(`the Stålheart on the bench (${JSON.stringify((await st()).stage?.unit)})`));
+ {const s=await st();assert(s.stage.unit.box.r>10,`a building-sized box (${JSON.stringify(s.stage.unit.box)})`);console.log(`  stalheart: ${JSON.stringify(s.stage.unit)}`);}
+ await delay(2500);current='bestiary-units-stalheart';await finish();
+ // locked: the ball; the hostiles keep their footer
+ await evaluate(`${B}.select('ball')`);await delay(300);
+ {const s=await st();assert.equal(s.card.state,'unseen');assert.equal(s.card.note,"NO ENTRY · NOT YET ON THE COLONY'S BOOKS",s.card.note);assert.equal(s.stage.mode,'none');assert.equal(s.card.name,'— — —');}
+ await evaluate(`${B}.select('white')`);await delay(300);
+ {const s=await st();assert.equal(s.footer,FOOT);assert.equal(s.stage.mode,'none');}
+ await press('Escape','Escape');await until(`!${S}.open`,5000);
+ // the lab: every entry full; the gunship and a Heptapod on the bench
+ await go('bestiary-units-lab','labs.html?sw=0&acceptance=1#units');
+ const U='window.__stalheartUnits.bestiary',LS=`${U}.state()`;
+ await until(`!!document.querySelector("#units-bestiary")&&!!window.__stalheartUnits?.bestiary`,60000);
+ await click('#units-bestiary');await until(`${LS}.open`,5000);
+ {const s=await evaluate(LS);assert(s.entries.every(e=>e.state==='full'),`the lab: every entry full (${s.entries.filter(e=>e.state!=='full').map(e=>e.id)})`);console.log(`  the lab: ${s.entries.length} entries, all full`);}
+ await evaluate(`${U}.select('korp')`);await until(`${LS}.stage?.unit?.id==='korp'&&${LS}.stage?.unit?.loaded===true`,60000).catch(async()=>assert.fail(`the gunship on the bench (${JSON.stringify((await evaluate(LS)).stage?.unit)})`));
+ await delay(2000);await finish();
+ await evaluate(`${U}.select('heptapod')`);await until(`${LS}.stage?.unit?.id==='heptapod'&&${LS}.stage?.unit?.loaded===true`,60000).catch(async()=>assert.fail(`the Heptapod on the bench (${JSON.stringify((await evaluate(LS)).stage?.unit)})`));
+ {const s=await evaluate(LS);const m=s.stage.unit.meshes;assert(m[1]>0&&m[0]===m[1],`the Heptapod wired (${m})`);console.log(`  heptapod: ${JSON.stringify(s.stage.unit)}`);}
+ await delay(1500);current='bestiary-units-heptapod';await finish();
+ await press('Escape','Escape');await until(`!${LS}.open`,5000);
  } else if(args.includes('--dead-probe')) {
  // THE DEAD READ GREY, AND THE RAM DRAWN IN UNDER THE HULL (owner, 2026-10-19, round four, notes 1 and 2): a measuring probe, no assertions but the page's
  // errors. Story sector 2 with the Pearl set at PHASES (day numbers with the phase, default 2.95 and 3.45: noon and midnight once the page has loaded, about

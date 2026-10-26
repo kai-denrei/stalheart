@@ -108,7 +108,7 @@ import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
-  const wire = !!flags.wire && flags.wire !== '0', wireOpts = { tint: flags.wire !== 'flat' };   // WIREFRAME UNITS (owner, 2026-10-26, a test: "all the sentries, Mork, Mechs. but not the gunship or sol"): ?wire=1 tinted per part (src/fx/model-fixture.js wireLook), ?wire=flat the briefings' one cyan
+  const wire = flags.wire !== '0', wireOpts = { tint: flags.wire !== 'flat' };   // WIREFRAME UNITS, THE DEFAULT (owner, 2026-10-26 a test, 2026-10-27 "make the wireframe look the default, not a flag": "all the sentries, Mork, Mechs. but not the gunship or sol"): tinted per part (src/fx/model-fixture.js wireLook); ?wire=flat the briefings' one cyan, ?wire=0 the solids
   let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, discoParty = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
   let reinforcements = null, mechSquad = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
   let pilot = null;
@@ -350,7 +350,7 @@ export function initTdTab(root) {
   const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(isStoryRoute(location.search)?STORY_SOUNDS:{})} });   // every story page (a bare one has no world=story)
   const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look}), diveCuts = flags.cuts === 'dive', groundFeed = createGroundFeed(root, { busy: () => !!storyMonitor?.on() || laserStation.seated() || (shotActive() && shotId() !== 'reveal'), blocked: () => paused || !!syntheticModal?.isOpen(), heart: () => (dungeon ? graph.normals[dungeon.heart] : null), cellSide: () => cellSide });   /* &cuts=dive: the old dives, not SAT-3's feed (src/fx/ground-feed.js) */
   const bestiary = createTerminalScreen(root, { renderer: () => renderer, pause: { get: () => paused, set: (v) => { paused = v; } }, under: () => !!storyBase?.inside?.('stalheart', player.pos), spot: () => dungeon?.heart ?? -1,   /* THE TERMINAL AND THE BESTIARY (owner, 2026-10-14; src/fx/terminal-screen.js): B, and the console under the Stålheart's gantry */
-    canOpen: () => !!story && !pilotMode && !laserStation.seated() && !shotActive() && !player.won && !story.debrief?.isOpen() && !gunshipBriefing?.isOpen() && !syntheticModal?.isOpen() && !laserStation.briefingOpen() && !story.hull?.held() });
+    canOpen: () => !!story && !pilotMode && !laserStation.seated() && !shotActive() && !player.won && !story.debrief?.isOpen() && !gunshipBriefing?.isOpen() && !syntheticModal?.isOpen() && !laserStation.briefingOpen() && !story.hull?.held(), world: () => terminalWorld() });
   // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock, the seat, the beam through the game's own paths
   // THE ARSENAL'S OWN LITERAL (refactor round 2, 2026-10-13): the station used to hand its whole host on to the arsenal; the
   // seat's members stay in the station's literal below. passEnded leaves the seat: a lazy call, run only when a pass closes.
@@ -4515,6 +4515,7 @@ export function initTdTab(root) {
       poll: () => ({ passes: gunship.passes, shieldUp: shieldUp(), drawn: arrayStation.drawn ?? 0, earned: eco.earned, spent: eco.spent, delivered: (story.expeditions?.sites ?? []).filter((s) => s.state === 'delivered').map((s) => s.id), laser: laserStation.stats?.() ?? null }),   /* SOL-82's books: { passes, seconds } */
     });
   }
+  function terminalWorld() { return { perks: [...storyApi.perks()], sentries: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(wave), mechs: reinforcements?.state()?.phase === 'landed', sector: sectorRun?.state()?.n ?? 0, sol88: !!story?.launch, ball: /^(party|over|done)$/.test(discoParty?.state()?.phase ?? '') }; }   // THE WHOLE TERMINAL (2026-10-27): what the run has reached, for the colony's entries (src/domain/bestiary.js unitState)
   const storyApi = {
     // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
     // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels

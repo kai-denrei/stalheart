@@ -21,7 +21,15 @@
 // sightings record (BESTIARY_STORE through src/storage.js, noted at a contact's first rise: onContact); never met, — — —, not selectable. The
 // lab's host says every entry is full (host.all).
 //
-// KEYS while open (they reach nothing else): Escape or B closes, up/down or W/S move, Enter or Space toggles the pack (3/6).
+// THE WHOLE TERMINAL (owner, 2026-10-27: "expand the B Bestiary to have ALL the units, including the friendlies and neutral, buildings, etc."):
+// after the hostile contacts the list carries the colony's entries by section (src/content/bestiary.js SECTIONS, UNIT_ENTRIES: the hull, Isao,
+// the Ridgeback and its capsule, the eight sentries, the gunship and the two SOLs, the base's structures, the field's neutral things), each
+// open once the run has what it needs (src/domain/bestiary.js unitState, from host.world(): the perks held, the sentries unlocked, the four
+// landed, the sector reached, the launch, the party; the lab's host says every entry is full) and otherwise the same dim row as a contact
+// never met. A colony entry's stage is the bench (src/fx/unit-bench.js): the unit at its true size, as the drawing the game draws it with;
+// Enter or Space swaps the drawing for the solid (the footer says so); a sentry's card adds its top-tier stats from src/towers.js.
+//
+// KEYS while open (they reach nothing else): Escape or B closes, up/down or W/S move, Enter or Space toggles the pack (3/6) or the drawing.
 // createTerminalScreen(root, host) -> { open(), close(), isOpen(), tick(), frame(dt), state(), test: { open, close, state, note(type) }, dispose() }
 // host: { renderer() the canvas's renderer, pause { get, set }, canOpen() (B may open it), under() (the hull is under the gantry), spot() (the
 //         console's cell, for the harness), all (the lab: every entry full), contacts() (this run's types; default the contact card's log),
@@ -32,8 +40,9 @@ import { createBestiaryStage } from './bestiary-stage.js';
 import { showContact, contactsLogged, onContact } from './contact-card.js';
 import { isaoSpeak } from './isao-voice.js';
 import { storage } from '../storage.js';
-import { bestiaryRoster, entryIdOf, entryState, entryCard, readSightings, noteSighting } from '../domain/bestiary.js';
-import { ENTRIES, TERMINAL, TERMINAL_CRT, BESTIARY_STAGE, BESTIARY_STORE, CREATURE_SPEC, CREATURE_LABELS } from '../content/bestiary.js';
+import { bestiaryRoster, entryIdOf, entryState, entryCard, readSightings, noteSighting, terminalRoster, unitState, unitCard } from '../domain/bestiary.js';
+import { ENTRIES, TERMINAL, TERMINAL_CRT, BESTIARY_STAGE, BESTIARY_BENCH, BESTIARY_STORE, CREATURE_SPEC, CREATURE_LABELS, SECTIONS, UNIT_ENTRIES } from '../content/bestiary.js';
+import { TOWER_BY_KEY, effectiveStats, MAX_TIER } from '../towers.js';
 import { PEARL_TIERS, PEARL_OF } from '../content/pearl-enemies.js';
 import { ENEMY_SPEC, INTROS } from '../enemyspec.js';
 
@@ -45,10 +54,13 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const dated = (s) => esc(s).replace(/(\d{4}-\d{2}-\d{2})/g, '<span class="t-date">$1</span>');   // a date never broken at its hyphens
 const pad2 = (n) => String(n).padStart(2, '0');
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+// a sentry's card rows from the game's own tables at the top tier (src/towers.js effectiveStats): cost, range, damage and rate
+const sentryFacts = (e) => { const d = e.tower && TOWER_BY_KEY[e.tower]; if (!d) return []; const t = effectiveStats(d, MAX_TIER); return [['COST', `${d.cost} kg`], ['TOP TIER', `range ${t.range.toFixed(1)} · ${t.dmg.toFixed(2)} dmg × ${t.rate.toFixed(1)} / s${t.splash ? ` · splash ${t.splash}` : ''}`]]; };
+const sectionLabel = (id) => SECTIONS.find((x) => x.id === id)?.label ?? String(id).toUpperCase();
 
 export function createTerminalScreen(root, host) {
   const all = host.all ?? false, store = host.store ?? storage;
-  const roster = bestiaryRoster({ entries: ENTRIES, tiers: PEARL_TIERS, of: PEARL_OF, spec: SPEC });
+  const roster = terminalRoster(bestiaryRoster({ entries: ENTRIES, tiers: PEARL_TIERS, of: PEARL_OF, spec: SPEC }), UNIT_ENTRIES, SECTIONS);   // the hostiles first, then the colony by section
   const contacts = () => host.contacts?.() ?? contactsLogged(root);
 
   // --- the sightings across runs: noted at a kind's first rise this page (once an entry a run), read at every open ------------------------------
@@ -73,52 +85,62 @@ export function createTerminalScreen(root, host) {
   const prompt = document.createElement('div'); prompt.id = 'terminal-prompt'; prompt.hidden = true;
   prompt.innerHTML = `<div class="t-isao" hidden></div><div class="t-key">${esc(TERMINAL.hint)}</div>`;
   root.append(prompt);
-  const q = (s) => el.querySelector(s), listEl = q('.t-list'), cardEl = q('.t-card'), stageEl = q('.t-stage'), labelEl = q('.t-stage-label'), packEl = q('.t-pack'), nosigEl = q('.t-nosig'), countEl = q('.t-count');
+  const q = (s) => el.querySelector(s), listEl = q('.t-list'), cardEl = q('.t-card'), stageEl = q('.t-stage'), labelEl = q('.t-stage-label'), packEl = q('.t-pack'), nosigEl = q('.t-nosig'), countEl = q('.t-count'), footEl = q('.t-foot span');
   const isaoEl = prompt.querySelector('.t-isao');
   q('.t-name').textContent = TERMINAL.name;
 
-  let open = false, was = false, selected = 0, pack = BESTIARY_STAGE.packSizes[0], states = roster.map(() => 'unseen'), stage = null, crt = null, rt = null, opens = 0, burst = 0;
+  let open = false, was = false, selected = 0, pack = BESTIARY_STAGE.packSizes[0], wireOn = BESTIARY_BENCH.wire, states = roster.map(() => 'unseen'), stage = null, crt = null, rt = null, opens = 0, burst = 0;
   let consoleShown = false, told = false, everOpened = false, lineTimer = 0;
   const rect = { x: 0, y: 0, w: 1, h: 1 };
 
   function refresh() {
-    const log = contacts(), seen = sightings();
-    states = roster.map((e) => entryState(e, { log, sightings: seen, all }));
+    const log = contacts(), seen = sightings(), world = host.world?.() ?? null;
+    states = roster.map((e) => (e.kind === 'unit' ? unitState(e, world, all) : entryState(e, { log, sightings: seen, all })));
+    let section = null;
     listEl.innerHTML = roster.map((e, k) => {
-      const st = states[k], unseen = st === 'unseen';
-      return `<li class="t-row" data-k="${k}" data-state="${st}"><i class="t-sw" style="--sw:${hex(e.swatch)}"></i><span class="t-n">${pad2(e.index)}</span>`
+      const st = states[k], unseen = st === 'unseen', head = e.section !== section ? `<li class="t-sec">${esc(sectionLabel(section = e.section))}</li>` : '';
+      return `${head}<li class="t-row" data-k="${k}" data-state="${st}"><i class="t-sw" style="--sw:${hex(e.swatch)}"></i><span class="t-n">${pad2(e.index)}</span>`
         + `<span class="t-nm">${esc(unseen ? TERMINAL.unseenName : e.name)}</span><span class="t-st">${st === 'full' ? 'LIVE' : st === 'silhouette' ? 'ARCHIVE' : ''}</span></li>`;
     }).join('');
     countEl.textContent = `${states.filter((s) => s !== 'unseen').length} / ${roster.length} LOGGED`;
   }
   function select(k) {
     selected = Math.max(0, Math.min(roster.length - 1, k));
-    const e = roster[selected], st = states[selected], c = entryCard(e, st, { spec: SPEC, labels: LABELS, sightings: sightings(), log: contacts(), copy: TERMINAL });
+    const e = roster[selected], st = states[selected], unit = e.kind === 'unit';
+    const c = unit ? unitCard(e, st, { copy: TERMINAL, facts: sentryFacts(e) }) : entryCard(e, st, { spec: SPEC, labels: LABELS, sightings: sightings(), log: contacts(), copy: TERMINAL });
     for (const li of listEl.children) li.classList.toggle('on', +li.dataset.k === selected);
+    listEl.querySelector('.t-row.on')?.scrollIntoView?.({ block: 'nearest' });
     cardEl.innerHTML = `<div class="t-c-head">${esc(c.head)}</div><div class="t-c-name"><i class="t-sw" style="--sw:${hex(c.swatch)}"></i>${esc(c.name)}</div>`
       + `<div class="t-c-group">${esc(c.group)}</div>`
       + (c.data.length ? `<table class="t-data"><tr><th>TYPE</th><th>HIT POINTS</th><th>SPEED</th><th>SIZE</th><th>RAM</th></tr>${c.data.map((d) => `<tr><td>${esc(d.name)}</td><td>${d.hp}</td><td>${d.speed}</td><td>${d.size}</td><td class="${d.ram === TERMINAL.ram.cored ? 't-cored' : ''}">${esc(d.ram)}</td></tr>`).join('')}</table>` : '')
+      + (c.facts?.length ? `<dl class="t-facts">${c.facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : '')
       + (c.met ? `<div class="t-met">${dated(c.met)}</div>` : '')
       + (c.warning ? `<div class="t-warn">${esc(c.warning)}</div>` : '')
       + (c.text ? `<div class="t-text">${c.text.map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : '')
       + (c.note ? `<div class="t-note">${dated(c.note)}</div>` : '');
     cardEl.dataset.state = st;
     const warn = cardEl.querySelector('.t-warn'); if (warn) { warn.classList.remove('blink'); void warn.offsetWidth; warn.classList.add('blink'); }
-    stage?.show(e, { state: st, pack });
+    stage?.show(e, { state: st, pack, wire: wireOn });
     const s = stage?.state();
-    labelEl.textContent = s?.mode === 'none' ? (st === 'unseen' ? 'NO SIGNAL' : e.stage ? 'NO SIGNAL' : 'CARD ONLY') : `LIVE STAGE · ${e.name}${st === 'silhouette' ? ' · ARCHIVE' : ''}`;
-    nosigEl.textContent = s?.mode === 'none' ? (st === 'unseen' ? TERMINAL.unseenNote : e.stage ? '' : TERMINAL.noStage) : '';
-    packEl.innerHTML = BESTIARY_STAGE.packSizes.map((n) => `<b class="${n === pack ? 'on' : ''}">${n}</b>`).join('/');
+    labelEl.textContent = s?.mode === 'none' ? (st === 'unseen' ? 'NO SIGNAL' : e.stage ? 'NO SIGNAL' : 'CARD ONLY') : s?.mode === 'unit' ? `BENCH · ${e.name}` : `LIVE STAGE · ${e.name}${st === 'silhouette' ? ' · ARCHIVE' : ''}`;
+    nosigEl.textContent = s?.mode === 'none' ? (st === 'unseen' ? (unit ? TERMINAL.lockedNote : TERMINAL.unseenNote) : e.stage ? '' : TERMINAL.noStage) : '';
+    paintToggle(unit);
     packEl.parentElement.dataset.mode = s?.mode ?? 'none';
+    footEl.textContent = unit ? TERMINAL.footerUnit : TERMINAL.footer;
     burst = 0.5;   // a cut of static between entries
   }
   function move(d) {
     const n = roster.length;
     for (let k = 1; k <= n; k++) { const i = (selected + d * k + n * 4) % n; if (states[i] !== 'unseen') { select(i); return; } }
   }
+  // the stage's toggle: a pack of 3 or 6 for a contact, WIRE or SOLID for a colony entry
+  function paintToggle(unit) {
+    packEl.innerHTML = unit ? ['WIRE', 'SOLID'].map((t, k) => `<b class="${(k === 0) === wireOn ? 'on' : ''}">${t}</b>`).join('/') : BESTIARY_STAGE.packSizes.map((n) => `<b class="${n === pack ? 'on' : ''}">${n}</b>`).join('/');
+  }
   function togglePack() {
+    if (roster[selected]?.kind === 'unit') { wireOn = !wireOn; stage?.setWire(wireOn); paintToggle(true); return; }
     const sizes = BESTIARY_STAGE.packSizes; pack = sizes[(sizes.indexOf(pack) + 1) % sizes.length];
-    stage?.setPack(pack); packEl.innerHTML = sizes.map((n) => `<b class="${n === pack ? 'on' : ''}">${n}</b>`).join('/');
+    stage?.setPack(pack); paintToggle(false);
   }
 
   function openNow() {
@@ -191,10 +213,10 @@ export function createTerminalScreen(root, host) {
   }
 
   const state = () => ({
-    open, opens, selected: roster[selected]?.id ?? null, pack, pause: host.pause.get(),
-    entries: roster.map((e, k) => ({ id: e.id, state: states[k] })),
+    open, opens, selected: roster[selected]?.id ?? null, pack, wire: wireOn, pause: host.pause.get(),
+    entries: roster.map((e, k) => ({ id: e.id, state: states[k], section: e.section })), footer: footEl.textContent,
     card: { state: cardEl.dataset.state ?? null, name: cardEl.querySelector('.t-c-name')?.textContent ?? null, head: cardEl.querySelector('.t-c-head')?.textContent ?? null,
-      warning: cardEl.querySelector('.t-warn')?.textContent ?? null, note: cardEl.querySelector('.t-note')?.textContent ?? null, lines: cardEl.querySelectorAll('.t-text p').length, data: cardEl.querySelectorAll('.t-data tr').length - (cardEl.querySelector('.t-data') ? 1 : 0) },
+      warning: cardEl.querySelector('.t-warn')?.textContent ?? null, note: cardEl.querySelector('.t-note')?.textContent ?? null, lines: cardEl.querySelectorAll('.t-text p').length, data: cardEl.querySelectorAll('.t-data tr').length - (cardEl.querySelector('.t-data') ? 1 : 0), facts: cardEl.querySelectorAll('.t-facts dt').length },
     stage: stage?.state() ?? null, box: open ? { w: rect.w, h: rect.h, target: [rt.width, rt.height] } : null,
     console: { shown: consoleShown, told, line: isaoEl.hidden ? null : isaoEl.textContent, cell: host.spot?.() ?? null }, sightings: sightings(),
   });

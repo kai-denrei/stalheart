@@ -143,3 +143,48 @@ export function noteSighting(record, id, date) {
   const was = record?.[id];
   return { ...record, [id]: was ? { first: was.first, runs: was.runs + 1, last: date } : { first: date, runs: 1, last: date } };
 }
+
+// THE WHOLE TERMINAL (owner, 2026-10-27: "expand the B Bestiary to have ALL the units, including the friendlies and neutral, buildings, etc."):
+//   terminalRoster  the hostile roster (bestiaryRoster) first, then the colony's entries (the content's UNIT_ENTRIES, kind 'unit') in the
+//                   sections' order, one numbering over all; each row carries its section id
+//   unitState       'full' once the run has what the entry needs (`needs`: always; perk, a programme perk held; sentry, an unlocked key; mechs, the
+//                   four landed; sector, a sector number reached; sol88, the launch; ball, the DAY 42 party), else 'unseen'; the lab's host says full
+//   unitCard        what the card shows for a colony entry: the head, the name, the facts, the text, the locked note
+export const UNIT_NEEDS = Object.freeze(['always', 'perk', 'sentry', 'mechs', 'sector', 'sol88', 'ball']);
+
+export function terminalRoster(hostile, units, sections) {
+  const order = new Map(sections.map((s, k) => [s.id, k]));
+  const colony = [...units].sort((a, b) => (order.get(a.section) ?? 99) - (order.get(b.section) ?? 99)).map((u) => ({
+    id: u.id, kind: 'unit', section: u.section, name: u.name, label: u.label ?? 'COLONY', types: Object.freeze([]), rank: null, cored: false, swatch: u.swatch ?? 0xffffff,
+    stage: !!(u.model?.url || u.tower || u.build), model: u.model ?? null, tower: u.tower ?? null, build: u.build ?? null, needs: u.needs ?? {}, facts: Object.freeze((u.facts ?? []).map((f) => Object.freeze([...f]))), isao: Object.freeze([...(u.isao ?? [])]),
+  }));
+  const rows = [...hostile.map((e) => ({ ...e, section: 'hostile' })), ...colony];
+  return rows.map((e, k) => Object.freeze({ ...e, index: k + 1, total: rows.length }));
+}
+
+// `world` { perks: iterable of perk ids, sentries: unlocked keys, mechs: the four landed, sector: the sector number reached, sol88: launched, ball: the party }
+export function unitState(entry, world = null, all = false) {
+  if (all) return 'full';
+  const n = entry.needs ?? {}, w = world ?? {}, has = (list, id) => !!list && (typeof list.has === 'function' ? list.has(id) : Array.from(list).includes(id));
+  if (n.always) return 'full';
+  if (n.perk) return has(w.perks, n.perk) ? 'full' : 'unseen';
+  if (n.sentry) return has(w.sentries, n.sentry) ? 'full' : 'unseen';
+  if (n.mechs) return w.mechs ? 'full' : 'unseen';
+  if (n.sector != null) return (w.sector ?? 0) >= n.sector ? 'full' : 'unseen';
+  if (n.sol88) return w.sol88 ? 'full' : 'unseen';
+  if (n.ball) return w.ball ? 'full' : 'unseen';
+  return 'unseen';
+}
+
+// `facts` extra rows the screen adds (a sentry's top-tier stats), `copy` the content's TERMINAL -> the card
+export function unitCard(entry, state, { copy, facts = [] }) {
+  const unseen = state !== 'full';
+  return {
+    id: entry.id, state, selectable: !unseen,
+    head: `ENTRY ${String(entry.index).padStart(2, '0')} / ${String(entry.total).padStart(2, '0')} · ${entry.label}`,
+    name: unseen ? copy.unseenName : entry.name, group: unseen ? copy.unseenName : entry.label, swatch: entry.swatch, dim: unseen,
+    data: [], facts: unseen ? [] : [...entry.facts, ...facts], met: null, warning: null,
+    text: unseen ? null : entry.isao.slice(),
+    note: unseen ? copy.lockedNote : entry.stage ? null : copy.noStage,
+  };
+}

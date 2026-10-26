@@ -28,7 +28,10 @@
 // walk x `speed` (its own reach is already 15 radii). The lure slows with them (its mean speed `lure.pace` of the pack's walk, its boost x
 // `speed`) and keeps `lure.aheadReach` x the pack's full reach from every body, so a body stretches for it and nearly never gets it.
 //
-// createBestiaryStage({ stage }) -> { show(entry, { state, pack }), setPack(n), step(dt, height), render(renderer, target), state(), dispose() }
+// THE COLONY'S ENTRIES (owner, 2026-10-27: every unit in the terminal): an entry of kind 'unit' stands on the bench (src/fx/unit-bench.js) at the
+// disc's centre, the camera orbiting its box instead of a pack (BESTIARY_BENCH.orbit), the lure and the pack off; `wire` opens it as the drawing.
+//
+// createBestiaryStage({ stage }) -> { show(entry, { state, pack, wire }), setPack(n), setWire(on), step(dt, height), render(renderer, target), state(), dispose() }
 import * as THREE from '../../vendor/three.module.js';
 import { createPearlFamily } from './creature-pearl.js';
 import { createCutisFamily } from './creature-cutis.js';
@@ -39,7 +42,8 @@ import { lurePoint, lureStep, packSeats } from '../domain/bestiary.js';
 import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, PEARL_GAIT, PEARL_IMPACT } from '../content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH, CREATURE_TIERS } from '../content/creature-enemies.js';
 import { STORY_RECIPE, STORY_SANITY } from '../content/story-defaults.js';
-import { BESTIARY_STAGE } from '../content/bestiary.js';
+import { BESTIARY_STAGE, BESTIARY_BENCH } from '../content/bestiary.js';
+import { createUnitBench } from './unit-bench.js';
 import { ENEMY_SPEC } from '../enemyspec.js';
 
 const CELL = STORY_RECIPE.metresPerCell;
@@ -86,6 +90,8 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   const glow = mat(new THREE.MeshBasicMaterial({ color: S.lureColour })), halo = mat(new THREE.MeshBasicMaterial({ color: S.lureColour, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
   const orb = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), glow); orb.position.y = 1.3; lure.add(orb); disposables.push(orb.geometry);
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.3, 32), halo); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; lure.add(ring); disposables.push(ring.geometry);
+  // --- the bench: one colony unit at the centre (src/fx/unit-bench.js), the camera eased onto its box as it lands -----------------------------------
+  const bench = createUnitBench({ parent: world, bench: BESTIARY_BENCH }), O = BESTIARY_BENCH.orbit, eye = { r: 0, y: 0, k: 0 };
 
   // --- the families: the game's Pearl family at the high level forced, the cap lifted; the Cutis-Maku's on first use -----------------------------
   const lod = { ...CUTIS_LOD, ...PEARL_FOLLOW.lod, force: S.level, highCap: Math.max(...S.packSizes) };
@@ -163,9 +169,10 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
     dress(mode === 'silhouette');
   }
   // an entry in a state: 'full' the pack and the lure; 'silhouette' dark bodies, no lure; 'unseen' or a card-only entry: nothing on the stage
-  function show(e, { state = 'full', pack: n = pack } = {}) {
-    clear();
+  function show(e, { state = 'full', pack: n = pack, wire = BESTIARY_BENCH.wire } = {}) {
+    clear(); bench.clear();
     entry = e; pack = S.packSizes.includes(n) ? n : S.packSizes[0];
+    if (e?.kind === 'unit') { kind = 'unit'; type = null; family = null; mode = state === 'unseen' || !e.stage ? 'none' : 'unit'; eye.k = 0; if (mode === 'unit') bench.show(e, { wire }); return; }
     kind = e?.kind === 'creature' ? (e.id === 'cutis' && e.stage ? 'cutis' : null) : e ? 'pearl' : null;
     type = kind === 'pearl' ? packType(e) : null;
     mode = !e || state === 'unseen' || !e.stage || !kind || (kind === 'pearl' && !type) ? 'none' : state;
@@ -173,6 +180,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
     seat();
   }
   function setPack(n) { if (!S.packSizes.includes(n) || n === pack) return; pack = n; seat(); }
+  function setWire(on) { bench.setWire(on); }
 
   function step(dt, height = 600) {
     clock += dt;
@@ -180,6 +188,14 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
     const [fx, fz] = aim(), k = 1 - Math.exp(-dt / S.orbit.smooth); focus[0] += (fx - focus[0]) * k; focus[1] += (fz - focus[1]) * k;
     const a = (clock / S.orbit.period) * Math.PI * 2;
     bendPoint(focus[0], S.orbit.lookUp, focus[1], PLANET_R, P); const ly = P[1];
+    if (mode === 'unit') {   // the bench: the orbit round the unit's box, eased from the disc's wide view as the unit lands
+      bench.step(dt); const f = bench.frame(), kb = 1 - Math.exp(-dt / O.smooth); eye.k += ((f ? 1 : 0) - eye.k) * kb;
+      if (f) { eye.r += (f.r * O.radius - eye.r) * kb; eye.y += (f.mid[1] + f.r * O.height - eye.y) * kb; }
+      const au = (clock / O.period) * Math.PI * 2, mx = f ? f.mid[0] * eye.k : 0, mz = f ? f.mid[2] * eye.k : 0, my = f ? f.mid[1] * eye.k : 0;
+      const R = S.orbit.radius + (eye.r - S.orbit.radius) * eye.k, H = S.orbit.height + (eye.y - S.orbit.height) * eye.k;
+      cam.position.set(mx + Math.cos(au) * R, H, mz + Math.sin(au) * R); cam.lookAt(mx, my, mz); cam.updateMatrixWorld();
+      lure.visible = false; track.visible = false; pearl.step(dt, cam, height); cutis?.step(dt, cam, height); return;
+    }
     cam.position.set(focus[0] + Math.cos(a) * S.orbit.radius, ly - S.orbit.lookUp + S.orbit.height, focus[1] + Math.sin(a) * S.orbit.radius); cam.lookAt(focus[0], ly, focus[1]); cam.updateMatrixWorld();
     lure.visible = mode === 'full'; track.visible = mode === 'full';
     if (mode === 'none') { pearl.step(dt, cam, height); cutis?.step(dt, cam, height); return; }
@@ -213,11 +229,13 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
     return { bodies, levels };
   }
   return {
-    show, setPack, step, render,
+    show, setPack, step, render, bench: () => bench,
     // `stalks` each body's hop: its stage, its phase, its stalk's length this hop (m) and its radius (the harness and the probe of 2026-10-14)
     state: () => ({ entry: entry?.id ?? null, mode, pack, reach: +reachM.toFixed(2), ahead: +LL.ahead.toFixed(2), period: +LL.period.toFixed(2),
       stalks: kind === 'pearl' ? records.map((r) => { const v = family.view(r.h); return v && { stage: v.stage, phase: +v.phase.toFixed(3), reach: +v.reach.toFixed(2), radius: +v.radius.toFixed(2), centre: v.centre.map((c) => +c.toFixed(2)) }; }) : [], type: kind === 'cutis' ? `cutis:${S.creatureTier}` : type, ...counts(), lure: mode === 'full' ? [+lureAt.x.toFixed(2), +lureAt.z.toFixed(2)] : null,
-      dark: darkened, nearest: records.length ? +Math.min(...records.map((r) => Math.hypot(r.x - lureAt.x, r.z - lureAt.z))).toFixed(2) : null, force: lod.force }),
-    dispose() { clear(); pearl.dispose(); cutis?.dispose(); for (const d of disposables) d.dispose(); },
+      dark: darkened, nearest: records.length ? +Math.min(...records.map((r) => Math.hypot(r.x - lureAt.x, r.z - lureAt.z))).toFixed(2) : null, force: lod.force,
+      unit: mode === 'unit' ? bench.state() : null }),
+    setWire,
+    dispose() { clear(); bench.dispose(); pearl.dispose(); cutis?.dispose(); for (const d of disposables) d.dispose(); },
   };
 }
