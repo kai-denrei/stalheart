@@ -1480,6 +1480,10 @@ try{
  {const d=await st(),panel=await evaluate('(e=>e.classList.contains("hidden")?"":e.textContent)(document.querySelector("#td-brief"))');assert.equal(panel,'',`Isao's panel is empty when the cave covers the game (${panel})`);assert.equal(d.descent.shown,true,'the frame shows');console.log(`  the cave opened ${((Date.now()-briefT0)/1000).toFixed(1)} s (wall), ${d.descent.openedAt?.toFixed(1)} game s after the hand-off`);}
  {const d=await st();assert.equal(d.descent.open,true,`the frame is open (${JSON.stringify(d.descent)})`);assert.ok(d.descent.src.endsWith(DESCENT.page),`with the cave's page (${d.descent.src})`);assert.equal(d.paused,true,'the game paused under it');
   const f=await evaluate('(f=>f?{cls:f.className,allow:f.getAttribute("allow"),w:f.getBoundingClientRect().width}:null)(document.querySelector("iframe.descent-frame"))');assert.ok(f&&/pointer-lock/.test(f.allow)&&f.w>300,`the frame over the tab (${JSON.stringify(f)})`);}
+ // THE HOLE IS THE DOOR (owner, 2026-10-26, note 7; round 3 c decision 2): the camera dived down the arena's hole: at the hand-over it is under the lip, within
+ // 2 cells of the hole's centre, looking along -normal, the view narrowed
+ {const d=(await st()).descent,fov=await evaluate(`${T}.state().camera?.fov??null`);console.log(`  the hand-over: ${JSON.stringify(d.door)} (hole ${d.hole}, dive at ${d.diveAt}), fov ${fov}`);
+  assert.ok(d.hole>=0&&d.door,`the door measured on the arena's hole (${JSON.stringify(d)})`);assert.ok(d.door.fromCentre<2,`within 2 cells of the hole's centre (${d.door.fromCentre})`);assert.ok(d.door.along>0.9,`looking along -normal (${d.door.along})`);}
  // the cave boots inside the frame in its stalheart mode (same origin: its document is ours to read)
  await until('(()=>{const f=document.querySelector("iframe.descent-frame");const d=f&&f.contentDocument;return !!d&&!!d.getElementById("begin");})()',30000).catch(()=>assert.fail('the cave\'s page booted inside the frame'));
  await until('(()=>{const d=document.querySelector("iframe.descent-frame")?.contentDocument;const b=d&&d.getElementById("begin-label");return !!b&&/TAKE THE FEED|FEED UNAVAILABLE|INITIALIZING/.test(b.textContent);})()',60000);
@@ -1494,6 +1498,9 @@ try{
  {const d=await st();assert.equal(d.descent.open,false,'the frame is gone');assert.equal(d.descent.outcome,'rescued');assert.equal(d.paused,false,'the game runs again');
   assert.equal(await evaluate('!!document.querySelector("iframe.descent-frame")'),false,'no frame in the DOM');
   assert.deepEqual(d.descent.said,['descent_brief','descent_back'],`the brief, then Isao's decoding joke (${JSON.stringify(d.descent.said)})`);}
+ // ...and out the same way (decision 3): the camera rises up the hole's axis to the rim (DESCENT.door.rise s of game time), then the ending as before
+ await until(`(${T}.state().descent.door?.fromRim??9)<2&&${T}.state().descent.door?.phase==='rise'`,30000).catch(async()=>assert.fail(`the camera rises to the rim (${JSON.stringify((await st()).descent)})`));
+ {const d=(await st()).descent;console.log(`  the return: ${JSON.stringify(d.door)}`);assert.ok(d.door.fromRim<2,`within 2 cells of the rim (${d.door.fromRim})`);}
  current='descent-back';await finish();
  } else if(args.includes('--boss-start')) {
  // ?boss=1 (2026-10-16): a run opened past the door's earliest opens ON THE BOSS, the door counted as the sector before (the owner's morning entry)
@@ -1603,6 +1610,19 @@ try{
  {const s=await st();assert.equal(s.boss.on,false,'the run is over');assert.equal(s.boss.auto,false,'the hull is the player\'s again');assert.equal(s.gunship.seat,false,'the seat left');
   }
  current='boss-dead';await finish();
+ // THE HOLE NEVER CLOSES (owner, 2026-10-26, note 4: "the sinkhole DOES NOT CLOSE, it is the very entrance we must use for the Cave mission"; round 3 c
+ // decision 1): past the debrief BOTH WALLS begins (the start that caved the arena's kept hole in as a stray, 'THE OLD BREACH CAVES IN'), then one more
+ // breach is opened through the harness on BOTH WALLS' own gate cell (its breaches wait on its clock, which headless runs slowly); the nest's mouth stays
+ // open on the arena's cell, and no rubble cap is laid
+ {const s0=await st(),caps0=s0.breachRubble?.caps??0;assert.deepEqual(s0.sector.nest,{cell:s0.arena.cell,open:true},`the nest after SECURE (${JSON.stringify(s0.sector.nest)})`);
+  await evaluate(`${T}.sectorContinue()`);
+  await until(`${T}.state().sector.n===${SECTOR_DOOR.earliest+2}`,30000).catch(async()=>assert.fail(`BOTH WALLS begins (${JSON.stringify((await st()).sector)})`));
+  const s1=await st();assert.deepEqual(s1.sector.nest,{cell:s1.arena.cell,open:true},`the arena's hole open as BOTH WALLS begins (${JSON.stringify(s1.sector.nest)})`);
+  const cell=s1.sector.breaches.find(b=>b.cell!==s1.arena.cell)?.cell;assert.ok(cell>=0,'a cell for the second opening');assert.equal(await evaluate(`${T}.breachAt(${cell})`),true,'one more breach opened');await delay(1500);
+  const s=await st();console.log(`  BOTH WALLS began; one more breach opened at ${cell}; the nest ${JSON.stringify(s.sector.nest)}; live breaches ${s.breaches?.length}; rubble caps ${caps0} -> ${s.breachRubble?.caps}; shot ${s.shotId??s.shot??null}`);
+  assert.deepEqual(s.sector.nest,{cell:s.arena.cell,open:true},`the arena's hole open after another opening (${JSON.stringify(s.sector.nest)})`);assert.equal(s.breachRubble?.caps??0,caps0,'no rubble cap laid');
+  assert.ok(!(await evaluate('document.querySelector("#td-callouts")?.textContent||""')).includes('THE OLD BREACH CAVES IN'),'no "THE OLD BREACH CAVES IN"');}
+ current='arena-nest-open';await finish();
  } else if(args.includes('--arena-fight')) {
  // THE ARENA FIGHT ON THE LAB'S ENGINE (owner, 2026-10-23: "the Nih-Dairia fight; there is a well-tuned version in the lab and we keep reproducing something that does
  // not work. a) not enough nukes on the gunship, b) nih-dairia aggro is different, c) the whole idea is the monster aggro on the tank, acting as a lure, and it leaves

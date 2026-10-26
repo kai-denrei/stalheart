@@ -112,7 +112,7 @@ export function createEnemyStep(host) {
   function seedPortals(n) { if (host.storyMode()) return; for (let i = 0; i < n; i++) addSpawnPoint(); }
 
   // a ground breach closes only to a strike or exhaustion; a shell on it marks it on the scope. A sector's breach takes three; a KEPT one (the arena's
-  // hole, the nest's mouth, 2026-10-16: obj.userData.keep) takes none and closes only when the programme is spent
+  // hole, the nest's mouth, 2026-10-16: obj.userData.keep) takes none and never closes (round 3 c, 2026-10-26: the cave's door)
   function gateTakesShell(sp) {
     sp.found = true; if (!sp.obj.userData.keep && host.sectorRun()?.owns(sp) && --sp.hp <= 0) killPortal(sp, 'shells');
     return false;
@@ -121,7 +121,7 @@ export function createEnemyStep(host) {
   function killPortal(sp,reason='impact') {
     if(!sp.alive)return;
     if(sp.obj.userData.breach&&!['strike','gunship','shells','laser','exhausted'].includes(reason))return;
-    if(sp.obj.userData.keep&&reason!=='exhausted')return;   // a kept hole (the arena's) outlives every closer and blast (2026-10-16)
+    if(sp.obj.userData.keep)return;   // a kept hole (the arena's) outlives every closer and blast (2026-10-16) and every collapse: it is the cave's door for the rest of the run (round 3 c, 2026-10-26)
     sp.alive = false; host.sectorRun()?.closed(sp, reason);   // a story sector books who closed its breach
     // THE GATE GOES LIKE THE TANK GOES (operator): its own wreckage, a big burst in its own colour, and the heavy sound — the
     // same three parts as destroyPlayer, because that is the vocabulary the board already has for "something substantial just

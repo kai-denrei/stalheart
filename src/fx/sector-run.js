@@ -51,7 +51,7 @@ export function killSource(src, via = null) {
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
-  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, stampedes = 0, backOpenedAt = null, campaignShown = false, finaleShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null;   // canyon: { plan, id, phase, upAt } in THE CANYON
+  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, stampedes = 0, backOpenedAt = null, campaignShown = false, finaleShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null, nest = null;   // nest: the arena's kept hole (THE NEST'S MOUTH, 2026-10-16), open for the rest of the run (round 3 c, 2026-10-26)   // canyon: { plan, id, phase, upAt } in THE CANYON
   const sps = new Map(), reports = [], omens = new Set();
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   let readySince = null;   // when the story first said it was ready for the first sector
@@ -187,7 +187,9 @@ export function createSectorRun(h) {
     def = defOf(n); story.sectorN = n;
     sector = null; sps.clear(); pending = []; lastPoll = null; lastReport = null;   // the last sector's report goes with it
     // every live breach in play belongs to the sector: the opening's sinkhole (or any other stray) caves in as the sector begins
-    const strays = (h.breaches?.() ?? []).filter((sp) => sp.alive);
+    // ...except the nest's mouth (round 3 c, 2026-10-26): BOTH WALLS' start caved the arena's hole in ('exhausted' was the one reason a kept hole took),
+    // so the descent's look and the cave's door were over the rubble; the arena's hole stands open for the rest of the run
+    const strays = (h.breaches?.() ?? []).filter((sp) => sp.alive && sp !== nest);
     if (strays.length) { for (const sp of strays) h.collapse(sp); h.callout('THE OLD BREACH CAVES IN', 'co-victory-sub'); h.brief('old_breach'); }
     stats = makeSectorStats(def, now(), SECTOR_STATS);
     (h.refill ?? api.refillArrays)?.(); api.setLaserOnline?.(!!def.laser);   // the solar array's reserve refills at every sector start
@@ -418,6 +420,7 @@ export function createSectorRun(h) {
       pending.splice(pending.indexOf(id), 1);
       const far = b.side === 'canyon';   // the canyon's breach opens without the establishing dive (the seat's glide is its reveal); SOL-82 may seal it (2026-10-15: it stands open until the pass is over)
       progress(); sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined, radius: b.radius, keep: b.side === 'arena' }));   /* the arena's hole: wide, and kept (no closer takes it) */ b.openedAt = t;
+      if (b.side === 'arena') nest = sps.get(b.id);   // THE HOLE NEVER CLOSES (owner, 2026-10-26, note 4: "the sinkhole DOES NOT CLOSE, it is the very entrance we must use for the Cave mission")
       if (far) h.brief(def.n <= SECTORS.length ? CANYON.brief : CANYON.briefAgain);   // the first time, or the canyon again
       // THE WALL CAN BE BREACHED (owner, 2026-10-01: "a chekov's gun of sorts"): the side breach cuts its lane and breaks the wall
       if (b.side === 'side' && api.breakSide?.(b.carve ?? [])) { b.broke = true; h.callout(SIDE_BREACH.callout, 'co-victory'); h.brief(SIDE_BREACH.brief); }
@@ -517,6 +520,7 @@ export function createSectorRun(h) {
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; isaoSpeak('sector_lost'); h.hud(); return true; },
     state: () => ({
+      nest: nest ? { cell: nest.ci, open: !!nest.alive } : null,   // the arena's hole, kept open after its sector (the cave's door)
       phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),

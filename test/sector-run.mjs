@@ -371,7 +371,14 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(ww.opened.at(-1).alive, true, 'the arena\'s hole is spent, not sealed: the nest\'s mouth stays open');
   assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'the boss sector held: its report, no finale');
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'BOTH WALLS'); assert.equal(run.state().name, 'BOTH WALLS');
+  // THE HOLE NEVER CLOSES (owner, 2026-10-26, note 4: "the sinkhole DOES NOT CLOSE, it is the very entrance we must use for the Cave mission"): BOTH WALLS'
+  // start caved in every live breach as a stray, the arena's kept hole too; the nest's mouth is not a stray, and a second opening leaves it open
+  const nest = ww.opened.find((o) => o.ci === 230 && o.keep), opened0 = ww.opened.length;
+  assert.equal(nest.alive, true, 'the arena\'s hole is not caved in as BOTH WALLS begins');
+  assert.deepEqual(run.state().nest, { cell: 230, open: true }, `the nest in the run's state (${JSON.stringify(run.state().nest)})`);
   hold();
+  assert.ok(ww.opened.length > opened0, `BOTH WALLS opened its own breaches (${opened0} -> ${ww.opened.length})`);
+  assert.equal(nest.alive, true, 'and the arena\'s hole is still open after them');
   assert.deepEqual(log.slice(2), [['finale']], 'the final sector held: the finale first, before any score');
   assert.equal(run.state().phase, 'finale'); assert.equal(run.state().secure, true, 'held, under the finale');
   hand();
@@ -381,6 +388,7 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.ok(!log.slice(5).some((l) => l[0] === 'finale'), `leaving the card plays no finale again (${JSON.stringify(log.slice(5))})`);
   assert.equal(run.state().n, SECTOR_DOOR.earliest + 3, 'and the next sector begins');
   assert.equal(run.state().phase, 'fighting');
+  assert.equal(nest.alive, true, 'the nest\'s mouth open past the campaign: for the rest of the run'); assert.equal(run.state().nest.open, true);
 }
 // THE CREATURE PROBE HOLDS THE SECTOR OPEN (owner, 2026-10-12; src/fx/creature-enemies.js): every pulse out and every body dead, the
 // sector stays 'fighting' while `hold` says so (the probe keeps stepping), and is secured once it lets go
