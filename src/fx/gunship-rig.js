@@ -26,6 +26,8 @@ import { createGunshipOptic } from './gunship-optic.js';
 import { createGunshipDrop } from './gunship-drop.js';
 import { isaoSpeak } from './isao-voice.js';
 
+const SEAT_EASE = 1.5;   // seconds, the least glide for a re-placement of the platform under the taken seat
+
 export function createGunshipRig(host) {
   const { scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing } = host;
   let optic = null, track = null, walls = null, drop = null;
@@ -182,6 +184,8 @@ export function createGunshipRig(host) {
     setTrack: (v) => { track = v; },
     // THE ARENA (src/fx/boss-run.js, owner 2026-10-18, note 6: "The Arena is where the gunship circles"): the next pass flies over this cell; at 1.2 cells a
     // second the track would take three minutes to cross the 213 cells out from the base, so the orbital ship takes station there instead
-    placeOver: (ci) => { const p = host.graph().centers[ci]; if (p) track = makeTrack(p, track?.heading ?? null); },
+    // A RE-PLACEMENT UNDER THE SEAT IS EASED (round 3, 2026-10-26): with the seat taken the camera glides from its last picture onto the new pose over
+    // SEAT_EASE seconds (src/fx/seat-glide.js), never a cut
+    placeOver: (ci) => { const p = host.graph().centers[ci]; if (!p) return; if (host.pilot()?.gunship) host.seatEase?.(SEAT_EASE); track = makeTrack(p, track?.heading ?? null); },
   };
 }

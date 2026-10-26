@@ -21,7 +21,8 @@ export const GUNSHIP_FAR = Object.freeze({ hops: Math.round(60 * 1.15), slack: 3
 export const GUNSHIP_PLATFORM = Object.freeze({
   altitudeCells: 34,   // much higher (owner, 2026-09-14): 340 m up, the eye straight down
   zoom: 2,             // the optic's magnification when the seat opens
-  pitchMin: -1.5708, pitchMax: -0.95,   // straight down to 54° down; the horizon dips 42° at 34 cells, so every aim lands
+  pitchMin: -1.5621, pitchMax: -0.95,   // 89.5° down (not -1.5708: that is a hair PAST straight down, where the look-at's roll flips 180° in one frame;
+                                        // round 3, 2026-10-26) to 54° down; the horizon dips 42° at 34 cells, so every aim lands
   metresPerCell: 10,   // the KORP is authored in metres; the story world is 10 m a cell
 });
 

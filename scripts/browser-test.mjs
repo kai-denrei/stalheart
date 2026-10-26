@@ -1625,11 +1625,25 @@ try{
  await evaluate(`${T}.arenaNow()`);
  await until(`${T}.state().boss.card`,120000).catch(async()=>assert.fail(`THE MOTHER's card (${JSON.stringify((await st()).boss)})`));
  console.log(`ARENA FIGHT set-up: the hull put down at cell ${hullAt}, ${(await st()).boss.hullCells} cells from the arena's centre`);
+ {const cj=(await st()).camJump;console.log(`  camera before the window (load, cuts): ${cj.log.length} frames over 8 m / 6 degrees`);for(const e of cj.log.slice(-6))console.log('  cam (before) '+JSON.stringify(e));}
+ await evaluate(`${T}.camJumpClear()`);   // the window opens on TAKE THE GUN: the glide into the seat is in it
  await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');
  await until(`${T}.state().boss.seated`,120000).catch(async()=>assert.fail(`the gun taken (${JSON.stringify({boss:(await st()).boss,gunship:(await st()).gunship})})`));
  await until(`${T}.state().boss.led`,60000).catch(async()=>assert.fail(`her body leads her record (${JSON.stringify((await st()).boss)})`));
  await until(`${T}.state().boss.fear.ground==='hunt'`,120000).catch(async()=>assert.fail(`off the sinkhole (${JSON.stringify((await st()).boss.fear)})`));
  current='arena-fight-seated';await finish();
+ // THE SEATED VIEW IS CONTINUOUS (round 3, note 1, 2026-10-26; spec docs/superpowers/specs/2026-10-26-round-3-gunship-view-and-radar-design.md, decision 1): the
+ // controller samples the camera every painted frame (state().camJump, src/fx/cam-jump.js); the window opened on TAKE THE GUN, the glide in included. CAM_PROBE=<s>: the camera
+ // alone for that many seconds of wall clock, nothing fired, every frame over 8 m / 6 degrees printed with the gunship's phase and the seat; the fight not run
+ const camReport=async(tag)=>{const cj=(await st()).camJump;console.log(`${tag} camera (seated ${cj.seated.frames} of ${cj.frames} frames): worst move ${cj.seated.m} m (frame ${cj.seated.mAt}), ${cj.seated.deg} degrees (frame ${cj.seated.degAt}); the limits 25 m / 20 degrees; ${cj.log.length} frames over 8 m / 6 degrees`);for(const e of cj.log)console.log('  cam '+JSON.stringify(e));return cj;};
+ // the gunner's own drag (CAM_PROBE): the mouse dragged down until the pitch stops at the seat's floor and back up, 4 px a step; a pitch past
+ // straight down (-pi/2) flips the look-at's roll by 180 degrees in one frame
+ const drag=async(dy,steps)=>{const W=await evaluate('innerWidth'),H=await evaluate('innerHeight'),x=Math.round(W/2);let y=Math.round(H/2);await send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y});await send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',clickCount:1});
+  for(let i=0;i<steps;i++){y+=dy;await send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y,button:'left',buttons:1});await delay(60);}await send('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',clickCount:1});};
+ if(process.env.CAM_PROBE){const w=Date.now();let swept=0;while(Date.now()-w<+process.env.CAM_PROBE*1000){
+  if(!swept&&Date.now()-w>15000){swept=1;await drag(4,60);console.log(`  cam probe: dragged down 240 px; the aim at cell ${(await st()).gunship.aimCell}`);await delay(1500);await drag(-4,60);console.log('  cam probe: dragged back up 240 px');}const s=await st();console.log(`  cam probe ${JSON.stringify({wall:+((Date.now()-w)/1000).toFixed(0),g:s.boss.t,last1s:{m:s.camJump.m,deg:s.camJump.deg},seated:s.camJump.seated,gunship:{phase:s.gunship.phase,left:s.gunship.left,passes:s.gunship.passes,track:s.gunship.track&&{speed:+s.gunship.track.speed.toFixed(3)}},boss:s.boss.phase})}`);await delay(3000);}
+  const cj=await camReport('CAM PROBE');current='arena-fight-cam';await finish();assert.ok(cj.seated.m<25&&cj.seated.deg<20,`the seated camera never jumps (${cj.seated.m} m, ${cj.seated.deg} degrees)`);}
+ else{
  const norm=(v)=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
  // a point on the chord from her centre toward the hull, `m` metres from her (in the 40 mm's reach: her contacts within its 22 m blast + 8)
  const between=(b,m=25)=>{const a=b.dist.at.boss,h=b.dist.at.hull,gapM=b.dist.gap*METRES_PER_CELL,k=Math.min(0.5,m/Math.max(1e-6,gapM));return norm(a.map((v,i)=>v+(h[i]-v)*k));};
@@ -1656,7 +1670,7 @@ try{
   if(b.t>=nukeAt&&launches.length<2&&s.gunship.heavy?.phase==='ready'&&b.dist.at?.boss&&b.dist.gap>=CLEAN){const ok=await fire('heavy',b.dist.at.boss);if(ok){launches.push({g:+g.toFixed(1),t:b.t,stuns:lab.stuns??0});if(launches.length===2)second=+g.toFixed(1);}}
   if(launches.length&&(lab.stunned||(lab.stuns??0)>launches[0].stuns))stunSeen=true;
   if(readyAgain!=null&&launches.length===1)nukeAt=b.t;
-  last={g:+g.toFixed(1),dist:{hull:b.dist.hull,boss:b.dist.boss,gap:b.dist.gap},mode:lab.mode,speed:b.speed,hullSpeed:b.hullSpeed,heavy:s.gunship.heavy?.phase,station:s.gunship.station,hp:b.bossHp,hulls:s.hulls};
+  last={g:+g.toFixed(1),dist:{hull:b.dist.hull,boss:b.dist.boss,gap:b.dist.gap},mode:lab.mode,speed:b.speed,hullSpeed:b.hullSpeed,heavy:s.gunship.heavy?.phase,station:s.gunship.station,hp:b.bossHp,hulls:s.hulls,cam:{m:s.camJump.m,deg:s.camJump.deg,left:s.gunship.left,passes:s.gunship.passes}};
   if(samples%20===0)console.log('  fight '+JSON.stringify(last));
   if(g>=WINDOW)break;
   await delay(150);
@@ -1671,12 +1685,15 @@ try{
  console.log(`ARENA FIGHT (e) the station: ${stationLost==null?`on station for all ${gSpan} s`:`lost at ${stationLost} s`}; the seat reads ${JSON.stringify(await evaluate(`document.querySelector('[data-f="left"]')?.textContent||null`))}, the strip ${JSON.stringify(await evaluate(`document.querySelector('#story-views [data-mount="gunship"]')?.textContent||null`))}`);
  console.log(`ARENA FIGHT speeds (m/s over a second): hers mean ${mean(speeds)} (fight mean ${sf.speedMean}, peak ${sf.speedPeak}), the hull's mean ${mean(hullSpeeds)} (fight mean ${sf.hullMean}); temperament ${sf.temper}, lunges ${sf.lunges}`);
  console.log(`ARENA FIGHT her speed by mode (m/s mean, samples): ${Object.entries(byMode).map(([k,v])=>`${k} ${mean(v)} (${v.length})`).join(', ')}`);
+ const cj=await camReport('ARENA FIGHT');
  current='arena-fight-end';await finish();
+ assert.ok(cj.seated.frames>0&&cj.seated.m<25&&cj.seated.deg<20,`the seated camera never jumps: worst ${cj.seated.m} m, ${cj.seated.deg} degrees over ${cj.seated.frames} seated frames (limits 25 m / 20 degrees)`);
  assert.ok(readyAgain!=null&&readyAgain<=12,`(a) the MK-9 ready again within 12 s of a launch (${readyAgain})`);assert.ok(second!=null,'(a) a second MK-9 in the same pass');
  assert.ok(hullMax<=DISC&&bossMax<=DISC,`(b) neither leaves the disc (hull ${hullMax}, boss ${bossMax}, disc ${DISC})`);assert.ok(gSpan>=Math.min(60,WINDOW)||dead,`(b) watched at least 60 s of game clock (${gSpan})`);
  assert.ok((sf.wild??0)>=1&&scare&&scare.gapMax>scare.gap0,`(c) a 40 mm sent her wild and the gap grew within 3 s (${JSON.stringify(scare)})`);
  assert.ok(stunSeen&&(sf.stuns??0)>=1,`(d) an MK-9 within its blast stunned her (${sf.stuns})`);
  assert.ok(stationLost==null,`(e) the station did not end (${stationLost})`);
+ }
  } else if(args.includes('--day-42')) {
  // DAY 42 (owner, 2026-10-18; spec docs/superpowers/specs/2026-10-18-day-42-design.md): sector 4 opened on day 42; the field culled to a breath, the party:
  // Isao's line, the live cut round the Stålheart, the ball hung under the tip with its four lights, the track on the music bus, the sector clock held; at
@@ -1836,7 +1853,8 @@ try{
   assert.ok(heard.every(h=>h.voiced),'every cue sounded (a live voice of its key after the ask)');
   for(const k of ['feids_reentry','mech_reentry_woosh','mech_landing_impact'])assert.ok((s.sounds?.[k]??0)>=(k==='feids_reentry'?2:4),`${k} asked (${s.sounds?.[k]})`);}
  await until(`${T}.state().shot!=='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>assert.fail(`the camera released after the drop (${(await st()).shot})`));
- {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}`);}
+ {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}; radar friendlies drawn ${s.radar?.mechs}`);
+  assert.equal(s.radar?.mechs,4,'the four on the radar as friendlies (round 3, note 2)');}
  current='reinforce-landed';await finish();
  // THE FOUR AFTER THE DROP (decisions 3 and 4): four mechs in their roles, sixteen sentry records at the top tier; 30 game seconds on, the base mech nearer the
  // heart, the hunter moved, the arena pair still on the plain; who fired

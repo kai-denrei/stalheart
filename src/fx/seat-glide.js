@@ -4,24 +4,29 @@
 // over `seconds`; the optic's chrome (the pilot panel and the scope) fades in as it lands (styles.css body.seat-gliding). The aim is
 // live the whole time: the glide only moves the picture toward the pose the seat already computes.
 //
-// `begin(camera)` captures the start before the seat is entered; `place(camera, goal, dt)` puts the camera on the seat's goal, or on
+// `begin(camera, { seconds, speed })` captures the start before the seat is entered (`seconds`: this glide's least span, round 3: a re-placement of
+// the gunship under the seat eases over at least 1.5 s; `speed`: the move's peak in world units a second, so a long one takes longer); `place(camera, goal, dt)` puts the camera on the seat's goal, or on
 // the blend while a glide runs. `cancel()` ends it at once (a seat left mid-glide). `hold()` true (the game paused): no glide starts.
 import * as THREE from '../../vendor/three.module.js';
 
 // `wait()` true (the scripted hand-over shot is flying): the glide holds, the seat's chrome stays hidden and the camera follows the goal,
 // so the next optic's HUD only shows once the eye is on it (owner, 2026-10-03: "we only ever see the HUD of what we commandeer")
 export function createSeatGlide({ seconds = 1.4, far = 3.2, lift = 0.35, hold = () => false, wait = () => false, body = globalThis.document?.body ?? null } = {}) {
+  const seenPos = new THREE.Vector3(), seenQuat = new THREE.Quaternion(); let seen = false;   // the last painted picture (note), where every glide leaves from
   const fromPos = new THREE.Vector3(), fromQuat = new THREE.Quaternion(), up = new THREE.Vector3(), dir = new THREE.Vector3(), to = new THREE.Vector3(), side = new THREE.Vector3();
-  let age = -1, n = 0, span = seconds;   // span: this glide's seconds, decided on its first frame   // n: glides begun, for the harness
+  let age = -1, n = 0, span = seconds, least = 0, cap = 0;   // span: this glide's seconds, decided on its first frame   // n: glides begun, for the harness
   const mark = (on) => body?.classList.toggle('seat-gliding', on);
   return {
-    begin(camera) { if (hold()) return;   /* a paused game does not run the frame that would carry it: the seat's own snap stands */
-      fromPos.copy(camera.position); fromQuat.copy(camera.quaternion); age = 0; n++; span = 0; mark(true); },
+    begin(camera, { seconds: min = 0, speed = 0 } = {}) { if (hold()) return; least = min; cap = speed;   /* a paused game does not run the frame that would carry it: the seat's own snap stands */
+      fromPos.copy(seen ? seenPos : camera.position); fromQuat.copy(seen ? seenQuat : camera.quaternion); age = 0; n++; span = 0; mark(true); },
+    // FROM THE LAST PICTURE (round 3, 2026-10-26): the controller notes the camera once a painted frame; a begin() after a snap in the same tick (enterPilot
+    // snaps onto the first sentry's optic before the gunship is mounted) still leaves from what the player saw, not from the snapped pose
+    note(camera) { seenPos.copy(camera.position); seenQuat.copy(camera.quaternion); seen = true; },
     cancel() { if (age >= 0) { age = -1; mark(false); } },
     active: () => age >= 0,
     place(camera, goal, dt) {
       if (age < 0 || wait()) { camera.position.copy(goal.pos); camera.quaternion.copy(goal.quat); return; }
-      if (!span) span = fromPos.dot(goal.pos) / ((fromPos.length() * goal.pos.length()) || 1) < 0.5 ? far : seconds;   // a trip round the planet takes `far` seconds
+      if (!span) span = Math.max(least, cap > 0 ? 1.5 * fromPos.distanceTo(goal.pos) / cap : 0, fromPos.dot(goal.pos) / ((fromPos.length() * goal.pos.length()) || 1) < 0.5 ? far : seconds);   // `speed`: the eased move's peak (1.5x its mean) held to it, a long move takes longer   // a trip round the planet takes `far` seconds
       age += dt;
       const u = Math.min(1, age / span), e = u * u * (3 - 2 * u);
       // the arc rises off the planet between the two eyes by `lift` of their distance, so the move reads as leaving one post for another.

@@ -100,7 +100,7 @@ import {makeTankFeel, landTankFeel, applyTankHealth} from './tankfeel.js';
 import { FEEL } from './feelstore.js'; import { createBoardActors } from './fx/board-actors.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   stepFall, fallProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
-import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
+import { createCamJump } from './fx/cam-jump.js'; import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
 import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { createRamJolt } from './fx/ram-jolt.js'; import { shedSquad, squadDamage } from './fx/squads.js';
@@ -487,7 +487,8 @@ export function initTdTab(root) {
   // All logic lives in strike.js (pure, tested); this file owns only what it
   // looks and sounds like. strikeTune is the live knob object the GUI writes.
   const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: flags.gunship === 'station' }); let gunshipBriefing = null, foundryFx = null;   /* the platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance */
-  const gunshipRig = createGunshipRig({ orbit: () => bossRun.orbit() ?? tune.orbit ?? GUNSHIP_ORBIT, scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
+  const gunshipRig = createGunshipRig({ orbit: () => bossRun.orbit() ?? tune.orbit ?? GUNSHIP_ORBIT, scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },
+    seatEase: (s) => seatGlide.begin(camera, { seconds: s }),   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
     story: () => story, storyViews: () => storyViews, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotHost: () => pilotHost, isao: () => isao, t: () => t, gunshipBriefing: () => gunshipBriefing, enemies: () => enemies, spawnPoints: () => spawnPoints, debris: () => debris, player: () => player, towers: () => towers, strikeTune: () => strikeTune, roundLanded: (g, p) => bossRun.landed(g, p), guns: () => bossRun.guns() });
   const strikeTune = makeStrikeParams();
   let strikeGrace = 0;   // s after launch during which a tap cannot skip
@@ -1112,6 +1113,10 @@ export function initTdTab(root) {
   });
 
   const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ seconds: 1.0, far: 1.8, hold: () => paused, wait: () => shotId() === 'takeControl' });   /* shorter (owner, 2026-10-16: "the time between announcing SOL and getting control is too long"; was 1.4 / 3.2) */
+  const SEAT_GLIDE_PEAK = 150;   // m/s: the gunship seat's glide in never moves faster at its peak (round 3, 2026-10-26: a frame clamped at 0.1 s moves at most 15 m)
+  // THE CAMERA'S JUMP METER (round 3, 2026-10-26: the gunship's view jump-cut; src/fx/cam-jump.js): sampled once a painted frame before the draw, state().camJump
+  const camJump = createCamJump({ metres: () => metresToArc(1, cellSide), info: () => ({ gunship: { phase: gunship.phase, left: Number.isFinite(gunship.left) ? +gunship.left.toFixed(2) : String(gunship.left), passes: gunship.passes },
+    seat: { pilotMode, gunship: !!pilot?.gunship, map: !!pilot?.isMap?.(), view: pilot?.state.view ?? null, yaw: +(pilot?.state.yaw ?? 0).toFixed(3), pitch: +(pilot?.state.pitch ?? 0).toFixed(3), glide: seatGlide.active(), shot: shotId() ?? null, strip: storyViews?.now?.() ?? null }, boss: bossRun?.on?.() ? bossRun.state().phase : null, paused }) });
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -4447,6 +4452,7 @@ export function initTdTab(root) {
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !hullDeploy.clip() && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
+    camJump.sample(camera, performance.now() / 1000, pilotMode && !!pilot?.gunship && !pilot.isMap()); seatGlide.note(camera);   // after the camera is placed, before the draw (src/fx/cam-jump.js)
     postfx.render();
     // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the
     // optic inset on the tracked target
@@ -4463,7 +4469,7 @@ export function initTdTab(root) {
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
 
-  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveClock.charge() });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
+  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveClock.charge(), mechs: () => mechSquad?.contacts() ?? [] });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
 
   const seedOverride = parseInt(flags.seed || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const showcaseMode = showcaseOn(location.search), storyQuery = readStoryQuery(showcaseMode ? '?skip=defence' : location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story'; root.classList.toggle('story-world', storyMode);   /* the campaign's buttons and key hint stay off in the story (styles.css) */   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
@@ -5011,7 +5017,7 @@ export function initTdTab(root) {
         screensOpened: syntheticModal?.opened() ?? 0,
         brassLive: brass?.live() ?? 0,
         daylight: daylight?.state() ?? null, day: daylight?.day() ?? null, party: discoParty?.state() ?? null,
-        reinforcements: reinforcements?.state() ?? null,   /* FEIDS-26 (2026-10-23) */
+        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(), camJump: camJump.state(),   /* FEIDS-26 (2026-10-23); the scope's friendlies drawn last frame (round 3) */
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
@@ -5092,6 +5098,7 @@ export function initTdTab(root) {
       reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on), reinforceLook: (i) => !!reinforcements?.look(i),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B; a live look at mech i
       spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
+      camJumpClear: () => camJump.clear(),   // the camera's jump meter: a fresh window (round 3, 2026-10-26)
       arenaFire: (gun, p) => { const G = pilot?.gunship ? pilotHost?.gunship : null; if (!G || !p) return false; if (gun !== 'heavy') { G.fire(gun, norm3(p), G.guns[gun].travel); return true; } return G.paintHeavy(cellIndex(norm3(p))) && G.launchHeavy() >= 0; },   // THE ARENA FIGHT's harness (2026-10-23): a round from the seat at a unit point, the MK-9 painted and released on its cell
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, blob: !!e.blob, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)
@@ -5214,7 +5221,7 @@ export function initTdTab(root) {
   // after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too)
   function leavePilot() {
     if (!pilotMode) return;
-    seatGlide.cancel();
+    seatGlide.begin(camera);   // NO CUT OUT OF A SEAT (round 3, 2026-10-26: "the camera never jumps wildly from one view to another"): from the seat's last picture, eased onto the restored view
     pilot?.dispose();
     for (const tw of towers) hushRotor(tw);
     pilot = null;
@@ -5254,7 +5261,7 @@ export function initTdTab(root) {
       const near=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[tw.ci],graph.centers[a.ci])-chord(graph.centers[tw.ci],graph.centers[b.ci]))[0]; pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]); if(posts&&story?.missiles?.[key]){pilot.state.zoom=story.quiverZoom??2;pilotHost.zoom(pilot.state.zoom);}   // a guided mount opens through its long lens
     }
     pilot=createSentryPilot(root,pilotHost={
-      story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>{thermalHeat.set(on);creatureEnemies.thermal?.(on);},leave:()=>leavePilot(),gunship:gunshipRig.pilotBag(),
+      story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>{thermalHeat.set(on);creatureEnemies.thermal?.(on);},leave:()=>leavePilot(),glide:s=>seatGlide.begin(camera,{seconds:s,speed:s?SEAT_GLIDE_PEAK*metresToArc(1,cellSide):0}),gunship:gunshipRig.pilotBag(),
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),leave:()=>root.querySelector('#story-views [data-view="tank"]:not([disabled])')?.click(),pause:()=>{togglePause();pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body

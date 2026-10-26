@@ -326,8 +326,8 @@ export function createBossRun(c) {
     if (!on) return;
     on = false; shotSaid = false; phase = 'off'; if (cardUp) { cardUp = false; card?.dispose(); }
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
+    if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();   // out of the seat FIRST (round 3, 2026-10-26): the gunship sent home under a taken seat moved the seat's camera across the planet
     if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; if (c.story().gsStage >= 0) c.gunshipOver?.(c.heartCell?.() ?? -1); c.story().gsStage = -1; } }   // the gunship home at once: it crawled back across the planet after SECURE (2026-10-18)
-    if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();
     if (outcome === 'secure') dead(); else decoded = false;   // boss_dead (and arena_decoded behind it) as the fallback if her death was never seen; a lost run says neither
     if (outcome === 'secure') { const tiers = hunters().tiers; for (const e of c.enemies) if (e.alive && e.hunter && e.tier in tiers) c.kill?.(e, false); }   // any of the brood the stagger has not reached yet
     brood = null;
