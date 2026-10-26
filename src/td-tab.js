@@ -100,7 +100,7 @@ import {makeTankFeel, landTankFeel, applyTankHealth} from './tankfeel.js';
 import { FEEL } from './feelstore.js'; import { createBoardActors } from './fx/board-actors.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   stepFall, fallProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
-import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
+import { createCamJump } from './fx/cam-jump.js'; import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
 import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { createRamJolt } from './fx/ram-jolt.js'; import { shedSquad, squadDamage } from './fx/squads.js';
@@ -1112,6 +1112,9 @@ export function initTdTab(root) {
   });
 
   const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ seconds: 1.0, far: 1.8, hold: () => paused, wait: () => shotId() === 'takeControl' });   /* shorter (owner, 2026-10-16: "the time between announcing SOL and getting control is too long"; was 1.4 / 3.2) */
+  // THE CAMERA'S JUMP METER (round 3, 2026-10-26: the gunship's view jump-cut; src/fx/cam-jump.js): sampled once a painted frame before the draw, state().camJump
+  const camJump = createCamJump({ metres: () => metresToArc(1, cellSide), info: () => ({ gunship: { phase: gunship.phase, left: Number.isFinite(gunship.left) ? +gunship.left.toFixed(2) : String(gunship.left), passes: gunship.passes },
+    seat: { pilotMode, gunship: !!pilot?.gunship, map: !!pilot?.isMap?.(), view: pilot?.state.view ?? null, yaw: +(pilot?.state.yaw ?? 0).toFixed(3), pitch: +(pilot?.state.pitch ?? 0).toFixed(3), glide: seatGlide.active(), shot: shotId() ?? null, strip: storyViews?.now?.() ?? null }, boss: bossRun?.on?.() ? bossRun.state().phase : null, paused }) });
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -4447,6 +4450,7 @@ export function initTdTab(root) {
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !hullDeploy.clip() && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
+    camJump.sample(camera, performance.now() / 1000, pilotMode && !!pilot?.gunship && !pilot.isMap());   // after the camera is placed, before the draw (src/fx/cam-jump.js)
     postfx.render();
     // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the
     // optic inset on the tracked target
@@ -5011,7 +5015,7 @@ export function initTdTab(root) {
         screensOpened: syntheticModal?.opened() ?? 0,
         brassLive: brass?.live() ?? 0,
         daylight: daylight?.state() ?? null, day: daylight?.day() ?? null, party: discoParty?.state() ?? null,
-        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(),   /* FEIDS-26 (2026-10-23); the scope's friendlies drawn last frame (round 3) */
+        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(), camJump: camJump.state(),   /* FEIDS-26 (2026-10-23); the scope's friendlies drawn last frame (round 3) */
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
@@ -5092,6 +5096,7 @@ export function initTdTab(root) {
       reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on), reinforceLook: (i) => !!reinforcements?.look(i),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B; a live look at mech i
       spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
+      camJumpClear: () => camJump.clear(),   // the camera's jump meter: a fresh window (round 3, 2026-10-26)
       arenaFire: (gun, p) => { const G = pilot?.gunship ? pilotHost?.gunship : null; if (!G || !p) return false; if (gun !== 'heavy') { G.fire(gun, norm3(p), G.guns[gun].travel); return true; } return G.paintHeavy(cellIndex(norm3(p))) && G.launchHeavy() >= 0; },   // THE ARENA FIGHT's harness (2026-10-23): a round from the seat at a unit point, the MK-9 painted and released on its cell
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, blob: !!e.blob, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)
