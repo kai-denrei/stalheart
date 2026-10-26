@@ -5081,7 +5081,7 @@ export function initTdTab(root) {
       breachSpent:programmeSpent,
       sectorRelease: (id) => sectorRun?.test.release(id) ?? null,
       sectorClose: (id, by) => sectorRun?.test.close(id, by) ?? null,
-      sectorClearField: () => sectorRun?.test.clearField(),
+      sectorClearField: () => sectorRun?.test.clearField(), breachAt: (ci) => !!storyApi.breach(ci, {}),
       // THE PACING PROBE'S DEFENDER (--pacing): a body within r cells of a door dies there; it counts arrivals (not harmless
       // leftovers), not a player's kills
       sectorCull: (r = 8) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { killCreature(e, false); if (!e.harmless) n++; } return n; },
