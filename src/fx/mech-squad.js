@@ -70,7 +70,7 @@ export function createMechSquad(h) {
       const cur = nearestFrom(centreCell >= 0 ? centreCell : 0, v);
       m.mixer.stopAllAction();   // the landing clip let go: the gait poses the rig from here (its first pose is the park's, this tick)
       const farRoot = m.far ? m.far.clone(true) : null; if (farRoot) { farRoot.visible = false; m.wrap.add(farRoot); }
-      if (h.wire?.()) { setWireframe(m.root, true); if (farRoot) setWireframe(farRoot, true); }   // before instance(): the parts' InstancedMeshes take the wire material (host.wire, ?wire=1)
+      const wo = h.wire?.(); if (wo) { setWireframe(m.root, true, wo); if (farRoot) setWireframe(farRoot, true, wo); }   // before instance(): the parts' InstancedMeshes take the wire material (host.wire, ?wire=1)
       const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
@@ -106,6 +106,14 @@ export function createMechSquad(h) {
     return nextCell({ role: mc.role, cur: mc.cur, prev: mc.prev, adj: g.adj, open, rand, plain, dist: h.dungeon().distToHeart, park, targets, avoid });
   }
 
+  // the far tier past lodMetres, the game tier back inside lodMetres - 20 m: a view decision, so it is taken on frozen frames too (a camera cut
+  // or a pause moving the eye near a mech showed its far tier until the game ran again; found by the wire palette's shot, 2026-10-26)
+  function tierOf(mc, m) {
+    if (!mc.farRoot) return;
+    const d = mc.wrap.position.distanceTo(h.eye()) / m, far = mc.isFar ? d > REINFORCEMENTS.lodMetres - 20 : d > REINFORCEMENTS.lodMetres;
+    if (far !== mc.isFar) mc.isFar = far;
+    mc.farRoot.visible = far && !hidden; mc.root.visible = !far;
+  }
   function stepMech(mc, dt) {
     const m = h.metres(), cs = h.cellSide(), speed = REINFORCEMENTS.pace * cs;   // world units a second along the chord
     mc.wait -= dt;
@@ -132,11 +140,7 @@ export function createMechSquad(h) {
     mc.heading.addScaledVector(up, -mc.heading.dot(up)).normalize();
     x.crossVectors(up, mc.heading).normalize(); m4.makeBasis(x, up, mc.heading); mc.wrap.quaternion.setFromRotationMatrix(m4);
     mc.wrap.scale.setScalar(REINFORCEMENTS.scale * m);
-    if (mc.farRoot) {   // the far tier past lodMetres, the game tier back inside lodMetres - 20 m
-      const d = mc.wrap.position.distanceTo(h.eye()) / m, far = mc.isFar ? d > REINFORCEMENTS.lodMetres - 20 : d > REINFORCEMENTS.lodMetres;
-      if (far !== mc.isFar) mc.isFar = far;
-      mc.farRoot.visible = far && !hidden; mc.root.visible = !far;
-    }
+    tierOf(mc, m);
     mc.wrap.updateMatrixWorld(true);
     if (mc.rig) mc.contacts = applyGait(mc.rig, mc.gait, dt, { moving, rate, turning }).contacts;   // the rig posed under its placed wrap
     if (mc.last) { const k = 1 - Math.exp(-dt / SPEED_EASE); mc.speed += (mc.wrap.position.distanceTo(mc.last) / m / dt - mc.speed) * k; } else mc.last = new THREE.Vector3();
@@ -159,7 +163,7 @@ export function createMechSquad(h) {
 
   return {
     adopt,
-    tick(dt, t) { last = t; if (!mechs.length) return; mechs.forEach((mc) => { if (dt > 0) stepMech(mc, dt); else mc.wrap.updateMatrixWorld(true); stepRecords(mc); }); drawParts(); },
+    tick(dt, t) { last = t; if (!mechs.length) return; mechs.forEach((mc) => { if (dt > 0) stepMech(mc, dt); else { tierOf(mc, h.metres()); mc.wrap.updateMatrixWorld(true); } stepRecords(mc); }); drawParts(); },
     towers: () => records,
     state: () => mechs.map((mc) => {
       const shots = mc.recs.reduce((n, r) => n + (r.shots ?? 0), 0), fired = Math.max(...mc.recs.map((r) => r.firedAt ?? -1e9));
@@ -168,7 +172,9 @@ export function createMechSquad(h) {
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },
     parts: () => parts?.length ?? 0,
+    roots: () => mechs.map((mc) => mc.root),   // the game-tier roots (the harness's material survey)
     wire: () => parts ? [parts.filter((p) => p.inst.material?.wireframe).length, parts.length] : null,   // [wireframed parts, parts] (state().wire.mechs)
+    wireColours: () => parts ? parts.map((p) => `${p.meshes[0].name}:${p.inst.material?.color?.getHexString?.() ?? '-'}`) : null,   // the instanced parts' line colours (the palette's check)
     contacts: () => mechs.map((mc) => ({ pos: mc.wrap.position.toArray() })),   // the radar's friendlies (src/fx/radar-scope.js host.mechs): each mech's live place
     frameOf(i, pos, quat) { const mc = mechs[i]; if (!mc) return false; pos.copy(mc.wrap.position); quat.copy(mc.wrap.quaternion); return true; },   // a mech's place and facing (the harness's look, src/fx/reinforcements-host.js)
     show(on) { hidden = !on; },   // the harness's A/B for the four's draw cost (--reinforcements)

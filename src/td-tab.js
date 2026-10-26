@@ -108,7 +108,7 @@ import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
-  const wire = flags.wire === '1';   // WIREFRAME UNITS (owner, 2026-10-26, a test: "all the sentries, Mork, Mechs. but not the gunship or sol"): what the colony builds or is sent, as wireframes
+  const wire = !!flags.wire && flags.wire !== '0', wireOpts = { tint: flags.wire !== 'flat' };   // WIREFRAME UNITS (owner, 2026-10-26, a test: "all the sentries, Mork, Mechs. but not the gunship or sol"): ?wire=1 tinted per part (src/fx/model-fixture.js wireLook), ?wire=flat the briefings' one cyan
   let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, discoParty = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
   let reinforcements = null, mechSquad = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
   let pilot = null;
@@ -1296,7 +1296,7 @@ export function initTdTab(root) {
     heartSprite: () => heartSprite,
     setHeartSprite: (v) => (heartSprite = v),
     playerMesh: () => playerMesh,
-    setPlayerMesh: (v) => { if (wire && v) setWireframe(v, true); return (playerMesh = v); },   // the hull wireframed as it is built (?wire=1)
+    setPlayerMesh: (v) => { if (wire && v) setWireframe(v, true, wireOpts); return (playerMesh = v); },   // the hull wireframed as it is built (?wire=1)
     markerMesh: () => markerMesh,
     setMarkerMesh: (v) => (markerMesh = v),
     shieldObj: () => shieldObj,
@@ -2406,7 +2406,7 @@ export function initTdTab(root) {
     discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, cutBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide),
       daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveClock.in() >= 0, boards: () => story?.boards ?? [],   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen(), alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(), warm: warmShaders }) : null;
-    mechSquad?.restore(); mechSquad = story ? createMechSquad({ scene, metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => (playerHP > 0 ? player.pos : null), towerDef: (k) => TOWER_BY_KEY[k], towerId: () => nextTowerId++, seed: params.seed, eye: () => camera.position, wire: () => wire }) : null;
+    mechSquad?.restore(); mechSquad = story ? createMechSquad({ scene, metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => (playerHP > 0 ? player.pos : null), towerDef: (k) => TOWER_BY_KEY[k], towerId: () => nextTowerId++, seed: params.seed, eye: () => camera.position, wire: () => (wire ? wireOpts : null) }) : null;
     reinforcements?.restore(); reinforcements = story ? createReinforcements({ scene, camera, metres: () => metresToArc(1, cellSide), sfx, explode, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), graph: () => graph, dungeon: () => dungeon, story: () => story,
       daylight: () => daylight, sectorRun: () => sectorRun, shotActive: () => shotActive() || !!hullDeploy.state(), flag: flags.reinforce, uplink: () => programme.hasPerk('uplink'), landed: (m, f, c) => mechSquad?.adopt(m, f, c), squad: () => mechSquad, alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(),   /* FEIDS-26 (2026-10-23) */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() }) : null;
@@ -3268,9 +3268,18 @@ export function initTdTab(root) {
     cellIndex: () => cellIndex,
   });
   const perchOf = towerPose.perchOf;
-  function placeTowerObj(tower) { const r = towerPose.placeTowerObj(tower); if (wire && tower.obj && !tower.obj.userData.print) setWireframe(tower.obj, true); return r; }   // ?wire=1: every placement (print, rebuild, upgrade, the tier plate) leaves the sentry a wireframe; Isao's print ghost is its own
+  function placeTowerObj(tower) { const r = towerPose.placeTowerObj(tower); if (wire && tower.obj && !tower.obj.userData.print) setWireframe(tower.obj, true, wireOpts); return r; }   // ?wire=1: every placement (print, rebuild, upgrade, the tier plate) leaves the sentry a wireframe; Isao's print ghost is its own
   const wireCount = (root) => { let n = 0, w = 0; root?.traverse((o) => { if (o.isMesh) { n++; if (o.material?.wireframe) w++; } }); return [w, n]; };
-  const wireState = () => ({ on: wire, hull: wireCount(playerMesh), towers: towers.reduce((a, t) => { const [w, n] = wireCount(t.obj); return [a[0] + w, a[1] + n]; }, [0, 0]), mechs: mechSquad?.wire?.() ?? null });   // state().wire: [wireframed, meshes]
+  const wireState = () => ({ on: wire, mode: wire ? (wireOpts.tint ? 'tint' : 'flat') : null, hull: wireCount(playerMesh), towers: towers.reduce((a, t) => { const [w, n] = wireCount(t.obj); return [a[0] + w, a[1] + n]; }, [0, 0]), mechs: mechSquad?.wire?.() ?? null });   // state().wire: [wireframed, meshes]
+  const wireSurvey = (root) => {   // the solid materials under a root, grouped (the wire palette's survey, harness only)
+    const m = new Map();
+    root?.traverse((o) => { if (!o.isMesh) return; for (const mat of [o.userData.solid ?? o.material].flat()) {
+      if (!mat) continue; const k = `${mat.type} ${mat.color?.getHexString() ?? '-'} ${mat.emissive?.getHexString() ?? '-'} ${mat.emissiveIntensity ?? '-'}`;
+      const e = m.get(k) ?? { type: mat.type, color: mat.color?.getHexString() ?? null, emissive: mat.emissive?.getHexString() ?? null, ei: mat.emissiveIntensity ?? null, opacity: mat.opacity, n: 0, names: [] };
+      e.n++; if (e.names.length < 4 && !e.names.includes(o.name)) e.names.push(o.name); m.set(k, e);
+    } });
+    return [...m.values()];
+  };
 
   // Swap every tower's VISUAL in place. Game state — key, def, tier, cell,
   // cooldown, spend — is untouched; only `obj` is rebuilt. That is the
@@ -4957,7 +4966,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   const gameHooks = {
       state: () => ({
-        wire: wireState(),
+        wire: wireState(), wireSurvey: { hull: wireSurvey(playerMesh), tower: wireSurvey(towers[0]?.obj), mech: wireSurvey(mechSquad?.roots?.()?.[0]), mechColours: mechSquad?.wireColours?.() ?? null },
         enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(),
         explosions: explosions.state(), softHunt: enemyStep.softHunt(), shellBlast: shellBlast.last(), boss: bossRun.state(), descent: descentHost.state(), enemySpeed: params.enemySpeed, hullRepair: hullRepair.state(),
         pilotRounds: rs?.pilotRounds ?? 0,

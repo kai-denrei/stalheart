@@ -38,14 +38,33 @@ export function modelFixture(url, then) {
 
 // every mesh under `root` drawn as the briefings' wireframe (on) or in its own material again (off). The solid material is kept on
 // the mesh so the toggle is lossless; a mesh wireframed twice keeps the first solid.
-export function setWireframe(root, on) {
+// TINTED (owner, 2026-10-26, on the in-game ?wire=1: "various elements with slightly different colors", as a CAD wireframe reads: dim body
+// lines, bright lenses and lights, a warm part warm): with `tint` each mesh's lines take their colour from its solid material. A lit part
+// (an emissive of some lightness, or a part named for a sensor, a lens, a gun or a light) is an accent: its emissive toward white, opaque;
+// armour plates are the dimmest; everything else keeps its own hue nudged toward the wire's cyan at a mid lightness, so dark metal still reads.
+const WHITE = new THREE.Color(0xffffff), CYAN = new THREE.Color(WIRE), hsl = { h: 0, s: 0, l: 0 };
+const ACCENT = /SENSOR|LENS|OPTIC|MUZZLE|LASER|MINIGUN|MISSILE|LIGHT|LAMP|EMITTER|BEACON|RADAR|ANTENNA/i, PLATE = /ARMOR|ARMOUR|PLATE|SHIELD/i;
+const HYDRAULIC = /HYDRAULIC|PISTON|ROD\b|ACTUATOR/i, LIMB = /CLAW|ARM\b|_ARM_|LEG|SHIN|THIGH|KNEE|HIP|FOOT|TRIPOD/i;   // a one-material model (the Ridgeback) gets its variety from its part names
+export function wireLook(o, tint) {
+  if (!tint) return { color: WIRE, opacity: 0.85 };
+  const m = [o.userData.solid ?? o.material].flat()[0];
+  const lit = !!m?.emissive && (m.emissiveIntensity ?? 1) >= 1 && m.emissive.getHSL(hsl).l > 0.3;
+  if (lit || ACCENT.test(o.name)) return { color: (lit ? m.emissive : CYAN).clone().lerp(WHITE, 0.3), opacity: 1 };
+  const c = m?.color ? m.color.clone() : CYAN.clone(); c.getHSL(hsl); const grey = hsl.s < 0.1, n = o.name;
+  if (PLATE.test(n)) c.setHSL(grey ? 0.52 : hsl.h, grey ? 0.2 : hsl.s, 0.27);   // armour: the dimmest, a blue-grey
+  else if (HYDRAULIC.test(n)) c.setHSL(0.08, 0.45, 0.42);   // hydraulics and rods: copper, as a drawing marks its fittings
+  else if (LIMB.test(n)) c.setHSL(grey ? 0.55 : hsl.h, grey ? 0.15 : hsl.s, 0.4);   // limbs: steel
+  else { c.lerp(CYAN, 0.3); c.getHSL(hsl); c.setHSL(hsl.h, Math.min(1, hsl.s * 1.2), 0.22 + 0.3 * hsl.l); }   // 0.22-0.52: body lines dim enough that the bloom leaves them alone and the accents stand out
+  return { color: c, opacity: 0.7 };
+}
+export function setWireframe(root, on, { tint = false } = {}) {
   if (!root) return;
   root.traverse((o) => {
     if (!o.isMesh && !o.isPoints) return;
     if (on) {
       if (o.isPoints) { o.userData.solidVisible ??= o.visible; o.visible = false; return; }   // dot clouds have no edges to draw
       o.userData.solid ??= o.material;
-      if (!o.userData.wire) o.userData.wire = new THREE.MeshBasicMaterial({ color: WIRE, wireframe: true, transparent: true, opacity: 0.85 });
+      if (!o.userData.wire || o.userData.wire.userData.tint !== tint) { const { color, opacity } = wireLook(o, tint); o.userData.wire?.dispose(); o.userData.wire = new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity }); o.userData.wire.userData.tint = tint; }
       o.material = o.userData.wire;
     } else {
       if (o.isPoints) { if (o.userData.solidVisible !== undefined) o.visible = o.userData.solidVisible; return; }
