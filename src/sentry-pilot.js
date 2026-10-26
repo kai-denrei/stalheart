@@ -42,8 +42,8 @@ export function createSentryPilot(root, host) {
     if(map)return;
     e.stopImmediatePropagation();e.preventDefault();dragging=true;lastX=e.clientX;lastY=e.clientY;
     // moving and shooting are separate: a mouse click locks the pointer so the mouse aims; the trigger is Space (or the pad's fire button)
-    if(e.pointerType==='mouse'&&e.button===0&&!locked())root.requestPointerLock?.();
-    e.target.setPointerCapture?.(e.pointerId);host.wake();
+    if(e.pointerType==='mouse'&&e.button===0&&!locked())root.requestPointerLock?.()?.catch?.(()=>{});   // a refused lock (headless, a document without focus) leaves the drag
+    try{e.target.setPointerCapture?.(e.pointerId);}catch{/* a pointer the page cannot capture: the drag still runs on the window's moves */}host.wake();
   },{capture:true});
   listen(window,'pointermove',e=>{if(gunship&&map){px=e.clientX;py=e.clientY;return;}if(!dragging&&!locked())return;if(map)return;e.stopImmediatePropagation();const dx=locked()?e.movementX:e.clientX-lastX,dy=locked()?e.movementY:e.clientY-lastY;state.yaw-=dx*.004/state.zoom;state.pitch=Math.max(gunship?G.platform.pitchMin:-1.25,Math.min(gunship?G.platform.pitchMax:.9,state.pitch-dy*.004/state.zoom));lastX=e.clientX;lastY=e.clientY;},{capture:true});
   listen(window,'pointerup',()=>{dragging=false;if(gunship)state.held=false;},{capture:true});
@@ -91,7 +91,7 @@ export function createSentryPilot(root, host) {
     const [fovDeg,aspect]=host.lens?.()??[60/(lens??state.zoom),innerWidth/innerHeight];
     return look.fromArray(frameRound({eye:camEye.toArray(),aim:direction.toArray(),up:up.toArray(),round:r.pos,fovDeg,aspect,weight:w}));
   }
-  function setView(v){if(v==='map'){if(!map)toggleMap();return;}state.view=v==='third'?'third':'pov';if(map)toggleMap();}
+  function setView(v){if(v==='map'){if(!map)toggleMap();return;}const was=state.view;state.view=v==='third'?'third':'pov';if(gunship&&!map&&was!==state.view)host.glide?.();if(map)toggleMap();}   // the gunship's eye and its third view are 60 m apart: V glides between them (round 3, 2026-10-26), never a cut
   // A GUIDED MOUNT USES THE LOCK BOX (host.cone, the tangent of its half-angle): whatever is inside it is the target, and it STAYS the
   // target while it stays inside. Swapping to whichever body is momentarily nearest was the frustration: every swap reset the timer, so
   // a lock looked random. A gun still needs the reticle on the body itself.
@@ -151,6 +151,7 @@ export function createSentryPilot(root, host) {
   function holdAim(){if(!ship.obj)return;headNow.set(0,0,1).applyQuaternion(ship.obj.quaternion);headUp.copy(ship.obj.position).normalize();if(headSeen)state.yaw-=headingTurn(headWas.toArray(),headNow.toArray(),headUp.toArray());headWas.copy(headNow);headSeen=true;}
   function mountGunship(){
     if(!G||G.mount()!=='mounted')return 'refused';
+    if(!gunship)host.glide?.(1.8);   // INTO THE SEAT WITHOUT A CUT (round 3, 2026-10-26: measured 209 m and 135 degrees in one frame at the arena's hand-over): from the last picture, eased onto the optic over 1.8 s (the glide's far time: 340 m up)
     gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;state.zoomGoal=state.zoom;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();state.pitch=-1.45;   // the seat opens looking straight down, the lane's way   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
     guns.style.display='';seatHeader??=panel.querySelector('header').innerHTML;panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent=host.mobile?`${H.aimTouch} · ${H.leaveTouch}`:`${H.leave} · ${H.aim} · ${H.views}`;   /* on touch the pad's fire button is the trigger and the seat's own buttons pick the gun: 1 2 3 have no key there */

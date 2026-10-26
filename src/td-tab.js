@@ -487,7 +487,8 @@ export function initTdTab(root) {
   // All logic lives in strike.js (pure, tested); this file owns only what it
   // looks and sounds like. strikeTune is the live knob object the GUI writes.
   const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: flags.gunship === 'station' }); let gunshipBriefing = null, foundryFx = null;   /* the platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance */
-  const gunshipRig = createGunshipRig({ orbit: () => bossRun.orbit() ?? tune.orbit ?? GUNSHIP_ORBIT, scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
+  const gunshipRig = createGunshipRig({ orbit: () => bossRun.orbit() ?? tune.orbit ?? GUNSHIP_ORBIT, scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },
+    seatEase: (s) => seatGlide.begin(camera, { seconds: s }),   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
     story: () => story, storyViews: () => storyViews, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotHost: () => pilotHost, isao: () => isao, t: () => t, gunshipBriefing: () => gunshipBriefing, enemies: () => enemies, spawnPoints: () => spawnPoints, debris: () => debris, player: () => player, towers: () => towers, strikeTune: () => strikeTune, roundLanded: (g, p) => bossRun.landed(g, p), guns: () => bossRun.guns() });
   const strikeTune = makeStrikeParams();
   let strikeGrace = 0;   // s after launch during which a tap cannot skip
@@ -1112,6 +1113,7 @@ export function initTdTab(root) {
   });
 
   const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ seconds: 1.0, far: 1.8, hold: () => paused, wait: () => shotId() === 'takeControl' });   /* shorter (owner, 2026-10-16: "the time between announcing SOL and getting control is too long"; was 1.4 / 3.2) */
+  const SEAT_GLIDE_PEAK = 150;   // m/s: the gunship seat's glide in never moves faster at its peak (round 3, 2026-10-26: a frame clamped at 0.1 s moves at most 15 m)
   // THE CAMERA'S JUMP METER (round 3, 2026-10-26: the gunship's view jump-cut; src/fx/cam-jump.js): sampled once a painted frame before the draw, state().camJump
   const camJump = createCamJump({ metres: () => metresToArc(1, cellSide), info: () => ({ gunship: { phase: gunship.phase, left: Number.isFinite(gunship.left) ? +gunship.left.toFixed(2) : String(gunship.left), passes: gunship.passes },
     seat: { pilotMode, gunship: !!pilot?.gunship, map: !!pilot?.isMap?.(), view: pilot?.state.view ?? null, yaw: +(pilot?.state.yaw ?? 0).toFixed(3), pitch: +(pilot?.state.pitch ?? 0).toFixed(3), glide: seatGlide.active(), shot: shotId() ?? null, strip: storyViews?.now?.() ?? null }, boss: bossRun?.on?.() ? bossRun.state().phase : null, paused }) });
@@ -4450,7 +4452,7 @@ export function initTdTab(root) {
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !hullDeploy.clip() && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
-    camJump.sample(camera, performance.now() / 1000, pilotMode && !!pilot?.gunship && !pilot.isMap());   // after the camera is placed, before the draw (src/fx/cam-jump.js)
+    camJump.sample(camera, performance.now() / 1000, pilotMode && !!pilot?.gunship && !pilot.isMap()); seatGlide.note(camera);   // after the camera is placed, before the draw (src/fx/cam-jump.js)
     postfx.render();
     // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the
     // optic inset on the tracked target
@@ -5219,7 +5221,7 @@ export function initTdTab(root) {
   // after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too)
   function leavePilot() {
     if (!pilotMode) return;
-    seatGlide.cancel();
+    seatGlide.begin(camera);   // NO CUT OUT OF A SEAT (round 3, 2026-10-26: "the camera never jumps wildly from one view to another"): from the seat's last picture, eased onto the restored view
     pilot?.dispose();
     for (const tw of towers) hushRotor(tw);
     pilot = null;
@@ -5259,7 +5261,7 @@ export function initTdTab(root) {
       const near=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[tw.ci],graph.centers[a.ci])-chord(graph.centers[tw.ci],graph.centers[b.ci]))[0]; pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]); if(posts&&story?.missiles?.[key]){pilot.state.zoom=story.quiverZoom??2;pilotHost.zoom(pilot.state.zoom);}   // a guided mount opens through its long lens
     }
     pilot=createSentryPilot(root,pilotHost={
-      story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>{thermalHeat.set(on);creatureEnemies.thermal?.(on);},leave:()=>leavePilot(),gunship:gunshipRig.pilotBag(),
+      story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>{thermalHeat.set(on);creatureEnemies.thermal?.(on);},leave:()=>leavePilot(),glide:s=>seatGlide.begin(camera,{seconds:s,speed:s?SEAT_GLIDE_PEAK*metresToArc(1,cellSide):0}),gunship:gunshipRig.pilotBag(),
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),leave:()=>root.querySelector('#story-views [data-view="tank"]:not([disabled])')?.click(),pause:()=>{togglePause();pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body

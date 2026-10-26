@@ -1625,16 +1625,16 @@ try{
  await evaluate(`${T}.arenaNow()`);
  await until(`${T}.state().boss.card`,120000).catch(async()=>assert.fail(`THE MOTHER's card (${JSON.stringify((await st()).boss)})`));
  console.log(`ARENA FIGHT set-up: the hull put down at cell ${hullAt}, ${(await st()).boss.hullCells} cells from the arena's centre`);
+ {const cj=(await st()).camJump;console.log(`  camera before the window (load, cuts): ${cj.log.length} frames over 8 m / 6 degrees`);for(const e of cj.log.slice(-6))console.log('  cam (before) '+JSON.stringify(e));}
+ await evaluate(`${T}.camJumpClear()`);   // the window opens on TAKE THE GUN: the glide into the seat is in it
  await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');
  await until(`${T}.state().boss.seated`,120000).catch(async()=>assert.fail(`the gun taken (${JSON.stringify({boss:(await st()).boss,gunship:(await st()).gunship})})`));
  await until(`${T}.state().boss.led`,60000).catch(async()=>assert.fail(`her body leads her record (${JSON.stringify((await st()).boss)})`));
  await until(`${T}.state().boss.fear.ground==='hunt'`,120000).catch(async()=>assert.fail(`off the sinkhole (${JSON.stringify((await st()).boss.fear)})`));
  current='arena-fight-seated';await finish();
  // THE SEATED VIEW IS CONTINUOUS (round 3, note 1, 2026-10-26; spec docs/superpowers/specs/2026-10-26-round-3-gunship-view-and-radar-design.md, decision 1): the
- // controller samples the camera every painted frame (state().camJump, src/fx/cam-jump.js); the window starts here, the seat taken. CAM_PROBE=<s>: the camera
+ // controller samples the camera every painted frame (state().camJump, src/fx/cam-jump.js); the window opened on TAKE THE GUN, the glide in included. CAM_PROBE=<s>: the camera
  // alone for that many seconds of wall clock, nothing fired, every frame over 8 m / 6 degrees printed with the gunship's phase and the seat; the fight not run
- {const cj=(await st()).camJump;console.log(`  camera before the window (load, cuts, the seat's glide in): ${cj.log.length} frames over 8 m / 6 degrees`);for(const e of cj.log.slice(-12))console.log('  cam (before) '+JSON.stringify(e));}
- await evaluate(`${T}.camJumpClear()`);
  const camReport=async(tag)=>{const cj=(await st()).camJump;console.log(`${tag} camera (seated ${cj.seated.frames} of ${cj.frames} frames): worst move ${cj.seated.m} m (frame ${cj.seated.mAt}), ${cj.seated.deg} degrees (frame ${cj.seated.degAt}); the limits 25 m / 20 degrees; ${cj.log.length} frames over 8 m / 6 degrees`);for(const e of cj.log)console.log('  cam '+JSON.stringify(e));return cj;};
  // the gunner's own drag (CAM_PROBE): the mouse dragged down until the pitch stops at the seat's floor and back up, 4 px a step; a pitch past
  // straight down (-pi/2) flips the look-at's roll by 180 degrees in one frame

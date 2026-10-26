@@ -86,6 +86,15 @@ const storyAt = (o = {}) => ({ gunshipIn: false, grow: false, programme: null, s
   s.story.gsStage = -1; rig.tick(0.5); assert.equal(rig.probe().track.enemies, 2, 'the stage cleared: the breach with the bodies again');
   rig.placeOver(-1); assert.ok(rig.probe().track, 'a missing cell leaves the track as it was');
 }
+// A RE-PLACEMENT UNDER THE TAKEN SEAT IS EASED (round 3, 2026-10-26): with the gunship's seat taken placeOver asks the controller for a glide of at
+// least 1.5 s before the track moves; with nobody seated, none
+{
+  const eases = [];
+  const { rig, s } = controller({ story: storyAt() }, { seatEase: (sec) => eases.push(sec) });
+  rig.tick(0.5); rig.placeOver(2); assert.deepEqual(eases, [], 'nobody seated: no glide');
+  s.pilot = { gunship: true }; rig.placeOver(5); assert.deepEqual(eases, [1.5], 'seated: a 1.5 s glide');
+  assert.deepEqual(rig.probe().track.pos, norm3(centers[5]), 'and the track over the cell');
+}
 // A DEPARTURE on call ends the meter's pass; the walls the danger report counts are refreshed with the next pass
 {
   const { rig, s, gunship } = controller({ story: storyAt({ inside: (ci) => ci !== 3 }) });

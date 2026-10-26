@@ -22,4 +22,23 @@ const cam = () => ({ position: new THREE.Vector3(), quaternion: new THREE.Quater
   assert.ok(steps / 60 < 1.6, 'a hand-over between neighbours keeps its short glide');
   g.place(c, goal, 1 / 60); assert.ok(c.position.distanceTo(goal.pos) < 1e-9, 'then sits on the goal');
 }
+// A LEAST SPAN (round 3, 2026-10-26): the gunship re-placed under the taken seat glides over at least the seconds begin() is given
+{
+  const g = createSeatGlide({ seconds: 1.0, body: null }), c = cam(), goal = { pos: new THREE.Vector3(0.1, 1.2, 0), quat: new THREE.Quaternion() };
+  c.position.set(0, 1.2, 0);
+  g.begin(c, { seconds: 1.5 }); let steps = 0;
+  while (g.active() && steps < 1000) { g.place(c, goal, 1 / 60); steps++; }
+  assert.ok(Math.abs(steps / 60 - 1.5) < 0.05, `the least span holds (${(steps / 60).toFixed(2)} s)`);
+  g.begin(c); steps = 0; while (g.active() && steps < 1000) { g.place(c, goal, 1 / 60); steps++; }
+  assert.ok(steps / 60 < 1.1, 'and the next plain begin is short again');
+}
+// A SPEED CAP (round 3): a long move's peak held to `speed`, so its span grows with the distance
+{
+  const g = createSeatGlide({ seconds: 1.0, body: null }), c = cam(), goal = { pos: new THREE.Vector3(0.3, 1.2, 0), quat: new THREE.Quaternion() };
+  c.position.set(0, 1.2, 0);
+  g.begin(c, { seconds: 1, speed: 0.1 }); let steps = 0, worst = 0; const was = new THREE.Vector3();
+  while (g.active() && steps < 2000) { was.copy(c.position); g.place(c, goal, 1 / 60); worst = Math.max(worst, was.distanceTo(c.position) * 60); steps++; }
+  assert.ok(Math.abs(steps / 60 - 4.5) < 0.05, `0.3 at a 0.1 peak takes 4.5 s (${(steps / 60).toFixed(2)})`);
+  assert.ok(worst < 0.12, `the peak held near the cap with the arc's lift (${worst.toFixed(3)})`);
+}
 console.log('Seat glide: near, a short arc; far, round the sphere and never through it; then on the goal.');
