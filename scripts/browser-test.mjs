@@ -1880,7 +1880,10 @@ try{
  // they fire: bodies put beside the hunter and an arena mech, and within 20 game seconds their records have shot (tower-combat's second list, autoTower)
  {const s0=await st(),ms0=R(s0).mechs,t0=ms0[0].t,hunt=ms0.find(m=>m.role==='hunt'),ar=ms0.find(m=>m.role==='arena');
   await evaluate(`${T}.spawnHere(${hunt.cell},8)`);await evaluate(`${T}.spawnHere(${ar.cell},8)`);
-  await until(`${T}.state().reinforcements.mechs.some(m=>m.shots>0)||(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+20}`,240000);
+  // (45 game s since round 3: the first volley lands about 20 game s after the bodies are put down, 20.4 s on round-3-b against a 20 s window, and all four fire in the same tick)
+  console.log(`  reinforcements: bodies put down at game t ${t0}, sector ${s0.sector?.phase}, Isao ${JSON.stringify((await evaluate('window.__seen?.briefs||[]')).slice(-2))}`);
+  await until(`${T}.state().reinforcements.mechs.some(m=>m.shots>0)||(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+45}`,240000);
+  console.log(`  reinforcements: firing check at game t ${R(await st()).mechs[0]?.t}, sector ${(await st()).sector?.phase}`);
   const ms=R(await st()).mechs;for(const m of ms)console.log(`  reinforcements: firing check, mech ${m.role} at cell ${m.cell}: shots ${m.shots}, last fired at game t ${m.firedAt}`);
   assert.ok(ms.some(m=>m.shots>0),'the Ridgebacks fire on bodies beside them');}
  current='reinforce-firing';await finish();
@@ -5994,6 +5997,18 @@ const killReal=(Date.now()-t0)/1000;
   current='debrief-width-400-on-1280';await finish();
   await evaluate('window.__stalheartDebriefTest.show("campaign")');await click('.sdb-root [data-act=newrun]');await delay(150);
   assert.equal((await dbf()).events.at(-1).what,'NEW RUN','NEW RUN dismisses with its own callback');}
+ // THE ENDING'S CARD ASKS FIRST (round 3, 2026-10-26, decision 3a): shown as the ending shows it ({ confirm: true }), Space on a running page asks
+ // "SKIP END GAME CELEBRATION?" in the footer and the reveal goes on; another key says no; Space, then Space within 4 s, lands the page
+ await go('debrief-ending','labs.html?sw=0&acceptance=1&sound=0#debrief',1280,800);
+ await until('!!window.__stalheartDebriefTest');
+ {const {SKIP_QUESTION}=await import('../src/domain/skip-confirm.js');
+  await evaluate(`window.__stalheartDebriefTest.ending("secure")`);await delay(400);let s=await dbf();assert(s.open&&s.animating,'the ending\'s card reveals');
+  await press(' ');s=await dbf();console.log(`  debrief-ending: Space on the reveal: asking ${s.asking}, hint "${s.hint}", animating ${s.animating}`);
+  assert(s.asking&&s.hint===SKIP_QUESTION,'Space asks first');assert(s.animating,'and the reveal goes on');current='debrief-ending-ask';await finish();
+  await press('w');s=await dbf();assert(!s.asking&&s.animating,'another key says no: the reveal goes on');
+  await press(' ');assert((await dbf()).asking,'asked again');await press(' ');s=await dbf();
+  console.log(`  debrief-ending: Space again within 4 s: asking ${s.asking}, animating ${s.animating}, open ${s.open}`);
+  assert(!s.asking&&!s.animating&&s.open,'Space confirms: the page lands, the card stays');}
  } else if(authoringWorkspace) {
  await go('local-authoring','labs.html?sw=0&acceptance=1&mode=armour&family=quiver#sentry');
  await until('document.querySelector("[data-authoring-review]")?.hidden === false && document.querySelector("#tab-sentry").dataset.modelReady === "true"');
