@@ -1480,6 +1480,10 @@ try{
  {const d=await st(),panel=await evaluate('(e=>e.classList.contains("hidden")?"":e.textContent)(document.querySelector("#td-brief"))');assert.equal(panel,'',`Isao's panel is empty when the cave covers the game (${panel})`);assert.equal(d.descent.shown,true,'the frame shows');console.log(`  the cave opened ${((Date.now()-briefT0)/1000).toFixed(1)} s (wall), ${d.descent.openedAt?.toFixed(1)} game s after the hand-off`);}
  {const d=await st();assert.equal(d.descent.open,true,`the frame is open (${JSON.stringify(d.descent)})`);assert.ok(d.descent.src.endsWith(DESCENT.page),`with the cave's page (${d.descent.src})`);assert.equal(d.paused,true,'the game paused under it');
   const f=await evaluate('(f=>f?{cls:f.className,allow:f.getAttribute("allow"),w:f.getBoundingClientRect().width}:null)(document.querySelector("iframe.descent-frame"))');assert.ok(f&&/pointer-lock/.test(f.allow)&&f.w>300,`the frame over the tab (${JSON.stringify(f)})`);}
+ // THE HOLE IS THE DOOR (owner, 2026-10-26, note 7; round 3 c decision 2): the camera dived down the arena's hole: at the hand-over it is under the lip, within
+ // 2 cells of the hole's centre, looking along -normal, the view narrowed
+ {const d=(await st()).descent,fov=await evaluate(`${T}.state().camera?.fov??null`);console.log(`  the hand-over: ${JSON.stringify(d.door)} (hole ${d.hole}, dive at ${d.diveAt}), fov ${fov}`);
+  assert.ok(d.hole>=0&&d.door,`the door measured on the arena's hole (${JSON.stringify(d)})`);assert.ok(d.door.fromCentre<2,`within 2 cells of the hole's centre (${d.door.fromCentre})`);assert.ok(d.door.along>0.9,`looking along -normal (${d.door.along})`);}
  // the cave boots inside the frame in its stalheart mode (same origin: its document is ours to read)
  await until('(()=>{const f=document.querySelector("iframe.descent-frame");const d=f&&f.contentDocument;return !!d&&!!d.getElementById("begin");})()',30000).catch(()=>assert.fail('the cave\'s page booted inside the frame'));
  await until('(()=>{const d=document.querySelector("iframe.descent-frame")?.contentDocument;const b=d&&d.getElementById("begin-label");return !!b&&/TAKE THE FEED|FEED UNAVAILABLE|INITIALIZING/.test(b.textContent);})()',60000);
@@ -1494,6 +1498,9 @@ try{
  {const d=await st();assert.equal(d.descent.open,false,'the frame is gone');assert.equal(d.descent.outcome,'rescued');assert.equal(d.paused,false,'the game runs again');
   assert.equal(await evaluate('!!document.querySelector("iframe.descent-frame")'),false,'no frame in the DOM');
   assert.deepEqual(d.descent.said,['descent_brief','descent_back'],`the brief, then Isao's decoding joke (${JSON.stringify(d.descent.said)})`);}
+ // ...and out the same way (decision 3): the camera rises up the hole's axis to the rim (DESCENT.door.rise s of game time), then the ending as before
+ await until(`(${T}.state().descent.door?.fromRim??9)<2&&${T}.state().descent.door?.phase==='rise'`,30000).catch(async()=>assert.fail(`the camera rises to the rim (${JSON.stringify((await st()).descent)})`));
+ {const d=(await st()).descent;console.log(`  the return: ${JSON.stringify(d.door)}`);assert.ok(d.door.fromRim<2,`within 2 cells of the rim (${d.door.fromRim})`);}
  current='descent-back';await finish();
  } else if(args.includes('--boss-start')) {
  // ?boss=1 (2026-10-16): a run opened past the door's earliest opens ON THE BOSS, the door counted as the sector before (the owner's morning entry)

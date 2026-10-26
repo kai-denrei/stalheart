@@ -48,7 +48,7 @@ export function center(s){
   // lights the bottom and the way down has to be lit in two throws. The ends stay where they were: the lip and the drop turn are unmoved
   const d=s-SHAFT_START,L=SHAFT_TOP-CHAMBER_LIP;return {x:SHAFT_BOW*Math.sin(Math.PI*Math.max(0,Math.min(1,d/L))),y:SHAFT_TOP-d,z:-79};
 }
-export const SHAFT_BOW=14;   // 14 m: more than the shaft's radius, so the top never sees the bottom; at 22 the wall leaned under 65 degrees and a flare stuck to it mid-shaft (flare-physics.js rests on anything flatter)
+export const SHAFT_BOW=14;   // 14 m: more than the shaft's radius, so the top never sees the bottom (a flare that touches the lean sticks there since 2026-10-26: flare-physics.js)
 function normalize(p){const n=Math.hypot(p.x,p.y,p.z)||1;return {x:p.x/n,y:p.y/n,z:p.z/n};}
 export function frameAt(s,branch='main'){
   const a=branchCenter(branch,s-.05),b=branchCenter(branch,s+.05),t=normalize({x:b.x-a.x,y:b.y-a.y,z:b.z-a.z});
@@ -135,13 +135,7 @@ export function recordImpact(m){
 export function useFlare(m){if(m.outcome||m.extracted||m.signalLost||m.flares<=0)return false;m.flares--;return true;}
 // THE WORK LIGHT (the owner, 2026-10-16: "the lamp should not fail right away... it should start stronger, then start to fail with flickers... come back...
 // fail again for good a bit later"): strong while whole; after the second hit LAMP.flicker seconds of flicker, back (dimmer) for LAMP.back seconds, then out
-// FLARES STICK TO SLOPES (owner, 2026-10-18: "the flares need to STICK to sloped areas better, although they must fall with gravity"; flare-physics.js):
-// on contact the rock grips (friction, coefficient `friction`, against gravity's push into the surface), and a flare slower than `restSpeed` on rock no
-// steeper than `restSlope` degrees comes to rest. Two numbers: with mu 1, gravity's pull along the slope beats the grip from 45 degrees (tan 45 = 1), so
-// from there a flare speeds up rather than slows; the rest threshold is 50 degrees, so between 45 and 50 a flare still rests if it is already slow, and
-// above 50 it slides on (the bowed shaft's 67-degree lean never holds one). "Static friction" here means only that a resting flare never wakes: stepFlare
-// returns at once for a resting flare and nothing in the cave pushes flares. In the air nothing changes
-export const FLARE_STICK={restSlope:50,restSpeed:.9,friction:1};
+// FLARES: they stick where they first touch the rock since 2026-10-26 (flare-physics.js FLARE_FALL); the grip of 2026-10-18 (FLARE_STICK) is retired
 export const LAMP={strong:1.25,flicker:6,back:25,dim:.8};
 export function lampStrength(m){
   if(m.lampState==='failed')return 0;

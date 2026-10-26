@@ -7,6 +7,7 @@ import {createIsao} from './isao.js';
 import {createTunnelCreatures} from './creatures.js';
 import {createDetonation} from './detonation.js';
 import {createFlares} from './flares.js';
+import {createDoor} from './door.js';
 import {surveyGLSL} from './lidar.js';
 import {MAIN_TENTACLES,LEFT_TENTACLES,BLIND_TENTACLES,colonyPresence,colonyDistance} from './cave-pacing.js';
 
@@ -105,7 +106,8 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
   const entrance=createSinkholeEntrance(scene);
   const network=createCaveNetwork({body,stone,scene});
   const nursery=await createNursery({scene,body,points,sample,stone,flesh,rand});
-  const flares=createFlares(scene,uniforms);
+  const door=createDoor(scene);   // the arena's hole as the way in and out, in Stålheart's page only (src/door.js)
+  const flares=createFlares(scene,uniforms,door.clearance);   // flares land on the door's rubble too
   const isao=await createIsao(scene,camera);
   const creatures=await createTunnelCreatures({scene,body,points,material,uniforms,camera});
 
@@ -182,5 +184,5 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
   function reset(){flares.reset();isao.reset();creatures.reset();nursery.reset();blast.reset();dropTime=null;drop.visible=false;uniforms.uScanTime.value=-100;}
   function render(){renderer.render(scene,camera);}
   function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);}
-  return {camera,player,renderer,scene,update,render,resize,scan,contacts,constrainBodies:nursery.constrain,contactSamples:()=>({...nursery.contactSamples(),tentacle:limbs[0].path[16].toArray(),enemy:creatures.contactSample()}),reset,uniforms,dropFlare:flares.drop,startDetonation:blast.start,setLidarMode:(mode)=>{uniforms.uScanMode.value=mode;},flashHit:isao.flashHit,stats:()=>({exteriorExposure:exposure,...network.stats(),...nursery.stats(),...isao.stats(),...creatures.stats(),...blast.stats(),flares:flares.stats(),sinkhole:entrance.source,shaftDepth:SHAFT_TOP-CHAMBER_LIP,tentacles:limbs.length,tentaclePlacements:limbs.map(l=>({s:l.s,branch:l.branch,bio:l.bio}))})};
+  return {camera,player,renderer,scene,update,render,resize,scan,contacts,constrainBodies:nursery.constrain,contactSamples:()=>({...nursery.contactSamples(),tentacle:limbs[0].path[16].toArray(),enemy:creatures.contactSample()}),reset,uniforms,dropFlare:flares.drop,showDoor:door.show,doorStart:door.start,startDetonation:blast.start,setLidarMode:(mode)=>{uniforms.uScanMode.value=mode;},flashHit:isao.flashHit,stats:()=>({exteriorExposure:exposure,...network.stats(),...nursery.stats(),...isao.stats(),...creatures.stats(),...blast.stats(),flares:flares.stats(),door:door.stats(),sinkhole:entrance.source,shaftDepth:SHAFT_TOP-CHAMBER_LIP,tentacles:limbs.length,tentaclePlacements:limbs.map(l=>({s:l.s,branch:l.branch,bio:l.bio}))})};
 }
