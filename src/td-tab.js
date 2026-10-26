@@ -4463,7 +4463,7 @@ export function initTdTab(root) {
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
 
-  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveClock.charge() });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
+  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveClock.charge(), mechs: () => mechSquad?.contacts() ?? [] });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
 
   const seedOverride = parseInt(flags.seed || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const showcaseMode = showcaseOn(location.search), storyQuery = readStoryQuery(showcaseMode ? '?skip=defence' : location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story'; root.classList.toggle('story-world', storyMode);   /* the campaign's buttons and key hint stay off in the story (styles.css) */   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
@@ -5011,7 +5011,7 @@ export function initTdTab(root) {
         screensOpened: syntheticModal?.opened() ?? 0,
         brassLive: brass?.live() ?? 0,
         daylight: daylight?.state() ?? null, day: daylight?.day() ?? null, party: discoParty?.state() ?? null,
-        reinforcements: reinforcements?.state() ?? null,   /* FEIDS-26 (2026-10-23) */
+        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(),   /* FEIDS-26 (2026-10-23); the scope's friendlies drawn last frame (round 3) */
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,

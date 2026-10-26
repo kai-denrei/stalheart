@@ -1836,7 +1836,8 @@ try{
   assert.ok(heard.every(h=>h.voiced),'every cue sounded (a live voice of its key after the ask)');
   for(const k of ['feids_reentry','mech_reentry_woosh','mech_landing_impact'])assert.ok((s.sounds?.[k]??0)>=(k==='feids_reentry'?2:4),`${k} asked (${s.sounds?.[k]})`);}
  await until(`${T}.state().shot!=='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>assert.fail(`the camera released after the drop (${(await st()).shot})`));
- {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}`);}
+ {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}; radar friendlies drawn ${s.radar?.mechs}`);
+  assert.equal(s.radar?.mechs,4,'the four on the radar as friendlies (round 3, note 2)');}
  current='reinforce-landed';await finish();
  // THE FOUR AFTER THE DROP (decisions 3 and 4): four mechs in their roles, sixteen sentry records at the top tier; 30 game seconds on, the base mech nearer the
  // heart, the hunter moved, the arena pair still on the plain; who fired

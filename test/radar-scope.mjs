@@ -25,13 +25,13 @@ function scope(o = {}) {
   const ctx = recorder();
   const s = {
     graph: { centers }, dungeon: { heart: 1 }, size: 200, mapMode: 'player', pilot: null, pilotMode: false, cellSide: 0.08, waveCharge: 0,
-    player: { pos: [0, 1, 0], smoothDir: [1, 0, 0] }, towers: [], enemies: [], spawnPoints: [], strike: { armed: false, target: -1 }, poles: 0, ...o,
+    player: { pos: [0, 1, 0], smoothDir: [1, 0, 0] }, towers: [], enemies: [], spawnPoints: [], strike: { armed: false, target: -1 }, poles: 0, mechs: [], ...o,
   };
   const radar = createRadarScope({
     ctx, player: s.player, camera: { quaternion: { x: 0, y: 0, z: 0, w: 1 } }, towers: s.towers, enemies: s.enemies, spawnPoints: s.spawnPoints, strike: s.strike,
     poleFrame: () => { s.poles++; return { hn: [1, 0, 0], t1: [0, 1, 0], t2: [0, 0, 1] }; },
     graph: () => s.graph, dungeon: () => s.dungeon, size: () => s.size, mapMode: () => s.mapMode, pilot: () => s.pilot, pilotMode: () => s.pilotMode,
-    cellSide: () => s.cellSide, waveCharge: () => s.waveCharge,
+    cellSide: () => s.cellSide, waveCharge: () => s.waveCharge, mechs: () => s.mechs,
   });
   return { ctx, s, radar };
 }
@@ -103,5 +103,35 @@ function scope(o = {}) {
   radar.draw(0);
   const heart = calls(ctx, 'fillRect').at(-1);
   assert.equal(heart[3], 5, 'the heart is still drawn, pinned to the rim');
+}
+// THE FOUR RIDGEBACKS (round 3): friendlies after the towers and before the enemies, the hull's white filled at 3.5 with a 1 px cyan ring each;
+// in heart mode too; none when the squad is empty
+{
+  const mechs = [[0.05, 0.99, 0], [0.04, 0.99, 0.03], [-0.03, 0.99, 0.02], [0.02, 0.99, -0.04]].map((pos) => ({ pos }));
+  const enemies = [{ alive: true, pos: [0.05, 0.99, 0.01], spec: {} }];
+  for (const mapMode of ['player', 'heart']) {
+    const { ctx, radar } = scope({ mechs, enemies, mapMode });
+    radar.draw(0.5);
+    const at = (r) => ctx.log.indexOf(r);
+    const rects = calls(ctx, 'fillRect'), mechRects = rects.filter((r) => r[3] === 3.5);
+    assert.equal(mechRects.length, 4, `${mapMode}: four mech blips`);
+    for (const r of mechRects) {
+      const i = at(r), fill = ctx.log.slice(0, i).filter((l) => l[0] === '=fillStyle').at(-1)[1];
+      assert.equal(fill, '#f2f8ff', `${mapMode}: a mech is the hull's white`);
+      assert.ok(i < at(rects.find((x) => x[3] === 4)), `${mapMode}: mechs before the enemies`);
+    }
+    const rings = calls(ctx, 'arc').filter((a) => a[3] === 3.5);
+    assert.equal(rings.length, 4, `${mapMode}: a ring round each`);
+    for (const a of rings) {
+      const before = ctx.log.slice(0, at(a));
+      assert.equal(before.filter((l) => l[0] === '=strokeStyle').at(-1)[1], '#4bd7e0', 'the ring is the towers\' cyan');
+      assert.equal(before.filter((l) => l[0] === '=lineWidth').at(-1)[1], 1, 'one pixel');
+    }
+    assert.deepEqual(radar.state(), { mechs: 4 }, `${mapMode}: the count drawn`);
+  }
+  const { ctx, radar } = scope();
+  radar.draw(0.5);
+  assert.equal(calls(ctx, 'fillRect').filter((r) => r[3] === 3.5).length, 0, 'no mech blips with the squad empty');
+  assert.deepEqual(radar.state(), { mechs: 0 }, 'none counted');
 }
 console.log('Radar scope paints the frame, contacts, proximity arcs, heart frame and strike cross from the host it is given.');

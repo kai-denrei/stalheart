@@ -21,7 +21,7 @@
 // meshes is drawn by one InstancedMesh holding the four mechs' copies of it (their own meshes stay in the tree, hidden, posed by the gait as before, and
 // lend their world matrices every frame); a mech on its far tier is a zero instance, and the parts hide when all four are far.
 //   host: scene, metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
-//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), frameOf(i, pos, quat), show(on), restore() }
+//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), contacts(), frameOf(i, pos, quat), show(on), restore() }
 import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
 import { ARENA } from '../content/sectors.js';
@@ -166,6 +166,7 @@ export function createMechSquad(h) {
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },
     parts: () => parts?.length ?? 0,
+    contacts: () => mechs.map((mc) => ({ pos: mc.wrap.position.toArray() })),   // the radar's friendlies (src/fx/radar-scope.js host.mechs): each mech's live place
     frameOf(i, pos, quat) { const mc = mechs[i]; if (!mc) return false; pos.copy(mc.wrap.position); quat.copy(mc.wrap.quaternion); return true; },   // a mech's place and facing (the harness's look, src/fx/reinforcements-host.js)
     show(on) { hidden = !on; },   // the harness's A/B for the four's draw cost (--reinforcements)
   };

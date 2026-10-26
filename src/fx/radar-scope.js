@@ -14,6 +14,7 @@ export function createRadarScope(host) {
   // sensorDemo: relative positions a test injects (test/radar-scope.mjs) so the proximity arcs can be checked without a live
   // solid contact on the board; empty in play
   const sensorDemo = [];
+  let mechsDrawn = 0;   // the friendly mechs blipped last frame (state().radar.mechs, the --reinforcements check)
   function draw(t) {
     const graph = host.graph();
     if (!graph || !player.pos) return;
@@ -78,6 +79,17 @@ export function createRadarScope(host) {
 
     // towers: dim cyan fixtures — infrastructure, not contacts
     for (const tw of towers) blip(graph.centers[tw.ci], '#4bd7e0', 2.5);
+    // THE FOUR RIDGEBACKS (round 3, 2026-10-26, the owner: "the six-legged mechs that airdrop don't show as friendlies on the radar"): ours and
+    // mobile, so the hull's white, filled, with a 1 px ring in the towers' cyan; phosphor as the other contacts, in heart mode too
+    mechsDrawn = 0;
+    for (const mk of host.mechs()) {
+      blip(mk.pos, '#f2f8ff', 3.5);
+      const q = radarProject(mk.pos, cpos, basis, range), bri = radarPhosphor(radarBearing(q.x, q.y), sweep);
+      ctx.globalAlpha = q.clamped ? bri * 0.5 : bri;
+      ctx.strokeStyle = '#4bd7e0'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx + q.x * R, cy + q.y * R, 3.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1; mechsDrawn++;
+    }
     // enemies: THE contacts, phosphor green, heavies fatter
     for (const e of enemies) {
       if (!e.alive) continue;
@@ -163,5 +175,5 @@ export function createRadarScope(host) {
       blip(player.pos, '#f2f8ff', 4, true);
     }
   }
-  return { draw, sensorDemo };
+  return { draw, sensorDemo, state: () => ({ mechs: mechsDrawn }) };
 }
