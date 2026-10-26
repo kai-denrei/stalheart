@@ -1462,6 +1462,18 @@ try{
  await evaluate(`${T}.laserAuto(true)`);await delay(2500);
  console.log('PROBE',await evaluate(`JSON.stringify({dom:[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent),navs:document.querySelectorAll("#story-views").length,laser:(l=>({auto:l.auto,platform:l.platform,strip:l.strip}))(${T}.state().laser)})`));
  await finish();
+ } else if(args.includes('--wire')) {
+ // ?wire=1 (owner, 2026-10-26): the hull, every sentry and the four Ridgebacks drawn as wireframes; the gunship and SOL untouched
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ await go('wire',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&reinforce=1&wire=1#td`);
+ await until(`!!${T} && ${T}.state().wire?.hull?.[1]>0`,120000).catch(async()=>assert.fail(`the hull built (${JSON.stringify((await st()).wire)})`));
+ {const placed=await evaluate(`(()=>{const T=${T},s=T.state(),tried=[];for(const ci of [s.storyHome,...(s.berthCells||[]),s.hull?.cell,s.hull?.door].filter(c=>c>=0)){const ok=T.commitTower('rotor',ci);tried.push([ci,ok]);if(ok)return tried;}return tried;})()`);console.log('  sentry placed: '+JSON.stringify(placed));}
+ await until(`${T}.state().wire?.towers?.[1]>0`,10000).catch(async()=>assert.fail(`a sentry built (${JSON.stringify((await st()).wire)})`));
+ console.log('  built: '+JSON.stringify((await st()).wire));
+ await until(`${T}.state().reinforcements?.phase==='landed' && !!${T}.state().wire?.mechs`,120000).catch(async()=>assert.fail(`the four landed (${JSON.stringify({r:(await st()).reinforcements?.phase,w:(await st()).wire})})`));
+ const w=(await st()).wire;console.log('  landed: '+JSON.stringify(w)+' sector '+JSON.stringify((await st()).sector?.name));
+ assert.equal(w.hull[0],w.hull[1],'every hull mesh wireframed');assert.equal(w.towers[0],w.towers[1],'every sentry mesh wireframed');assert.equal(w.mechs[0],w.mechs[1],'every Ridgeback part wireframed');assert.ok(w.hull[1]>0&&w.towers[1]>0&&w.mechs[1]>0,'something to draw');
+ await delay(2000);current='wire';await finish();
  } else if(args.includes('--descent')) {
  // THE DESCENT (owner, 2026-10-15; spec docs/superpowers/specs/2026-10-15-descent-mission-design.md): the cave game in an iframe over the paused game
  // after the final sector, its outcome posted back: the harness forces the hook on BOTH WALLS, sees the frame with the cave's page and the game paused,

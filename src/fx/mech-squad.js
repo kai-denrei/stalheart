@@ -30,6 +30,7 @@ import { nextCell, parkCell } from '../domain/mech-roles.js';
 import { arenaFloor } from '../domain/arena.js';
 import { BLOCKED } from '../dungeon.js';
 import { createGait, rigOf, applyGait, gaitRate } from './mech-gait.js';
+import { setWireframe } from './model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the four as wireframes once they are the squad's
 
 const SECTOR = Math.PI / 5, TURN = 0.8, WALK_TURN = 0.6;   // the model's gun sector (the runtime's aimYaw clamp), a parked body's turn and a walking body's, radians a second
 const SPEED_EASE = 0.5;   // the measured ground speed's smoothing, seconds (state().mechs[i].gait.speed, the harness's check of the rate)
@@ -69,6 +70,7 @@ export function createMechSquad(h) {
       const cur = nearestFrom(centreCell >= 0 ? centreCell : 0, v);
       m.mixer.stopAllAction();   // the landing clip let go: the gait poses the rig from here (its first pose is the park's, this tick)
       const farRoot = m.far ? m.far.clone(true) : null; if (farRoot) { farRoot.visible = false; m.wrap.add(farRoot); }
+      if (h.wire?.()) { setWireframe(m.root, true); if (farRoot) setWireframe(farRoot, true); }   // before instance(): the parts' InstancedMeshes take the wire material (host.wire, ?wire=1)
       const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
@@ -166,6 +168,7 @@ export function createMechSquad(h) {
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },
     parts: () => parts?.length ?? 0,
+    wire: () => parts ? [parts.filter((p) => p.inst.material?.wireframe).length, parts.length] : null,   // [wireframed parts, parts] (state().wire.mechs)
     contacts: () => mechs.map((mc) => ({ pos: mc.wrap.position.toArray() })),   // the radar's friendlies (src/fx/radar-scope.js host.mechs): each mech's live place
     frameOf(i, pos, quat) { const mc = mechs[i]; if (!mc) return false; pos.copy(mc.wrap.position); quat.copy(mc.wrap.quaternion); return true; },   // a mech's place and facing (the harness's look, src/fx/reinforcements-host.js)
     show(on) { hidden = !on; },   // the harness's A/B for the four's draw cost (--reinforcements)

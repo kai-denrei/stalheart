@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-26-wire-flag-the-sentries-the-hull-and-the-ridgebacks-as-wireframes",
+  "date": "2026-10-26",
+  "type": "decision",
+  "status": "accepted",
+  "title": "?wire=1: the sentries, the Mork hull and the four Ridgebacks drawn as the briefings' wireframe, the gunship and SOL as they are",
+  "context": "Owner, 2026-10-26: \"I want to test something; representing almost all the non-buildings elements built by Stalheart or Isao as their Wireframe versions, instead of their current versions. All the sentries, Mork, Mechs. but not the gunship or sol\". A test of a look, so a URL flag rather than a default: the current look stays unless the flag is on. The wireframe is the one the Units terminal's survey and the gunship briefing already draw (src/fx/model-fixture.js setWireframe: the solid material kept on the mesh, a cyan MeshBasicMaterial wireframe at 0.85 in its place). Branch overnight-2026-10-23, unpushed.",
+  "outcome": "src/platform/game-flags.js lists `wire`; src/td-tab.js reads it once (`wire`) and applies setWireframe at the three places those units get their meshes: the tower placement wrapper placeTowerObj (every print, rebuild, upgrade and tier plate goes through it; Isao's print ghost, already a wireframe of its own, is skipped by its userData.print), setPlayerMesh (the hull as it is built), and the mech squad's host (`wire`), where src/fx/mech-squad.js wireframes each mech's game-tier root and its far tier before instance() so the parts' InstancedMeshes take the wire material. The drop's falling mechs stay solid under their re-entry burn; the squad is wireframed from the landing. state().wire = { on, hull: [wireframed, meshes], towers: [..], mechs: [parts wireframed, parts] }. src/mork.js setAmmo guards the lenses' emissive (a MeshBasicMaterial has none): without the guard the first HUD paint after a print threw and the page died, found by the probe. Browser step --wire: the finished base with ?wire=1&reinforce=1, a Rotor placed through the harness, the four landed: hull 50/50, sentry 13/13, Ridgebacks 38/38 parts, PASS. Unchanged with the flag off (the emissive guard only returns where there is no emissive).",
+  "alternatives": [
+    "A default look change rather than a flag: the owner asked to test, not to ship; a flag leaves the served build's look as it was.",
+    "Wireframing in the look builders (towerlooks, units.buildCreature, feids-drop): three builders and the far tiers to touch, and the upgrade's re-placement would still need a hook; the placement wrapper and setPlayerMesh are the two funnels every tower and hull mesh already passes.",
+    "Giving the wire material a dummy emissive so setAmmo keeps writing it: a lie on the material; the guard in setAmmo matches tankfeel's own `if (m.emissive)`."
+  ],
+  "evidence": [
+    "npm test 308, npm run check (td-tab 5,337 under 5,450), npm run architecture green.",
+    "--wire on the tree: 'sentry placed: [[22628,true]]', built {hull:[50,50], towers:[13,13]}, landed {hull:[50,50], towers:[13,13], mechs:[38,38]}, PASS; before the setAmmo guard the same step died on 'Cannot read properties of undefined (reading setHex)' at mork.js setAmmo from paintHud after commitTower.",
+    "Not covered: the hull's shell lenses no longer light per shell under the flag (the wire colour is one colour); the heat sleeve's colour writes land on the wire material; the drop's mechs during the 28 s cut stay solid."
+  ],
+  "supersedes": []
+}

@@ -173,6 +173,7 @@ export function makeMork(source = preparedBy.get(MORK_TIERS.game)) {
       lights.forEach((light, i) => light.traverse(o => {
         if (!o.isMesh) return;
         o.material.color.setHex(i < count ? 0x35eaff : 0x080c10);
+        if (!o.material.emissive) return;   // a lens drawn as a wireframe (?wire=1, 2026-10-26) has no emissive: its colour alone shows the count
         o.material.emissive.setHex(i < count ? 0x35eaff : 0);
         o.material.emissiveIntensity = i < count ? 2 : 0;
       }));
