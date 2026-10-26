@@ -13,6 +13,12 @@ export const DAY_42 = Object.freeze({
   day: 42, patience: 6, countdown: 30, back: 20, sayWait: 20, seconds: 43.8, loadAhead: 2,
   shot: Object.freeze({ id: 'discoReveal', at: 1.5, seconds: 10, radius: 70, height: 28, easeIn: 1.2 }),
   hoist: 4, lower: 3, loop: 16,
+  // THE REPLAY AT THE ENDING (owner, 2026-10-26, round 3 note 8: "we re-do a brief animation of the 42 days celebration, while the scoreboard also
+  // displays"; src/fx/disco-party.js replay, src/fx/finale-diorama.js): `seconds` long (the ball up from the first frame, the klaxon `lower` s
+  // before the end, then the ball lowered and shrunk away), no countdown and no lines; the diorama holds as long. `lift` metres between the
+  // boards' top and the ball when it hangs over the boards (the Stålheart's tip out of the diorama's view), `cone` the half-angle (radians) of
+  // the diorama's view the ball must sit in to hang from the tip
+  replay: Object.freeze({ seconds: 20, lift: 2, cone: 0.42 }),
   light: Object.freeze({ intensity: 18, angle: 0.5, distance: 60, penumbra: 0.4 }), laser: Object.freeze({ length: 40, width: 0.18, opacity: 0.55 }),
   music: Object.freeze({ key: 'day_42_music', retry: 6, duck: Object.freeze({ buses: ['towers', 'tank'], depth: 0.6 }) }),
   briefs: Object.freeze({ soon: 'day_42_soon', back: 'day_42_back', start: 'day_42', over: 'day_42_over' }), callout: 'ALARM · CONTACT',

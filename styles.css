@@ -3557,6 +3557,7 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   width: fit-content;
 }
 #td-msg .dbf-tile span { display: block; font-size: 9.5px; color: #9aa7bd; letter-spacing: 0.06em; }
+#td-msg .dbf-tile span .dbf-lore { display: block; font-style: normal; font-size: 8.5px; color: #77839a; letter-spacing: 0.04em; }   /* the streak's lore line (round 3, 2026-10-26) */
 #td-msg .dbf-replay { width: 100%; height: 120px; display: block; border-radius: 4px; background: #020a10; }
 @media (max-width: 560px) { #td-msg .dbf-grid { grid-template-columns: 1fr; } }
 
@@ -4324,6 +4325,7 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 }
 .sdb-count { font-family: var(--font-banner); font-size: 26px; letter-spacing: 0.08em; color: var(--sdb-ink); }
 .sdb-hint { margin-right: auto; font-size: 16px; letter-spacing: 0.18em; color: var(--sdb-dim); white-space: nowrap; }
+.sdb-hint.is-ask { font-size: 12px; letter-spacing: 0.12em; color: var(--sdb-hi); white-space: normal; text-shadow: 0 0 8px var(--sdb-glow-soft); }   /* the ending's skip question (round 3, 2026-10-26) */
 .sdb-acts { display: flex; gap: 8px; margin-left: auto; }
 .sdb-btn {
   min-height: 46px; padding: 0 18px;
@@ -5023,6 +5025,7 @@ body.seat-gliding #seat-vignette { display: none; }
 @keyframes of-line { 0% { opacity: 0; translate: -50% 8px; } 8% { opacity: 1; translate: -50% 0; } 85% { opacity: 1; } 100% { opacity: 0; } }
 #orbital-finale .of-count { position: absolute; left: 16px; top: 14px; margin: 0; font: 13px/1 ui-monospace, monospace; letter-spacing: 0.14em; color: #62978d; }
 #orbital-finale .of-skip { position: absolute; right: 16px; bottom: 14px; margin: 0; font: 12px/1 ui-monospace, monospace; letter-spacing: 0.14em; color: #62978d; }
+#orbital-finale .of-skip.is-ask { color: #cffbe9; text-shadow: 0 0 8px rgba(53, 255, 208, 0.45); }   /* the skip's question (round 3, 2026-10-26) */
 
 /* THE TERMINAL AND THE BESTIARY (owner, 2026-10-14: "as if was accessed from a Terminal as a screen-within-a-screen, with HUD elements and a
    border and CRT like display effects"; src/fx/terminal-screen.js). The stage's box is the overlay's one hole: transparent, its box-shadow

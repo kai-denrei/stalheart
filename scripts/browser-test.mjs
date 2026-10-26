@@ -1779,29 +1779,45 @@ try{
   const s=await st(),b=R(s).mechs[bi];console.log(`  feids-shots: t 40 s (game t ${b.t}): shot ${s.shot}, the base mech at cell ${b.cell} (heart ${b.heartDist}, park ${b.parkDist}), walking ${b.walking}, gait ${JSON.stringify(b.gait)}, far ${b.far} (${b.eyeM} m from the eye; all ${JSON.stringify(R(s).mechs.map(m=>[m.role,m.far,m.eyeM]))})`);
   assert.equal(s.shot,'mechLook','the look live');assert.ok(b.walking&&b.gait.contacts>=3,'the base mech walking on three claws or more');assert.equal(b.far,false,'the base mech on its game tier in the look (the world runs under it)');
   current='feids-40';await finish();}
- } else if(args.includes('--reinforcements-lull')) {
- // FEIDS-26 REINFORCEMENTS WITHOUT THE FLAG (decisions 1 and 2): the grown base at sector 4 has its radar, so Isao calls them at the load (the call's line
- // and callout); the drop waits for the due day (calledDay + REINFORCEMENTS.days, 30 s days) and then for a lull (the field culled to a breath, as --day-42
- // does); the cut, the landing. One line per measured thing: the call's day, the due day, the day and the sector's phase the drop started in
+ } else if(args.includes('--reinforcements-timer')) {
+ // FEIDS-26 REINFORCEMENTS ON A TIMER (round 3, 2026-10-26, decision 1; was --reinforcements-lull): the grown base at sector 4 has its radar, so Isao
+ // calls them at the load (the owner's line, the callout); the drop goes AT the due day (calledDay + REINFORCEMENTS.days, 30 s days), no lull waited
+ // for, held only by a seat, a card or Isao's panel: one of Isao's two-line briefs is put on the panel 3 s before the day turns, and the drop must
+ // hold while it is up, then start within 2 game s of the moment nothing holds it (lateBy - heldFor <= 2). The cut, the landing, the landed line.
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {REINFORCEMENTS}=await import('../src/content/reinforcements.js'), R=s=>s.reinforcements;
- await go('reinforce-lull-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td`);await evaluate(SEEN_LOG);
+ await go('reinforce-timer-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td`);await evaluate(SEEN_LOG);
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().reinforcements?.called===true`,20000).catch(async()=>assert.fail(`Isao calls them with the radar standing (${JSON.stringify(R(await st()))})`));
- {const s=await st(),r=R(s);console.log(`  reinforcements-lull: called on day ${r.calledDay}, due day ${r.due} (${REINFORCEMENTS.days} days), phase ${r.phase}`);assert.equal(r.due,r.calledDay+REINFORCEMENTS.days);assert.equal(r.phase,'idle','not dropped at the call');
-  await until(`(window.__seen?.briefs||[]).some(b=>/planetary reinforcements/.test(b))`,30000).catch(async()=>assert.fail(`Isao's call line (${JSON.stringify(await evaluate('window.__seen'))})`));}
- let at=null;
+ {const s=await st(),r=R(s);console.log(`  reinforcements-timer: called on day ${r.calledDay}, due day ${r.due} (${REINFORCEMENTS.days} days), phase ${r.phase}`);assert.equal(r.due,r.calledDay+REINFORCEMENTS.days);assert.equal(r.phase,'idle','not dropped at the call');
+  await until(`(window.__seen?.briefs||[]).some(b=>/We can ask the colony for reinforcements/.test(b))`,30000).catch(async()=>assert.fail(`Isao's call line (${JSON.stringify(await evaluate('window.__seen'))})`));}
+ let at=null,briefed=false,heldSeen=null;
  {const w0=Date.now();let k=0;while(Date.now()-w0<300000){const s=await st(),r=R(s);if(r.phase!=='idle'){at=s;break;}
-   if(s.day>=r.due)await evaluate(`${T}.sectorCull(999)`);
-   if(k++%10===0)console.log(`  reinforcements-lull: t+${((Date.now()-w0)/1000).toFixed(0)}s day ${s.day}/${r.due}, sector ${s.sector?.phase} clock ${s.sector?.clock}, why ${r.why}`);await delay(1000);}
-  assert.ok(at,'the drop starts after the due day at a lull');
-  const r=R(at);console.log(`  reinforcements-lull: dropping on day ${at.day} (due ${r.due}), sector ${at.sector?.phase}${at.sector?.breathing?' (breathing)':''}, shot ${at.shot}`);
-  assert.ok(at.day>=r.due,'not before the due day');}
- current='reinforce-lull-dropping';await finish();
+   const left=(r.due-s.day-s.daylight.phase)*30;   // game seconds to the day turning (30 s days on this route; the phase is the day's share)
+   if(!briefed&&s.day===r.due-1&&left<=3){briefed=true;await evaluate(`${T}.isaoBrief('arena_open')`);console.log(`  reinforcements-timer: a brief put on the panel ${left.toFixed(1)} game s before the due day`);}
+   if(briefed&&!heldSeen&&s.day>=r.due&&r.why==='brief'){heldSeen={day:s.day,sinceDue:r.sinceDue};console.log(`  reinforcements-timer: day ${s.day} reached, held by the brief (since due ${r.sinceDue} s), phase ${r.phase}`);}
+   if(k++%10===0)console.log(`  reinforcements-timer: t+${((Date.now()-w0)/1000).toFixed(0)}s day ${s.day}/${r.due} phase ${s.daylight.phase}, sector ${s.sector?.phase}${s.sector?.breathing?' (breathing)':''}, why ${r.why}`);await delay(briefed?250:1000);}
+  assert.ok(at,'the drop starts after the due day');
+  const r=R(at);console.log(`  reinforcements-timer: dropping on day ${at.day} (due ${r.due}), sector ${at.sector?.phase}${at.sector?.breathing?' (breathing)':' (not a breath)'}, ${r.lateBy} game s after the day turned, ${r.heldFor} of them held (seat, card or brief), shot ${at.shot}`);
+  assert.ok(at.day>=r.due,'not before the due day');
+  assert.ok(heldSeen,'the brief on the panel held the drop past the due day');
+  assert.ok(r.heldFor>0,'held while the brief was up');
+  assert.ok(r.lateBy-r.heldFor<=2,`within 2 game s of nothing holding it (${r.lateBy} - ${r.heldFor})`);}
+ current='reinforce-timer-dropping';await finish();
  await until(`${T}.state().reinforcements?.phase==='landed'`,240000).catch(async()=>assert.fail(`landed (${JSON.stringify(R(await st()))})`));
- {const s=await st();console.log(`  reinforcements-lull: landed, mechs ${R(s).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}`);assert.equal(R(s).mechs.length,4);
-  assert.ok((await evaluate('window.__seen.briefs')).some(b=>/Here they come/.test(b)),'Isao: here they come');}
- current='reinforce-lull-landed';await finish();
+ {const s=await st();console.log(`  reinforcements-timer: landed, mechs ${R(s).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}`);assert.equal(R(s).mechs.length,4);
+  assert.ok((await evaluate('window.__seen.briefs')).some(b=>/Here they come/.test(b)),'Isao: here they come');
+  await until(`(window.__seen?.briefs||[]).some(b=>/all they could send as support/.test(b))`,60000).catch(async()=>assert.fail(`Isao's landed line (${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-6))})`));}
+ current='reinforce-timer-landed';await finish();
+ // THE STREAK'S LORE (round 3, decision 2): every kill counts toward a streak (the sentries' and the mechs' too) until a leak ends it; with the sector
+ // quiet and its field cleared (the unmanned base leaks into the Stålheart), sixteen bodies beside the hunter and an arena mech make one; Isao's
+ // once-brief is asked at 1.5x (the tenth kill) and lands on his panel when it is free
+ {const s=await st(),ms=R(s).mechs,hunt=ms.find(m=>m.role==='hunt'),ar=ms.find(m=>m.role==='arena');console.log(`  reinforcements-timer: streak before ${JSON.stringify(s.streak)}`);
+  await evaluate(`${T}.sectorQuiet(true)`);await evaluate(`${T}.sectorClearField()`);await delay(2000);
+  await evaluate(`${T}.spawnHere(${hunt.cell},16)`);await evaluate(`${T}.spawnHere(${ar.cell},16)`);}
+ await until(`(window.__seen?.briefs||[]).some(b=>/their cells bind as they go/.test(b))`,120000).catch(async()=>assert.fail(`Isao's streak lore (streak ${JSON.stringify((await st()).streak)}; ${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-8))})`));
+ console.log(`  reinforcements-timer: streak at the lore ${JSON.stringify((await st()).streak)}`);
+ console.log(`  reinforcements-timer: the streak's lore said (${(await evaluate('window.__seen.briefs')).filter(b=>/their cells bind|seeps into the ground/.test(b)).length} of its 2 lines seen)`);
  } else if(args.includes('--reinforcements')) {
  // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23; spec docs/superpowers/specs/2026-10-23-feids26-reinforcements-design.md): ?reinforce=1 drops them as soon
  // as the world stands: the drop's phase within 10 s, the camera cut to the arena on the cinematic (shot 'feidsDrop', live), the four touchdowns at the
@@ -1882,7 +1898,10 @@ try{
  // they fire: bodies put beside the hunter and an arena mech, and within 20 game seconds their records have shot (tower-combat's second list, autoTower)
  {const s0=await st(),ms0=R(s0).mechs,t0=ms0[0].t,hunt=ms0.find(m=>m.role==='hunt'),ar=ms0.find(m=>m.role==='arena');
   await evaluate(`${T}.spawnHere(${hunt.cell},8)`);await evaluate(`${T}.spawnHere(${ar.cell},8)`);
-  await until(`${T}.state().reinforcements.mechs.some(m=>m.shots>0)||(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+20}`,240000);
+  // (45 game s since round 3: the first volley lands about 20 game s after the bodies are put down, 20.4 s on round-3-b against a 20 s window, and all four fire in the same tick)
+  console.log(`  reinforcements: bodies put down at game t ${t0}, sector ${s0.sector?.phase}, Isao ${JSON.stringify((await evaluate('window.__seen?.briefs||[]')).slice(-2))}`);
+  await until(`${T}.state().reinforcements.mechs.some(m=>m.shots>0)||(${T}.state().reinforcements.mechs[0]?.t??0)>=${t0+45}`,240000);
+  console.log(`  reinforcements: firing check at game t ${R(await st()).mechs[0]?.t}, sector ${(await st()).sector?.phase}`);
   const ms=R(await st()).mechs;for(const m of ms)console.log(`  reinforcements: firing check, mech ${m.role} at cell ${m.cell}: shots ${m.shots}, last fired at game t ${m.firedAt}`);
   assert.ok(ms.some(m=>m.shots>0),'the Ridgebacks fire on bodies beside them');}
  current='reinforce-firing';await finish();
@@ -2084,7 +2103,7 @@ try{
  current='colony-lapse';await finish();
  } else if(args.includes('--finale')) {
  // THE FINALE (owner, 2026-10-06): the diorama, the player's MÖRK and Isao before the rivalry boards, then the next step
- const T='window.__stalheartTest';
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
  await go('finale',`index.html?sw=0&acceptance=1&cine=0&skip=defence${process.env.HOLE==='0'?'&hole=0':''}#td`);
  await until(`!!${T}`,90000);await delay(2500);await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
  await until(`!${T}.state().deploying`,30000);await delay(1500);
@@ -2092,24 +2111,45 @@ try{
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
  assert(await evaluate(`${T}.showcase.finale()`),'the host takes the finale (the boards stand on a finished base)');
  await until(`${T}.state().shot==="diorama"`,5000);
- await delay(2500);current='finale-diorama-a';await finish();
- await delay(3500);current='finale-diorama-b';await finish();
+ // THE DAY 42 REPLAY (round 3, 2026-10-26, decision 3b): with the boards read, the disco party's short form (src/fx/disco-party.js replay), the diorama
+ // holding as long (DAY_42.replay.seconds); where the ball hangs (the Stålheart's tip in the shot's view, or over the boards), the klaxon before its end
+ {const {DAY_42}=await import('../src/content/day-42.js'),P=async()=>(await st()).ending?.party;
+  await delay(2500);const p=await P();console.log(`FINALE replay at 2.5 s: ${JSON.stringify(p)}`);
+  assert.ok(p&&p.phase==='party','the DAY 42 replay runs with the boards');assert.equal(p.seconds,DAY_42.replay.seconds);assert.ok(['tip','boards'].includes(p.where),`the ball hangs at the tip or over the boards (${p.where})`);
+  current='finale-diorama-a';await finish();
+  await until(`!!${T}.state().ending?.party?.hanging`,8000).then(async()=>{const q=await P();console.log(`FINALE replay ball up at ${q.t} s over ${q.where}, lights ${q.lights}, music ${q.music}`);}).catch(async()=>console.log(`FINALE the ball never hung: ${JSON.stringify(await P())}`));
+  await delay(2000);current='finale-diorama-b';await finish();
+  await until(`!!${T}.state().ending?.party?.klaxon||${T}.state().shot!=="diorama"`,25000);
+  {const q=await P();console.log(`FINALE replay klaxon at ${q.t} s (${q.phase}), diorama ${(await st()).shot}`);assert.ok(q.klaxon,'the klaxon before the replay ends');}
+  await delay(1500);current='finale-diorama-lower';await finish();}
  // THE ORBITAL CONSTELLATION (src/fx/orbital-finale.js) after it, its own canvas over the game, Isao's three lines
  await until('!!document.querySelector("#orbital-finale")',15000).catch(()=>assert.fail('the constellation never opened'));
+ {const p=(await st()).ending?.party;assert.equal(p?.phase,'done','the replay over with the diorama');assert.equal(p?.hanging,false,'nothing of it left in the yard');}
+ const orbitAt=Date.now();
  // OUR OWN PLANET (owner's twenty-seventh notes, 9): the small world is the board's own surface, not the placeholder sphere
  await until('document.querySelector("#orbital-finale")?.dataset.loaded==="1"',15000).catch(()=>{});
  assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.own'),'1','the constellation turns over our own planet');
  assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.base'),'1','and over the base itself (owner, 2026-10-07: the ARC-01 the one in our base)');
  if(process.env.HOLE!=='0')assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.hole'),'1','the accretion disk rendered and hung in the sky (src/fx/accretion.js)');
  {const pr=JSON.parse(await evaluate('document.querySelector("#orbital-finale")?.dataset.holeProbe||"null"'));console.log(`FINALE hole probe ${JSON.stringify(pr)}`);if(pr)assert(pr.corner[3]<=2,`the empty sky round the hole is clear (corner alpha ${pr.corner[3]})`);}
- for(const [at,name] of [[4,'a'],[12,'b'],[22,'c']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:at===12?8000:10000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}
+ for(const [at,name] of [[4,'a'],[12,'b']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:8000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}
+ // THE SKIP ASKS FIRST (round 3, decision 3a): after Isao's third line a key that is not Space shows the question and does not skip; Space then skips
+ await until('/Ready for the next one/.test(document.querySelector("#orbital-finale .of-line")?.textContent||"")',20000).catch(()=>assert.fail('the third line'));
+ {const key=(k,code,vk)=>send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code,windowsVirtualKeyCode:vk}).then(()=>send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code,windowsVirtualKeyCode:vk}));
+  const {SKIP_QUESTION}=await import('../src/domain/skip-confirm.js'),sk='document.querySelector("#orbital-finale .of-skip")?.textContent';
+  await key('w','KeyW',87);await delay(300);
+  const q=await evaluate(sk);console.log(`FINALE a key after the third line: "${q}"`);assert.equal(q,SKIP_QUESTION,'the question replaces ANY KEY · SKIP');
+  await delay(1000);assert(await evaluate('!!document.querySelector("#orbital-finale")'),'and the finale goes on');current='finale-orbit-ask';await finish();
+  await key(' ','Space',32);
+  await until('!document.querySelector("#orbital-finale")',3000).catch(()=>assert.fail('Space confirms the skip'));
+  const ran=(Date.now()-orbitAt)/1000;console.log(`FINALE skipped by Space after ${ran.toFixed(1)} s of the constellation's 26`);assert.ok(ran<25.5,'skipped before its end');}
  await until('(window.__stalheartFinaleDone??0)>=1',60000).catch(async()=>assert.fail(`the finale never handed back (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
  {/* the page's own copy of the module: a built page loads it with its ?v= token, and a bare import would be a second, silent copy */
   const said=await evaluate('(async()=>(await import(performance.getEntriesByType("resource").map(e=>e.name).find(n=>/\\/src\\/fx\\/isao-voice\\.js/.test(n))??"./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');console.log(`FINALE said ${said.filter(x=>/^ending_/.test(x)).join(' ')}`);
   assert(['ending_did_it_01','ending_dyson_01','ending_next_01'].every(id=>said.includes(id)),'Isao says all three lines');}
  assert(!(await evaluate('!!document.querySelector("#orbital-finale")')),'the constellation is gone when it hands back');
  assert.equal(await evaluate(`${T}.state().shot`),null,'and the camera is the player\'s again');
- console.log('PASS finale: the diorama, the constellation, and the hand-back');
+ console.log('PASS finale: the diorama with the DAY 42 replay, the constellation, the skip asked then confirmed, and the hand-back');
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out
@@ -5975,6 +6015,18 @@ const killReal=(Date.now()-t0)/1000;
   current='debrief-width-400-on-1280';await finish();
   await evaluate('window.__stalheartDebriefTest.show("campaign")');await click('.sdb-root [data-act=newrun]');await delay(150);
   assert.equal((await dbf()).events.at(-1).what,'NEW RUN','NEW RUN dismisses with its own callback');}
+ // THE ENDING'S CARD ASKS FIRST (round 3, 2026-10-26, decision 3a): shown as the ending shows it ({ confirm: true }), Space on a running page asks
+ // "SKIP END GAME CELEBRATION?" in the footer and the reveal goes on; another key says no; Space, then Space within 4 s, lands the page
+ await go('debrief-ending','labs.html?sw=0&acceptance=1&sound=0#debrief',1280,800);
+ await until('!!window.__stalheartDebriefTest');
+ {const {SKIP_QUESTION}=await import('../src/domain/skip-confirm.js');
+  await evaluate(`window.__stalheartDebriefTest.ending("secure")`);await delay(400);let s=await dbf();assert(s.open&&s.animating,'the ending\'s card reveals');
+  await press(' ');s=await dbf();console.log(`  debrief-ending: Space on the reveal: asking ${s.asking}, hint "${s.hint}", animating ${s.animating}`);
+  assert(s.asking&&s.hint===SKIP_QUESTION,'Space asks first');assert(s.animating,'and the reveal goes on');current='debrief-ending-ask';await finish();
+  await press('w');s=await dbf();assert(!s.asking&&s.animating,'another key says no: the reveal goes on');
+  await press(' ');assert((await dbf()).asking,'asked again');await press(' ');s=await dbf();
+  console.log(`  debrief-ending: Space again within 4 s: asking ${s.asking}, animating ${s.animating}, open ${s.open}`);
+  assert(!s.asking&&!s.animating&&s.open,'Space confirms: the page lands, the card stays');}
  } else if(authoringWorkspace) {
  await go('local-authoring','labs.html?sw=0&acceptance=1&mode=armour&family=quiver#sentry');
  await until('document.querySelector("[data-authoring-review]")?.hidden === false && document.querySelector("#tab-sentry").dataset.modelReady === "true"');

@@ -3,10 +3,15 @@
 // boards, facing them, the boards celebrate, and the camera eases in from behind the pair. The world is still under the shot (it is
 // not one of the live shots); the copies go when it ends, skipped or not, and `done` runs.
 //
-// c: the programme host's bag (story, startShot, cellSide, hull, isao, spawnIsao, scene). Returns false, and does nothing, when there is
+// THE DAY 42 REPLAY (owner, 2026-10-26, round 3 note 8: "we re-do a brief animation of the 42 days celebration, while the scoreboard also displays"):
+// with c.party (the disco party, src/fx/disco-party.js replay) the party's short form runs while the boards are read, and the diorama holds as long
+// as it (DAY_42.replay.seconds, 20 s, against DIORAMA_SECONDS alone); the ball hangs from the Stålheart's tip when that is in the shot's view,
+// over the boards otherwise; the party is ticked from the shot (the world's dt is 0 under it) and stopped when the shot ends, skipped or not.
+// c: the programme host's bag (story, startShot, cellSide, hull, isao, spawnIsao, scene, party). Returns false, and does nothing, when there is
 // nothing to stage (no boards printed, no camera shots).
 import * as THREE from '../../vendor/three.module.js';
 import { cloneFixture } from './model-fixture.js';
+import { DAY_42 } from '../content/day-42.js';
 
 export const DIORAMA_SECONDS = 8;
 
@@ -36,16 +41,22 @@ export function playDiorama(c, done) {
   if (!c.isao?.()) c.spawnIsao?.();
   const drone = c.isao?.()?.obj;
   if (drone) { const copy = cloneFixture(drone); copy.scale.copy(drone.scale); stand(copy, mid.clone().addScaledVector(face, span * 0.35).addScaledVector(along, -2.3 * T).addScaledVector(up, 0.9 * T), up, toBoards.clone().addScaledVector(along, 0.5)); c.scene.add(copy); cast.push(copy); }
-  for (const bd of boards) bd.celebrate?.(DIORAMA_SECONDS);
   // behind and above the pair, easing in and down toward the boards' faces
   const from = spot.clone().addScaledVector(face, 3.0 * T).addScaledVector(up, 1.4 * T).addScaledVector(along, -2.2 * T);
   const to = spot.clone().addScaledVector(face, 2.0 * T).addScaledVector(up, 0.9 * T).addScaledVector(along, -1.5 * T);
   const look = mid.clone().addScaledVector(face, span * 0.3).addScaledVector(along, -0.4 * T).addScaledVector(up, 0.45 * T), cam = new THREE.PerspectiveCamera();
+  // the replay: the ball in view from both ends of the shot's rail (within cone of the line to `look`), or over the boards' top
+  const party = c.party?.() ?? null, cone = DAY_42.replay.cone, seen = (p, eye) => p.clone().sub(eye).angleTo(look.clone().sub(eye)) < cone;
+  const top = new THREE.Box3(); for (const bd of boards) top.expandByObject(bd.group);
+  const over = mid.clone().addScaledVector(up, Math.max(0, top.isEmpty() ? 0 : top.max.clone().sub(mid).dot(up)));
+  const rep = party?.replay?.({ inView: (p) => seen(p, from) && seen(p, to), over, up }) ?? null, secs = rep?.seconds ?? DIORAMA_SECONDS;
+  for (const bd of boards) bd.celebrate?.(secs);
   let lastU = 0;
-  c.startShot({ id: 'diorama', dur: DIORAMA_SECONDS, poseAt: (u, out) => {
-    const k = u * u * (3 - 2 * u), dt = Math.max(0, u - lastU) * DIORAMA_SECONDS; lastU = u;
+  c.startShot({ id: 'diorama', dur: secs, poseAt: (u, out) => {
+    const k = u * u * (3 - 2 * u), dt = Math.max(0, u - lastU) * secs; lastU = u;
     for (const bd of boards) bd.tick?.(dt);   // the world is still under the shot: the boards' party is driven from here
+    if (rep) party.replayTick(dt);   // and the disco party's replay
     out.pos.lerpVectors(from, to, k); cam.position.copy(out.pos); cam.up.copy(up); cam.lookAt(look); out.quat.copy(cam.quaternion);
-  }, onEnd: () => { for (const o of cast) { c.scene.remove(o); o.visible = false; } done?.(); } });
+  }, onEnd: () => { if (rep) party.replayStop(); for (const o of cast) { c.scene.remove(o); o.visible = false; } done?.(); } });
   return true;
 }

@@ -34,5 +34,6 @@ export const REINFORCEMENTS = freeze({
   sounds: { entry: 'feids_reentry', woosh: 'mech_reentry_woosh', impact: 'mech_landing_impact', wooshLead: 4 },
   models: { capsule: 'assets/models/feids26/feids26_d0_lod1.glb', mech: 'assets/models/ridgeback/mx06_d0_lod1.glb', mechFar: 'assets/models/ridgeback/mx06_d0_lod2.glb' },
   shot: { id: 'feidsDrop', easeIn: 1.2, near: 0.00025, shake: 1, lock: 5, skipKey: ' ', hint: 'SPACE · SKIP' },
-  briefs: { called: 'reinforcements_called', inbound: 'reinforcements_inbound' }, callout: 'REINFORCEMENTS CALLED', landedCallout: 'REINFORCEMENTS LANDED',
+  briefs: { called: 'reinforcements_called', inbound: 'reinforcements_inbound', landed: 'reinforcements_landed' }, callout: 'REINFORCEMENTS CALLED', landedCallout: 'REINFORCEMENTS LANDED',
+  landedWait: 30,   // game seconds the landed line (the owner's, round 3) waits for Isao's panel to be free before it is dropped
 });

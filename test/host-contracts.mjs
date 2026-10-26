@@ -14,7 +14,7 @@ const modules = [...walk('src/fx'), ...walk('src/platform')].filter((p) => p.end
 // Known hosts passed on (to a nested factory or a function that takes the whole host): each is a finding; the list must shrink,
 // never grow. Closed: programme-host -> createHullHost (the refactor run's Task 4: td-tab builds the hull host's own literal).
 // Closed (refactor round 2, 2026-10-13): the station handed its whole host to the arsenal ({ ...host, passEnded }), now td-tab
-// builds the arsenal's own literal; the finale's diorama took the ending's host, now the ending host names its seven members.
+// builds the arsenal's own literal; the finale's diorama took the ending's host, now the ending host names its eight members (party since round 3).
 const NESTED = new Set([]);
 // Known missing members: the module reads them and td-tab's literal has none, so the module sees undefined. Each is an open
 // finding (the owner decides); the list must shrink, never grow.

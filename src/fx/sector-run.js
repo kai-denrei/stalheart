@@ -315,14 +315,14 @@ export function createSectorRun(h) {
     try { h.store?.setItem(SECTOR_BESTS_KEY, JSON.stringify(mergeBests(bests, r.records))); } catch { /* the store refused: the bests simply are not kept */ }
     reports.push(r); lastReport = r;
     if (def?.boss) api.bossEnd?.(outcome);   // THE BOSS: the hull back to the player, Isao free, the seat left (src/fx/boss-run.js)
-    const show = () => { phase = outcome === 'lost' ? 'lost-shown' : 'debrief'; h.pause(true); debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines() }); h.hud(); };
+    const show = () => { const ending = phase === 'finale'; phase = outcome === 'lost' ? 'lost-shown' : 'debrief'; h.pause(true); debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines(), confirm: ending }); h.hud(); };   // the ending's card asks before a skip (round 3)
     if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); const fin = () => finale(show); if (!api.descent?.(fin)) fin(); } else show();   // THE DESCENT (src/fx/descent-host.js) before THE ENDING before the score
   }
   // the break between sectors: the host may take it (the paint shop, src/fx/programme-host.js interlude) and hand it back when done
   function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); const go = () => { h.pause(false); begin(def.n + 1); }; phase = 'break'; if (!api.interlude?.(go)) go(); }
   function cont() {
     if (phase === 'lost-shown') { h.reload(); return; }
-    if (phase === 'debrief' && finalSector() && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports), clips: story.reel?.clips() ?? [], lapse: story.lapse?.stills() ?? [] }, { isao: nextLines() }); return; }
+    if (phase === 'debrief' && finalSector() && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports), clips: story.reel?.clips() ?? [], lapse: story.lapse?.stills() ?? [] }, { isao: nextLines(), confirm: finaleShown }); return; }
     next();
   }
 

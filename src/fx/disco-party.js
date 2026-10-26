@@ -16,6 +16,12 @@
 // ticks this right after the base's mixers and before the render. Both tiers are posed: the far tier keeps the joints and shows whenever
 // the eye is far, and the ball must hang from whichever tier is drawn.
 //
+// THE REPLAY (owner, 2026-10-26, round 3 note 8; DAY_42.replay): replay({ inView, over, up }) at the ending's diorama runs a short form of the
+// party, DAY_42.replay.seconds, apart from the clock: no countdown, no lines, the ball up at once, the lights, the laser ring and the track on its
+// bus, the klaxon DAY_42.lower s before the end, the ball lowered and shrunk away. The ball hangs from the Stålheart's tip, the arm posed at the
+// celebration at once, when the ball there is inView(point) of the diorama's camera; otherwise DAY_42.replay.lift metres over `over` (the boards'
+// top) along `up`. replayTick(dt) advances it (the diorama's shot: the world's dt is 0 under it), tick() poses it after the base's mixers,
+// replayStop() clears it; replayState() for the harness (state().ending.party).
 // The host: scene, camera, metres() (world units a metre), sfx (src/audio.js), startShot, snapCamera, showBrief, callout(text, cls), armWave,
 // boards() (the two scoreboards, src/fx/scoreboard.js: override(lines, colours); the party face from the start to the done, 2026-10-18), daylight(), sectorRun(), base() (the story base: structure(id)), shotActive, seated, card, warning (the board's wave warning counting
 // down: no party over it), alive, won, isaoBusy, warm (src/fx/shader-warm.js: compile(root)); loadGlb and now (the wall clock in ms, performance.now by default) for a test.
@@ -45,6 +51,7 @@ const FACE = Object.freeze(faceLines(DAY_42.boards)), RINGS = [0, 1, 2, 3].map((
 
 export function createDiscoParty(h) {
   const clock = createPartyClock(DAY_42), load = h.loadGlb ?? loadGlb;
+  let rep = null;   // THE REPLAY's own state (round 3): { t, seconds, where, at, up, lit, klaxon, done }
   let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [], lastWall = null, shrinkFrom = 1, warmLeft = 0;
   const wallNow = h.now ?? (() => performance.now());
   const tip = new THREE.Vector3(), up = new THREE.Vector3(), base = new THREE.Vector3(), m4 = new THREE.Matrix4();
@@ -141,7 +148,9 @@ export function createDiscoParty(h) {
   }
   // the ball at the tip: hung toward the planet's centre (the tip's own orientation is the arm's, not the hook's), scaled about the hook
   function hang(root, p) {
-    if (!ball || !root || !tipNow(root)) return;
+    if (!ball) return;
+    if (rep?.at) { tip.copy(rep.at); up.copy(rep.up); }   // the replay over the boards: a hook in the air above them
+    else if (!root || !tipNow(root)) return;
     const m = metres(), s = Math.max(1e-4, appear) * m;
     if (!ball.parent) h.scene.add(ball);
     ball.scale.setScalar(s); ball.quaternion.setFromUnitVectors(Y, up);
@@ -230,11 +239,56 @@ export function createDiscoParty(h) {
     warmLeft = 0; dropLights(); ball?.removeFromParent(); release(); music?.stop(0.15); music = null; appear = 0; t = 0; overAt = 0; faceOn(false);
   }
 
+  // THE REPLAY'S FRAME (round 3): the klaxon at `seconds - lower`, the ball lowered after it, done at `seconds`; posed every frame after the base's mixers
+  function replayFrame() {
+    const T = rep.t, end = rep.seconds - DAY_42.lower, p = celebrationPose(T, DAY_42.loop), root = rep.at ? null : gather();
+    if (ball && parts.halo && !rep.lit && !rep.klaxon) { addLights(); rep.lit = true; }
+    if (!rep.klaxon && T >= end) {
+      rep.klaxon = true; music?.stop(0.15); music = null; h.sfx?.duck(DAY_42.music.duck.buses, 1, 0); h.sfx?.play('danger_alert');
+      dropLights(); shrinkFrom = appear; for (const r of tiers) r.from = r.last ?? r.rest;
+    }
+    if (!rep.klaxon) {
+      if (!music && T < DAY_42.music.retry) startMusic();
+      appear = ball ? 1 : 0;   // up from the first frame (a ball still on its way appears whole when it lands)
+      for (const r of tiers) pose(r, target(p));
+    } else {
+      const k = (T - end) / DAY_42.lower; appear = Math.max(0, shrinkFrom * (1 - k));
+      for (const r of tiers) pose(r, hoistBlend(k, r.from ?? r.rest, r.rest));
+    }
+    hang(root, p);
+    if (T >= rep.seconds) replayStop();
+  }
+  function replayStop() {
+    if (!rep || rep.done) return;
+    rep.done = true; warmLeft = 0; dropLights(); ball?.removeFromParent(); release(); music?.stop(0.15); music = null; h.sfx?.duck(DAY_42.music.duck.buses, 1, 0); appear = 0;
+  }
+
   return {
+    // THE REPLAY (round 3): started by the ending's diorama; returns { where: 'tip' | 'boards', seconds }
+    replay({ inView = null, over = null, up: upAt = null } = {}) {
+      if (rep && !rep.done) return { where: rep.where, seconds: rep.seconds };
+      const c = clock.state().phase; if (c === 'party' || c === 'over') { finish(); }   // a party still up as the ending starts gives way to it
+      fetchBall();
+      rep = { t: 0, seconds: DAY_42.replay.seconds, where: 'tip', at: null, up: null, lit: false, klaxon: false, done: false };
+      tiers = []; const root = gather();
+      if (root) for (const r of tiers) pose(r, target(celebrationPose(0, DAY_42.loop)));
+      const m = metres(), hasTip = !!root && tipNow(root), ballAt = hasTip ? tip.clone().addScaledVector(up, -HOOK_LOCAL_OFFSET[1] * m) : null;
+      if (!hasTip || (inView && !inView(ballAt))) {
+        release();
+        if (over && upAt) { const u = upAt.clone().normalize(); rep.where = 'boards'; rep.up = u; rep.at = over.clone().addScaledVector(u, (HOOK_LOCAL_OFFSET[1] + DAY_42.replay.lift) * m); }
+        else rep.where = 'none';
+      }
+      startMusic(); h.sfx?.duck(DAY_42.music.duck.buses, DAY_42.music.duck.depth, rep.seconds);
+      return { where: rep.where, seconds: rep.seconds };
+    },
+    replayTick(dt) { if (rep && !rep.done) rep.t += dt; },
+    replayStop,
+    replayState: () => (rep ? { t: +rep.t.toFixed(2), seconds: rep.seconds, where: rep.where, phase: rep.done ? 'done' : rep.klaxon ? 'over' : 'party', loaded: !!ball, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music, klaxon: rep.klaxon } : null),
     tick(dt) {
       const sr = h.sectorRun?.() ?? null, phase = sr?.state?.().phase, day = h.daylight?.()?.day?.() ?? 0;
       if (day >= DAY_42.day - DAY_42.loadAhead) fetchBall();
       warmSpots();
+      if (rep && !rep.done) { replayFrame(); return; }   // the ending's replay owns the ball, the arm and the track; the clock waits
       const cond = { day, fighting: phase === 'fighting', secure: phase === 'secure', breathing: !!sr?.breathing?.(), shot: h.shotActive(), seated: h.seated(),
         card: !ball || structure()?.holder?.visible === false || h.card() || !!h.warning?.(), alive: h.alive(), boss: !!sr?.defNow?.()?.boss, won: h.won(), isaoBusy: h.isaoBusy() };   // the board's wave warning is a card: no party over its rings; nor
       // with the Stålheart's holder hidden (final review, 2026-10-18: SOL can burn it; the ball would hang from nothing)
@@ -276,6 +330,6 @@ export function createDiscoParty(h) {
     holding: () => clock.holding(),
     force() { clock.force(); fetchBall(); },
     state: () => { const c = clock.state(); return { ...c, t: c.phase === 'countdown' ? c.t : +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music }; },   // the countdown's t is the clock's own
-    restore() { finish(); clock.reset(); held = []; },
+    restore() { replayStop(); rep = null; finish(); clock.reset(); held = []; },
   };
 }

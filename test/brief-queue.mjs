@@ -95,8 +95,20 @@ take(); q.show(faced);
 assert.equal(drone.faceLock, BRIEFS[faced].faces[0], 'the drone wears the line\'s face');
 q.end(); assert.equal(drone.faceLock, null);
 
+// ---- want(): a beat that must land waits past the one-deep slot for a panel ending with nothing pending (round 3, the streak's lore)
+take(); q.clear(); q.show('tremor'); q.show('arena_road');
+assert.equal(q.pending(), 'arena_road', 'the slot taken');
+q.want('streak_lore'); q.want('streak_lore');
+assert.equal(q.queue().id, 'tremor'); assert.equal(q.pending(), 'arena_road', 'the wanted beat does not evict the pending one');
+q.end(); assert.equal(q.queue().id, 'arena_road', 'the pending beat first');
+q.end(); assert.equal(q.queue().id, 'streak_lore', 'then the wanted one, once');
+q.end(); assert.equal(q.queue(), null, 'asked twice, shown once');
+q.want('streak_lore'); assert.equal(q.queue(), null, 'a seen once-beat is not wanted again');
+q.want('arena_road'); assert.equal(q.queue().id, 'arena_road', 'a free panel shows a wanted beat at once');
+q.clear();
+
 // ---- seen persists across a new queue over the same storage
 const q2 = createBriefQueue({ querySelector: (sel) => el(sel) }, { sfx, isao: () => null });
-assert.deepEqual(q2.seen, ['stalheart', 'harvest', 'motive'], 'the seen list survives in storage');
+assert.deepEqual(q2.seen, ['stalheart', 'harvest', 'motive', 'tremor', 'streak_lore'], 'the seen list survives in storage');
 take(); q2.show('harvest'); assert.equal(q2.queue(), null, 'and a seen once-beat stays silent in the next run');
 console.log('Brief queue: paints, dwells on the frame clock, advances silently or on a tap, holds one beat pending, marks once-beats seen, clears.');

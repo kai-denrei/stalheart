@@ -134,6 +134,7 @@ export function initDebriefTab(root) {
   if (q.get('acceptance') === '1') {
     window.__stalheartDebriefTest = {
       show: (name) => { sample = pick(name, SAMPLES, sample); run(); return debrief.pages(); },
+      ending: (name) => { sample = pick(name, SAMPLES, sample); debrief.show(DEBRIEF_SAMPLES[sample], { isao: DEBRIEF_SAMPLE_ISAO[sample], confirm: true }); return debrief.pages(); },   // the ending's card asks before a skip (round 3, 2026-10-26)
       width: (next) => { setWidth(next); return host.getBoundingClientRect().width; },
       skip: () => debrief.skip(),
       next: () => debrief.next(),
@@ -149,6 +150,7 @@ export function initDebriefTab(root) {
           sample, width, events: events.slice(),
           open: debrief.isOpen(), page: debrief.page(), pages: debrief.pages(), animating: debrief.animating(),
           label: el.dataset.label, outcome: el.dataset.outcome, mode: el.dataset.mode,
+          asking: debrief.asking(), hint: el.querySelector('.sdb-hint')?.textContent ?? null,
           hostWidth: Math.round(host.getBoundingClientRect().width), frameWidth: Math.round(box.width),
           overflowX: body.scrollWidth - body.clientWidth, poking,
           stamps: el.querySelectorAll('.sdb-stamp.is-in, .sdb-stamp.is-set').length,

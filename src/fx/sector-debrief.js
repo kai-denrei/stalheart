@@ -8,6 +8,9 @@
 // skippable: click, Space or Enter completes the page first and advances on the next press; arrows, NEXT and BACK move
 // between pages; Esc only completes. A page already seen comes back complete. Reduced motion shows every page complete.
 // Dismissed by hand only: CONTINUE, KEEP HOLDING and NEW RUN hide the card and then call their callback with the report.
+// THE ENDING'S CARD ASKS FIRST (round 3, 2026-10-26, decision 3a; src/domain/skip-confirm.js): shown with { confirm: true } (the final report after
+// the finale, the campaign card), a press or click that would land a running page asks "SKIP END GAME CELEBRATION?" in the footer's hint first;
+// Space or a second click within 4 s lands it, any other key or 4 s of nothing keeps the reveal running.
 //
 // The host must be a positioned element; the card covers it (position absolute, inset 0) and sizes its columns by the
 // host's width through a container query, so a 400 px host stacks even on a wide screen.
@@ -17,6 +20,7 @@ import {
   stampLabel, stampNote, beltEntries, sourceRows, debriefPageLabels, tempoPath, campaignTotals,
 } from '../core/debrief-format.js';
 import { recapRows, runTempo, runBests, bars } from '../core/run-recap.js';
+import { createSkipConfirm, SKIP_QUESTION } from '../domain/skip-confirm.js';
 
 const BELT_ORDER = [...Object.keys(SAFE_HUES), ...Object.keys(ALARM_HUES)];
 const BELT_HEX = { ...SAFE_HUES, ...ALARM_HUES };
@@ -338,6 +342,16 @@ export function createSectorDebrief(host, options = {}) {
 
   let mode = null, report = null, campaign = null, isao = null, labels = [], index = 0, seen = new Set();
   let tracks = [], total = 0, t0 = 0, done = true, raf = 0, lastTick = 0;
+  let confirm = false;
+  const ask = createSkipConfirm(), hint = root.querySelector('.sdb-hint'), HINT = hint.innerHTML, wall = () => view.performance.now() / 1000;
+  const asking = (on) => { hint.innerHTML = on ? SKIP_QUESTION : HINT; hint.classList.toggle('is-ask', on); root.dataset.asking = on ? '1' : '0'; };
+  // a user's skip of a running page: at once, or (the ending's card) through the question; true when the press was taken
+  function skipAsked({ key = null, tap = false, repeat = false } = {}) {
+    if (done || !confirm) return complete();
+    const a = ask.press({ key, tap, repeat }, wall());
+    if (a === 'skip') { asking(false); complete(); } else if (a === 'ask') asking(true); else if (a === 'no') asking(false);
+    return true;
+  }
 
   function tick() {
     const now = view.performance.now();
@@ -408,6 +422,7 @@ export function createSectorDebrief(host, options = {}) {
   }
 
   function finish() {
+    if (ask.asking()) { ask.reset(); asking(false); }
     done = true;
     root.dataset.anim = 'done';
     seen.add(index);
@@ -427,6 +442,7 @@ export function createSectorDebrief(host, options = {}) {
     return true;
   }
   function loop(now) {
+    if (ask.tick(wall()) === 'no') asking(false);
     const t = now - t0;
     render(t, true);
     if (t >= total) { finish(); return; }
@@ -491,7 +507,7 @@ export function createSectorDebrief(host, options = {}) {
   // a press completes the page, the next one closes the card: the summary is the debrief, the tabs are for whoever wants them
   function advance() {
     if (!mode) return;
-    if (complete()) return;
+    if (!done) { skipAsked(advanceKey ?? {}); return; }
     if (mode === 'report') close(onContinue); else if (index < labels.length - 1) goTo(index + 1); else nudge();   /* the campaign's pages are read in turn */
   }
   function close(callback) {
@@ -511,27 +527,31 @@ export function createSectorDebrief(host, options = {}) {
   }
 
   const KEYS = new Set([' ', 'Spacebar', 'Enter', 'ArrowRight', 'ArrowLeft', 'PageDown', 'PageUp', 'Escape']);
+  let advanceKey = null;
   function onKey(e) {
+    if (!root.hidden && mode && ask.asking() && e.type === 'keydown') {   // the question takes the next key whatever it is: Space lands, any other keeps the reveal
+      e.stopPropagation(); e.preventDefault(); skipAsked({ key: e.key, repeat: e.repeat }); return;
+    }
     if (root.hidden || !mode || !KEYS.has(e.key)) return;
     e.stopPropagation();                      // the game's own keys (Space is a trigger) stay quiet under the card
     if (e.type !== 'keydown') return;
     const onButton = e.target && e.target.closest && e.target.closest('button') && root.contains(e.target);
     switch (e.key) {
-      case 'Escape': e.preventDefault(); complete(); break;
-      case 'ArrowRight': case 'PageDown': e.preventDefault(); if (!e.repeat) { if (index < labels.length - 1) goTo(index + 1); else { complete(); nudge(); } } break;
+      case 'Escape': e.preventDefault(); skipAsked({ key: e.key }); break;
+      case 'ArrowRight': case 'PageDown': e.preventDefault(); if (!e.repeat) { if (index < labels.length - 1) goTo(index + 1); else { skipAsked({ key: e.key }); if (done) nudge(); } } break;
       case 'ArrowLeft': case 'PageUp': e.preventDefault(); if (!e.repeat) goTo(index - 1); break;
       default:
         if (e.repeat) { e.preventDefault(); break; }   // a held trigger never skips a whole debrief
         if (onButton && done) break;                    // a focused button takes its own press
         e.preventDefault();
-        advance();
+        advanceKey = { key: e.key }; advance(); advanceKey = null;
     }
   }
   function onClick(e) {
     e.stopPropagation();
     const button = e.target.closest && e.target.closest('button');
     if (button && root.contains(button)) { if (!button.disabled) act(button); return; }
-    if (frame.contains(e.target)) complete();   // a stray click lands the numbers; it never closes the card
+    if (frame.contains(e.target)) skipAsked({ tap: true });   // a stray click lands the numbers (the ending's card asks first); it never closes the card
   }
   const swallow = (e) => e.stopPropagation();
   view.addEventListener('keydown', onKey, true);
@@ -539,7 +559,8 @@ export function createSectorDebrief(host, options = {}) {
   root.addEventListener('click', onClick);
   for (const type of ['pointerdown', 'mousedown', 'touchstart', 'wheel']) root.addEventListener(type, swallow, { passive: true });
 
-  function show(nextReport, { page = 0, isao: lines } = {}) {
+  function show(nextReport, { page = 0, isao: lines, confirm: ending = false } = {}) {
+    confirm = !!ending; ask.reset(); asking(false);
     mode = 'report'; report = nextReport; campaign = null; isao = lines || null;
     labels = debriefPageLabels(nextReport);
     seen = new Set();
@@ -548,7 +569,8 @@ export function createSectorDebrief(host, options = {}) {
     index = Math.max(0, Math.min(labels.length - 1, Math.floor(num(page))));
     paint(open());
   }
-  function showCampaign(nextCampaign, { isao: lines } = {}) {
+  function showCampaign(nextCampaign, { isao: lines, confirm: ending = false } = {}) {
+    confirm = !!ending; ask.reset(); asking(false);
     mode = 'campaign'; campaign = nextCampaign; report = null; isao = lines || null;
     labels = ['THE COLONY HOLDS', 'THE RUN', 'THE BEST MOMENTS', 'THE COLONY RISES'];
     seen = new Set();
@@ -613,6 +635,7 @@ export function createSectorDebrief(host, options = {}) {
     pages: () => labels.slice(),
     skip: () => complete(),
     animating: () => !!mode && !done,
+    asking: () => ask.asking(),
     element: root,
   };
 }

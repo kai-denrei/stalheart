@@ -10,7 +10,7 @@
 //   dropCamera(t, tl, shakeK = 1)     -> { eye, look, fov, shake }  the cinematic's camera: wide on the falling group, the ground camera on the laggard
 //                                        (shakeK scales the demo's shake: 1 = the demo)
 //   dropPhase(t, tl)                  -> 'idle' | 'dropping' | 'landed'
-//   dropReady(cond)                   -> whether the drop starts now (decision 2: the first lull after `due`, or THE ARENA's start, or forced)
+//   dropReady(cond)                   -> whether the drop starts now (round 3: the due day crossed, a seat/card/line clear; or THE ARENA's start, or forced)
 //   dropCentre({ adj, dist, from, hops, open }) -> the cell `hops` steps down the heart's field from the arena's cell (off the crater, toward the base)
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 export const smooth = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
@@ -78,18 +78,18 @@ export function dropCamera(t, tl, shakeK = 1) {
 
 export const dropPhase = (t, tl) => (t < 0 ? 'idle' : t <= tl.duration ? 'dropping' : 'landed');
 
-// THE TRIGGER (decision 2): forced (?reinforce=1) goes at once, a running shot excepted; otherwise the call must have been made (`due` a day
-// number), the hull alive and no win; THE ARENA reached first drops them at once, due or not ("if THE ARENA is reached first, drop at once as the
-// sector begins, before the beacon's drive: the owner wants them before the boss fight"; a seat, a card or Isao's line does not hold it there, the
-// cut is simply not taken over a seat); elsewhere the due day reached, no seat, card or line of Isao's, and a lull (a breath between waves, or a
-// secured sector)
+// THE TRIGGER (decision 2; a timer since round 3, 2026-10-26, the owner: "the unlock that makes the mech drop should be a timer from when we
+// unlock the radar"): forced (?reinforce=1) goes at once, a running shot excepted; otherwise the call must have been made (`due` a day number),
+// the hull alive and no win; THE ARENA reached first drops them at once, due or not ("if THE ARENA is reached first, drop at once as the sector
+// begins, before the beacon's drive: the owner wants them before the boss fight"; a seat, a card or Isao's line does not hold it there, the cut
+// is simply not taken over a seat); elsewhere AT the due day (the day counter crossing it), held only while a seat is manned, a card is up or
+// one of Isao's lines is on the panel (a running shot holds every case); never waiting for a lull (the fight's phase is not asked)
 export function dropReady(c) {
   if (c.disabled || c.shot) return false;
   if (c.forced) return true;
   if (c.due === null || c.due === undefined || !c.alive || c.won) return false;
   if (c.arena) return true;
-  if (!(c.day >= c.due) || c.seated || c.card || c.isaoBusy) return false;
-  return !!(c.secure || (c.fighting && c.breathing));
+  return c.day >= c.due && !c.seated && !c.card && !c.isaoBusy;
 }
 
 // the group's centre: from the arena's cell, `hops` steps each to an open neighbour with a smaller heart distance (the smallest; the lowest index among equals)

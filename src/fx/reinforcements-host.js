@@ -2,8 +2,8 @@
 // radar, and after a few in-game days the FEIDS26 will come ... they will land at the Arena (before the boss fight.)"; spec
 // docs/superpowers/specs/2026-10-23-feids26-reinforcements-design.md). The call: when the radar step is printed (perk `uplink`,
 // src/fx/programme-host.js printed) Isao asks the colony (`reinforcements_called`, the callout) and story.reinforcements books the day and the
-// due day (REINFORCEMENTS.days later). The drop: the rule's trigger (src/domain/reinforcements.js dropReady: the first lull after the due day,
-// THE ARENA's start, or ?reinforce=1 at once; ?reinforce=0 never), the models fetched a day ahead (or at once when forced), then the scene
+// due day (REINFORCEMENTS.days later). The drop: the rule's trigger (src/domain/reinforcements.js dropReady: a timer since round 3, 2026-10-26: at the
+// due day, held only by a manned seat, a card, Isao's panel or a running shot; THE ARENA's start, or ?reinforce=1 at once; ?reinforce=0 never), the models fetched a day ahead (or at once when forced), then the scene
 // (src/fx/feids-drop.js) on its own clock in a frame at the drop's centre (REINFORCEMENTS.offsetCells down the heart's field from the arena's
 // cell, off the crater), Isao's `reinforcements_inbound`, and a live shot on the cinematic's camera for its 28 s, never over a manned seat or
 // another shot (the drop goes on without its cut); then the four handed to the squad (host.landed(mechs, frame), src/fx/mech-squad.js).
@@ -21,7 +21,7 @@ const TL = REINFORCEMENTS.timeline, LOAD_WAIT = 10, SOUND_WAIT = 3, LOOK = [11, 
 export function createReinforcements(h) {
   const drop = createFeidsDrop({ scene: h.scene, metres: h.metres, sfx: h.sfx, explode: h.explode });
   const forced = h.flag === '1', disabled = h.flag === '0';
-  let phase = 'idle', t = -1, waiting = -1, why = 'idle', ticks = 0, frame = null, centre = -1, cut = false, cutDone = false, forceNow = false;
+  let phase = 'idle', t = -1, waiting = -1, why = 'idle', ticks = 0, sinceDue = -1, heldFor = 0, lateBy = null, landLine = 0, frame = null, centre = -1, cut = false, cutDone = false, forceNow = false;
   // THE CUT'S LENS (the owner's ant view, 2026-10-23): the near plane lowered to shot.near and the rule's fov (eased in from the camera's) each tick
   // of the cut, the values found put back at its end, on a seat taken over it (the near only: the seat owns the fov) and on restore
   let lens = null, hint = null, cutAt = 0;
@@ -86,12 +86,13 @@ export function createReinforcements(h) {
   function land() {
     phase = 'landed';
     h.landed?.(drop.mechs(), frame, centre); drop.release();
-    h.callout(REINFORCEMENTS.landedCallout, 'co-victory'); if (!h.isaoBusy()) h.showBrief(REINFORCEMENTS.briefs.landed);
+    h.callout(REINFORCEMENTS.landedCallout, 'co-victory'); landLine = REINFORCEMENTS.landedWait;   // the owner's line (round 3): said when Isao's panel is free, up to landedWait s
   }
 
   return {
     called,
     tick(dt) {
+      if (phase === 'landed' && landLine > 0) { if (!h.isaoBusy()) { landLine = 0; h.showBrief(REINFORCEMENTS.briefs.landed); } else landLine -= dt; }
       if (disabled || phase === 'landed') return;
       if (phase === 'dropping') {
         t += dt; drop.prime(); drop.tick(t); shot();
@@ -106,13 +107,16 @@ export function createReinforcements(h) {
       const cond = { forced: forced || forceNow, disabled, due: r?.due ?? null, day: d, fighting: st === 'fighting', secure: st === 'secure', breathing: !!sr?.breathing?.(),
         arena: !!sr?.defNow?.()?.boss, shot: h.shotActive(), seated: h.seated(), card: h.card(), alive: h.alive(), won: h.won(), isaoBusy: h.isaoBusy() };
       ticks++;
-      if (!dropReady(cond)) { waiting = -1; why = cond.shot ? 'shot' : 'lull'; return; }
+      // THE TIMER'S MEASURE (round 3): game seconds since the day counter crossed `due`, those of them a seat, a card or Isao's panel held it, and
+      // at the drop's start the whole wait (lateBy - heldFor is the timer's own lateness: the models and the sounds)
+      if (r && d >= r.due) sinceDue = sinceDue < 0 ? 0 : sinceDue + dt;
+      if (!dropReady(cond)) { if (sinceDue >= 0) heldFor += dt; waiting = -1; why = cond.shot ? 'shot' : !(cond.due !== null && d >= cond.due) ? 'due' : cond.seated ? 'seat' : cond.isaoBusy ? 'brief' : cond.card ? 'card' : 'held'; return; }
       drop.prepare();   // THE ARENA before the due day's preload: fetched now, the drop going once they land (or LOAD_WAIT on)
       waiting = waiting < 0 ? 0 : waiting + dt;
       if (!drop.ready() && !drop.failed()) { why = 'loading'; if (waiting < LOAD_WAIT) return; }
       if (!drop.prime()) { why = 'sounds'; if (waiting < SOUND_WAIT) return; }   // no context yet (no gesture): it goes silent after SOUND_WAIT, the primes asked again through the drop
       if (!rec() && h.story()) h.story().reinforcements = { calledDay: d, due: d, forced: true };   // a forced drop books itself
-      why = begin() ? 'begun' : 'no frame';
+      why = begin() ? 'begun' : 'no frame'; if (why === 'begun') lateBy = sinceDue < 0 ? null : +sinceDue.toFixed(2);
     },
     force() { forceNow = true; drop.prepare(); },
     show: (on) => { drop.show(on); h.squad?.()?.show?.(on); },
@@ -132,8 +136,8 @@ export function createReinforcements(h) {
     state: () => {
       const r = rec();
       return { called: !!r, calledDay: r?.calledDay ?? null, due: r?.due ?? null, phase, t: +Math.max(0, t).toFixed(2), clock: dropPhase(t, TL), centre, cut, cutDone, lens: lens ? { near: +h.camera.near.toFixed(6), fov: +h.camera.fov.toFixed(2) } : null, hint: !!hint, seated: h.seated(), primed: drop.primed(), loaded: drop.ready(), failed: drop.failed(),
-        why, ticks, heard: drop.heard(), mechs: h.squad?.()?.state?.() ?? [] };
+        why, ticks, sinceDue: +sinceDue.toFixed(2), heldFor: +heldFor.toFixed(2), lateBy, heard: drop.heard(), mechs: h.squad?.()?.state?.() ?? [] };
     },
-    restore() { lensOff(); hintOff(); drop.dispose(); phase = 'idle'; t = -1; frame = null; cut = false; },
+    restore() { lensOff(); hintOff(); drop.dispose(); landLine = 0; phase = 'idle'; t = -1; frame = null; cut = false; },
   };
 }
