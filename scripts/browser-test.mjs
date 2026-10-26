@@ -2082,7 +2082,7 @@ try{
  current='colony-lapse';await finish();
  } else if(args.includes('--finale')) {
  // THE FINALE (owner, 2026-10-06): the diorama, the player's MÖRK and Isao before the rivalry boards, then the next step
- const T='window.__stalheartTest';
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
  await go('finale',`index.html?sw=0&acceptance=1&cine=0&skip=defence${process.env.HOLE==='0'?'&hole=0':''}#td`);
  await until(`!!${T}`,90000);await delay(2500);await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
  await until(`!${T}.state().deploying`,30000);await delay(1500);
@@ -2090,24 +2090,45 @@ try{
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
  assert(await evaluate(`${T}.showcase.finale()`),'the host takes the finale (the boards stand on a finished base)');
  await until(`${T}.state().shot==="diorama"`,5000);
- await delay(2500);current='finale-diorama-a';await finish();
- await delay(3500);current='finale-diorama-b';await finish();
+ // THE DAY 42 REPLAY (round 3, 2026-10-26, decision 3b): with the boards read, the disco party's short form (src/fx/disco-party.js replay), the diorama
+ // holding as long (DAY_42.replay.seconds); where the ball hangs (the Stålheart's tip in the shot's view, or over the boards), the klaxon before its end
+ {const {DAY_42}=await import('../src/content/day-42.js'),P=async()=>(await st()).ending?.party;
+  await delay(2500);const p=await P();console.log(`FINALE replay at 2.5 s: ${JSON.stringify(p)}`);
+  assert.ok(p&&p.phase==='party','the DAY 42 replay runs with the boards');assert.equal(p.seconds,DAY_42.replay.seconds);assert.ok(['tip','boards'].includes(p.where),`the ball hangs at the tip or over the boards (${p.where})`);
+  current='finale-diorama-a';await finish();
+  await until(`!!${T}.state().ending?.party?.hanging`,8000).then(async()=>{const q=await P();console.log(`FINALE replay ball up at ${q.t} s over ${q.where}, lights ${q.lights}, music ${q.music}`);}).catch(async()=>console.log(`FINALE the ball never hung: ${JSON.stringify(await P())}`));
+  await delay(2000);current='finale-diorama-b';await finish();
+  await until(`!!${T}.state().ending?.party?.klaxon||${T}.state().shot!=="diorama"`,25000);
+  {const q=await P();console.log(`FINALE replay klaxon at ${q.t} s (${q.phase}), diorama ${(await st()).shot}`);assert.ok(q.klaxon,'the klaxon before the replay ends');}
+  await delay(1500);current='finale-diorama-lower';await finish();}
  // THE ORBITAL CONSTELLATION (src/fx/orbital-finale.js) after it, its own canvas over the game, Isao's three lines
  await until('!!document.querySelector("#orbital-finale")',15000).catch(()=>assert.fail('the constellation never opened'));
+ {const p=(await st()).ending?.party;assert.equal(p?.phase,'done','the replay over with the diorama');assert.equal(p?.hanging,false,'nothing of it left in the yard');}
+ const orbitAt=Date.now();
  // OUR OWN PLANET (owner's twenty-seventh notes, 9): the small world is the board's own surface, not the placeholder sphere
  await until('document.querySelector("#orbital-finale")?.dataset.loaded==="1"',15000).catch(()=>{});
  assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.own'),'1','the constellation turns over our own planet');
  assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.base'),'1','and over the base itself (owner, 2026-10-07: the ARC-01 the one in our base)');
  if(process.env.HOLE!=='0')assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.hole'),'1','the accretion disk rendered and hung in the sky (src/fx/accretion.js)');
  {const pr=JSON.parse(await evaluate('document.querySelector("#orbital-finale")?.dataset.holeProbe||"null"'));console.log(`FINALE hole probe ${JSON.stringify(pr)}`);if(pr)assert(pr.corner[3]<=2,`the empty sky round the hole is clear (corner alpha ${pr.corner[3]})`);}
- for(const [at,name] of [[4,'a'],[12,'b'],[22,'c']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:at===12?8000:10000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}
+ for(const [at,name] of [[4,'a'],[12,'b']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:8000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}
+ // THE SKIP ASKS FIRST (round 3, decision 3a): after Isao's third line a key that is not Space shows the question and does not skip; Space then skips
+ await until('/Ready for the next one/.test(document.querySelector("#orbital-finale .of-line")?.textContent||"")',20000).catch(()=>assert.fail('the third line'));
+ {const key=(k,code,vk)=>send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code,windowsVirtualKeyCode:vk}).then(()=>send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code,windowsVirtualKeyCode:vk}));
+  const {SKIP_QUESTION}=await import('../src/domain/skip-confirm.js'),sk='document.querySelector("#orbital-finale .of-skip")?.textContent';
+  await key('w','KeyW',87);await delay(300);
+  const q=await evaluate(sk);console.log(`FINALE a key after the third line: "${q}"`);assert.equal(q,SKIP_QUESTION,'the question replaces ANY KEY · SKIP');
+  await delay(1000);assert(await evaluate('!!document.querySelector("#orbital-finale")'),'and the finale goes on');current='finale-orbit-ask';await finish();
+  await key(' ','Space',32);
+  await until('!document.querySelector("#orbital-finale")',3000).catch(()=>assert.fail('Space confirms the skip'));
+  const ran=(Date.now()-orbitAt)/1000;console.log(`FINALE skipped by Space after ${ran.toFixed(1)} s of the constellation's 26`);assert.ok(ran<25.5,'skipped before its end');}
  await until('(window.__stalheartFinaleDone??0)>=1',60000).catch(async()=>assert.fail(`the finale never handed back (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
  {/* the page's own copy of the module: a built page loads it with its ?v= token, and a bare import would be a second, silent copy */
   const said=await evaluate('(async()=>(await import(performance.getEntriesByType("resource").map(e=>e.name).find(n=>/\\/src\\/fx\\/isao-voice\\.js/.test(n))??"./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');console.log(`FINALE said ${said.filter(x=>/^ending_/.test(x)).join(' ')}`);
   assert(['ending_did_it_01','ending_dyson_01','ending_next_01'].every(id=>said.includes(id)),'Isao says all three lines');}
  assert(!(await evaluate('!!document.querySelector("#orbital-finale")')),'the constellation is gone when it hands back');
  assert.equal(await evaluate(`${T}.state().shot`),null,'and the camera is the player\'s again');
- console.log('PASS finale: the diorama, the constellation, and the hand-back');
+ console.log('PASS finale: the diorama with the DAY 42 replay, the constellation, the skip asked then confirmed, and the hand-back');
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out

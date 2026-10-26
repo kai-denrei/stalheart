@@ -4673,7 +4673,7 @@ export function initTdTab(root) {
     cellSide: () => cellSide,
     hull: () => playerMesh,
     isao: () => isao,
-    spawnIsao,
+    spawnIsao, party: () => discoParty,   /* the DAY 42 replay at the ending's diorama (round 3, 2026-10-26) */
   });
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, tankReady, the programme's part of the tick, repaired, printed
   const programme = createProgrammeHost({

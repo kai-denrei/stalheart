@@ -178,7 +178,7 @@ const orbital = (got) => got.filter((x) => x[0] === 'playOrbitalFinale');
   const h3 = host({ story: { boards: [board(0, 'x'), board(5, 'y')] }, members: { isao: undefined, spawnIsao: undefined } });
   assert.doesNotThrow(() => h3.host.finale(() => {})); take();
 }
-// ---- the diorama is handed exactly its seven members (refactor round 2, Task 3b: `c` is no longer handed on): the story getter is
+// ---- the diorama is handed exactly its eight members (refactor round 2, Task 3b; party since round 3, 2026-10-26: `c` is no longer handed on): the story getter is
 // called as a method of the literal playDiorama receives, so `this` inside it is that literal
 {
   let seen = null;
@@ -187,7 +187,7 @@ const orbital = (got) => got.filter((x) => x[0] === 'playOrbitalFinale');
   h.host.finale(() => {});
   take();
   assert.ok(seen && seen !== h.c, 'the diorama is handed a literal of its own, not the ending\'s host');
-  assert.deepEqual(Object.keys(seen).sort(), ['cellSide', 'hull', 'isao', 'scene', 'spawnIsao', 'startShot', 'story'], 'exactly story, startShot, scene, cellSide, hull, isao and spawnIsao');
+  assert.deepEqual(Object.keys(seen).sort(), ['cellSide', 'hull', 'isao', 'party', 'scene', 'spawnIsao', 'startShot', 'story'], 'exactly story, startShot, scene, cellSide, hull, isao, spawnIsao and party (the DAY 42 replay, round 3)');
   for (const k of Object.keys(seen)) assert.equal(seen[k], h.c[k], `${k} is the host's own member, passed through`);
 }
-console.log('Ending host: the interlude is retired; the finale pauses off, stages the diorama (handed its seven members) when boards stand, and reaches `then` through the orbital finale\'s done.');
+console.log('Ending host: the interlude is retired; the finale pauses off, stages the diorama (handed its eight members) when boards stand, and reaches `then` through the orbital finale\'s done.');

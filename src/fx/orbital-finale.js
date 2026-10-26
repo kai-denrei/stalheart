@@ -6,7 +6,8 @@
 // while the camera pulls back to the whole constellation. Upstream seconds 50 to 100 are played in SECONDS.
 //
 // It is its own small world on its own canvas over the game (one more WebGL context for half a minute, disposed after), so nothing in
-// the game's scene, camera or post chain changes for it. Any key or click ends it. The ARC-01's sled is not animated here: the HEL-01
+// the game's scene, camera or post chain changes for it. Any key or click asks to end it (round 3, 2026-10-26: src/domain/skip-confirm.js; Space
+// or a second tap within 4 s ends it, anything else keeps it). The ARC-01's sled is not animated here: the HEL-01
 // launches are the rising streaks, as upstream draws them past their first 0.85 s.
 // OUR OWN PLANET (owner, 2026-10-06, twenty-seventh notes, 9: "it should show our actual planet, not the placeholder one"): given
 // `planet` ({ map: the board's surface meshes, heart: the heart's unit vector }), the small world is the game's own surface, its floor,
@@ -19,6 +20,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture } from './model-fixture.js';
 import { isaoSay } from './isao-voice.js';
 import { renderAccretion, accretionSprite, accretionShadow, faceShadow } from './accretion.js';
+import { createSkipConfirm, SKIP_QUESTION } from '../domain/skip-confirm.js';
 
 export const SECONDS = 26;
 const FROM = 50, TO = 100, PLANET_RADIUS = 195, MIRROR_COUNT = 48, CENTER = [0, -PLANET_RADIUS, 0];
@@ -209,7 +211,9 @@ export function playOrbitalFinale(root, { sfx = null, done = null, planet = null
   const el = document.createElement('div'); el.id = 'orbital-finale';
   el.innerHTML = '<canvas></canvas><p class="of-line" aria-live="polite"></p><p class="of-count"></p><p class="of-skip">ANY KEY · SKIP</p>';
   (root ?? document.body).append(el);
-  const canvas = el.querySelector('canvas'), line = el.querySelector('.of-line'), count = el.querySelector('.of-count');
+  const canvas = el.querySelector('canvas'), line = el.querySelector('.of-line'), count = el.querySelector('.of-count'), skipEl = el.querySelector('.of-skip');
+  const ask = createSkipConfirm(), SKIP_LINE = skipEl.textContent, wall = () => (globalThis.performance?.now?.() ?? Date.now()) / 1000;
+  const asking = (on) => { skipEl.textContent = on ? SKIP_QUESTION : SKIP_LINE; skipEl.classList.toggle('is-ask', on); el.dataset.asking = on ? '1' : '0'; };
   el.dataset.own = planet?.map?.length ? '1' : '0'; el.dataset.base = planet?.base ? '1' : '0';   // what the harness reads: the game's own planet and base, or the placeholder
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1)); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
@@ -218,6 +222,7 @@ export function playOrbitalFinale(root, { sfx = null, done = null, planet = null
   const size = () => { const w = el.clientWidth || innerWidth, h = el.clientHeight || innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (ask.tick(wall()) === 'no') asking(false);   // 4 s of nothing: the question goes, the celebration goes on
     if (!world) return;
     start ||= now;
     const sec = (now - start) / 1000;
@@ -234,12 +239,17 @@ export function playOrbitalFinale(root, { sfx = null, done = null, planet = null
     cancelAnimationFrame(raf); removeEventListener('keydown', skip, true); el.removeEventListener('pointerdown', skip, true);
     world?.dispose?.(); renderer.dispose(); renderer.forceContextLoss?.(); el.remove(); done?.();
   }
-  const skip = (e) => { e.preventDefault?.(); e.stopImmediatePropagation?.(); stop(); };
+  // THE SKIP ASKS FIRST (decision 3a): every key and tap is the finale's while it runs; the first asks, Space or a second tap confirms
+  const skip = (e) => {
+    e.preventDefault?.(); e.stopImmediatePropagation?.();
+    const a = ask.press({ key: e.type === 'keydown' ? e.key : null, tap: e.type !== 'keydown', repeat: !!e.repeat }, wall());
+    if (a === 'skip') stop(); else if (a === 'ask') asking(true); else if (a === 'no') asking(false);
+  };
   addEventListener('keydown', skip, true); el.addEventListener('pointerdown', skip, true);
   Promise.all(Object.values(MODELS).map((u) => loadModelFixture(u).then((m) => cloneFixture(m)).catch(() => null))).then(([launcher, sol, mirror]) => {
     if (ended) return;
     try { world = buildWorld({ launcher, sol, mirror, planet, renderer }); el.dataset.loaded = '1'; el.dataset.hole = world.hole ? '1' : '0'; el.dataset.holeProbe = JSON.stringify(world.holeProbe); } catch { stop(); }
   });
   raf = requestAnimationFrame(frame);
-  return { stop, state: () => ({ on: !ended, loaded: !!world, own: !!planet?.map?.length, hole: !!world?.hole, said, line: line.textContent, count: count.textContent }) };
+  return { stop, state: () => ({ asking: ask.asking(), on: !ended, loaded: !!world, own: !!planet?.map?.length, hole: !!world?.hole, said, line: line.textContent, count: count.textContent }) };
 }
