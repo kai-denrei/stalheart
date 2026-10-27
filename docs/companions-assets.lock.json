@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "ab4642deb90836628ee5f7c8b0049ec9a7b5dfae",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/ab4642deb90836628ee5f7c8b0049ec9a7b5dfae/",
+  "credit": "Models by jelaludo (the owner's own; https://jelaludo.github.io/SentryTowers_A6/mechanical-cheetah/ and /reckon-k9/): C-07 Mechanical Cheetah and RECKON K9, D0, game tier LOD1 and static distance tier LOD2, plain GLB (the build meshopt-packs them)",
+  "files": [
+    { "path": "assets/models/c07/c07_d0_lod1.glb", "sourcePath": "assets/mechanical-cheetah/c07_d0_lod1.glb", "sha256": "6b93f1efb2e888499666106438b268bb53af88de8e2657f5efb664a8099c83e7", "bytes": 1537756, "clips": ["Watch_Idle", "Feline_Walk_Cycle", "Stalk_Cycle", "Gallop_Cycle", "Sit_Down", "Pounce", "Roll_Over", "Give_Paw"] },
+    { "path": "assets/models/c07/c07_d0_lod2.glb", "sourcePath": "assets/mechanical-cheetah/c07_d0_lod2.glb", "sha256": "64a4f6a97e3f1f285f5ba6400c9da1e02c405beae20b3e67b71019794762e6e8", "bytes": 232288 },
+    { "path": "assets/models/reckon-k9/reckon_k9_d0_lod1.glb", "sourcePath": "assets/reckon-k9/reckon_k9_d0_lod1.glb", "sha256": "ff120abd7ff1db5d40e137aba17696cf980f97be968e62ef165571723a99c0fa", "bytes": 1630292, "clips": ["Alert_Idle", "Walk_Cycle", "Run_Cycle", "Pace_Cycle", "Canter_Cycle", "Gallop_Cycle", "Sprint_Cycle", "Sit_Down", "Roll_Over", "Fetch_Return", "Give_Paw", "Jump"] },
+    { "path": "assets/models/reckon-k9/reckon_k9_d0_lod2.glb", "sourcePath": "assets/reckon-k9/reckon_k9_d0_lod2.glb", "sha256": "95eb20786426bc40796c3f3bcc40b1eb0a5bc8ad5237b1846045942f55551a3e", "bytes": 190764 }
+  ]
+}

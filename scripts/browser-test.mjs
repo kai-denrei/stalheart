@@ -1462,6 +1462,30 @@ try{
  await evaluate(`${T}.laserAuto(true)`);await delay(2500);
  console.log('PROBE',await evaluate(`JSON.stringify({dom:[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent),navs:document.querySelectorAll("#story-views").length,laser:(l=>({auto:l.auto,platform:l.platform,strip:l.strip}))(${T}.state().laser)})`));
  await finish();
+ } else if(args.includes('--companions')) {
+ // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions on the clearing from the first frame, wireframed, at their true size; over 70 game
+ // seconds they walk, dash, play tag (a tag swaps the roles) and stay on the roam (the clearing near the heart, off the solid structures); the
+ // paws' clip runs at the rate of the ground speed; a live look beside the cheetah mid-move is artifacts/browser/companions.png
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), C=(s)=>s.companions;
+ await go('companions',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td`);
+ await until(`!!${T} && !!${T}.state().companions`,120000).catch(async()=>assert.fail('the companions host created'));
+ await until(`${T}.state().companions.loaded`,60000).catch(async()=>assert.fail(`both models loaded (${JSON.stringify(C(await st()))})`));
+ {const c=C(await st());console.log('  loaded: '+JSON.stringify(c));assert.ok(c.roam>20,'a roam of cells');for(const u of c.units){assert.ok(u.onRoam,`${u.id} starts on the roam`);assert.equal(u.wire[0],u.wire[1],`${u.id} every mesh wireframed`);assert.ok(u.wire[1]>=6,`${u.id} drawn (${u.wire[1]} meshes)`);}}
+ // 70 game seconds sampled: the modes seen, the top speeds, every sample on the roam, the clip's rate matching the speed, a game of tag
+ const seen={c07:new Set(),k9:new Set()},top={c07:0,k9:0},clips={c07:new Set(),k9:new Set()};let games=0,tags=0,off=0,samples=0,t0=null;
+ for(let k=0;k<140;k++){await delay(500);const c=C(await st());if(!c)continue;samples++;t0??=c.t;games=c.game.games;tags=c.game.tags;for(const u of c.units){seen[u.id].add(u.mode);top[u.id]=Math.max(top[u.id],u.speed);if(u.clip)clips[u.id].add(u.clip);if(!u.onRoam)off++;}
+  if(k%20===0)console.log(`  t ${c.t}: ${c.units.map(u=>`${u.id} ${u.mode} ${u.speed} m/s ${u.clip}@${u.rate}${u.blocked?' BLOCKED':''}`).join(' | ')} dist ${c.dist} m game ${JSON.stringify(c.game)}`);
+  if(c.t-t0>70)break;}
+ const c=C(await st());console.log(`  after ${(c.t-t0).toFixed(1)} game s / ${samples} samples: modes ${JSON.stringify({c07:[...seen.c07],k9:[...seen.k9]})}, top ${JSON.stringify(top)}, clips ${JSON.stringify({c07:[...clips.c07],k9:[...clips.k9]})}, games ${games}, tags ${tags}, off the roam ${off}`);
+ assert.ok(c.t-t0>=60,'the game clock ran');assert.equal(off,0,'every sample on the roam');
+ for(const id of ['c07','k9']){assert.ok(seen[id].has('wander')||seen[id].has('dash'),`${id} moved on its own`);assert.ok(seen[id].has('chase')||seen[id].has('flee'),`${id} played tag`);assert.ok(top[id]>=3,`${id} reached a run (${top[id]} m/s)`);assert.ok(clips[id].size>=2,`${id} changed gait (${[...clips[id]]})`);}
+ assert.ok(games>=1,'a game of tag played');
+ // the look: beside the cheetah while it moves (the next move after a rest), the frame for the owner
+ await until(`['wander','dash','chase','flee','greet'].includes(${T}.state().companions.units[0].mode) && ${T}.state().companions.units[0].speed>0.3`,60000).catch(()=>{});
+ assert.equal(await evaluate(`${T}.petLook(0)`),true,'the look at the cheetah');await delay(1200);
+ {const s=await st(),u=C(s).units[0];console.log(`  look: shot ${s.shot}, c07 ${u.mode} ${u.speed} m/s ${u.clip}@${u.rate}, ${u.eyeM} m from the eye, far ${u.far}`);assert.equal(s.shot,'mechLook','the look live');assert.equal(u.far,false,'the cheetah on its game tier in the look');}
+ current='companions';await finish();
+ await evaluate(`${T}.petLook(1)`);await delay(1200);current='companions-k9';await finish();
  } else if(args.includes('--wire')) {
  // THE WIREFRAME, THE DEFAULT (owner, 2026-10-26 as ?wire=1, 2026-10-27 the default): the hull, every sentry and the four Ridgebacks drawn as wireframes with no flag; the gunship and SOL untouched; ?wire=0 the solids
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);

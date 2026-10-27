@@ -122,13 +122,13 @@ export function createReinforcements(h) {
     show: (on) => { drop.show(on); h.squad?.()?.show?.(on); },
     // THE GAIT'S LOOK (the harness's frame of a walking mech, round 2): a live shot beside mech i, 3/4 front at LOOK metres (x right, up, z forward of
     // its facing), on its body; any key ends it. look(-1) or no mech: false
-    look(i) {
-      const sq = h.squad?.(), p = new THREE.Vector3(), q = new THREE.Quaternion(), eye = new THREE.Vector3(), at = new THREE.Vector3(), m4 = new THREE.Matrix4();
+    look(i, { squad = h.squad?.(), offset = LOOK, height = 1.6 } = {}) {   // any frameOf() holder (the companions, 2026-10-27), its own offset and look height in metres
+      const sq = squad, p = new THREE.Vector3(), q = new THREE.Quaternion(), eye = new THREE.Vector3(), at = new THREE.Vector3(), m4 = new THREE.Matrix4();
       if (!(i >= 0) || !sq?.frameOf?.(i, p, q)) return false;
       h.startShot({ id: 'mechLook', dur: 600, skippable: true, poseAt(u, out) {
         if (!sq.frameOf(i, p, q)) return;
         const m = h.metres(), up = p.clone().normalize();
-        eye.set(LOOK[0], LOOK[1], LOOK[2]).applyQuaternion(q).multiplyScalar(m).add(p); at.copy(p).addScaledVector(up, 1.6 * m);
+        eye.set(offset[0], offset[1], offset[2]).applyQuaternion(q).multiplyScalar(m).add(p); at.copy(p).addScaledVector(up, height * m);
         m4.lookAt(eye, at, up); out.pos.copy(eye); out.quat.setFromRotationMatrix(m4);
       } });
       return true;

@@ -53,6 +53,7 @@ import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
 import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js';
 import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js'; import { REINFORCEMENTS } from './content/reinforcements.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
+import { createCompanions } from './fx/companions.js';   // C-07 AND RECKON K9, THE BASE COMPANIONS (owner, 2026-10-27)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { setWireframe } from './fx/model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the sentries, the hull and the Ridgebacks drawn as the briefings' wireframe; the gunship and SOL as they are
 import { createSyntheticModal } from './fx/synthetic-modal.js';
@@ -110,7 +111,7 @@ export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
   const wire = flags.wire !== '0', wireOpts = { tint: flags.wire !== 'flat' };   // WIREFRAME UNITS, THE DEFAULT (owner, 2026-10-26 a test, 2026-10-27 "make the wireframe look the default, not a flag": "all the sentries, Mork, Mechs. but not the gunship or sol"): tinted per part (src/fx/model-fixture.js wireLook); ?wire=flat the briefings' one cyan, ?wire=0 the solids
   let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, discoParty = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
-  let reinforcements = null, mechSquad = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
+  let reinforcements = null, mechSquad = null, companions = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -2412,6 +2413,8 @@ export function initTdTab(root) {
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
+    companions?.dispose(); companions = story && flags.pets !== '0' ? createCompanions({ scene, metres: () => metresToArc(1, cellSide), graph: () => graph, dungeon: () => dungeon, inside: (ci) => !!story.inside?.(ci), solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false,
+      hull: () => (playerHP > 0 ? player.pos : null), eye: () => camera.position, wire: () => (wire ? wireOpts : null), seed: params.seed }) : null;   // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions on the clearing from the first frame (src/fx/companions.js); ?pets=0 leaves them out
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
     // model happens to land — which is what lets a reset place the tank once instead of standing it beside the Heart and
     // teleporting it later.
@@ -4324,7 +4327,7 @@ export function initTdTab(root) {
       }
     }
     if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? [...(sectorRun?.gates() ?? []), ...bossRun.rows()] : [] }, dt);   /* src/fx/integrity-hud.js */
-    reinforcements?.tick(frozen ? 0 : dt); mechSquad?.tick(frozen ? 0 : dt, t);   // FEIDS-26: the drop's clock and the four (2026-10-23)
+    reinforcements?.tick(frozen ? 0 : dt); mechSquad?.tick(frozen ? 0 : dt, t); companions?.tick(frozen ? 0 : dt, t);   // FEIDS-26: the drop's clock and the four (2026-10-23)
     story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); discoParty?.tick(frozen ? 0 : dt); /* DAY 42 after the base's mixers: the paused clip rewrites the arm each update */ story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos((obj.userData.clear??CONTENT.breach.clearRadius)*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
@@ -4483,7 +4486,7 @@ export function initTdTab(root) {
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
 
-  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveClock.charge(), mechs: () => mechSquad?.contacts() ?? [] });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
+  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveClock.charge(), mechs: () => [...(mechSquad?.contacts() ?? []), ...(companions?.contacts() ?? [])] });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
 
   const seedOverride = parseInt(flags.seed || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const showcaseMode = showcaseOn(location.search), storyQuery = readStoryQuery(showcaseMode ? '?skip=defence' : location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story'; root.classList.toggle('story-world', storyMode);   /* the campaign's buttons and key hint stay off in the story (styles.css) */   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
@@ -4967,7 +4970,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   const gameHooks = {
       state: () => ({
-        wire: wireState(), wireSurvey: { hull: wireSurvey(playerMesh), tower: wireSurvey(towers[0]?.obj), mech: wireSurvey(mechSquad?.roots?.()?.[0]), mechColours: mechSquad?.wireColours?.() ?? null },
+        wire: wireState(), wireSurvey: { hull: wireSurvey(playerMesh), tower: wireSurvey(towers[0]?.obj), mech: wireSurvey(mechSquad?.roots?.()?.[0]), mechColours: mechSquad?.wireColours?.() ?? null }, companions: companions?.state() ?? null,
         enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(),
         explosions: explosions.state(), softHunt: enemyStep.softHunt(), shellBlast: shellBlast.last(), boss: bossRun.state(), descent: descentHost.state(), enemySpeed: params.enemySpeed, hullRepair: hullRepair.state(),
         pilotRounds: rs?.pilotRounds ?? 0,
@@ -5111,7 +5114,7 @@ export function initTdTab(root) {
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
-      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on), reinforceLook: (i) => !!reinforcements?.look(i), isaoBrief: (id) => showBrief(id),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B; a live look at mech i
+      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on), reinforceLook: (i) => !!reinforcements?.look(i), petLook: (i) => !!companions && !!reinforcements?.look(i, { squad: companions, offset: [2.6, 1.2, 3.4], height: 0.5 }), isaoBrief: (id) => showBrief(id),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B; a live look at mech i
       spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
       camJumpClear: () => camJump.clear(),   // the camera's jump meter: a fresh window (round 3, 2026-10-26)
