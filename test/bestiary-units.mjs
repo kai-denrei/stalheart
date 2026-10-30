@@ -46,6 +46,7 @@ assert.equal(unitState(by('mx06'), { mechs: true }), 'full'); assert.equal(unitS
 assert.equal(unitState(by('sol82'), { sector: 3 }), 'full'); assert.equal(unitState(by('sol82'), { sector: 2 }), 'unseen');
 assert.equal(unitState(by('sol88'), { sol88: true }), 'full'); assert.equal(unitState(by('sol88'), { perks: ['launcher'] }), 'unseen', 'the launcher printed is not the launch');
 assert.equal(unitState(by('ball'), { ball: true }), 'full'); assert.equal(unitState(by('ball'), {}), 'unseen');
+assert.equal(unitState(by('c07'), { pets: ['c07'] }), 'full'); assert.equal(unitState(by('c07'), { pets: ['k9'] }), 'unseen', 'a companion on the books once printed (2026-10-30)'); assert.equal(unitState(by('k9'), { pets: new Set(['k9']) }), 'full');
 for (const e of roster.filter((x) => x.kind === 'unit')) assert.equal(unitState(e, null, true), 'full', `${e.id}: the lab opens it`);
 
 // 4. the card: open shows the facts and the text; locked the dashes and the note; a sentry's extra rows are appended

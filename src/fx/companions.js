@@ -6,9 +6,13 @@
 // so a dash draws an arc), keeps it on the roam (the clearing within roamCells of the heart, off the solid structures and off the hull's
 // point), and plays the model's own gait at the rate that matches the ground speed (the paws never slide), its idle at rest and its one-shots
 // in place. Beyond lodMetres from the eye the one-draw distance tier stands in.
+// ISAO PRINTS THEM (owner, 2026-10-30): neither is on the planet at landing. A unit is 'unborn' (loaded, hidden, out of the play), then
+// 'printing' (on the bed at its spot, facing the heart, held at its idle's first frame while src/fx/pet-print.js reveals it, then its idle
+// playing), then 'born' (in the play). ?pets=born has both born from the first frame (the play's own test).
 //   host: scene, metres(), cellSide(), graph(), dungeon(), inside(ci) (the clearing), solidAt(p, pad), hull() (the hull's unit point or null),
-//         eye(), wire() (the wireframe options or null), seed
-//   createCompanions(host) -> { tick(dt, t), state(), contacts(), roots(), dispose() }
+//         eye(), wire() (the wireframe options or null), seed, born (true: both born at once)
+//   createCompanions(host) -> { tick(dt, t), state(), contacts(), roots(), frameOf(i, pos, quat), spots(cells, padM), print(i, ci), wake(i), birth(i),
+//         life(i), born(), loaded(i), dispose() }
 import * as THREE from '../../vendor/three.module.js';
 import { COMPANIONS } from '../content/companions.js';
 import { createPlay, stepPlay, gaitFor, MOVING } from '../domain/companion-play.js';
@@ -40,7 +44,7 @@ export function createCompanions(h) {
   K.units.forEach((def, i) => {
     const cell = starts.length ? starts[Math.floor(rand() * starts.length) % starts.length] : roam[i] ?? dg.heart;
     const wrap = new THREE.Group(); wrap.name = `COMPANION_${def.id}`; wrap.visible = false; h.scene.add(wrap);
-    const u = { def, i, wrap, root: null, farRoot: null, mixer: null, actions: new Map(), cur: null, oneShot: null, cell, pos: new THREE.Vector3().fromArray(centre(cell)).normalize(), heading: new THREE.Vector3(), goal: new THREE.Vector3(), goalToken: null, speed: 0, clip: null, rate: 0, blocked: false, isFar: false, failed: false, loaded: false };
+    const u = { life: h.born === true ? 'born' : 'unborn', still: false, def, i, wrap, root: null, farRoot: null, mixer: null, actions: new Map(), cur: null, oneShot: null, cell, pos: new THREE.Vector3().fromArray(centre(cell)).normalize(), heading: new THREE.Vector3(), goal: new THREE.Vector3(), goalToken: null, speed: 0, clip: null, rate: 0, blocked: false, isFar: false, failed: false, loaded: false };
     up.copy(u.pos); x.set(rand() - 0.5, rand() - 0.5, rand() - 0.5).cross(up); u.heading.copy(x.lengthSq() > 1e-9 ? x.normalize() : new THREE.Vector3(0, 0, 1).cross(up).normalize());
     u.goal.copy(u.pos);
     units.push(u);
@@ -51,7 +55,7 @@ export function createCompanions(h) {
       const wo = h.wire?.(); if (wo) { setWireframe(u.root, true, wo); if (u.farRoot) setWireframe(u.farRoot, true, wo); }
       u.mixer = new THREE.AnimationMixer(u.root);
       for (const c of modelClips(def.model)) u.actions.set(c.name, u.mixer.clipAction(c));
-      u.loaded = true; u.wrap.visible = true;
+      u.loaded = true; u.wrap.visible = u.life !== 'unborn';
       fadeTo(u, def.idle, 0);
     }, () => { u.failed = true; });
   });
@@ -77,7 +81,38 @@ export function createCompanions(h) {
     return u.goal.fromArray(centre(pickCell())).normalize();
   }
 
+  // facing the heart, on the tangent plane at the unit's point
+  function faceHeart(u) {
+    up.copy(u.pos); w.fromArray(centre(dg.heart)).sub(u.pos); w.addScaledVector(up, -w.dot(up));
+    if (w.lengthSq() > 1e-14) u.heading.copy(w.normalize());
+  }
+  function place(u) {
+    up.copy(u.pos); u.heading.addScaledVector(up, -u.heading.dot(up)).normalize();
+    x.crossVectors(up, u.heading).normalize(); m4.makeBasis(x, up, u.heading);
+    u.wrap.position.copy(u.pos); u.wrap.quaternion.setFromRotationMatrix(m4); u.wrap.scale.setScalar(K.scale * h.metres());
+  }
+  // THE BED (2026-10-30): the candidate cells `cells` to `cells + 2` hops from the heart, clear of the solid structures by padM metres and off the
+  // hull's keep-off, best first (the farther from the hull, up to 30 m, with a seeded jitter); the print picks among them (src/fx/pet-print.js)
+  function spots(cells, padM) {
+    const m = h.metres(), hull = h.hull(), out = [];
+    for (const ci of roam) {
+      const d0 = dg.distToHeart[ci]; if (d0 < cells || d0 > cells + 2 || h.solidAt(centre(ci), padM * m)) continue;
+      const c = centre(ci), d = hull ? Math.hypot(c[0] - hull[0], c[1] - hull[1], c[2] - hull[2]) / m : 50;
+      if (d > K.keepFromHull + padM) out.push({ ci, p: c.slice(), score: Math.min(d, 30) - (d0 - cells) * 4 + rand() * 6 });
+    }
+    return out.sort((a, b) => b.score - a.score);
+  }
+  function stepPrinting(u, dt) {
+    place(u);
+    if (u.farRoot && u.root) { u.isFar = false; u.farRoot.visible = false; u.root.visible = true; }   // the close-up's tier, whatever the eye
+    if (!u.mixer) return;
+    fadeTo(u, u.def.idle, 0); u.rate = 1; if (u.cur) u.cur.timeScale = 1;
+    u.mixer.update(u.still ? 0 : dt);
+  }
+
   function stepUnit(u, p, dt) {
+    if (u.life === 'unborn') return;
+    if (u.life === 'printing') { stepPrinting(u, dt); return; }
     const m = h.metres(), def = u.def;
     if (p.retarget) { p.retarget = false; u.goalToken = p.target; resolve(u, p.target); }
     else if (u.goalToken === 'other' || u.goalToken === 'hull') resolve(u, u.goalToken);   // live targets
@@ -112,7 +147,7 @@ export function createCompanions(h) {
     now: 0, rand, units: K.units.map((d) => ({ top: d.top, trot: d.trot, idle: d.idle, sit: d.sit, tricks: d.tricks })),
     dist: (i, j) => metresBetween(units[i].pos, units[j].pos), toTarget: (i) => metresBetween(units[i].pos, units[i].goal),
     toHull: (i) => { const p = h.hull(); return p ? Math.hypot(units[i].pos.x - p[0], units[i].pos.y - p[1], units[i].pos.z - p[2]) / h.metres() : null; },
-    blocked: (i) => units[i].blocked, clipSecs,
+    blocked: (i) => units[i].blocked, clipSecs, present: (i) => units[i]?.life === 'born',
   };
   function tick(dt, t) {
     if (disposed || !roam.length) return;
@@ -126,11 +161,25 @@ export function createCompanions(h) {
     state: () => ({
       loaded: units.every((u) => u.loaded), failed: units.some((u) => u.failed), roam: roam.length, t: +last.toFixed(2), dist: +ctx.dist(0, 1).toFixed(2),
       game: { on: play.game.on, chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) },
-      units: units.map((u, i) => ({ id: u.def.id, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
+      units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
     }),
-    contacts: () => units.filter((u) => u.loaded).map((u) => ({ pos: u.wrap.position.toArray() })),
+    contacts: () => units.filter((u) => u.loaded && u.life !== 'unborn').map((u) => ({ pos: u.wrap.position.toArray() })),
     roots: () => units.map((u) => u.root),
-    frameOf(i, pos, quat) { const u = units[i]; if (!u) return false; pos.copy(u.wrap.position); quat.copy(u.wrap.quaternion); return true; },
+    frameOf(i, pos, quat) { const u = units[i]; if (!u || u.life === 'unborn') return false; pos.copy(u.wrap.position); quat.copy(u.wrap.quaternion); return true; },
+    spots: (cells, padM) => spots(cells, padM),
+    // the print's hands: onto the bed at cell ci (facing the heart, held at the idle's first frame), the idle let go, then into the play
+    print(i, ci) {
+      const u = units[i]; if (!u || u.life === 'born' || !(ci >= 0)) return false;
+      u.life = 'printing'; u.still = true; u.cell = ci; u.pos.fromArray(centre(ci)).normalize(); u.goal.copy(u.pos); u.speed = 0; u.goalToken = null;
+      faceHeart(u); place(u); u.wrap.visible = u.loaded;
+      if (u.mixer) { u.cur?.stop(); u.cur = null; fadeTo(u, u.def.idle, 0); u.mixer.update(0); }
+      return true;
+    },
+    wake(i) { const u = units[i]; if (u) u.still = false; },
+    birth(i) { const u = units[i]; if (!u || u.life === 'born') return false; u.life = 'born'; u.still = false; u.wrap.visible = u.loaded; play.units[i].mode = 'idle'; play.units[i].until = last + 1; return true; },
+    life: (i) => units[i]?.life ?? null,
+    born: () => units.filter((u) => u.life === 'born').map((u) => u.def.id),
+    loaded: (i) => !!units[i]?.loaded,
     dispose() { disposed = true; for (const u of units) { u.mixer?.stopAllAction(); h.scene.remove(u.wrap); } units.length = 0; },
   };
 }

@@ -5,7 +5,8 @@
 // buildings are the scene's business (src/fx/companions.js), which reports a blocked move through `blocked`.
 //   createPlay(knobs) -> { units: [p, p], game: { on, chaser, until, nextAt, tagLock, tags }, greetAt }
 //   stepPlay(state, dt, ctx) -> state, ctx: { now, rand, units: [{ top, trot?, idle, sit, tricks }], dist(i, j) metres between the two, toTarget(i),
-//     toHull(i) (null: no hull), blocked(i), clipSecs(i, name) }
+//     toHull(i) (null: no hull), blocked(i), clipSecs(i, name), present(i)? (2026-10-30: a unit Isao has not printed yet is not on the planet: its
+//     record is left alone and no game of tag starts without both; absent, both are present) }
 //   MODES: idle (the loop at rest) | wander (a walk to a roam point) | dash (a burst at most of the top speed) | chase / flee (the game of tag:
 //     the chaser at its top, the fleer at `flee` of its own; a tag within tagM swaps the roles; over at `until`) | greet (a trot to the hull)
 //     | sit / trick (a one-shot in place; `greeted` is the sit by the hull)
@@ -21,17 +22,18 @@ function rest(p, now, knobs, rand) { p.mode = 'idle'; p.until = now + span(knobs
 function goTo(p, mode, token, speed, until) { p.mode = mode; p.target = token; p.retarget = true; p.speed = speed; p.until = until; p.oneShot = null; p.moves++; }
 
 export function stepPlay(s, dt, ctx) {
-  const { now, rand } = ctx, k = s.knobs, g = s.game;
+  const { now, rand } = ctx, k = s.knobs, g = s.game, here = (i) => (ctx.present ? !!ctx.present(i) : true);
   // the game of tag over the pair
   if (g.on) {
     if (now >= g.until) { g.on = false; g.nextAt = now + span(k.chase.every, rand); for (const p of s.units) rest(p, now, k, rand); }
     else if (ctx.dist(0, 1) < k.chase.tagM && now >= g.tagLock) { g.chaser = 1 - g.chaser; g.tagLock = now + 1.2; g.tags++; for (let i = 0; i < 2; i++) goTo(s.units[i], i === g.chaser ? 'chase' : 'flee', i === g.chaser ? 'other' : 'away', (i === g.chaser ? 1 : k.chase.flee) * ctx.units[i].top, g.until); }
-  } else if (now >= g.nextAt && s.units.every((p) => p.mode === 'idle' || p.mode === 'wander')) {
+  } else if (now >= g.nextAt && here(0) && here(1) && s.units.every((p) => p.mode === 'idle' || p.mode === 'wander')) {
     if (ctx.dist(0, 1) > k.chase.startM) { for (let i = 0; i < 2; i++) if (s.units[i].target !== 'other') goTo(s.units[i], 'wander', 'other', Math.min(ctx.units[i].trot ?? k.trot, ctx.units[i].top), now + k.wanderMax); return s; }   // too far apart for a game: they trot together first
     g.on = true; g.games++; g.chaser = rand() < 0.5 ? 0 : 1; g.until = now + span(k.chase.secs, rand); g.tagLock = now + 1;
     for (let i = 0; i < 2; i++) goTo(s.units[i], i === g.chaser ? 'chase' : 'flee', i === g.chaser ? 'other' : 'away', (i === g.chaser ? 1 : k.chase.flee) * ctx.units[i].top, g.until);
   }
   for (let i = 0; i < 2; i++) {
+    if (!here(i)) continue;
     const p = s.units[i], u = ctx.units[i], blocked = ctx.blocked(i);
     if (blocked) p.blockedAt = now;
     switch (p.mode) {

@@ -219,14 +219,14 @@ export const UNIT_ENTRIES = freeze([
       'Twenty metres of heat shield that comes apart in four quarters three hundred metres up. The cargo falls the rest of the way on purpose.',
       'Two Ridgebacks a capsule, folded. Do not stand where it lands; I have the footage of the rubble.',
     ] },
-  // --- the base companions (owner, 2026-10-27: "a cute feline and canine presence"), on the clearing from the first frame ---------------------------
-  { id: 'c07', section: 'colony', name: 'C-07 · MECHANICAL CHEETAH', label: 'COLONY · COMPANION', needs: { always: true },
+  // --- the base companions (owner, 2026-10-27: "a cute feline and canine presence"), on the books once Isao has printed them (2026-10-30) ---------
+  { id: 'c07', section: 'colony', name: 'C-07 · MECHANICAL CHEETAH', label: 'COLONY · COMPANION', needs: { pet: 'c07' },
     model: { url: COMPANIONS.units[0].model, scale: COMPANIONS.scale, clip: 'Gallop_Cycle' },
     facts: [['GALLOP', `${COMPANIONS.units[0].top} m/s`], ['WALK', `${COMPANIONS.units[0].gaits[0].mps} m/s`], ['PLAY', 'tag · dashes · sits · rolls · gives paw']], isao: [
       'I printed her for the long nights. Ochre plates, a rudder tail, a gallop with two flights in it. She goes where she likes; the base is hers.',
       'When she stalks, let her. When she sits by you, that is a compliment.',
     ] },
-  { id: 'k9', section: 'colony', name: 'RECKON K9 · RECON DOG', label: 'COLONY · COMPANION', needs: { always: true },
+  { id: 'k9', section: 'colony', name: 'RECKON K9 · RECON DOG', label: 'COLONY · COMPANION', needs: { pet: 'k9' },
     model: { url: COMPANIONS.units[1].model, scale: COMPANIONS.scale, clip: 'Run_Cycle' },
     facts: [['SPRINT', `${COMPANIONS.units[1].top} m/s`], ['GAITS', 'walk · trot · gallop · sprint'], ['PLAY', 'tag · dashes · sits · rolls · jumps · gives paw']], isao: [
       'A scout frame with the radio taken out and the ears left in. Twin optics, a cassette of batteries, a tail that says everything.',

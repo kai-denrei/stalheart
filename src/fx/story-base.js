@@ -59,7 +59,7 @@ export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => 
 // 55 ms + 32 ms of links otherwise, and a tier shown on the frame it linked still paid 53-72 ms. The far tier stands a
 // few frames longer; the swap itself is unchanged.
 export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null, solid = new Set(), footCell = 0.5, footLip = 0.5 }) {
-  const solidV = new THREE.Vector3();
+  const solidV = new THREE.Vector3(), slabInv = new Map();
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
@@ -315,6 +315,18 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // under the Stålheart by the owner's rule of 2026-10-03, so it is not in SOLID_STRUCTURES and solidAt never sees it): whether a unit point
     // stands inside a standing structure's model box seen from above, in its holder's own frame, `pad` scene units out. The box is measured
     // once a tier, off the meshes' own bounding boxes
+    // THE SLAB UNDER A POINT (2026-10-30, the companions' print bed: a bed beside a raised island hid behind its edge): the top (metres over the
+    // floor) of the highest grown island whose plot holds unit point p, `padM` metres out, else null. The plots are the plan's, in each island's frame
+    slabAt(p, padM = 0) {
+      let top = null;
+      plan.islands.forEach((i, n) => {
+        if (kOf(grown.islands, n, i) <= 0) return;
+        if (!slabInv.has(n)) slabInv.set(n, basisAt(placer, i.x, i.z, i.heading).invert());
+        const q = solidV.set(p[0], p[1], p[2]).applyMatrix4(slabInv.get(n));
+        if (Math.abs(q.x) / metres <= i.w / 2 + padM && Math.abs(q.z) / metres <= i.d / 2 + padM) top = Math.max(top ?? -Infinity, i.top ?? 0);
+      });
+      return top;
+    },
     inside(id, p, pad = 0) {
       const st = plan.structures.find((s) => s.id === id), r = st && records.get(id), root = r && (r.near ?? r.far);
       if (!root || kOf(grown.structures, id, st) < 1 || r.holder.visible === false) return false;

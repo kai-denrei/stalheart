@@ -24,7 +24,7 @@ for (const u of COMPANIONS.units) {
   for (const c of [u.idle, u.sit, ...u.tricks, ...u.gaits.map((g) => g.clip)]) assert(pin.clips.includes(c), `${u.id} ${c} is a clip of the game tier`);
   for (let k = 1; k < u.gaits.length; k++) assert(u.gaits[k].mps > u.gaits[k - 1].mps && u.gaits[k].max > u.gaits[k - 1].max, `${u.id}'s gaits in speed order`);
   assert(u.top <= u.gaits[u.gaits.length - 1].max && u.top > u.gaits[0].max, `${u.id}'s top within its fastest gait's band`);
-  assert(UNIT_ENTRIES.some((e) => e.id === u.id && e.model.url === u.model && e.needs.always), `${u.id} in the terminal, open from the start`);
+  assert(UNIT_ENTRIES.some((e) => e.id === u.id && e.model.url === u.model && e.needs.pet === u.id), `${u.id} in the terminal, on the books once Isao has printed it (2026-10-30)`);
 }
 
 // 2. gaitFor: the band and the clamp
@@ -65,3 +65,14 @@ console.log(`Companions: ${lock.files.length} pinned files match, ${COMPANIONS.u
   assert(!st.game.on || ctx.now > 20, 'no game while far'); assert(st.game.games >= 1, 'the game began once near');
 }
 console.log('Companions: a far pair trots together before a game');
+// 5. ISAO PRINTS THEM (2026-10-30): a unit not yet printed is left alone (its record idle, never stepped) and no game of tag starts with one alone
+{
+  let s = 11; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
+  const st = createPlay(COMPANIONS.play), present = [true, false], modes = new Set();
+  const ctx = { now: 0, rand, units: COMPANIONS.units.map((d) => ({ top: d.top, idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => 5, toTarget: () => 8, toHull: () => 30, blocked: () => false, clipSecs: () => 4, present: (i) => present[i] };
+  for (let t = 0; t < 120; t += 0.05) { ctx.now = t; stepPlay(st, 0.05, ctx); modes.add(st.units[0].mode); assert.equal(st.units[1].mode, 'idle', 'the unprinted one stays as it was'); assert.equal(st.units[1].moves, 0); }
+  assert.equal(st.game.games, 0, 'no game of tag alone'); assert(modes.has('wander') || modes.has('dash'), 'the printed one plays on its own');
+  present[1] = true; for (let t = 120; t < 200; t += 0.05) { ctx.now = t; stepPlay(st, 0.05, ctx); }
+  assert(st.game.games >= 1 && st.units[1].moves > 0, `both printed: the game and the second one's play (${st.game.games} games, ${st.units[1].moves} moves)`);
+}
+console.log('Companions: an unprinted unit stays out of the play; tag waits for both');

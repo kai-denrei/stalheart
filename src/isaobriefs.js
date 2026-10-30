@@ -481,6 +481,12 @@ export const BRIEFS = {
   reinforcements_called: { id: 'reinforcements_called', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Radar\'s up! We can ask the colony for reinforcements.', 'I\'ve sent the call. They\'ll take a few days to fall.'] },   // round 3, 2026-10-26: the owner's lines, a caption until recorded
   reinforcements_inbound: { id: 'reinforcements_inbound', face: 'awe', title: 'COMMS · ISAO', once: true, lines: ['Here they come. Look at the other side of the planet.'] },
   reinforcements_landed: { id: 'reinforcements_landed', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Hmm. These mechs were all they could send as support.', 'Two hold the arena, one walks home, one hunts.'] },   // round 3: the owner's line
+  // ISAO PRINTS THE COMPANIONS (owner, 2026-10-30: "a skippable scene where Isao whimsically prints the cat because he wants a companion"; src/fx/pet-print.js):
+  // the first print's line and the second's (by position, src/content/companions.js COMPANIONS.prints), each unit's as it wakes. Captions; no recordings yet
+  pet_print_first: { id: 'pet_print_first', face: 'glee', title: 'COMMS · ISAO', lines: ['Quiet, finally. I have printed walls, a gate and a very large engine.', 'Tonight I print something that runs to meet me. Even a drone wants company.'] },
+  pet_print_second: { id: 'pet_print_second', face: 'curious', title: 'COMMS · ISAO', lines: ['One companion is a pet. Two is a pack. I checked the definition.', 'Printing a playmate. Nobody tell the colony\'s accountants.'] },
+  pet_born_c07: { id: 'pet_born_c07', face: 'glee', title: 'COMMS · ISAO', lines: ['C-07. Mechanical cheetah. Seven metres a second, mostly sideways.', 'Do androids dream of electric gazelles? She will let us know.'] },
+  pet_born_k9: { id: 'pet_born_k9', face: 'glee', title: 'COMMS · ISAO', lines: ['RECKON K9. I left the radio out and the ears in.', 'He will want to play tag. He will lose. He will not mind.'] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
   sector_canyon_again: { id: 'sector_canyon_again', face: 'focused', title: SECTOR_CANYON_AGAIN.name, lines: [...SECTOR_CANYON_AGAIN.brief] },

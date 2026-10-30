@@ -1467,7 +1467,7 @@ try{
  // seconds they walk, dash, play tag (a tag swaps the roles) and stay on the roam (the clearing near the heart, off the solid structures); the
  // paws' clip runs at the rate of the ground speed; a live look beside the cheetah mid-move is artifacts/browser/companions.png
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), C=(s)=>s.companions;
- await go('companions',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td`);
+ await go('companions',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&pets=born#td`);   // ?pets=born: both on the clearing from the first frame (since 2026-10-30 Isao prints them: --pet-print)
  await until(`!!${T} && !!${T}.state().companions`,120000).catch(async()=>assert.fail('the companions host created'));
  await until(`${T}.state().companions.loaded`,60000).catch(async()=>assert.fail(`both models loaded (${JSON.stringify(C(await st()))})`));
  {const c=C(await st());console.log('  loaded: '+JSON.stringify(c));assert.ok(c.roam>20,'a roam of cells');for(const u of c.units){assert.ok(u.onRoam,`${u.id} starts on the roam`);assert.equal(u.wire[0],u.wire[1],`${u.id} every mesh wireframed`);assert.ok(u.wire[1]>=6,`${u.id} drawn (${u.wire[1]} meshes)`);}}
@@ -1486,6 +1486,56 @@ try{
  {const s=await st(),u=C(s).units[0];console.log(`  look: shot ${s.shot}, c07 ${u.mode} ${u.speed} m/s ${u.clip}@${u.rate}, ${u.eyeM} m from the eye, far ${u.far}`);assert.equal(s.shot,'mechLook','the look live');assert.equal(u.far,false,'the cheetah on its game tier in the look');}
  current='companions';await finish();
  await evaluate(`${T}.petLook(1)`);await delay(1200);current='companions-k9';await finish();
+ } else if(args.includes('--pet-print')) {
+ // ISAO PRINTS THE COMPANIONS (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable
+ // scene where Isao whimsically prints the cat ... Close up on the creation, showing various angles." / "same with the Cheetah later."): on the finished base
+ // neither companion is on the planet (unborn, no radar contact); the harness forces C-07's print: the live cut 'petPrint' with the lowered lens, Isao held
+ // over the bed, a plain key inside the 5 s lock leaves it, the hint after the lock; frames at each angle (artifacts/browser/pet-print-<n>.png); Space skips:
+ // C-07 born at once, its first clip (the idle) playing, the lens and the hint gone, then off into its play. Then RECKON K9's print runs to its own end.
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), C=(s)=>s.companions, PR=(s)=>s.companions.print, {COMPANIONS}=await import('../src/content/companions.js');
+ const keyEv=async(o)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',...o});await send('Input.dispatchKeyEvent',{type:'keyUp',...o});await delay(300);};
+ const frame=async(name)=>{const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(output,name+'.png'),Buffer.from(s.data,'base64'));};
+ await go('pet-print',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td`);
+ await until(`!!${T} && !!${T}.state().companions?.print`,120000).catch(async()=>assert.fail('the companions and the print host created'));
+ await until(`${T}.state().companions.loaded`,60000).catch(async()=>assert.fail(`both models loaded (${JSON.stringify(C(await st()))})`));
+ {const c=C(await st());console.log(`  at load: ${c.units.map(u=>`${u.id} ${u.life}`).join(', ')}; print ${JSON.stringify(c.print)}`);for(const u of c.units)assert.equal(u.life,'unborn',`${u.id} is not on the planet at landing`);}
+ {const n=await evaluate(`(${T}.state().radar?.mechs??null)`);if(n!==null)console.log('  radar mechs '+JSON.stringify(n));}
+ await until(`!${T}.state().shot`,60000).catch(()=>{});
+ // the controls page comes up once as the tank is ours (src/fx/controls-card.js): a natural print waits for it; any key closes it
+ await until('document.querySelector("#controls-card")?.hidden===false',8000).catch(()=>{});await keyEv({key:'k',code:'KeyK',text:'k'});
+ {const s=await st();console.log(`  controls page hidden ${await evaluate('document.querySelector("#controls-card")?.hidden??null')}; print ${JSON.stringify(PR(s))}`);}
+ // the first print on its own (the beats past the handover on this base, the delay, a quiet moment), else forced through the harness
+ const natural=await until(`!!${T}.state().companions.print.printing`,45000).then(()=>true,()=>false);
+ if(!natural){console.log(`  no print on its own within 45 s (${JSON.stringify(PR(await st()))}): forced`);assert.equal(await evaluate(`${T}.petPrint(0)`),true,'the print forced');}
+ else console.log('  C-07\'s print began on its own (the trigger: the handover done, the delay, a quiet moment)');
+ await until(`!!${T}.state().companions.print.printing`,30000).catch(async()=>assert.fail(`C-07's print began (${JSON.stringify(PR(await st()))})`));
+ {const s=await st(),p=PR(s);console.log(`  printing: ${JSON.stringify(p.printing)}, shot ${s.shot}, lens ${JSON.stringify(p.lens)}`);assert.equal(p.printing.id,'c07','C-07 first');assert.equal(s.shot,COMPANIONS.print.shot.id,'the cut runs');assert.ok(p.lens&&p.lens.near<0.001,'the lens lowered for the close-up');assert.equal(p.printing.isao,true,'Isao held over the bed');assert.equal(C(s).units[0].life,'printing');assert.equal(s.paused,false,'a live cut: the world runs');}
+ await until(`(${T}.state().companions.print.printing?.t??0)>=1.2`,60000);await keyEv({key:'k',code:'KeyK',text:'k'});
+ {const s=await st();assert.equal(s.shot,COMPANIONS.print.shot.id,'a plain key inside the lock leaves the cut');assert.equal(PR(s).hint,false,'no hint inside the lock');}
+ // the frames: one inside each angle, late in it (the body risen)
+ const at=[2.6,6.2,9.8,12.6];const frames=[];
+ for(let n=0;n<at.length;n++){await until(`(${T}.state().companions.print.printing?.t??99)>=${at[n]}`,90000).catch(()=>{});const s=await st(),p=PR(s).printing;if(!p)break;await frame(`pet-print-${n+1}`);frames.push({n:n+1,t:p.t,angle:p.angle,phase:p.phase,ghost:p.ghost});
+  console.log(`  frame pet-print-${n+1}: t ${p.t} s, angle ${p.angle}, ${p.phase}, eye ${p.eyeM} m (up ${p.eyeUp}), fov ${p.fov}, isao ${JSON.stringify(p.isaoM)}, shot ${s.shot}, hint ${PR(s).hint}, c07 ${C(s).units[0].life} still ${C(s).units[0].still} ${C(s).units[0].clip}`);}
+ assert.ok(new Set(frames.map(f=>f.angle)).size>=3,`frames at three angles at least (${JSON.stringify(frames)})`);
+ {const s=await st();assert.ok(PR(s).printing,'still printing before the skip');assert.equal(PR(s).hint,true,'the hint after the lock');assert.equal(C(s).units[0].life,'printing','not born before the end or the skip');}
+ await keyEv({key:' ',code:'Space',text:' '});
+ {const s=await st(),p=PR(s),u=C(s).units[0];console.log(`  after Space: shot ${s.shot}, last ${JSON.stringify(p.last)}, lens ${JSON.stringify(p.lens)}, hint ${p.hint}, c07 ${u.life} ${u.mode} ${u.clip} still ${u.still}`);
+  assert.notEqual(s.shot,COMPANIONS.print.shot.id,'Space ends the cut');assert.equal(p.printing,null,'the print finished');assert.equal(p.last?.skipped,true,'as a skip');assert.equal(u.life,'born','C-07 born');assert.equal(u.still,false,'its clip running');assert.equal(p.lens,null,'the lens put back');assert.equal(p.hint,false,'the hint gone');
+  assert.equal(await evaluate(`!!document.getElementById('pet-skip-hint')`),false,'the hint node removed');assert.equal(C(s).units[1].life,'unborn','RECKON K9 still to come');}
+ {const c0=C(await st()).units[0];assert.equal(c0.clip,COMPANIONS.units[0].idle,`its first clip the idle (${c0.clip})`);}
+ await until(`['wander','dash','sit','trick','greet'].includes(${T}.state().companions.units[0].mode)`,40000).catch(async()=>assert.fail(`C-07 off into its play (${JSON.stringify(C(await st()).units[0])})`));
+ {const u=C(await st()).units[0];console.log(`  C-07 plays: ${u.mode} ${u.speed} m/s ${u.clip}, on the roam ${u.onRoam}`);}
+ // RECKON K9: "later" (its days after C-07 not yet passed: the gates hold it), forced; the print to its own end, no skip
+ await until(`!${T}.state().shot`,30000).catch(()=>{});
+ {const p=PR(await st());console.log(`  K9 waits: why ${p.why}, bornDay ${JSON.stringify(p.bornDay)}`);assert.equal(p.why,'gates','RECKON K9 held by its gates (days after the first, the radar)');}
+ assert.equal(await evaluate(`${T}.petPrint(1)`),true,'the second print forced');
+ await until(`${T}.state().companions.print.printing?.id==='k9'`,30000).catch(async()=>assert.fail(`RECKON K9's print began (${JSON.stringify(PR(await st()))})`));
+ await until(`(${T}.state().companions.print.printing?.t??0)>=8.5`,90000).catch(()=>{});await frame('pet-print-k9');
+ {const p=PR(await st()).printing;console.log(`  frame pet-print-k9: ${JSON.stringify(p)}`);}
+ await until(`!${T}.state().companions.print.printing`,120000).catch(async()=>assert.fail(`RECKON K9's print ended (${JSON.stringify(PR(await st()))})`));
+ {const s=await st(),p=PR(s),u=C(s).units[1];console.log(`  K9's end: last ${JSON.stringify(p.last)}, shot ${s.shot}, k9 ${u.life} ${u.clip}, lens ${JSON.stringify(p.lens)}, bornDay ${JSON.stringify(p.bornDay)}`);
+  assert.equal(p.last.id,'k9');assert.equal(p.last.skipped,false,'run to its end');assert.ok(p.last.t>=p.end-0.2,`the whole ${p.end} s`);assert.equal(u.life,'born');assert.notEqual(s.shot,COMPANIONS.print.shot.id,'the cut over');assert.equal(p.lens,null,'the lens put back');assert.equal(p.prints,2);}
+ await delay(1500);current='pet-print';await finish();
  } else if(args.includes('--wire')) {
  // THE WIREFRAME, THE DEFAULT (owner, 2026-10-26 as ?wire=1, 2026-10-27 the default): the hull, every sentry and the four Ridgebacks drawn as wireframes with no flag; the gunship and SOL untouched; ?wire=0 the solids
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
