@@ -20,6 +20,22 @@ Evidence:
 - --pearl-story PASS (SECTOR 2: the sector's own waves as Pearl bodies, 95 whites at r0 1.3, the motion audit 0 pops every tier, stalks and footprints 0 in the rock, the ram and the cored stop, the slow's ice, a phantom's cloak); artifacts/browser/pearl-story.png.
 - The base (the Sky model stashed): --pearl-story fails at its motion audit (white: frames 0, hops 0, replaced 2,442), so the ram check had no baseline there.
 
+## 2026-10-30 — Barbarians at the gate (the lemons' head start back on, 11 cells up the lane), the radar's promise of reinforcements, and the black square over the tour (the quiet breach's reference plate)
+
+decision · accepted · 2026-10-30-barbarians-at-the-gate-the-radar-s-promise-and-the-black-square
+
+Owner, 2026-10-30, the playtest of ed18be84, three of five notes: 1) "barbarians at the gate; the first wave of yellow cutis should be much closer to the rotor when we first take control, within shooting range." 4) "when Isao prints the Radar Dish, he says; with that we can call reinforcements. (This is a precursor to the Mechs arriving a few days later)" 5) "intro scene, after isao lands and while we show a full planet, there are strange black squares appearing briefly, see screenshot." (Notes 2 and 3, Isao printing the companions, are the pets-print branch's entry.)
+
+Probes were untracked copies of the suite in scripts/ (relative imports), removed after: --seat-probe (the walking distances at the seat), --black-probe (the screenshots, a 40-line PNG decoder, the DOM dump, the GL log of canvas-bound viewport/scissor/clear calls with stack traces, the scene survey through the patched renderer). Dead ends on the way: a canvas-bound GL log first saturated on the post-processing targets' own viewports (filter on the bound framebuffer), and a prototype patch of render never fired (an own property). Tests: test/game-breaches.mjs pins the quiet plate; test/story-beats.mjs, test/build-programme.mjs green with the changes; npm test, check, architecture green.
+
+Alternatives: The lemons nearer by a faster walk: the Sky model's cap (1 radius a second) is the body's; a faster record outruns its hopper.; Open the sinkhole earlier in the tour: it already opens at the tour's start (earlyBreach 0); the lane is 14 cells and the walk ~1.7 m/s.; Dress the reference plate in the look (the floor colour and the grid): more work for a plate that is a close-up effect; it stays as it was under the dive.; Hide the plate by camera distance: a quiet breach is the one nobody is watching; the flag is already there.
+
+Evidence:
+
+- Seat probe, no head start: n 50, min/med/max 14/14/14 cells, in range 0; +10 s 13/14/15, 0; +20 s 11/13/15, 0. With { hops: 11, depth: 4 }: 2/3/5, in range 38 of 50; +10 s 1/3/6, 39; +20 s 1/3/6, 48.
+- Black probe before: black share of the central region 0.167 at 13.4 s, 0.955 at 14.0 s (three runs); after: 0.000 at 13.9-15.2 s, the only saved frame the take-control shot's sky at 24 s (0.36).
+- The ray at the black frame: hit 1 a Sinkhole child, MeshStandardMaterial #1f3042, 0.519 from the camera with the ground at 0.639 (the flat raycast geometry, not the wrapped draw).
+
 ## 2026-10-27 — The wireframe's palette: each part's lines from its own material and name; the cost measured as none; the Ridgeback's tier decided on frozen frames too
 
 decision · accepted · 2026-10-27-wire-palette-per-part-colours-the-cost-measured-and-the-mech-tier-on-frozen-frames

@@ -52,3 +52,17 @@ const made=[],make=()=>{const fx=fakeSinkhole();made.push(fx);return fx;};
  breaches.dispose();assert.equal(t.disposed,true,'dispose frees the template');
 }
 console.log('Game breaches: sinkholes follow the game look through the getter, and keep the content look without one; the warm-up template compiles once and uploads its maps one per frame.');
+
+// NO PLATE ON A QUIET BREACH (owner, 2026-10-30, note 5: black squares over the full planet during the tour): a breach opened quiet
+// (obj.userData.quiet, the story's unwatched sinkhole) triggers with tune.plate false, so src/sinkhole.js never shows the reference
+// plate; a watched one keeps it
+{
+ const breaches=createGameBreaches(new THREE.Scene(),new THREE.PerspectiveCamera(),null,{makeSinkhole:make});
+ const quiet=breaches.create([0,1,0],[0,0,1],.08),qfx=made.at(-1);quiet.userData.quiet=true;
+ const seen=breaches.create([0,0,1],[0,1,0],.08),sfx=made.at(-1);
+ qfx.loaded=true;sfx.loaded=true;breaches.update(.1,()=>{});
+ assert.equal(qfx.tune.plate,false,'a quiet breach: no reference plate');
+ assert.equal(sfx.tune.plate,true,'a watched breach keeps its plate');
+ breaches.dispose();
+}
+console.log('PASS a quiet breach draws no reference plate');

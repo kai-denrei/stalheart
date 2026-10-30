@@ -84,7 +84,7 @@ export function createSinkhole(scene,camera,{game=false,sounds=null}={}){
       ctx.decals.group.traverse(o=>{if(o.isMesh)o.renderOrder=-21;});
       if(game)group.traverse(o=>o.layers.set(0));
       surface.wrap(group);
-      if(opened&&ability.impactTime>=1.5)ability.crater.mesh.visible=false;
+      if(opened&&(ability.impactTime>=1.5||tune.plate===false))ability.crater.mesh.visible=false;   // NO PLATE ON A QUIET BREACH (owner, 2026-10-30, note 5: 'strange black squares appearing briefly' over the full planet): the reference plate is a close-up effect, a dark slab the size of the crater that reads as the ground heaving under the dive; from orbit, over the wireframe look, it reads as a black square for the second before it fractures (src/game-breaches.js sets tune.plate false on a breach opened quiet)
     },
     // THE PROGRAMS BEFORE THE FIRST OPENING (src/fx/shader-warm.js): everything this sinkhole will draw, with one decal
     // of each type acquired for the pass and its materials wrapped onto the sphere first, handed to the warmer. The

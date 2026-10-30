@@ -311,7 +311,7 @@ export const BRIEFS = {
   },
   build_radar: {
     id: 'build_radar', face: 'focused', title: 'COMMS · ISAO', once: true,
-    lines: ['SOL-82 needs someone to talk to.', 'Printing the radar.'],
+    lines: ['SOL-82 needs someone to talk to.', 'Printing the radar. With that we can call reinforcements.'],   // the precursor (owner, 2026-10-30: 'when Isao prints the Radar Dish, he says; with that we can call reinforcements'): the FEIDS-26 come a few days after the dish (src/fx/reinforcements-host.js); two lines, the panel's
   },
   build_assembly: {
     id: 'build_assembly', face: 'determined', title: 'COMMS · ISAO', once: true,

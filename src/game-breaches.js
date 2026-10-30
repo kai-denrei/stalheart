@@ -42,7 +42,7 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
   update(dt,onClear,onOpen=()=>{}){clock+=dt;const opened=[];rubble.update(dt);   // sealed caps pile up over breach-rubble's SETTLE_S
    if(uploads.length&&template.ready())warmer.upload(uploads.shift());
    for(const e of entries){
-    if(dt>0&&e.pending&&e.fx.ready()){e.pending=false;e.started=true;e.fx.trigger();opened.push(e.obj);}
+    if(dt>0&&e.pending&&e.fx.ready()){e.pending=false;e.started=true;e.fx.tune.plate=!e.obj.userData.quiet;e.fx.trigger();opened.push(e.obj);}   // a quiet breach (opened unwatched: no dive) draws no reference plate (src/sinkhole.js; the owner's black squares, 2026-10-30)
     if(e.started)e.age+=dt;
     if(look)e.fx.tune.look=look();   // the sinkhole setLook returns early when unchanged
     e.fx.update(dt,clock);
