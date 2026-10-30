@@ -148,9 +148,9 @@ export function noteSighting(record, id, date) {
 //   terminalRoster  the hostile roster (bestiaryRoster) first, then the colony's entries (the content's UNIT_ENTRIES, kind 'unit') in the
 //                   sections' order, one numbering over all; each row carries its section id
 //   unitState       'full' once the run has what the entry needs (`needs`: always; perk, a programme perk held; sentry, an unlocked key; mechs, the
-//                   four landed; sector, a sector number reached; sol88, the launch; ball, the DAY 42 party), else 'unseen'; the lab's host says full
+//                   four landed; sector, a sector number reached; sol88, the launch; ball, the DAY 42 party; pet, the companion printed), else 'unseen'; the lab's host says full
 //   unitCard        what the card shows for a colony entry: the head, the name, the facts, the text, the locked note
-export const UNIT_NEEDS = Object.freeze(['always', 'perk', 'sentry', 'mechs', 'sector', 'sol88', 'ball']);
+export const UNIT_NEEDS = Object.freeze(['always', 'perk', 'sentry', 'mechs', 'sector', 'sol88', 'ball', 'pet']);
 
 export function terminalRoster(hostile, units, sections) {
   const order = new Map(sections.map((s, k) => [s.id, k]));
@@ -162,7 +162,8 @@ export function terminalRoster(hostile, units, sections) {
   return rows.map((e, k) => Object.freeze({ ...e, index: k + 1, total: rows.length }));
 }
 
-// `world` { perks: iterable of perk ids, sentries: unlocked keys, mechs: the four landed, sector: the sector number reached, sol88: launched, ball: the party }
+// `world` { perks: iterable of perk ids, sentries: unlocked keys, mechs: the four landed, sector: the sector number reached, sol88: launched, ball: the party,
+//   pets: the companions' ids Isao has printed (2026-10-30) }
 export function unitState(entry, world = null, all = false) {
   if (all) return 'full';
   const n = entry.needs ?? {}, w = world ?? {}, has = (list, id) => !!list && (typeof list.has === 'function' ? list.has(id) : Array.from(list).includes(id));
@@ -173,6 +174,7 @@ export function unitState(entry, world = null, all = false) {
   if (n.sector != null) return (w.sector ?? 0) >= n.sector ? 'full' : 'unseen';
   if (n.sol88) return w.sol88 ? 'full' : 'unseen';
   if (n.ball) return w.ball ? 'full' : 'unseen';
+  if (n.pet) return has(w.pets, n.pet) ? 'full' : 'unseen';
   return 'unseen';
 }
 

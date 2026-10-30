@@ -53,7 +53,7 @@ import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
 import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js';
 import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js'; import { REINFORCEMENTS } from './content/reinforcements.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
-import { createCompanions } from './fx/companions.js';   // C-07 AND RECKON K9, THE BASE COMPANIONS (owner, 2026-10-27)
+import { createCompanions } from './fx/companions.js'; import { createPetPrint } from './fx/pet-print.js';   // C-07 AND RECKON K9, THE BASE COMPANIONS (owner, 2026-10-27)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { setWireframe } from './fx/model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the sentries, the hull and the Ridgebacks drawn as the briefings' wireframe; the gunship and SOL as they are
 import { createSyntheticModal } from './fx/synthetic-modal.js';
@@ -111,7 +111,7 @@ export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
   const wire = flags.wire !== '0', wireOpts = { tint: flags.wire !== 'flat' };   // WIREFRAME UNITS, THE DEFAULT (owner, 2026-10-26 a test, 2026-10-27 "make the wireframe look the default, not a flag": "all the sentries, Mork, Mechs. but not the gunship or sol"): tinted per part (src/fx/model-fixture.js wireLook); ?wire=flat the briefings' one cyan, ?wire=0 the solids
   let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, discoParty = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
-  let reinforcements = null, mechSquad = null, companions = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
+  let reinforcements = null, mechSquad = null, companions = null, petPrint = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -2414,7 +2414,9 @@ export function initTdTab(root) {
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     companions?.dispose(); companions = story && flags.pets !== '0' ? createCompanions({ scene, metres: () => metresToArc(1, cellSide), graph: () => graph, dungeon: () => dungeon, inside: (ci) => !!story.inside?.(ci), solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false,
-      hull: () => (playerHP > 0 ? player.pos : null), eye: () => camera.position, wire: () => (wire ? wireOpts : null), seed: params.seed }) : null;   // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions on the clearing from the first frame (src/fx/companions.js); ?pets=0 leaves them out
+      hull: () => (playerHP > 0 ? player.pos : null), eye: () => camera.position, wire: () => (wire ? wireOpts : null), seed: params.seed, born: flags.pets === 'born' }) : null;   // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions (src/fx/companions.js), printed by Isao since 2026-10-30 (?pets=born: on the clearing from the first frame); ?pets=0 leaves them out
+    petPrint?.restore(); petPrint = companions ? createPetPrint({ scene, camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, showBrief, companions: () => companions, isao: () => isao, phase: () => story?.beats?.phase?.() ?? null, perk: (id) => programme.hasPerk(id), day: () => daylight?.day?.() ?? 0, sectorRun: () => sectorRun,   /* ISAO PRINTS THE COMPANIONS (owner, 2026-10-30; src/fx/pet-print.js) */
+      shotActive: () => shotActive() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() || !!controlsCard?.state().shown, isaoBusy: () => !!briefs.queue(), alive: () => playerHP > 0, won: () => !!player.won, slabAt: (p, pad) => storyBase?.slabAt(p, pad) ?? null }) : null;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
     // model happens to land — which is what lets a reset place the tank once instead of standing it beside the Heart and
     // teleporting it later.
@@ -4239,7 +4241,7 @@ export function initTdTab(root) {
     briefs.stepClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
@@ -4327,7 +4329,7 @@ export function initTdTab(root) {
       }
     }
     if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? [...(sectorRun?.gates() ?? []), ...bossRun.rows()] : [] }, dt);   /* src/fx/integrity-hud.js */
-    reinforcements?.tick(frozen ? 0 : dt); mechSquad?.tick(frozen ? 0 : dt, t); companions?.tick(frozen ? 0 : dt, t);   // FEIDS-26: the drop's clock and the four (2026-10-23)
+    reinforcements?.tick(frozen ? 0 : dt); mechSquad?.tick(frozen ? 0 : dt, t); companions?.tick(frozen ? 0 : dt, t); petPrint?.tick(frozen ? 0 : dt);   // FEIDS-26: the drop's clock and the four (2026-10-23)
     story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); discoParty?.tick(frozen ? 0 : dt); /* DAY 42 after the base's mixers: the paused clip rewrites the arm each update */ story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos((obj.userData.clear??CONTENT.breach.clearRadius)*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
@@ -4518,7 +4520,8 @@ export function initTdTab(root) {
       poll: () => ({ passes: gunship.passes, shieldUp: shieldUp(), drawn: arrayStation.drawn ?? 0, earned: eco.earned, spent: eco.spent, delivered: (story.expeditions?.sites ?? []).filter((s) => s.state === 'delivered').map((s) => s.id), laser: laserStation.stats?.() ?? null }),   /* SOL-82's books: { passes, seconds } */
     });
   }
-  function terminalWorld() { return { perks: [...storyApi.perks()], sentries: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(wave), mechs: reinforcements?.state()?.phase === 'landed', sector: sectorRun?.state()?.n ?? 0, sol88: !!story?.launch, ball: /^(party|over|done)$/.test(discoParty?.state()?.phase ?? '') }; }   // THE WHOLE TERMINAL (2026-10-27): what the run has reached, for the colony's entries (src/domain/bestiary.js unitState)
+  function terminalWorld() { return { perks: [...storyApi.perks()], sentries: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(wave), mechs: reinforcements?.state()?.phase === 'landed', pets: companions?.born() ?? [],
+      sector: sectorRun?.state()?.n ?? 0, sol88: !!story?.launch, ball: /^(party|over|done)$/.test(discoParty?.state()?.phase ?? '') }; }   // THE WHOLE TERMINAL (2026-10-27): what the run has reached, for the colony's entries (src/domain/bestiary.js unitState)
   const storyApi = {
     // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
     // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels
@@ -4970,7 +4973,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   const gameHooks = {
       state: () => ({
-        wire: wireState(), wireSurvey: { hull: wireSurvey(playerMesh), tower: wireSurvey(towers[0]?.obj), mech: wireSurvey(mechSquad?.roots?.()?.[0]), mechColours: mechSquad?.wireColours?.() ?? null }, companions: companions?.state() ?? null,
+        wire: wireState(), wireSurvey: { hull: wireSurvey(playerMesh), tower: wireSurvey(towers[0]?.obj), mech: wireSurvey(mechSquad?.roots?.()?.[0]), mechColours: mechSquad?.wireColours?.() ?? null }, companions: companions ? { ...companions.state(), print: petPrint?.state() ?? null } : null,
         enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(),
         explosions: explosions.state(), softHunt: enemyStep.softHunt(), shellBlast: shellBlast.last(), boss: bossRun.state(), descent: descentHost.state(), enemySpeed: params.enemySpeed, hullRepair: hullRepair.state(),
         pilotRounds: rs?.pilotRounds ?? 0,
@@ -5114,7 +5117,7 @@ export function initTdTab(root) {
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
-      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on), reinforceLook: (i) => !!reinforcements?.look(i), petLook: (i) => !!companions && !!reinforcements?.look(i, { squad: companions, offset: [2.6, 1.2, 3.4], height: 0.5 }), isaoBrief: (id) => showBrief(id),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B; a live look at mech i
+      reinforceNow: () => { reinforcements?.force(); return !!reinforcements; }, reinforceShow: (on) => reinforcements?.show(on), reinforceLook: (i) => !!reinforcements?.look(i), petLook: (i) => !!companions && !!reinforcements?.look(i, { squad: companions, offset: [2.6, 1.2, 3.4], height: 0.5 }), petPrint: (i) => !!petPrint?.force(i), isaoBrief: (id) => showBrief(id),   // FEIDS-26 (2026-10-23): the drop armed now; its draw cost's A/B; a live look at mech i
       spawnHere: (ci, n = 6, type = 'amoeba') => { if (!story) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { here: true, spread: 0.8, delay: i * 0.12 }); return n; },   // FEIDS-26's step: bodies beside a mech
       damageBoss: (d = 1, gun = 'bofors') => { const e = enemies.find((x) => x.alive && x.hunter && x.tier === 'huge'); return e ? damageEnemy(e, t, d, true, 'strike', gun) : null; },   // THE ARENA's harness (2026-10-18, note 10): the boss hit as a gunship round hits it
       camJumpClear: () => camJump.clear(),   // the camera's jump meter: a fresh window (round 3, 2026-10-26)
