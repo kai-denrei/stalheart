@@ -90,7 +90,7 @@ console.log('PASS the paced records (every tier at most its radii a second, no b
 // The caps re-based for the hunt only, by name. BEFORE: a white's and a yellow's walk was its PEARL_PACE `radii` (5 and 2.8 radii a second at the
 // sector's pace; the glide's audit above holds no upper bound since 2026-10-16, only no pop). HUNTING: x SOFT_HUNT.pace (white 1.35, yellow 1.25) at the
 // widest pace jitter (1.12), and on the ring the jab's lunge, faster than the walk: HUNT_CAP below. The pop is 0.25 radii in a 60 fps frame (15 radii a
-// second). The walk is the real one (createSoftHunt on a grid of 10 m cells), the bodies the real gliding blobs.
+// second). The walk is the real one (createSoftHunt on a grid of 10 m cells), the bodies the real ones (gliding blobs until 2026-10-30, Sky's hoppers since).
 // THE CAP IS SET FROM THE MEASUREMENT (review, 2026-10-19: the first cap, 9 / 6, was only checked from a formula, and the measured drawn centre ran
 // white 9.3 and yellow 11.2 radii a second, the yellow nearly twice its cap). The formula (nominal r0, the record's walk and the jab's sine peak) gives
 // white 7.6 / 8.8 and yellow 3.9 / 5.6 (walk / jab): it misses what the glide's draw adds (a likely cause, not isolated: the blob's own offset across and
@@ -100,7 +100,7 @@ console.log('PASS the paced records (every tier at most its radii a second, no b
 // 99th percentile: the cap bounds what the motion does, and a pop is one frame. The look is the implementer's (r3-c report: blobs lunging in at the
 // parked hull, no pop); the 11.2 was not looked at again alone. BEFORE: 5 / 2.8 (the walk's PEARL_PACE radii; the gliding tiers had no upper cap
 // since 2026-10-16); the first hunt cap 9 / 6 (formula only). It runs in the plain `node test/pearl-motion.mjs` (npm test); SOFT_HUNT_AUDIT=1 only prints.
-const HUNT_CAP = { white: 10, yellow: 12 };   // radii a second while hunting the hull, walk or jab, measured worst 9.3 / 11.2
+const HUNT_CAP = { white: 9, yellow: 9 };   // radii a second while hunting the hull, walk or jab; measured worst 8.45 / 8.21 on the Sky model's hoppers (2026-10-30; the blobs' 9.3 / 11.2 under 10 / 12)
 {
   for (const [type, b] of Object.entries(PEARL_BODIES)) {
     if (!SOFT_HUNT.tiers.includes(b.tier)) continue;
@@ -123,12 +123,17 @@ const HUNT_CAP = { white: 10, yellow: 12 };   // radii a second while hunting th
   for (const [k, type] of ['amoeba', 'phage', 'ghost', 'scoutufo'].flatMap((t) => [t, t, t]).entries()) {
     const c = idx(4 + (k % 3), -6 + k), p = centers[c];
     const e = { id: k, type, alive: true, cur: c, next: c, prog: 0, pos: p.slice(), dir: [-1, 0, 0], jit: 0.9 + rnd() * 0.22, walkPace: 0 };
-    e.h = fam.add(type, { x: p[0] * M, z: p[1] * M, angle: Math.PI, speed: 5 }); recs.push(e);
+    // THE SKY MODEL (2026-10-30): the body spawns at its record's real walk, as the game spawns it (src/fx/creature-bodies.js lookInto: walkPace x the
+    // cell), not the blobs' 5 m/s: a hopper's pace is set once at its spawn from that speed (src/fx/creature-pearl.js add), and 5 m/s on a 1.6 m body fixed
+    // its cycle at 0.68 s for life, so every catch-up on the ring hurried it past the pop (34 pops a tier); at its walk, none, the ring's knobs as they are
+    e.h = fam.add(type, { x: p[0] * M, z: p[1] * M, angle: Math.PI, speed: pearlSpec(type).speed * e.jit * PEARL_GAIT.sectorPace * 10 }); recs.push(e);
   }
+  // THE SKY MODEL (2026-10-30): the soft tiers hop at Sky's 1 radius a second (no gliding blobs), so a body 8 cells out reaches the ring in ~35 s
+  // (2.3 m/s hunting), not ~10: the ring is read from 45 to 60 s and the hull drives off at 60
   let t = 0, frame = 0, ringed = 0;
-  while (t < 40) {
+  while (t < 70) {
     const dt = [1 / 60, 1 / 45, 1 / 50, 1 / 40][frame++ % 4]; t += dt;
-    if (t > 30 && t < 34) { const c = idx(Math.round((t - 30) * 0.6), 0); if (c !== hull.cur) { hull.cur = c; hull.pos = centers[c].slice(); field = bfsDist(adj, [c]); } }   // the hull drives off a few cells: they re-aim
+    if (t > 60 && t < 64) { const c = idx(Math.round((t - 60) * 0.6), 0); if (c !== hull.cur) { hull.cur = c; hull.pos = centers[c].slice(); field = bfsDist(adj, [c]); } }   // the hull drives off a few cells: they re-aim
     for (const e of recs) {
       let pace = pearlSpec(e.type).speed * e.jit * PEARL_GAIT.sectorPace * sh.pace(e, t);
       const ringPace = pace; if (sh.ringed(e)) pace = 0;
@@ -147,7 +152,7 @@ const HUNT_CAP = { white: 10, yellow: 12 };   // radii a second while hunting th
       if (e.last && e.last.hub === v.hub) { const step = Math.hypot(v.centre[0] - e.last.c[0], v.centre[1] - e.last.c[1]) / v.radius / (dt * 60); o.frames++; o.worst = Math.max(o.worst, step); o.steps.push(step * 60); if (step > 0.25) o.pops++; }
       e.last = { c: v.centre.slice(), hub: v.hub };
     }
-    if (t > 20 && t < 30) ringed = Math.max(ringed, sh.state().atHull);
+    if (t > 45 && t < 60) ringed = Math.max(ringed, sh.state().atHull);
   }
   assert(ringed >= 8, `the blobs reach the ring round the hull (${ringed} of 12 at once)`);
   for (const id of SOFT_HUNT.tiers) {
@@ -156,9 +161,9 @@ const HUNT_CAP = { white: 10, yellow: 12 };   // radii a second while hunting th
     assert.equal(m.pops, 0, `${id}: no centre pop on the hunt (${m.pops} of ${m.frames})`);
     // the measured walk against the cap: the worst drawn step a frame, in radii a second (step x 60), under HUNT_CAP and not far under it (the cap is a guard)
     const rs = m.worst * 60, sorted = m.steps.slice().sort((a, b) => a - b), p99 = sorted[Math.floor(sorted.length * 0.99)];
+    if (process.env.SOFT_HUNT_AUDIT) console.log(`${id}: frames ${m.frames}, p99 ${p99.toFixed(2)}, worst ${rs.toFixed(2)} radii a second (cap ${HUNT_CAP[id]})`);
     assert(rs <= HUNT_CAP[id], `${id}: the drawn centre's worst step is ${rs.toFixed(2)} radii a second (99th percentile ${p99.toFixed(2)}), over HUNT_CAP ${HUNT_CAP[id]}`);
     assert(rs >= 0.7 * HUNT_CAP[id], `${id}: HUNT_CAP ${HUNT_CAP[id]} sits far above the measured worst ${rs.toFixed(2)}: lower it to just above`);
-    if (process.env.SOFT_HUNT_AUDIT) console.log(`${id}: frames ${m.frames}, p99 ${p99.toFixed(2)}, worst ${rs.toFixed(2)} radii a second (cap ${HUNT_CAP[id]})`);
   }
 }
 console.log('PASS the soft hunt audited: white and yellow hunting the hull x SOFT_HUNT.pace, flanking round it, circling and jabbing, the drawn centre\'s worst step under HUNT_CAP (measured 9.3 / 11.2, caps 10 / 12; formula check too), no pop');

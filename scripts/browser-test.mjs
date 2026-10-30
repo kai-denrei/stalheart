@@ -2661,7 +2661,7 @@ try{
  await press('Enter','Enter');await until(`${S}.stage.bodies===6&&${S}.pack===6`,20000).catch(async()=>assert.fail(`Enter: a pack of six (${JSON.stringify(await st())})`));
  await press('ArrowDown','ArrowDown');await until(`${S}.selected==='orange'`,5000);
  await until(`${S}.stage.entry==='orange'&&${S}.stage.bodies===6`,20000);
- {const s=await st();assert.equal(s.card.state,'full');assert(/^⚠ SOLID CORE · CANNOT BE RAMMED/.test(s.card.warning||''),`orange's warning (${s.card.warning})`);assert.equal(s.card.head,'ENTRY 04 / 11 · CUTIS-CORE PUMPKIN');assert.equal(s.stage.type,'drifter');}
+ {const s=await st();assert.equal(s.card.state,'full');assert(/^⚠ SOLID CORE · CANNOT BE RAMMED/.test(s.card.warning||''),`orange's warning (${s.card.warning})`);assert.equal(s.card.head,'ENTRY 04 / 49 · CUTIS-CORE PUMPKIN');assert.equal(s.stage.type,'drifter');}
  await delay(1500);current='bestiary-orange';await finish();
  {const rec=JSON.parse(await evaluate(`localStorage.getItem('stalheart:v1:td.bestiary')`)||'{}');assert(rec.white&&rec.orange&&rec.white.runs===1&&rec.orange.runs===1,`the sightings record holds both (${JSON.stringify(rec)})`);}
  await press('Escape','Escape');await until(`!${S}.open`,5000);
@@ -2955,8 +2955,14 @@ try{
    const grazes=rec.filter(r=>r.h.overlap>0.05).length,dead=Math.max(...rec.map(r=>r.h.dead??0)),under=Math.max(...rec.map(r=>r.h.under??0));console.log(`    a dying body at most ${dead.toFixed(3)} m inside (one drawn in under the hull ${under.toFixed(3)} m)`);
    assert(over<=0.2&&grazes<=2,`the hull is never inside a live body (at most ${over} m; ${grazes} frames over 5 cm)`);
    if(!(first>3&&before>5)){assert(attempt<4,`the hull drove into the ${type} (${JSON.stringify({first,before})})`);continue;}
+   // THE SKY MODEL (2026-10-30): the orange body is 0.75 the size (2.2 m, the hull's half width) and hops; one that hopped aside before the hull came is clipped at the
+   // side and halves the hull's speed instead of stopping it (seen 29.8 -> 14.5 after a run that stopped at 0.0): a glancing hit is tried again on another lane, as a walk-off is
+   if(cored&&!(after<before*0.25)&&attempt<4){console.log(`    a glancing hit on the ${type} (${before.toFixed(1)} -> ${after.toFixed(1)}): another lane`);continue;}
    if(cored){assert(after<before*0.25,`a cored body stops the hull (${before} -> ${after})`);assert(j1.kicks>j0.kicks,'and jolts it');}
-   else {assert(!alive,'the white body is run over (the game\'s ram)');assert(after>before*0.6,`and the hull hardly slows (${before} -> ${after})`);}
+   // THE SKY MODEL (2026-10-30): the soft check reads the window's MEAN, not its least frame: after the ram the headless frame times jitter and the frame-to-frame
+   // speed with them (probed: 14 to 45 m/s from one frame to the next, the mean 29 against 28.5 before), so the least frame read a slow-down the hull never made
+   const afterMean=first>0?mean(sp.slice(first-1,first+15)):null;
+   if(!cored){console.log(`    the window after the ram: mean ${afterMean?.toFixed(1)} m/s (least ${after?.toFixed(1)})`);assert(!alive,'the white body is run over (the game\'s ram)');assert(afterMean>before*0.6,`and the hull hardly slows (${before} -> mean ${afterMean}, least ${after})`);}
    break;}
   await evaluate(`${T}.showcase.ram(false)`);await evaluate(`${T}.sectorQuiet(false)`);}
  const fin=await evaluate(P);console.log(`  books: ${JSON.stringify(fin.bodies.families.pearl)}`);

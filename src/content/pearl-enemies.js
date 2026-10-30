@@ -14,16 +14,25 @@
 // game's ram rule exactly: soft tiers are the rammable belts, cored tiers the solid ones (test/pearl-enemies.mjs asserts it type by type).
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object') freeze(v); return Object.freeze(o); };
 
-// tiers.ts's rows: [id, name, skin, core, labR0, seekCount, cycleDuration, aggression, coreShape, contactDamage, health]; orange's coreShape is the owner's edit (0 -> 3)
+// THE SKY MODEL (owner, 2026-10-30: "Cutis Soft Sky; it looks and feels the best of all. we should model all other Cutis on the 03, while keeping
+// separate colors and slight variations in aggressivity and sizes"): every tier is Soft Sky's body. Two seeking stalks, a 4.5 s cycle, the transfer's
+// power 1.8, the gait's one stride, the walk cap 1 radius a second at x1.08 (PEARL_PACE), the membrane at .65 (PEARL_MEMBRANE): the kit's hop on its
+// stalks for all eight, in each tier's own colour, at its own size (PEARL_BODY.scale, 0.6 to 1.2 round Sky's 0.8) and with its own hunting urgency
+// (aggression 1.3 to 2.5 round Sky's 1.7; the kit shortens a hunting body's cycle by 0.3 x aggression / (1 + aggression): 0.57 to 0.71 of the way, Sky
+// 0.63). The set's own rows (tiers.ts, kept here as the record) ran seekCount 1, 1, 2, 2, 2, 2, 3, 3; cycle 6, 5.5, 5, 4.5, 4, 5, 4.5, 4; aggression
+// .35, .6, 1, 1.7 (1.4 in the set; the owner's 2026-10-16), 1.8, 2.3, 3, 4. The cored tiers keep their pearls (the ram rule: a cored body is not rammable)
+// and their colour pull; the ivories and lemons hop on their stalks again (the gliding blobs of 2026-10-16 and the ivory's long stride retired); the
+// hard cores' longer cycles and slower caps retired. Hit points and the heart's bite stay the game's and PEARL_PACE's (difficulty, not the body).
+// rows: [id, name, skin, core, labR0, seekCount, cycleDuration, aggression, coreShape, contactDamage, health]; orange's coreShape is the owner's edit (0 -> 3)
 const ROWS = [
-  ['white', 'Cutis-Soft Ivory', 0xf2efe5, 0x90979d, 0.12, 1, 6, 0.35, 0, 0, 15],
-  ['yellow', 'Cutis-Soft Lemon', 0xe6cc53, 0x8c6021, 0.14, 1, 5.5, 0.6, 0, 0, 25],
-  ['orange', 'Cutis-Core Pumpkin', 0xeb883e, 0x853b20, 0.16, 2, 5, 1, 3, 0, 40],
-  ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.7, 0, 0, 60],   // aggression 1.7 (was 1.4; owner, 2026-10-16: "more aggressive"; under green's 1.8, the ladder still grows)
-  ['green', 'Cutis-Core Emerald', 0x76a76a, 0xc7e8a4, 0.21, 2, 4, 1.8, 3, 8, 100],
-  ['purple', 'Cutis-Core Amethyst', 0xa879c5, 0xdfa9ff, 0.24, 2, 5, 2.3, 3, 14, 160],
-  ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 3, 4.5, 3, 3, 22, 240],
-  ['black', 'Cutis-Core Onyx', 0x11151d, 0xff0000, 0.33, 3, 4, 4, 3, 35, 360],
+  ['white', 'Cutis-Soft Ivory', 0xf2efe5, 0x90979d, 0.12, 2, 4.5, 1.3, 0, 0, 15],
+  ['yellow', 'Cutis-Soft Lemon', 0xe6cc53, 0x8c6021, 0.14, 2, 4.5, 1.5, 0, 0, 25],
+  ['orange', 'Cutis-Core Pumpkin', 0xeb883e, 0x853b20, 0.16, 2, 4.5, 1.6, 3, 0, 40],
+  ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.7, 0, 0, 60],   // THE MODEL: as it was (aggression 1.7 since 2026-10-16)
+  ['green', 'Cutis-Core Emerald', 0x76a76a, 0xc7e8a4, 0.21, 2, 4.5, 1.9, 3, 8, 100],
+  ['purple', 'Cutis-Core Amethyst', 0xa879c5, 0xdfa9ff, 0.24, 2, 4.5, 2.1, 3, 14, 160],
+  ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 2, 4.5, 2.3, 3, 22, 240],
+  ['black', 'Cutis-Core Onyx', 0x11151d, 0xff0000, 0.33, 2, 4.5, 2.5, 3, 35, 360],
 ];
 // THE CORED READ (owner, 2026-10-18, round two, note 4: "There's something confusing about a very white-looking enemy that has a hard core, too hard to
 // visually distinguish from harmless ones. It see it more clearly now; purple, brown, all of them... the core is slightly colored but the membrane is almost
@@ -57,15 +66,18 @@ const ROWS = [
 // pearl shows over its front skin as through the lab's thin one. The bestiary keeps its .45 and its pearl under the skin (src/content/bestiary.js
 // BESTIARY_STAGE.skin): the lab is the reference look, over its own black. Same paused frame, sector 5's crowd in daylight at ~22 m: 31 % of the
 // purple body's pixels saturated purple, mean #463b5a, before; 79 %, mean #6e4a90, after. Black is left: a dark skin, its read is its red.
+// THE SKY MODEL (2026-10-30, above): every membrane at Sky's .65, the soft tiers' translucency, a cored tier's pearl seen through it as in the lab (the
+// cored read's .26, the full skins' gain 1.35 with their pearl drawn over, and black's .4 retired; `pearl` with them). The colours stay each tier's: the
+// cored tiers' pull toward their warning hue and their tinted glints as they were (the separate colours), the soft tiers their skin and white glints.
 export const PEARL_MEMBRANE = freeze({
   white: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
   yellow: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
-  blue: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
-  orange: { opacity: 0.26, tint: 0x853b20, share: 0.4, glint: 0.6, order: 3 },
-  green: { opacity: 0.26, tint: 0x3fbf5a, share: 0.4, glint: 0.6, order: 3 },
-  purple: { opacity: 1.35, tint: 0xb44bff, share: 0.6, glint: 1, order: 3, pearl: 0.55 },   // opacity was .45 (round three), .4 before; pearl new (2026-10-19, note 5)
-  brown: { opacity: 1.35, tint: 0x8a5a2b, share: 0.6, glint: 1, order: 3, pearl: 0.55 },   // as purple (2026-10-19, note 5)
-  black: { opacity: 0.4, tint: 0xff0000, share: 0.3, glint: 1, order: 3 },
+  blue: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },   // THE MODEL
+  orange: { opacity: 0.65, tint: 0x853b20, share: 0.4, glint: 0.6, order: 3 },
+  green: { opacity: 0.65, tint: 0x3fbf5a, share: 0.4, glint: 0.6, order: 3 },
+  purple: { opacity: 0.65, tint: 0xb44bff, share: 0.6, glint: 1, order: 3 },   // opacity was 1.35 with pearl .55 (2026-10-19), .45 (round three), .4 before
+  brown: { opacity: 0.65, tint: 0x8a5a2b, share: 0.6, glint: 1, order: 3 },   // as purple
+  black: { opacity: 0.65, tint: 0xff0000, share: 0.3, glint: 1, order: 3 },   // was .4
 });
 // a tier: `values` is the kit config's Pearl part (over src/fx/cutis-maku/config.js DEFAULT_CONFIG; r0 is set per body by the game's size)
 // THE NAMES (owner, 2026-10-14, from the bestiary: "Cutis-Soft Ivory, Cutis-Soft Lemon, Cutis-Soft Sky, etc. for all the colors, then Cutis-Core Pumpkin for
@@ -76,7 +88,7 @@ export const PEARL_TIERS = freeze(ROWS.map(([id, name, skin, core, labR0, seekCo
     seekCount, cycleDuration, aggression, skinTint: skin, veinTint: id === 'black' ? 0xbab6c1 : 0x45404b, pulseTint: core, coreTint: core, coreShape,
     coreSize: id === 'black' ? 0.18 : id === 'purple' ? 0.22 : 0.28, contactDamage, health,
     membraneOpacity: PEARL_MEMBRANE[id].opacity, membraneTint: PEARL_MEMBRANE[id].share, membraneTintTo: PEARL_MEMBRANE[id].tint, glintShare: PEARL_MEMBRANE[id].glint, membraneOrder: PEARL_MEMBRANE[id].order, pearlShow: PEARL_MEMBRANE[id].pearl,   // THE CORED READ, A SKIN AS IN THE LAB, above
-    transferAcceleration: rank < 4 ? 1.8 : 2.5, reach: rank < 4 ? 8 + rank : 12 + (rank - 4), noiseAmp: 0.15, veinWidth: 0.035, pearlVariant: 1,
+    transferAcceleration: 1.8, reach: 11, noiseAmp: 0.15, veinWidth: 0.035, pearlVariant: 1,   // THE SKY MODEL: Sky's transfer and reach for all (the set's 2.5 and 8-15 by rank); the reach is overridden by the gait's stride (src/fx/creature-pearl.js)
   },
 })));
 
@@ -100,7 +112,8 @@ export const PEARL_OF = freeze({
 // `scale` multiplies a soft or a cored tier's record size (src/fx/enemy-step.js) and with it the body's r0, the touch reach and the reticle's box together.
 // BY SIZE (owner, 2026-10-16: "decision: we split them by size; cutis-soft ivory 0.4, lemon 0.6, blue 0.8, purple 1.2 for now, some sense of differences in sizes
 // and speed"): `scale` by tier id; the other cored tiers keep 1.12
-export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.4, yellow: 0.6, blue: 0.8, orange: 1.12, green: 1.12, purple: 1.2, brown: 1.2, black: 1.3 } });   // black: the biggest (owner, 2026-10-16; 1.3: at 1.45 a knot's membrane ran 2.5 m into a 10 m corridor's rock, test/body-footprint.mjs)
+// THE SKY MODEL (2026-10-30): slight variations round Sky's 0.8 in the set's own order (the belt ladder: orange under blue, as tiers.ts sizes them; were white 0.4, yellow 0.6, blue 0.8, orange 1.12, green 1.12, purple 1.2, brown 1.2, black 1.3; black's 1.3 the corridor's bound: at 1.45 a knot's membrane ran 2.5 m into a 10 m corridor's rock, test/body-footprint.mjs)
+export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.6, yellow: 0.7, orange: 0.75, blue: 0.8, green: 0.9, purple: 1.0, brown: 1.1, black: 1.2 } });
 export const pearlScaleOf = (tier) => PEARL_BODY.scale[tier] ?? 1;
 
 // HOW A BODY KEEPS UP WITH ITS RECORD (src/domain/pearl-bodies.js; CREATURE_FOLLOW's catch-up and leash over these). The record walks at its type's speed
@@ -173,7 +186,14 @@ export const PEARL_FOLLOW = freeze({
 // 2026-10-16: "a bit less transparent, slower, and with longer appendages seeking and feeling before moving ... the black ones ... much stronger, biggest and
 // move slow and deliberately"): purple, brown and black at a membrane of 0.5, longer cycles (the rows: 5 / 4.5 / 4 s), `reach` 1.35, caps 0.7 / 0.6 / 0.5
 // radii a second; black 1.8 x hit points and 1.45 the size. `heart`: an ivory's bite on the Stålheart, a tenth (owner: "they are so small").
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: id === 'white' ? 1.3 : id === 'yellow' ? 1.2 : id === 'blue' ? 1.08 : 1, radii: id === 'white' ? 5 : id === 'yellow' ? 2.8 : id === 'blue' ? 1 : id === 'purple' ? 0.7 : id === 'brown' ? 0.6 : id === 'black' ? 0.5 : 0.9, glide: id === 'white' || id === 'yellow', hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, reach: ['purple', 'brown', 'black'].includes(id) ? 1.35 : undefined, erratic: false, jink: false, ...(id === 'white' ? { hop: 3.6 } : {}) }])));
+// THE SKY MODEL (2026-10-30): every tier walks as Sky did (x1.08 of its types' speed, at most 1 radius of its body a second, the gait's one stride, no
+// glide), so the pace differs by the tier's size alone: a 0.6 ivory creeps, a 1.2 onyx covers twice the ground a second. Retired: the ivory's 5 and the
+// lemon's 2.8 radii as gliding blobs and the ivory's 3.6-radius stride (2026-10-15/16), the hard cores' 0.7 / 0.6 / 0.5 caps and their `reach` 1.35
+// (which never reached the body: src/fx/creature-pearl.js sets the gait's stride after it). Kept: `hp` (the soft tiers' lighter hit points, black's 1.8) and
+// `heart` (an ivory's tenth of a bite): the difficulty, not the body. The motion audit (test/pearl-motion.mjs) stays the ceiling: 1 radius a second hopping;
+// the cored tiers, the bigger bodies, at 0.9 (orange's and green's as they were): at 1 the audit's onyx stepped 15.01 radii a second once in 1,715 frames and its amethyst
+// 15.24 (the pop is 15; Sky passes at 1 by its margin), so the soft tiers walk at Sky's 1 and the cored a tenth under it, a slight variation the audit asked for.
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1.08, radii: ['orange', 'green', 'purple', 'brown', 'black'].includes(id) ? 0.9 : 1, glide: false, hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, erratic: false, jink: false }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a

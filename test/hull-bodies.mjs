@@ -59,7 +59,7 @@ console.log('PASS the speed a body\'s mass takes, recovering');
   const touches = [], pushes = [];
   const sink = { push: (hub, dx, dz) => pushes.push([dx, dz]), touch: (h, c, r) => touches.push([h === soft ? 'soft' : 'cored', c, r]), depth: () => {} };
   let worst = 0, stoppedAt = null, softMoved = 0;
-  const s0 = fam.view(soft).centre;
+  const s0 = fam.view(soft).centre.slice();
   for (let f = 0; f < 600; f++) {
     // the drive: the hull's next position, the contact pass on it, what it pushes back taken; the bodies step; then the settle pass
     box.x += 0.12; pushes.length = 0;
@@ -71,8 +71,8 @@ console.log('PASS the speed a body\'s mass takes, recovering');
     fam.hullContact(boxOf, false, sink);
     let deepest = 0; fam.hullContact(boxOf, null, { depth: (h, d) => { deepest = Math.max(deepest, d); } });
     worst = Math.max(worst, deepest);
+    softMoved = Math.max(softMoved, Math.hypot(fam.view(soft).centre[0] - s0[0], fam.view(soft).centre[1] - s0[1]));   // the farthest it was shoved: a hopping body (the Sky model, 2026-10-30) hops back onto its record once the hull is past
   }
-  softMoved = Math.hypot(fam.view(soft).centre[0] - s0[0], fam.view(soft).centre[1] - s0[1]);
   assert(worst < 0.1, `the hull is never inside a body (${worst} m)`);
   assert(touches.some((t) => t[0] === 'soft' && !t[1]) && touches.some((t) => t[0] === 'cored' && t[1]), `both touched (${JSON.stringify(touches.slice(0, 3))})`);
   assert(softMoved > 1.5, `the soft body was shoved out of the way (${softMoved.toFixed(1)} m)`);   // 1.5 (was 3): a blob keeps a spread of its own off its line (2026-10-16), so it starts partly aside and is shoved less; never inside it stays the rule above
