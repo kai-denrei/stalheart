@@ -21,7 +21,7 @@ const T = SOFT_HUNT, close = (a, b, eps, what) => assert(Math.abs(a - b) <= eps,
   assert.equal(huntGoal({ hullDist: -1, gateDist: 9 }, T), 'gate', 'an unreachable hull is no goal');
   assert.equal(huntGoal({ hullDist: undefined, gateDist: 9 }, T), 'gate', 'no hull, the gate');
   assert.equal(huntGoal({ hullDist: 30, gateDist: -1 }, T), 'hull', 'no gate to walk to, the hull');
-  assert.equal(huntPace('white', T, 'hull'), 1.35); assert.equal(huntPace('yellow', T, 'hull'), 1.25);
+  assert.equal(huntPace('white', T, 'hull'), 1.6);   /* 1.35 until 2026-11-02 (round 4, note 1) */ assert.equal(huntPace('yellow', T, 'hull'), 1.25);
   assert.equal(huntPace('white', T, 'gate'), 1, 'the gate walk is the walk as it was');
 }
 console.log('PASS the goal by walking distance (the hull within the bias, else the gate), the faster walk only at the hull');
@@ -161,7 +161,7 @@ console.log('PASS in a corridor: never on rock, the group at both ends of the hu
   run({ w, recs, hull, secs: 6, tune, onFrame: () => {} });
   const sh = createSoftHunt({ hull: () => hull, field: () => null, graph: () => ({ adj: w.adj, centers: w.centers }), cellSide: () => w.cs, open: () => true, tune: () => tune, gateDist: () => 30, enemies: () => [] });
   const e = rec(w, 1, 1, 0); e.hunt = { goal: 'hull', at: 1e9, ringed: false }; pace = sh.pace(e, 0);
-  close(pace, 1.35 * 2, 1e-12, 'hunt pace x the knob');
+  close(pace, SOFT_HUNT.pace.white * 2, 1e-12, 'hunt pace x the knob');
   const [d] = angle(w, hull, recs[0]); assert(d > 1.6 && d < 2.1, `the ring at the knob's radius (${d.toFixed(2)})`);
 }
 console.log('PASS the tune panel\'s knobs: hunt pace x, the ring\'s radius');

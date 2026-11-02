@@ -8,7 +8,8 @@ import { emergence } from '../domain/breach-waves.js';
 import { stampScare, scarePace, isScared, towardScare, awayExits, seekExits } from '../domain/impact-scare.js';
 import { groundAt } from './lance-follow.js';
 import { SCARE_FREEZE_S } from '../content/explosions.js';
-import { STORY_EXPEDITIONS, EMERGENCE, WALK_BIAS } from '../content/story-defaults.js';
+import { STORY_EXPEDITIONS, EMERGENCE, WALK_BIAS, CRATER_DODGE } from '../content/story-defaults.js';
+import { craterDodge } from '../domain/crater-dodge.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
 import { sinkholeGroundHeight } from '../core/sinkhole-shape.js';
 import { CONTENT } from '../content/runtime.js';
@@ -320,6 +321,7 @@ export function createEnemyStep(host) {
     e.next = e.cur; e.prog = 0;
   }
   function updateEnemies(dt, tNow) {
+    const holes = (host.gameBreaches.craters?.() ?? []).map((k) => { const l = Math.hypot(k.p[0], k.p[1], k.p[2]); return { c: [k.p[0] / l, k.p[1] / l, k.p[2] / l], R: (k.r + CRATER_DODGE.pad) * host.cellSide() }; });   // the open holes, once a frame (round 4, note 6)
     huntField(tNow); unpackSquads(tNow);
     releaseSpawns(dt);
     for (const e of host.enemies) {
@@ -452,6 +454,14 @@ export function createEnemyStep(host) {
           const off = shoveMag(e.shove, host.shieldTune) * host.cellSide();
           e.pos = norm3(add3(e.pos, scale3(e.shove.dir, off)));
         }
+      }
+      // ROUND AN OPEN HOLE, NOT ACROSS IT (round 4, note 6; src/domain/crater-dodge.js): the side offset eased in, its own hole skipped while it climbs out
+      if (holes.length && !e.bodyLed && !e.boss) {
+        const own = e.emergeOff && e.breachSource ? norm3(e.breachSource.position.toArray()) : null, hs = own ? holes.filter((h) => dist3(h.c, own) > 1e-6) : holes;
+        const r = craterDodge(e.pos, e.dir, hs, { zone: CRATER_DODGE.zone, side: e.dodgeSide, tie: e.id % 2 ? 1 : -1 }), k = 1 - Math.exp(-dt / CRATER_DODGE.ease), o = e.dodge ?? [0, 0, 0];
+        e.dodgeSide = r.hole >= 0 ? r.side : null; e.dodge = [o[0] + (r.off[0] - o[0]) * k, o[1] + (r.off[1] - o[1]) * k, o[2] + (r.off[2] - o[2]) * k];
+        if (e.dodge[0] || e.dodge[1] || e.dodge[2]) e.pos = norm3(add3(e.pos, e.dodge));
+        if (r.hole < 0 && Math.hypot(e.dodge[0], e.dodge[1], e.dodge[2]) < 1e-7) e.dodge = null;
       }
       const n = e.pos;
       const raw = sub3(b, e.pos);

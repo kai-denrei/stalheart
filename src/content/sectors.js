@@ -40,18 +40,20 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // everything is unlocked with a latest sector, SKIP ALL at sector 1 on the finished base). SECTORS are the fixed opening of the
 // arc: four regular sectors on the gate side, four pulses each, climbing; then sector 5. Past them the run holds on SECTOR_HOLD
 // sectors until the back door is due (SECTOR_DOOR), then THE BACK DOOR, BOTH WALLS, and SECTOR_GENERATOR's sectors from there.
+// MORE IVORIES (owner, 2026-11-02, round 4, note 1: the ivory "more numerous"): the first three rows' pulses x1.5 (were [10, 20, 30, 50], [20, 35, 50, 90],
+// [30, 50, 70, 120]); the opening's waves (story-defaults, the Rotor's first) untouched (note 0: they are right).
 export const SECTORS = freeze([
-  { n: 1, name: 'THE LANE', shape: 'pulse', bodies: [10, 20, 30, 50], breath: { at: 0.25, max: 60 }, coreShare: 0, breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.2, pulse: 12, held: { kg: 40, points: 400 },
+  { n: 1, name: 'THE LANE', shape: 'pulse', bodies: [15, 30, 45, 75], breath: { at: 0.25, max: 60 }, coreShare: 0, breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.2, pulse: 12, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
     brief: ['Two mouths out on the lane. They come four times each.', 'Close one too early and we lose the biomass it would have paid.'] },
-  { n: 2, name: 'THE LONG LANE', shape: 'pulse', bodies: [20, 35, 50, 90], breath: { at: 0.25, max: 55 }, coreShare: 0, breaches: { gate: 2 }, waves: 4, ladderStart: 1, threat: 1.5, pulse: 10, held: { kg: 45, points: 450 },
+  { n: 2, name: 'THE LONG LANE', shape: 'pulse', bodies: [30, 53, 75, 135], breath: { at: 0.25, max: 55 }, coreShare: 0, breaches: { gate: 2 }, waves: 4, ladderStart: 1, threat: 1.5, pulse: 10, held: { kg: 45, points: 450 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: null,
     brief: ['More of them this time, and closer together.', 'Keep the lane clear and the gate whole.'] },
   // THE CANYON (owner, 2026-10-01: "let's have it used the first time at the antipode, far from all other sentries; a huge number of
   // ennemies, 5x the usual, in a long canyon, easy target for the SOL. a satisfying use of its immense power"; asked, he chose this
   // sector for it, survivors marching on the base, the player seated with a glide). One gate breach keeps the base busy; the swarm
   // comes up at the far end of a canyon cut at the antipode (CANYON) and SOL-82's first pass is laid over it
-  { n: 3, name: 'THE CANYON', shape: 'pulse', bodies: [30, 50, 70, 120], breath: { at: 0.25, max: 50 }, coreShare: 0.03, breaches: { gate: 1 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 10, held: { kg: 50, points: 500 }, canyon: true,
+  { n: 3, name: 'THE CANYON', shape: 'pulse', bodies: [45, 75, 105, 180], breath: { at: 0.25, max: 50 }, coreShare: 0.03, breaches: { gate: 1 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 10, held: { kg: 50, points: 500 }, canyon: true,
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'SOL-82 online',
     brief: ['A tremor on the far side of the world. A swarm, massing in a canyon.', 'The gate waits for you. The far side does not.'] },
   // nearFirst (owner, 2026-10-19, round three, note 3): the lane is never empty. The first gate breach of sectors 4 and 5 stands on the near ring

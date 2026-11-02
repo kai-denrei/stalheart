@@ -105,7 +105,7 @@ import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
 import { createCamJump } from './fx/cam-jump.js'; import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { createRamJolt } from './fx/ram-jolt.js'; import { shedSquad, squadDamage } from './fx/squads.js';
+import { makeAudio } from './audio.js'; import { isaoSay, isaoSpeak } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createHullDent } from './fx/hull-dent.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { createRamJolt } from './fx/ram-jolt.js'; import { shedSquad, squadDamage } from './fx/squads.js';
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
@@ -3133,6 +3133,7 @@ export function initTdTab(root) {
     runTimers.after(DEATH_HOLD * 1000, () => msgEl.classList.remove('hidden'));   // on the run's own timers: a NEW RUN inside the hold used to get the old run's card back
   }
 
+  const hullDent = createHullDent({ container: root, sfx, jolt: ramJolt, playerMesh: () => playerMesh, health: hullHealth, bump: (k) => { bumpLeft = Math.max(bumpLeft, BUMP_LEN * k); }, callout: (x, c) => showCallout(x, c) });
   function playerHit(killerType = null, fromPos = null, whole = false) {
     // the lab's tank is a timer with no body to lose: the shove stays, so
     // being hit still reads, and the hull counter never moves
@@ -3155,7 +3156,7 @@ export function initTdTab(root) {
     }
     // FOUR HITS A HULL (owner, 2026-10-16; HULL_ARMOUR): a touch dents the armour, the hull is lost on the last dent; the MK-9's burn (and a harness `whole`) takes it in one
     hullArmour -= whole || HULL_ARMOUR.whole.includes(killerType) ? hullHits() : 1;
-    if (hullArmour > 0) { bumpLeft = Math.max(bumpLeft, BUMP_LEN * 0.6); if (playerMesh) applyTankHealth(playerMesh, hullHealth()); container.classList.remove('hull-dent'); void container.offsetWidth; container.classList.add('hull-dent'); sfx.play('danger_alert', { dist: 0, gain: 0.5 }); updateHud(); return; }
+    if (hullArmour > 0) { hullDent.dent(); updateHud(); return; }   /* the dent (src/fx/hull-dent.js) */
     hullArmour = hullHits();
     playerHP--; if (story?.expeditions) storyApi.expeditions().hullLost();   /* the rule drops the part back at its site; the crate tumbles off and the site's flag comes down */
     run.hullsLost++; sectorRun?.hullLost();
