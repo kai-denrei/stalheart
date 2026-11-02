@@ -6,6 +6,7 @@ import {rimRadius, bowlHeight, SINKHOLE_INNER, SINKHOLE_DEPTH} from './stalheart
 // instantly, 74.3 s turning at 2.5 rad/s and only flying once facing the way (a mouse pilot, the reasonable run), 101.9 s on the A/D keys alone (1.3 rad/s).
 // 100 s is the reasonable run plus about a third; 65 left it eight seconds on the perfect line and none on the reasonable one
 export const FUSE=100, FLARE_COUNT=15, EGG_COUNT=1600, HOLE_SCALE=24;
+export const FLARE_SLOTS=FLARE_COUNT+1;   // the red flares and the green one left at the way out (flares.js BEACON, 2026-11-02 note 11): the shaders' flare arrays
 // THE FUSE HURRIES (owner, 2026-11-02, note 12: "If Isao is out with a lot of time to spare, the countdown accelerates"): extracted with more than `over`
 // seconds left, the fuse burns at `rate` times real time until `until` seconds remain, then real time to the blast (the spoken countdown, keyed on what
 // remains, is unchanged). Out at 80 s: (80 - 10) / 4 + 10 = 27.5 s of waiting instead of 80
@@ -133,6 +134,11 @@ export function pointSegmentDistance(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a
 // anywhere near the Queen, not one spot (the owner, 2026-10-16): the chamber round her within 70 m, from well under her to well over
 export function closeToQueen(p){return p.y<QUEEN.y+16&&p.y>QUEEN.baseY-14&&Math.hypot(p.x-QUEEN.x,p.z-QUEEN.z)<70&&inChamber(p,1);}
 export const MAX_HP=12;
+// THE START CARD (owner, 2026-11-02, note 11: "a callout explaining the controls and the mission (F drops a flare; a GREEN flare pre-dropped close to the
+// entrance/exit; Q for the radar/LiDAR 'but it's not ready yet')"): over the first START_CARD.seconds of a flight, in both modes; the Q part reads
+// plain once the LiDAR is processed (PRESS Q takes the alert line then)
+export const START_CARD=Object.freeze({seconds:8});
+export function startCard(m){return ['MISSION · PLACE THE CHARGE BY THE QUEEN · GET BACK OUT',`F · FLARE   GREEN FLARE · THE WAY OUT   Q · LIDAR${m.lidarAvailable?'':' (NOT READY YET)'}`];}
 export function createMission(){return {phase:'descent',integrity:MAX_HP,hits:0,lampState:'working',lidarAvailable:false,lidarProcessingAt:0,lidar:false,lidarMode:0,payload:true,armProgress:0,bombPosition:null,fuse:FUSE,time:0,nursery:false,shaftSeen:false,deadEndSeen:false,flares:FLARE_COUNT,extracted:false,rush:false,signalLost:false,detonated:false,outcome:null};}
 export function recordImpact(m){
   if(m.outcome||m.extracted||m.signalLost||m.integrity<=0)return [];

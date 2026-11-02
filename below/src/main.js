@@ -5,14 +5,15 @@ import {impactCue} from './audio-cues.js';
 import {createFlight,fly} from './flight.js';
 import { parseMode, endingAction, postOutcome, postReady, isShow, briefingIdle } from './handoff.js';
 import { DOOR, tiltAt, climbAt } from './door.js';
-import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE } from './mission.js';
+import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE, START_CARD, startCard } from './mission.js';
+import { BEACON } from './flares.js';
 
 const $=id=>document.getElementById(id);
 const stalheart=parseMode(location.search);   // the campaign's last mission inside Stålheart's page (src/handoff.js)
 const audio=createAudio();
 const keys=new Set(),velocity=new THREE.Vector3();
 let world,mission=createMission(),flight=createFlight(START),mode='briefing',resumeMode='playing',detonationAt=0,yaw=0,pitch=-.43,dragging=false,hadLock=false;
-let simulationTime=0,lastTime=performance.now(),lastScan=-10,lastHit=-10,alertUntil=0,commsUntil=0,impact=0,lookDelta=0;
+let simulationTime=0,lastTime=performance.now(),lastScan=-10,lastHit=-10,alertUntil=0,commsUntil=0,impact=0,lookDelta=0,cardUntil=0;
 let dialogueQueue=[],seen=new Set(),frameTimes=[];
 let climbing=null,skyFade=null;   // the climb out of the arena's hole (src/door.js): its seconds, and the sky's fade over the page
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -34,11 +35,14 @@ function start(){
   mission=createMission();world.reset();simulationTime=0;lastScan=-10;lastHit=-10;impact=0;dialogueQueue=[];seen=new Set();keys.clear();velocity.set(0,0,0);
   // THE DOOR (2026-10-26, src/door.js): in Stålheart's page ISAO starts at the foot of the arena's hole, on its rubble, under its mouth of sky
   const from=stalheart?world.doorStart.position:START;world.showDoor(stalheart);climbing=null;if(skyFade)skyFade.style.opacity='0';
+  // THE GREEN FLARE (note 11, src/flares.js BEACON): left beside the throat's foot, on the rubble in Stålheart's page, on the floor on its own; the way out
+  {const d=world.doorStart.position,o=BEACON.offset;world.dropBeacon({x:d.x+o.x,y:d.y+o.y,z:d.z+o.z},0);}
+  cardUntil=START_CARD.seconds;   // the start card (mission.js startCard)
   yaw=0;pitch=-.43;world.player.copy(from);flight=createFlight(from);flight.position=world.player;flight.velocity=velocity;
   $('briefing').hidden=true;$('pause').hidden=true;$('ending').hidden=true;$('hud').hidden=false;$('countdown').hidden=true;$('interaction').hidden=true;$('isao-face').classList.remove('worried');
   $('alert').textContent='';alertUntil=0;mode='playing';audio.reset();audio.pause(false);audio.init().catch(()=>{});updateSoundLabel();lock();
   say('Work light’s on. Keep me clear of the walls.',6);
-  say('Fifteen flares. F to drop one. We’ll need to find our own way back.',7,'ISAO',7);
+  say('Fifteen flares. F to drop one. The green one I left here marks the way out.',7,'ISAO',7);
   say('Keep me clear of the walls. I’d like to come back.',6,'ISAO',16);
 }
 function pause(){if(!['playing','surface','detonation'].includes(mode))return;resumeMode=mode;mode='paused';keys.clear();velocity.set(0,0,0);$('pause').hidden=false;audio.pause(true);if(document.pointerLockElement)document.exitPointerLock();}
@@ -174,6 +178,7 @@ function climbStep(dt){
 }
 function updateHUD(){
   const cinematic=mode==='surface'||mode==='detonation';
+  {const on=!cinematic&&simulationTime<cardUntil;$('mission-card').hidden=!on;if(on){const [line,keys]=startCard(mission);$('mission-line').textContent=line;$('mission-keys').textContent=keys;}}
   $('reticle').hidden=cinematic;
   document.querySelector('.controls').hidden=cinematic;
   if(!mission.payload&&!mission.detonated&&mission.fuse<=4.2226&&mission.fuse>0&&!seen.has('spoken-countdown')){
@@ -209,7 +214,8 @@ function updateHUD(){
 function updateSoundLabel(){ $('sound').textContent=audio.enabled?'AUDIO ON':'AUDIO OFF';$('sound').setAttribute('aria-label',audio.enabled?'Mute audio':'Unmute audio'); }
 updateSoundLabel();
 for(const button of document.querySelectorAll('[data-view]'))button.addEventListener('click',()=>selectView(button.dataset.view));
-$('begin').addEventListener('click',start);$('resume').addEventListener('click',resume);$('restart').addEventListener('click',()=>{if(endingAction(mission.outcome,stalheart).action==='return')climb();else start();});   // the climb out, then the outcome to the game (src/door.js)$('restart-pause').addEventListener('click',start);
+$('begin').addEventListener('click',start);$('resume').addEventListener('click',resume);$('restart').addEventListener('click',()=>{if(endingAction(mission.outcome,stalheart).action==='return')climb();else start();});   // the climb out, then the outcome to the game (src/door.js)
+$('restart-pause').addEventListener('click',start);   // on its own line: it sat after the comment above and never bound (found 2026-11-02)
 $('sound').addEventListener('click',()=>{audio.init().catch(()=>{});audio.mute(audio.enabled);updateSoundLabel();});
 document.addEventListener('keydown',e=>{
   // A SHORTCUT IS NOT FLIGHT (the owner, 2026-10-16: a screenshot's Cmd+Shift+4 pressed Shift and put Isao into the ground): a key down with the command or
@@ -231,7 +237,7 @@ window.addEventListener('blur',()=>{keys.clear();if(['playing','surface','detona
 window.addEventListener('resize',()=>world?.resize());
 
 try{
-  world=await createWorld($('view'));
+  world=await createWorld($('view'),{carcass:stalheart});
   $('begin').disabled=false;$('begin-label').textContent=stalheart?'TAKE THE FEED':'TAKE CONTROL OF ISAO';
   if(stalheart){const w=document.querySelector('.wordmark');if(w)w.style.visibility='hidden';const c=document.querySelector('.brief-copy');if(c)c.innerHTML='The arena’s sinkhole is the way down to the nest.<br>MÖRK is too big for it.<br>ISAO takes the bomb to their Queen.';}   // Stålheart's own card: no link out, the campaign's words (2026-10-18: the arena's hole, as Isao's brief over the game says it; that brief sits under this frame)
   // in Stålheart's frame: ready once the first frame is drawn, then idle under the game until it shows the frame (src/handoff.js, note 10)
@@ -259,6 +265,7 @@ try{
     hurt:(value)=>{mission.integrity=Math.max(0,mission.integrity-value);},
     pose:(x,y,z)=>{world.player.set(x,y,z);velocity.set(0,0,0);},
     nearQueen:()=>{world.player.set(QUEEN.x+37,QUEEN.y,QUEEN.z+8);velocity.set(0,0,0);},
+    viewUp:(y)=>{mode='paused';resumeMode='playing';const cam=world.camera;cam.position.set(0,y,0);looker.position.copy(cam.position);looker.up.set(0,0,-1);looker.lookAt(0,y+30,0);looker.up.set(0,1,0);cam.quaternion.copy(looker.quaternion);if(skyFade)skyFade.style.opacity='0';},   // the climb's view at height y, held (the door's frames)
     scan, pause, resume, start, dropFlare, hit:receiveImpact, selectView, climb, climbStep, end,
     capturePose:(s,y=0,p=-.15)=>{const c=center(s);world.player.copy(c);yaw=y;pitch=p;mission.lidarAvailable=true;mission.lidar=true;world.scan(simulationTime);world.update(simulationTime+1,mission,false,{flight,dt:.016,yaw,pitch,reducedMotion});world.render();}
   };
