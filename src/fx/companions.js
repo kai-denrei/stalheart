@@ -9,6 +9,9 @@
 // ISAO PRINTS THEM (owner, 2026-10-30): neither is on the planet at landing. A unit is 'unborn' (loaded, hidden, out of the play), then
 // 'printing' (on the bed at its spot, facing the heart, held at its idle's first frame while src/fx/pet-print.js reveals it, then its idle
 // playing), then 'born' (in the play). ?pets=born has both born from the first frame (the play's own test).
+// OUT OF THE TANK'S WAY (owner, 2026-11-02, round 4 note 5): the hull's velocity from its point frame to frame (smoothed over HULL_TAU s; a
+// placement jump of more than HULL_JUMP m in a frame resets it) gives the play each unit's hullMotion; 'fromHull' resolves to the roam cell off
+// the hull's line of travel, ahead of the unit's own side of it, best by distance from that line.
 //   host: scene, metres(), cellSide(), graph(), dungeon(), inside(ci) (the clearing), solidAt(p, pad), hull() (the hull's unit point or null),
 //         eye(), wire() (the wireframe options or null), seed, born (true: both born at once)
 //   createCompanions(host) -> { tick(dt, t), state(), contacts(), roots(), frameOf(i, pos, quat), spots(cells, padM), print(i, ci), wake(i), birth(i),
@@ -27,6 +30,7 @@ export function createCompanions(h) {
   const g = h.graph(), dg = h.dungeon(), centre = (ci) => g.centers[ci];
   const metresBetween = (a, b) => a.distanceTo(b) / h.metres();
   const pad = () => 0.8 * h.metres();   // the body's half width and a little, scene units
+  const HULL_TAU = 0.25, HULL_JUMP = 8, hullP = new THREE.Vector3(), hullV = new THREE.Vector3(), hv = new THREE.Vector3(); let hullSeen = false;
 
   // the roam: the clearing's open cells within roamCells of the heart
   for (let ci = 0; ci < g.centers.length; ci++) if (h.inside(ci) && dg.tags[ci] !== BLOCKED && dg.distToHeart[ci] <= K.roamCells) roam.push(ci);
@@ -76,6 +80,17 @@ export function createCompanions(h) {
     if (token === 'away') {   // the farthest from the other among near roam points (within awayM of me; the farthest of all when none is near)
       let best = -1, bd = -1, near = -1, nd = -1; for (let k = 0; k < 8; k++) { const ci = pickCell(); v.fromArray(centre(ci)); const d = v.distanceTo(other.pos), dm = v.distanceTo(u.pos) / h.metres(); if (dm < K.play.chase.awayM && dm > 3 && d > nd) { nd = d; near = ci; } if (d > bd) { bd = d; best = ci; } }
       return u.goal.fromArray(centre(near >= 0 ? near : best)).normalize();
+    }
+    if (token === 'fromHull') {   // off the hull's line: the roam cell within 25 m farthest from the line ahead of the hull (capped at 14 m), near me
+      const p = h.hull(), m = h.metres(); if (!p) return u.goal.fromArray(centre(pickCell())).normalize();
+      const sp = hullV.length(), dir = sp > 1e-9 ? hv.copy(hullV).divideScalar(sp) : hv.copy(u.pos).sub(hullP).normalize();
+      let best = -1, bs = -Infinity;
+      for (const ci of roam) {
+        v.fromArray(centre(ci)); const du = v.distanceTo(u.pos) / m; if (du > 25 || du < 2) continue;
+        w.copy(v).sub(hullP); const along = w.dot(dir), off = Math.sqrt(Math.max(0, w.lengthSq() - along * along)) / m, line = along < 0 ? w.length() / m : off;
+        const sc = Math.min(line, 14) - 0.25 * du; if (sc > bs && !h.solidAt(centre(ci), pad())) { bs = sc; best = ci; }
+      }
+      return u.goal.fromArray(centre(best >= 0 ? best : pickCell())).normalize();
     }
     if (token === 'detour') { let best = -1, bd = Infinity; for (let k = 0; k < 6; k++) { const ci = pickCell(); v.fromArray(centre(ci)); const d = v.distanceTo(u.pos); if (d > 3 * h.metres() && d < bd) { bd = d; best = ci; } } return u.goal.fromArray(centre(best >= 0 ? best : pickCell())).normalize(); }
     return u.goal.fromArray(centre(pickCell())).normalize();
@@ -148,10 +163,23 @@ export function createCompanions(h) {
     dist: (i, j) => metresBetween(units[i].pos, units[j].pos), toTarget: (i) => metresBetween(units[i].pos, units[i].goal),
     toHull: (i) => { const p = h.hull(); return p ? Math.hypot(units[i].pos.x - p[0], units[i].pos.y - p[1], units[i].pos.z - p[2]) / h.metres() : null; },
     blocked: (i) => units[i].blocked, clipSecs, present: (i) => units[i]?.life === 'born',
+    hullMotion: (i) => {   // the hull as unit i sees it (metres, m/s): the play's dodge (src/domain/companion-play.js)
+      if (!hullSeen) return null; const m = h.metres(), u = units[i];
+      w.copy(u.pos).sub(hullP); const d = w.length() / m, speed = hullV.length() / m, along = speed > 1e-9 ? w.dot(hullV) / hullV.length() : 0;
+      return { d, speed, closing: d > 1e-9 ? along / (d * m) * speed : speed, lateral: Math.sqrt(Math.max(0, w.lengthSq() - along * along)) / m };
+    },
   };
+  // the hull's point and smoothed velocity (scene units a second), frame to frame
+  function trackHull(dt) {
+    const p = h.hull(); if (!p) { hullSeen = false; hullV.set(0, 0, 0); return; }
+    v.set(p[0], p[1], p[2]).normalize();
+    if (!hullSeen || dt <= 0) { if (!hullSeen) { hullP.copy(v); hullV.set(0, 0, 0); hullSeen = true; } return; }
+    w.copy(v).sub(hullP); if (w.length() / h.metres() > HULL_JUMP) hullV.set(0, 0, 0); else hullV.lerp(w.divideScalar(dt), 1 - Math.exp(-dt / HULL_TAU));
+    hullP.copy(v);
+  }
   function tick(dt, t) {
     if (disposed || !roam.length) return;
-    last = t; ctx.now = t;
+    last = t; ctx.now = t; trackHull(dt);
     if (dt > 0) stepPlay(play, dt, ctx);
     for (let i = 0; i < 2; i++) stepUnit(units[i], play.units[i], dt);
   }
@@ -160,8 +188,8 @@ export function createCompanions(h) {
     tick,
     state: () => ({
       loaded: units.every((u) => u.loaded), failed: units.some((u) => u.failed), roam: roam.length, t: +last.toFixed(2), dist: +ctx.dist(0, 1).toFixed(2),
-      game: { on: play.game.on, chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) },
-      units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
+      game: { on: play.game.on, chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) }, dodges: play.dodges, hullMps: +(hullV.length() / h.metres()).toFixed(2),
+      units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, hullM: hullSeen ? +(u.pos.distanceTo(hullP) / h.metres()).toFixed(2) : null, far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
     }),
     contacts: () => units.filter((u) => u.loaded && u.life !== 'unborn').map((u) => ({ pos: u.wrap.position.toArray() })),
     roots: () => units.map((u) => u.root),

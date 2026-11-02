@@ -13,7 +13,11 @@
 //   play.chase     a game of tag: the chaser at `top`, the one fleeing at `flee` of its own top, a tag within `tagM` metres swaps the roles,
 //                  the game over after `secs`; `every` seconds between games, `first` the delay before the first one; a pair further than
 //                  `startM` apart trots together first; the fleer picks its next point within `awayM` of itself (it dodges, it does not cross the base)
-//   play.greet     the trot to the hull, sitting `nearM` metres from it, `every` seconds apart
+//   play.greet     the trot to the hull, sitting `nearM` metres from it, `every` seconds apart; only once the hull has stood still `dodge.stillS`
+//   play.dodge     OUT OF THE TANK'S WAY (owner, 2026-11-02, round 4 note 5): a hull moving faster than `movingMps` and closing faster than
+//                  `closingMps` on a unit within `nearM` metres, or within `rangeM` and `laneM` of its line and due on it inside `leadS` seconds,
+//                  sends the unit off its line at its top speed; it rests once the hull is past, slower than `stillMps` or `clearM` off (or
+//                  after `maxS` with no threat left); the greet waits for the hull to stand `stillS` seconds under `stillMps`
 //   roamCells      how far from the heart cell (hops) they roam; keepFromHull metres they keep off the hull's point when not greeting
 //   units[].born   Isao's line as the printed unit wakes (src/isaobriefs.js)
 //   lodMetres / fade  beyond lodMetres from the eye the static distance tier (one draw) stands in, back inside lodMetres - fade
@@ -32,6 +36,7 @@ export const COMPANIONS = freeze({
     idle: [1.5, 4], wander: [0.45, 0.65], dash: [0.75, 1], trot: 2.3, sitSecs: [3, 6], trick: 0.25, wanderMax: 14,
     chase: { secs: [8, 14], tagM: 1.6, flee: 0.75, every: [20, 45], first: 8, startM: 25, awayM: 20 },
     greet: { nearM: 3, every: [40, 90], first: 25 },
+    dodge: { nearM: 6, rangeM: 60, laneM: 5, leadS: 3, movingMps: 0.5, closingMps: 0.3, stillMps: 0.3, stillS: 1, clearM: 12, maxS: 6 },
   },
   crossfade: 0.25, rate: [0.45, 1.6],   // the blend between clips, and the clip rate's clamp (a gait asked for beyond its band plays no faster than this)
   // ISAO PRINTS THEM (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable

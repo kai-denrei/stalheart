@@ -1486,6 +1486,21 @@ try{
  {const s=await st(),u=C(s).units[0];console.log(`  look: shot ${s.shot}, c07 ${u.mode} ${u.speed} m/s ${u.clip}@${u.rate}, ${u.eyeM} m from the eye, far ${u.far}`);assert.equal(s.shot,'mechLook','the look live');assert.equal(u.far,false,'the cheetah on its game tier in the look');}
  current='companions';await finish();
  await evaluate(`${T}.petLook(1)`);await delay(1200);current='companions-k9';await finish();
+ // OUT OF THE TANK'S WAY (owner, 2026-11-02, round 4 note 5): the hull aimed at where a companion stands 12 m or more off and driven straight at it (W held,
+ // no re-aim) for 6 s: the companion dodges (state().companions.dodges) and the hull's point never comes within 2.5 m of it (the drive's closest logged);
+ // the frame mid-dodge is artifacts/browser/companions-dodge.png
+ {await evaluate(`${T}.showcase.look?.([0,0,1])`).catch(()=>{});await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")');
+  const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});let pick=null;
+  for(let k=0;k<60&&!pick;k++){const c=C(await st());const u=c.units.map((u,i)=>({...u,i})).filter(u=>u.speed<0.5&&u.hullM>=12&&u.hullM<=45).sort((a,b)=>a.hullM-b.hullM)[0];if(u)pick=u;else await delay(500);}
+  assert.ok(pick,'a companion standing 12-45 m from the hull to drive at');
+  const d0=C(await st()).dodges;console.log(`  drive at ${pick.id} (cell ${pick.cell}, ${pick.hullM} m off, ${pick.mode})`);
+  await evaluate(`${T}.showcase.aimHull(${pick.cell})`);await delay(150);await K('keyDown','w','KeyW',87);
+  let min=Infinity,top=0,shot=false,log=[];const t0=Date.now();
+  while(Date.now()-t0<6000){const c=C(await st()),u=c.units[pick.i];min=Math.min(min,u.hullM??Infinity);top=Math.max(top,c.hullMps);log.push(`${u.mode}:${u.hullM}@${c.hullMps}`);if(!shot&&u.mode==='dodge'&&u.hullM<10){shot=true;current='companions-dodge';await finish();}await delay(100);}
+  await K('keyUp','w','KeyW',87);const c=C(await st());
+  console.log(`  drive: closest ${min} m, hull top ${top} m/s, dodges ${c.dodges-d0}; ${log.filter((_,k)=>k%5===0).join(' ')}`);
+  assert.ok(top>2,`the hull drove (${top} m/s)`);assert.ok(c.dodges>d0,`${pick.id} dodged`);assert.ok(min>2.5,`the hull never within 2.5 m of ${pick.id} (closest ${min} m)`);
+  if(!shot){current='companions-dodge';await finish();}}
  } else if(args.includes('--pet-print')) {
  // ISAO PRINTS THE COMPANIONS (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable
  // scene where Isao whimsically prints the cat ... Close up on the creation, showing various angles." / "same with the Cheetah later."): on the finished base

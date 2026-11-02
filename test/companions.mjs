@@ -76,3 +76,46 @@ console.log('Companions: a far pair trots together before a game');
   assert(st.game.games >= 1 && st.units[1].moves > 0, `both printed: the game and the second one's play (${st.game.games} games, ${st.units[1].moves} moves)`);
 }
 console.log('Companions: an unprinted unit stays out of the play; tag waits for both');
+// 6. OUT OF THE TANK'S WAY (owner, 2026-11-02, round 4 note 5): a hull driven straight at a sitting unit on a flat floor never brings its point
+// within 4 m of it (the 10 m hull's half width and the unit's: no drive-through; the spec asked 2 m) (the unit leaves the hull's line at its top speed, ramping at its own acceleration; 'fromHull' resolved as the scene does: off the line);
+// a hull moving past, or parked, sends no one running; the greet waits for a hull that has stood still and breaks off when it moves
+{
+  const { hullThreat } = await import('../src/domain/companion-play.js'), KD = COMPANIONS.play.dodge;
+  function drive({ unit = 1, hull0 = [-40, 0], vel = [12, 0], seconds = 8, lane = 0 } = {}) {
+    let s = 21; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
+    const st = createPlay(COMPANIONS.play), def = COMPANIONS.units, pos = [[0, lane + 0.01], [30, 30]], spd = [0, 0], goal = [pos[0].slice(), pos[1].slice()], hull = hull0.slice();
+    st.units[unit].mode = 'greeted'; st.units[unit].until = 1e9; st.units[unit].oneShot = def[unit].sit; st.units[1 - unit].mode = 'sit'; st.units[1 - unit].until = 1e9;
+    if (unit === 1) { pos[1] = [0, lane + 0.01]; pos[0] = [30, 30]; }
+    const motion = (i) => { const rx = pos[i][0] - hull[0], ry = pos[i][1] - hull[1], d = Math.hypot(rx, ry), sp = Math.hypot(...vel); if (sp < 1e-6) return { d, speed: 0, closing: 0, lateral: d }; const ux = vel[0] / sp, uy = vel[1] / sp, al = rx * ux + ry * uy; return { d, speed: sp, closing: d > 1e-9 ? (rx * vel[0] + ry * vel[1]) / d : sp, lateral: Math.sqrt(Math.max(0, d * d - al * al)) }; };
+    const ctx = { now: 0, rand, units: def.map((d) => ({ top: d.top, trot: d.trot, idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => 40, toTarget: (i) => Math.hypot(goal[i][0] - pos[i][0], goal[i][1] - pos[i][1]), toHull: (i) => motion(i).d, blocked: () => false, clipSecs: () => 4, hullMotion: motion };
+    let min = Infinity, dodged = false; const dt = 1 / 30;
+    for (let t = 0; t < seconds; t += dt) {
+      ctx.now = 100 + t; stepPlay(st, dt, ctx);
+      for (let i = 0; i < 2; i++) {
+        const p = st.units[i];
+        if (p.retarget) { p.retarget = false; if (p.target === 'fromHull') { const sp = Math.hypot(...vel) || 1, nx = -vel[1] / sp, ny = vel[0] / sp, side = Math.sign((pos[i][0] - hull[0]) * nx + (pos[i][1] - hull[1]) * ny) || 1; goal[i] = [pos[i][0] + side * nx * 12, pos[i][1] + side * ny * 12]; } else goal[i] = pos[i].slice(); }
+        if (p.mode === 'dodge') dodged = true;
+        const want = MOVING.has(p.mode) ? p.speed : 0; spd[i] = want > spd[i] ? Math.min(want, spd[i] + def[i].accel * dt) : Math.max(want, spd[i] - def[i].accel * 2 * dt);
+        const gx = goal[i][0] - pos[i][0], gy = goal[i][1] - pos[i][1], gl = Math.hypot(gx, gy); if (gl > 0.05) { const step = Math.min(gl, spd[i] * dt); pos[i][0] += gx / gl * step; pos[i][1] += gy / gl * step; }
+      }
+      hull[0] += vel[0] * dt; hull[1] += vel[1] * dt; min = Math.min(min, motion(unit).d);
+    }
+    return { min, dodged, st };
+  }
+  for (const unit of [0, 1]) for (const v of [6, 12, 20, 30]) { const r = drive({ unit, vel: [v, 0] }); assert(r.dodged, `${COMPANIONS.units[unit].id} dodged a hull at ${v} m/s`); assert(r.min > 4, `${COMPANIONS.units[unit].id}: a hull at ${v} m/s never within 4 m (closest ${r.min.toFixed(2)} m)`); }
+  { const r = drive({ unit: 1, hull0: [-5, 0], vel: [4, 0] }); assert(r.min > 2, `a hull starting 5 m off at 4 m/s (already on it as it moves off) never within 2 m (closest ${r.min.toFixed(2)} m)`); }
+  { const r = drive({ unit: 1, vel: [12, 0], lane: 12 }); assert(!r.dodged, 'a hull passing 12 m to the side sends no one running'); }
+  { const r = drive({ unit: 1, vel: [0, 0], hull0: [-4, 0] }); assert(!r.dodged && r.st.units[1].mode === 'greeted', 'a parked hull 4 m off: the unit stays sat'); }
+  { const r = drive({ unit: 1, hull0: [10, 0], vel: [8, 0] }); assert(!r.dodged, 'a hull driving away: no one runs'); }
+  assert(!hullThreat(null, KD) && !hullThreat({ d: 3, speed: 0.2, closing: 0.2, lateral: 0 }, KD) && hullThreat({ d: 5, speed: 2, closing: 2, lateral: 0 }, KD), 'the threat: moving and closing');
+  // the greet waits for a hull that stood still stillS, and breaks off as it moves
+  let s = 4; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
+  const st = createPlay(COMPANIONS.play), mv = { speed: 3 }, modes = [];
+  const ctx = { now: 0, rand, units: COMPANIONS.units.map((d) => ({ top: d.top, idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => 10, toTarget: () => 8, toHull: () => 30, blocked: () => false, clipSecs: () => 4, hullMotion: () => ({ d: 30, speed: mv.speed, closing: 0, lateral: 30 }) };
+  for (let t = 0; t < 200; t += 0.05) { ctx.now = t; stepPlay(st, 0.05, ctx); modes.push(st.units.map((p) => p.mode)); }
+  assert(!modes.flat().includes('greet'), 'a moving hull is never greeted');
+  mv.speed = 0; let greetAt = null; for (let t = 200; t < 400 && greetAt == null; t += 0.05) { ctx.now = t; stepPlay(st, 0.05, ctx); if (st.units.some((p) => p.mode === 'greet')) greetAt = t; }
+  assert(greetAt != null, 'a parked hull is greeted'); mv.speed = 2; ctx.now += 0.05; stepPlay(st, 0.05, ctx);
+  assert(!st.units.some((p) => p.mode === 'greet'), 'and the greet breaks off as it moves');
+}
+console.log('Companions: out of the tank\'s way: a hull driven at a sitting unit at 6-30 m/s never within 4 m; the greet waits for a parked hull');
