@@ -5,6 +5,11 @@ import * as THREE from '../vendor/three.module.js';
 import { rimRadius,bowlHeight,SINKHOLE_INNER,SINKHOLE_DEPTH,SINKHOLE_BOUNDARY_GLSL } from './core/sinkhole-shape.js';
 import { getStoneTextures,STONE_TILE_METRES } from './fx/sinkhole/loaders/StoneTextures.js';
 
+// A HOLE, NOT A FLAT SURFACE (owner, 2026-11-02, round 4, note 6: "the hole reads as a flat transparent surface"; measured: a top-down and a tank-height
+// frame of a sector breach under the default look, artifacts in the round's entry). The bowl's walls darken toward the throat faster (`shade`: the
+// vertex light's power over the depth, was 1.2) and the look's contour rings fade with their depth (`lines`, a power over the same depth: the rim's
+// ring at the edge colour, the deepest near black), so the rings read as a funnel going down, not a stack of equal rings on a flat disc.
+const THROAT=Object.freeze({shade:2.6,lines:1.6});
 export function makeSinkholeTerrain(hole,radius,{ground=true}={}){
   const textures=getStoneTextures(),group=new THREE.Group(),bowl=new THREE.Group();group.add(bowl);
   const segments=192,rings=24,positions=[],colors=[],uv=[],indices=[];
@@ -13,7 +18,7 @@ export function makeSinkholeTerrain(hole,radius,{ground=true}={}){
     const a=i/segments*Math.PI*2,r=1-(1-SINKHOLE_INNER)*j/rings;
     const x=Math.cos(a)*rimRadius(a)*r,z=Math.sin(a)*rimRadius(a)*r,y=bowlHeight(a,r);
     positions.push(x,y,z);uv.push(x*3.5/STONE_TILE_METRES,z*3.5/STONE_TILE_METRES);
-    const depth=Math.min(1,-y/SINKHOLE_DEPTH),light=Math.pow(1-depth,1.2);
+    const depth=Math.min(1,-y/SINKHOLE_DEPTH),light=Math.pow(1-depth,THROAT.shade);
     colors.push(earth.r*light,earth.g*light,earth.b*light);
     if(j<rings&&i<segments){const k=j*(segments+1)+i;indices.push(k,k+segments+1,k+1,k+1,k+segments+1,k+segments+2);}
   }
@@ -23,7 +28,7 @@ export function makeSinkholeTerrain(hole,radius,{ground=true}={}){
   const blackPositions=[0,-SINKHOLE_DEPTH-.01,0],blackIndices=[];
   for(let i=0;i<=segments;i++){const a=i/segments*Math.PI*2,r=rimRadius(a)*SINKHOLE_INNER;blackPositions.push(Math.cos(a)*r,-SINKHOLE_DEPTH,Math.sin(a)*r);if(i<segments)blackIndices.push(0,i+2,i+1);}
   const blackGeometry=new THREE.BufferGeometry();blackGeometry.setAttribute('position',new THREE.Float32BufferAttribute(blackPositions,3));blackGeometry.setIndex(blackIndices);
-  bowl.add(new THREE.Mesh(blackGeometry,new THREE.MeshBasicMaterial({color:0,side:THREE.DoubleSide})));
+  bowl.add(new THREE.Mesh(blackGeometry,new THREE.MeshBasicMaterial({color:0,side:THREE.DoubleSide,toneMapped:false})));
   const rubble=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1,0),new THREE.MeshStandardMaterial({map:textures.map,color:0x8b7d6b,roughness:1}),36),dummy=new THREE.Object3D();
   for(let i=0;i<36;i++){
     const a=i/36*Math.PI*2+.05*Math.sin(i*7),r=rimRadius(a)*(1.015+.025*Math.sin(i*3));
@@ -31,12 +36,13 @@ export function makeSinkholeTerrain(hole,radius,{ground=true}={}){
     dummy.position.set(Math.cos(a)*r,size*.35,Math.sin(a)*r);dummy.rotation.set(i*.7,i*1.3,i*.2);dummy.scale.set(size*1.5,size*.6,size);dummy.updateMatrix();rubble.setMatrixAt(i,dummy.matrix);
   }
   bowl.add(rubble);
-  const contourPoints=[];
+  const contourPoints=[],contourFade=[];
   for(let ring=0;ring<7;ring++)for(let i=0;i<96;i++){
     const ratio=1-(1-SINKHOLE_INNER)*ring/6;
-    for(const angle of [i/96*Math.PI*2,(i+1)/96*Math.PI*2])contourPoints.push(Math.cos(angle)*rimRadius(angle)*ratio,bowlHeight(angle,ratio)+.003,Math.sin(angle)*rimRadius(angle)*ratio);
+    for(const angle of [i/96*Math.PI*2,(i+1)/96*Math.PI*2]){const y=bowlHeight(angle,ratio);contourPoints.push(Math.cos(angle)*rimRadius(angle)*ratio,y+.003,Math.sin(angle)*rimRadius(angle)*ratio);contourFade.push(Math.pow(1-Math.min(1,-y/SINKHOLE_DEPTH),THROAT.lines));}
   }
-  const contours=new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(contourPoints,3)),new THREE.LineBasicMaterial({transparent:true,opacity:.6,depthWrite:false}));bowl.add(contours);contours.visible=false;
+  const contourGeometry=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(contourPoints,3)).setAttribute('color',new THREE.Float32BufferAttribute(contourFade.flatMap(f=>[f,f,f]),3));
+  const contours=new THREE.LineSegments(contourGeometry,new THREE.LineBasicMaterial({transparent:true,opacity:.6,depthWrite:false,vertexColors:true}));bowl.add(contours);contours.visible=false;
 
   const floorGeometry=new THREE.PlaneGeometry(100,100);floorGeometry.rotateX(-Math.PI/2);
   const p=floorGeometry.attributes.position,u=floorGeometry.attributes.uv;
@@ -71,7 +77,8 @@ export function makeSinkholeTerrain(hole,radius,{ground=true}={}){
     gridMaterial.color.set(look?.edges.color??0xa3bab6);gridMaterial.opacity=look?.edges.opacity??.17;gridMaterial.blending=look?.edges.additive?THREE.AdditiveBlending:THREE.NormalBlending;
     contours.visible=!!look;contours.material.color.set(look?.edges.color??0xffffff);contours.material.blending=gridMaterial.blending;
     const c=geometry.attributes.color,base=look?new THREE.Color(...look.floors.room):earth;
-    for(let i=0;i<c.count;i++){const shade=Math.pow(1-Math.min(1,-positions[i*3+1]/SINKHOLE_DEPTH),1.2);c.setXYZ(i,base.r*shade,base.g*shade,base.b*shade);}c.needsUpdate=true;
+    for(let i=0;i<c.count;i++){const shade=Math.pow(1-Math.min(1,-positions[i*3+1]/SINKHOLE_DEPTH),THROAT.shade);c.setXYZ(i,base.r*shade,base.g*shade,base.b*shade);}c.needsUpdate=true;
+    const lc=contours.geometry.attributes.color,edge=new THREE.Color(look?.edges.color??0xffffff);for(let i=0;i<lc.count;i++){const f=contourFade[i];lc.setXYZ(i,edge.r*f,edge.g*f,edge.b*f);}lc.needsUpdate=true;
   },update(){bowl.visible=hole.value>0;bowl.scale.setScalar(hole.value);flat.visible=ground&&radius.value<=0;
     for(const o of [globe,gridMesh]){o.visible=ground&&radius.value>0;o.scale.setScalar(radius.value||1);o.position.y=-radius.value;}
   },dispose(){group.traverse(o=>{o.geometry?.dispose();o.material?.dispose();if(o.isInstancedMesh)o.dispose();});group.removeFromParent();}};
