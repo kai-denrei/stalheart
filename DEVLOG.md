@@ -20,6 +20,21 @@ Evidence:
 - --pearl-story PASS (SECTOR 2: the sector's own waves as Pearl bodies, 95 whites at r0 1.3, the motion audit 0 pops every tier, stalks and footprints 0 in the rock, the ram and the cored stop, the slow's ice, a phantom's cloak); artifacts/browser/pearl-story.png.
 - The base (the Sky model stashed): --pearl-story fails at its motion audit (white: frames 0, hops 0, replaced 2,442), so the ram check had no baseline there.
 
+## 2026-10-30 — --story-world's Rotor aim wait is 90 s: a watched breach keeps its pile at the crater and a Sky-paced lemon takes about a minute to come into the Rotor's reach
+
+change · accepted · 2026-10-30-story-world-s-rotor-aim-wait-is-the-sky-model-s-minute
+
+On the merge of the playtest round (34f3cc3e: the Sky model, the lemons' head start, the companion prints) --story-world timed out at 'aimEnemy() !== null' after story-world-fodder (15 s). The step's page jumps to stage 6 and watches the breach (tremor, breach, override beats), and a breach the player watches open keeps its pile at the crater by design (src/domain/story-beats.js: the head start is the quiet landing's). An aim probe at the seat read the nearest lemon 14 cells from the Rotor, 11 after 30 s: the Sky model's lemons hop at a radius a second (~2 m/s hunting), where the gliding blobs crossed the lane in seconds. Baselined: with src/content/pearl-enemies.js and src/content/story-defaults.js at 79c2f9b7 (pre-Sky) the step passes in full on the same tree.
+
+scripts/browser-test.mjs: the aim wait is 90 s with the reason in the comment; the step passes in full on the merge (b9434246). The normal landing is unaffected: its quiet breach has the head start (STORY_FODDER.headStart { hops: 11, depth: 4 }), the lemons 2-5 cells from the Rotor at the handover.
+
+Alternatives: A head start for a watched breach too: the dive shows the pile come up at the crater; the owner's 2026-10-16 note kept it there.; A faster lemon for the first wave: the Sky model's cap is the body's; a faster record outruns its hopper (the motion audit).; Leave the step red: a baseline showed the pace, not the merge, and the wait was a blob-era number.
+
+Evidence:
+
+- Aim probe on the step's page at the seat: aim null for 30 s, the nearest ghost 14 -> 13 -> 12 -> 11 cells by walking distance, 0 within 4.6.
+- --story-world PASS on the merge at 90 s (01:36-01:41 UTC); PASS on the pre-Sky content at 15 s; the 15 s wait timed out on the merge.
+
 ## 2026-10-30 — Isao prints the companions: neither is on the planet at landing; C-07 is printed at the first quiet moment after the handover, RECKON K9 three days later once the radar stands, each in a skippable live close-up through four angles
 
 decision · accepted · 2026-10-30-isao-prints-the-companions-c07-first-k9-later-a-skippable-close-up
