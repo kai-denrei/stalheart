@@ -25,7 +25,7 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // hard cores' longer cycles and slower caps retired. Hit points and the heart's bite stay the game's and PEARL_PACE's (difficulty, not the body).
 // rows: [id, name, skin, core, labR0, seekCount, cycleDuration, aggression, coreShape, contactDamage, health]; orange's coreShape is the owner's edit (0 -> 3)
 const ROWS = [
-  ['white', 'Cutis-Soft Ivory', 0xf2efe5, 0x90979d, 0.12, 2, 4.5, 1.3, 0, 0, 15],
+  ['white', 'Cutis-Soft Ivory', 0xf2efe5, 0x90979d, 0.12, 2, 4.5, 2.4, 0, 0, 15],   // aggression 1.3 -> 2.4 (owner, 2026-11-02: "more aggressive"): out of the ladder's order, the one tier that does
   ['yellow', 'Cutis-Soft Lemon', 0xe6cc53, 0x8c6021, 0.14, 2, 4.5, 1.5, 0, 0, 25],
   ['orange', 'Cutis-Core Pumpkin', 0xeb883e, 0x853b20, 0.16, 2, 4.5, 1.6, 3, 0, 40],
   ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.7, 0, 0, 60],   // THE MODEL: as it was (aggression 1.7 since 2026-10-16)
@@ -113,7 +113,9 @@ export const PEARL_OF = freeze({
 // BY SIZE (owner, 2026-10-16: "decision: we split them by size; cutis-soft ivory 0.4, lemon 0.6, blue 0.8, purple 1.2 for now, some sense of differences in sizes
 // and speed"): `scale` by tier id; the other cored tiers keep 1.12
 // THE SKY MODEL (2026-10-30): slight variations round Sky's 0.8 in the set's own order (the belt ladder: orange under blue, as tiers.ts sizes them; were white 0.4, yellow 0.6, blue 0.8, orange 1.12, green 1.12, purple 1.2, brown 1.2, black 1.3; black's 1.3 the corridor's bound: at 1.45 a knot's membrane ran 2.5 m into a 10 m corridor's rock, test/body-footprint.mjs)
-export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.6, yellow: 0.7, orange: 0.75, blue: 0.8, green: 0.9, purple: 1.0, brown: 1.1, black: 1.2 } });
+// 2026-11-02 (owner, round 4, note 1: the ivory "more aggressive, more numerous, faster"): white 0.6 -> 0.65, the faster ivory's metres a second at
+// Sky's 1 radius (test/pearl-motion.mjs: a walk past 1 radius a second pops, and so does 0.7); with SOFT_HUNT.pace.white 1.6 and aggression 2.4
+export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.65, yellow: 0.7, orange: 0.75, blue: 0.8, green: 0.9, purple: 1.0, brown: 1.1, black: 1.2 } });
 export const pearlScaleOf = (tier) => PEARL_BODY.scale[tier] ?? 1;
 
 // HOW A BODY KEEPS UP WITH ITS RECORD (src/domain/pearl-bodies.js; CREATURE_FOLLOW's catch-up and leash over these). The record walks at its type's speed

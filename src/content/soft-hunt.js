@@ -18,7 +18,7 @@
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object') freeze(v); return Object.freeze(o); };
 export const SOFT_HUNT = freeze({
   tiers: ['white', 'yellow'], every: 0.5, bias: 2,
-  pace: { white: 1.35, yellow: 1.25 },
+  pace: { white: 1.6, yellow: 1.25 },   /* white 1.35 -> 1.6 (owner, 2026-11-02: the ivory "faster"; test/pearl-motion.mjs HUNT_CAP) */
   ring: 1.2, slots: 8, layers: 3, layer: 0.35, orbit: 0.25, enter: 2, leave: 4, search: 6, minRing: 0.8, settle: 0.5, atRing: 0.25,
   jab: { every: 3.6, seconds: 1.6, depth: 0.85 },
   tap: 0.5,

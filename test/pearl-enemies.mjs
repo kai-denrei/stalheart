@@ -36,7 +36,7 @@ assert.equal(tier.black.values.coreTint, 0xff0000, 'black: the pure red core'); 
 const sky = tier.blue.values;
 assert.deepEqual([sky.seekCount, sky.cycleDuration, sky.transferAcceleration, sky.reach, sky.aggression], [2, 4.5, 1.8, 11, 1.7], 'Sky as it was (the model)');
 for (const t of PEARL_TIERS) for (const k of ['seekCount', 'cycleDuration', 'transferAcceleration', 'reach']) assert.equal(t.values[k], sky[k], `${t.id}: ${k} is Sky's`);
-for (let k = 1; k < 8; k++) assert(PEARL_TIERS[k].labR0 > PEARL_TIERS[k - 1].labR0 && PEARL_TIERS[k].values.aggression > PEARL_TIERS[k - 1].values.aggression, 'the ladder grows');
+for (let k = 1; k < 8; k++) assert(PEARL_TIERS[k].labR0 > PEARL_TIERS[k - 1].labR0 && (k === 1 || PEARL_TIERS[k].values.aggression > PEARL_TIERS[k - 1].values.aggression), 'the ladder grows');   // past the ivory: its 2.4 is the owner's (2026-11-02, "more aggressive")
 for (const t of PEARL_TIERS) assert(t.values.aggression >= 1.3 && t.values.aggression <= 2.5, `${t.id}: a slight variation round Sky's 1.7 (${t.values.aggression}; the set ran .35 to 4)`);
 const skinOf = Object.values(PEARL_BODY.scale); assert(Math.min(...skinOf) >= 0.6 && Math.max(...skinOf) <= 1.2 && PEARL_BODY.scale.blue === 0.8, 'the sizes a slight ladder round Sky\'s 0.8');
 for (let k = 1; k < 8; k++) assert(PEARL_BODY.scale[PEARL_TIERS[k].id] > PEARL_BODY.scale[PEARL_TIERS[k - 1].id], 'the sizes grow with the ladder');

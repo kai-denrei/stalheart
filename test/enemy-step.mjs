@@ -51,7 +51,8 @@ const newLog = run((w) => { const host = { ...w.fixed }; for (const k of getN) {
 // hunt: src/fx/soft-hunt.js): the phage is a white, its hull (cell 2) 12 walking cells off against the heart's 10 is within SOFT_HUNT.bias, so it walks at
 // the hull x SOFT_HUNT.pace from its first frame and then circles it on the ring instead of walking into the heart (was '3390876de0d3a026'; the first
 // frames differ only in the phage's prog, x 1.35, test/soft-hunt.mjs covers the rule and the ring)
-const GOLDEN = '31678498317acf18';
+// RE-BASED 2026-11-02 (round 4, note 1: SOFT_HUNT.pace.white 1.35 -> 1.6, the phage's prog only; at 1.35 the log is '31678498317acf18' again)
+const GOLDEN = '859ae72644c46b22';
 assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), GOLDEN, 'the enemy loop behaves as the controller block did');
 print('Enemy step: the queue released on its clock, the walk, a kill and the board cleared, as the controller block did.');
 

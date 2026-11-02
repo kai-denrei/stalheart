@@ -100,7 +100,10 @@ console.log('PASS the paced records (every tier at most its radii a second, no b
 // 99th percentile: the cap bounds what the motion does, and a pop is one frame. The look is the implementer's (r3-c report: blobs lunging in at the
 // parked hull, no pop); the 11.2 was not looked at again alone. BEFORE: 5 / 2.8 (the walk's PEARL_PACE radii; the gliding tiers had no upper cap
 // since 2026-10-16); the first hunt cap 9 / 6 (formula only). It runs in the plain `node test/pearl-motion.mjs` (npm test); SOFT_HUNT_AUDIT=1 only prints.
-const HUNT_CAP = { white: 9, yellow: 9 };   // radii a second while hunting the hull, walk or jab; measured worst 8.45 / 8.21 on the Sky model's hoppers (2026-10-30; the blobs' 9.3 / 11.2 under 10 / 12)
+const HUNT_CAP = { white: 10, yellow: 9 };   // radii a second while hunting the hull, walk or jab; measured worst 8.45 / 8.21 on the Sky model's hoppers (2026-10-30; the blobs' 9.3 / 11.2 under 10 / 12)
+// white 9 -> 10 (owner, 2026-11-02: the ivory "more aggressive, faster"): aggression 1.3 -> 2.4, PEARL_BODY.scale 0.6 -> 0.65 and SOFT_HUNT.pace
+// 1.35 -> 1.6 measured worst 9.40 (p99 7.27), no pop. Swept first: the walk past 1 radius a second pops in the follow audit below (1.1: 5 pops), and so
+// does scale 0.7 (at Sky's 1 radius), so the faster ivory is the bigger body's metres and the hunt's own multiplier, not the walk cap.
 {
   for (const [type, b] of Object.entries(PEARL_BODIES)) {
     if (!SOFT_HUNT.tiers.includes(b.tier)) continue;
