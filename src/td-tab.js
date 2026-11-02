@@ -2274,9 +2274,9 @@ export function initTdTab(root) {
   }
 
   // --- pause (ESC): freeze the simulation, keep presenting the frame ------
-  let paused = false;
+  let paused = false, still = false;   /* still: paused with nothing drawn, the last frame kept (the descent's load and the cave over it, src/fx/descent-host.js hold, 2026-11-02) */
   function togglePause() {
-    if (player.won || story?.debrief?.isOpen() || gunshipBriefing?.isOpen() || syntheticModal?.isOpen() || laserStation.briefingOpen()) return; // the end-of-game, debrief, briefing or study modal owns the screen and its pause (2026-09-25: P in a seat unpaused the debrief underneath)
+    if (player.won || still || story?.debrief?.isOpen() || gunshipBriefing?.isOpen() || syntheticModal?.isOpen() || laserStation.briefingOpen()) return; // the end-of-game, debrief, briefing or study modal owns the screen and its pause (2026-09-25: P in a seat unpaused the debrief underneath)
     paused = !paused;
     if (paused) {
       msgEl.innerHTML = `<div class="msg-head">transmission · paused</div>` +
@@ -4224,7 +4224,7 @@ export function initTdTab(root) {
   function frame(dt, simSkip) {
     // paused: keep presenting the frozen frame (both views), zero sim.
     // lastFrame keeps updating above so resume has no dt spike.
-    if (paused) { if (!simSkip && bestiary.frame(dt)) return;   /* the terminal over the paused game: its stage is the only render (src/fx/terminal-screen.js) */
+    if (paused) { if (still) { briefs.stepClock(dt); return; } if (!simSkip && bestiary.frame(dt)) return;   /* the terminal over the paused game: its stage is the only render (src/fx/terminal-screen.js) */
       if (!simSkip) {
         playerMesh.visible = params.view !== 'pov' && !hullDeploy.clip() && !story?.hull?.held();   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping; an unissued hull is not drawn
         postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0); groundFeed.render(renderer, scene, 0);
@@ -4669,7 +4669,7 @@ export function initTdTab(root) {
     knobs: () => tuneKnobs({ tune, params, enemies, sector: sectorRun?.defNow() ?? null, seat: pilot?.gunship ? 'gunship' : pilot?.state?.tower?.key ?? null, arena: !!sectorRun?.defNow()?.boss }),
     context: () => ({ rev: document.querySelector('meta[name="rev"]')?.content ?? '', url: location.href, sector: sectorRun?.defNow() ? `${sectorRun.defNow().n} · ${sectorRun.defNow().name}` : '', screen: screenTiers(enemies, PEARL_OF) }),
     record: (name, text) => recordTune({ base: location.pathname.replace(/[^/]*$/, ''), name, text, download: (n, t) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/markdown' })); a.download = n; a.click(); } }) });   /* THE TUNE PANEL (X): what is on screen, tweaked and recorded (owner, 2026-10-16) */
-  const holeDoor = createHoleDoor({ camera, startShot, cellSide: () => cellSide, centers: () => graph.centers }), descentHost = createDescentHost(root, { pause: (v) => { paused = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t, briefing: () => briefs.queue()?.id ?? briefs.pending() ?? null,
+  const holeDoor = createHoleDoor({ camera, startShot, cellSide: () => cellSide, centers: () => graph.centers }), descentHost = createDescentHost(root, { hold: (v) => { paused = still = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t, briefing: () => briefs.queue()?.id ?? briefs.pending() ?? null,
     look: (ci) => { endShot(); holeDoor.look(ci); }, dive: (ci, s) => holeDoor.dive(ci, s), rise: (ci) => holeDoor.rise(ci), door: (ci) => holeDoor.measure(ci) });   /* the arena's hole, the door in and out (src/fx/hole-door.js, 2026-10-26) */
   const canyonRun = createCanyonRun({
     breachQueue,

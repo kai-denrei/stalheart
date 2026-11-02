@@ -7,6 +7,9 @@
 //                                                  own brief has been up `cap` seconds (`briefWaited`, counted from the hand-off until that brief shows:
 //                                                  a line already on the panel goes first). 2026-10-18 review: the owner's exposition is read before
 //                                                  the cave covers it; a stuck panel cannot hold the cave forever
+//   descentLoadDone({ ready, loadWaited, readyCap, briefing, briefWaited, cap })  the still game may run again for the dive (2026-11-02, note 10): the
+//                                                  cave has said it is ready (or `readyCap` seconds have passed since it began loading), and Isao's
+//                                                  brief is read (or up `cap` seconds), all in real seconds while the game stands still
 export const descentDue = ({ outcome, final, mobile }, tune) => outcome === 'secure' && !!final && !(mobile && tune?.mobileSkip);
 export function descentResult(data, tune) {
   const o = data && typeof data === 'object' ? data.below : null;
@@ -14,3 +17,4 @@ export function descentResult(data, tune) {
 }
 export const descentNext = (outcome) => (outcome === 'lost' ? 'retry' : 'ending');
 export const descentOpenDue = ({ waited, min = 0, briefing = false, briefWaited = waited, cap = Infinity }) => waited >= min && (!briefing || briefWaited >= cap);
+export const descentLoadDone = ({ ready = false, loadWaited = 0, readyCap = Infinity, briefing = false, briefWaited = loadWaited, cap = Infinity }) => (ready || loadWaited >= readyCap) && (!briefing || briefWaited >= cap);

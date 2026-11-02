@@ -1,6 +1,9 @@
 import * as THREE from '../vendor/three.module.js';
-import {SINKHOLE_THROAT,radius,clamp,smooth} from './mission.js';
+import {SINKHOLE_THROAT,radius,clamp,smooth,HOLE_SCALE} from './mission.js';
 import {caveClearance} from './flare-physics.js';
+import {createReedActor} from './reed.js';
+import {rimRadius} from './stalheart/sinkhole-shape.js';
+import {LOOKS} from './stalheart/looks.js';
 
 // THE DOOR (owner, 2026-10-26, note 7: "both the entrance to the Cave and when coming out should read as exactly the same sinkhole where the Boss fight
 // took place"). In Stålheart's page the game's camera dives down the arena's hole to just under its lip before this page shows (src/fx/hole-door.js
@@ -10,8 +13,16 @@ import {caveClearance} from './flare-physics.js';
 // back to the same disc over `climb` seconds, fading to it, before the outcome is posted. Cheap: one sprite disc, one torus, one instanced rubble pile.
 export const DOOR=Object.freeze({
   tilt:2, climb:2, up:1.25,   // seconds; the pitch the camera starts at (looking up the throat), easing to the chase camera's own
-  sky:0x6f8fbf, skyEdge:0x223a66, skyY:6, skyR:40,   // the planet's sky (tronColors' hemisphere sky, lit): the disc over the hole, metres up, metres wide
-  rim:0x0b0f0d, rimTube:.8,   // the rim's silhouette: a ring of dark rock at the throat's mouth
+  // THE SAME PLANET (owner, 2026-11-02, note 13: "the entrance/exit should look like it belongs to the same planet, maybe with the Nih-Dairia carcass
+  // outside"): the disc is the game's night over the arena (the near-black sky the game draws its stars on, a faint navy glow, `stars` of its cells lit),
+  // high and wide enough to sit over the carcass; the ring is the bowl's own rock (tronColors' floor); the carcass below
+  sky:0x0b1a3a, skyEdge:0x020610, skyY:40, skyR:90, stars:.9965,   // centre and edge colours, metres up, metres wide, the share of the disc's cells left dark
+  rim:LOOKS.tronColors.floors.room, rimTube:.8,   // the rim's silhouette: a ring of the planet's rock at the throat's mouth
+  // NIH-DAIRIA, DEAD (note 13): the cave's own Reed body (reed.js, the rest pose, still), the dead grey of the game's corpses (pearl-enemies death.grey
+  // 0.12, matte), `span` times the hole's diameter across as the mother is to her hole in the game (40 m out of a 20 m hole), flattened to `flat` of its
+  // height (it lies), its body on the lip at angle `at` with its longest limb laid over the hole `aim` radians off the axis: seen up the throat from the
+  // start and from the climb, the axis itself left open to the sky. All of it above the ground's level: out of the throat and the flares' way
+  carcass:Object.freeze({grey:.12, span:2, flat:.3, at:-.9, aim:.3}),
   // the game's sinkhole rubble (src/breach-rubble.js there): one rock at 0.55 of the hole's radius, the rest 0.23-0.39 of it; here the hole is the throat
   rubble:Object.freeze({count:9,big:.55,small:.23,spread:.16}),
   hover:1.1,   // metres ISAO hovers over the rubble's top
@@ -45,11 +56,11 @@ export function rubbleClearance(rocks){
 }
 export function createDoor(scene){
   const start=doorStart(),group=new THREE.Group();group.name='door';group.visible=false;scene.add(group);
-  const sky=new THREE.Mesh(new THREE.CircleGeometry(DOOR.skyR,48),new THREE.ShaderMaterial({fog:false,depthWrite:false,uniforms:{inner:{value:new THREE.Color(DOOR.sky)},edge:{value:new THREE.Color(DOOR.skyEdge)}},
+  const sky=new THREE.Mesh(new THREE.CircleGeometry(DOOR.skyR,48),new THREE.ShaderMaterial({fog:false,depthWrite:false,uniforms:{inner:{value:new THREE.Color(DOOR.sky)},edge:{value:new THREE.Color(DOOR.skyEdge)},stars:{value:DOOR.stars}},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader:'varying vec2 vUv;uniform vec3 inner,edge;void main(){float d=length(vUv-.5)*2.;gl_FragColor=vec4(mix(inner,edge,smoothstep(.0,1.,d)),1.);}'}));
+    fragmentShader:'varying vec2 vUv;uniform vec3 inner,edge;uniform float stars;void main(){float d=length(vUv-.5)*2.;vec3 c=mix(inner,edge,smoothstep(.0,1.,d));float h=fract(sin(dot(floor(vUv*420.),vec2(12.9898,78.233)))*43758.5453);c+=vec3(.75,.85,1.)*step(stars,h)*(.35+.65*fract(h*91.))*(1.-.6*d);gl_FragColor=vec4(c,1.);}'}));
   sky.rotation.x=Math.PI/2;sky.position.y=DOOR.skyY;group.add(sky);   // facing down: seen from under the hole only (culled from above)
-  const rim=new THREE.Mesh(new THREE.TorusGeometry(start.hole+DOOR.rimTube*.5,DOOR.rimTube,8,48),new THREE.MeshBasicMaterial({color:DOOR.rim}));
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(start.hole+DOOR.rimTube*.5,DOOR.rimTube,8,48),new THREE.MeshBasicMaterial({color:new THREE.Color(...DOOR.rim)}));
   rim.rotation.x=Math.PI/2;rim.position.y=start.mouth;group.add(rim);
   const pile=rubbleRocks(start),rocks=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1,0),new THREE.MeshStandardMaterial({color:0x1c2a33,roughness:1}),pile.length),dummy=new THREE.Object3D();
   pile.forEach((r,i)=>{dummy.position.set(r.position.x,r.position.y,r.position.z);dummy.rotation.set(r.rotation.x,r.rotation.y,r.rotation.z);dummy.scale.set(r.scale.x,r.scale.y,r.scale.z);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);});
@@ -57,5 +68,25 @@ export function createDoor(scene){
   const onRubble=rubbleClearance(pile);
   // the rock a flare meets: the cave's, and the rubble's while the door is shown
   const clearance=(p)=>{const c=caveClearance(p);return group.visible?Math.min(c,onRubble(p)):c;};
-  return {group,start,clearance,show:(on)=>{group.visible=!!on;},stats:()=>({visible:group.visible,start:start.position,floor:start.floor,mouth:start.mouth,skyY:DOOR.skyY})};
+  let carcass=null;
+  function addCarcass(geometry){
+    if(carcass)return carcass;const pose=carcassPose(geometry);
+    carcass=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:new THREE.Color(DOOR.carcass.grey,DOOR.carcass.grey,DOOR.carcass.grey),roughness:1,metalness:0,fog:false}));
+    carcass.name='nih-dairia-carcass';carcass.position.set(pose.position.x,pose.position.y,pose.position.z);carcass.rotation.y=pose.rotationY;carcass.scale.set(pose.scale.x,pose.scale.y,pose.scale.z);carcass.frustumCulled=false;
+    group.add(carcass);return carcass;
+  }
+  return {group,start,clearance,addCarcass,show:(on)=>{group.visible=!!on;},stats:()=>({visible:group.visible,start:start.position,floor:start.floor,mouth:start.mouth,skyY:DOOR.skyY,carcass:!!carcass})};
+}
+// the carcass: the Reed's rest pose from its own soft body (reed.js), copied still; and where it lies (carcassPose): scaled so its widest limb-to-limb span
+// is DOOR.carcass.span times the hole's diameter (2 x HOLE_SCALE), its body on the lip at DOOR.carcass.at, turned so its longest limb points across the hole
+export function carcassGeometry(buffer,meta){
+  const source=createReedActor(buffer,meta,0).body.surface.geometry,geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',source.attributes.position.clone());geometry.setIndex(source.index.clone());geometry.computeVertexNormals();return geometry;
+}
+export function carcassPose(geometry){
+  const p=geometry.attributes.position,{span,flat,at,aim}=DOOR.carcass;let tip=0,phi=0,low=Infinity;
+  for(let i=0;i<p.count;i++){const r=Math.hypot(p.getX(i),p.getZ(i));low=Math.min(low,p.getY(i));if(r>tip){tip=r;phi=Math.atan2(p.getZ(i),p.getX(i));}}
+  const s=span*2*HOLE_SCALE/(2*tip),lip=HOLE_SCALE*rimRadius(at);
+  // Object3D.rotation.y = r takes a direction at angle a (atan2(z, x)) to a - r: the tip's angle to the way across the hole, `aim` off it
+  return {scale:{x:s,y:s*flat,z:s},rotationY:phi-(at+Math.PI+aim),position:{x:Math.cos(at)*lip,y:-low*s*flat,z:Math.sin(at)*lip},tip:tip*s,lip};
 }
