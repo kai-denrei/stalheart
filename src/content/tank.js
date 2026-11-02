@@ -31,6 +31,13 @@ export const TANK_DRIVE = Object.freeze({ base: 1.35, top: 3.2, tau: 6, turn: 0.
 // hardcore pushes it out of the way and damages the tank"): a hard core's touch dents the armour by one, the hull is lost on the `hits`-th; a killer
 // in `whole` (the MK-9's burn) takes the hull in one. A new hull comes out with its armour whole (src/td-tab.js playerHit, hullArmour).
 export const HULL_ARMOUR = Object.freeze({ hits: 4, whole: Object.freeze(['laser']) });
+// A DENT YOU CANNOT MISS (owner, 2026-11-02, round 4, note 7: hitting a hard core must be explicit; src/fx/hull-dent.js, src/tankfeel.js applyTankHealth):
+// `bump` the share of BUMP_LEN the hull is shoved back (was 0.6), `jolt` the kick's body radius in m for src/fx/ram-jolt.js (a cored touch, PEARL_IMPACT.jolt's
+// refRadius 2.5 is a mid body: 6 reaches the jolt's maxPitch), `callout` the word and its class (styles.css .co-dent). `gauge`: the armour's parts (the
+// tank's 'Mork armor' and 'Mork edge armor' materials, `parts`) take the lift field's gauge colour by `share` x the armour lost (x `ramp`, at most 1), so a
+// hull three dents down reads red over its plates, not only on its running lights; the solid look lights them by `glow` of that colour (emissive).
+export const HULL_DENT = Object.freeze({ bump: 1, jolt: 6, callout: Object.freeze(['HULL DAMAGE', 'co-dent']),
+  gauge: Object.freeze({ parts: /armor|armour|plate/i, share: 0.85, ramp: 1.5, glow: 0.45 }) });
 // THE HULL MENDS UNDER THE STÅLHEART (owner, 2026-10-18: "when the Mork is damaged, sitting under the Stalheart should repair it, same repair time as
 // the shield recharge"; src/domain/hull-repair.js, src/fx/hull-repair.js): a hull parked under the Stålheart's gantry (the box the terminal's console
 // uses, src/fx/story-base.js inside) gets a whole armour back in `seconds`, the shield array's recharge (ARRAY 30s, SHIELD_ARRAY.reserve), so a dent

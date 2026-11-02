@@ -10,6 +10,7 @@
 // handed to it, so it is Node-testable against plain stand-ins.
 
 import { makeParams, clampParams, formatKnobs, knobProblems } from './knobs.js';
+import { HULL_DENT } from './content/tank.js';
 
 export const TANK_FEEL = {
   rise: 0.095,      // body lifts this far, in MODEL units
@@ -209,11 +210,40 @@ function healthMaterials(target, out = []) {
   return out;
 }
 
+// THE GAUGE ON MORE OF THE HULL (owner, 2026-11-02, round 4, note 7; HULL_DENT.gauge): the running lights' wireframe twins (src/fx/model-fixture.js
+// setWireframe keeps the solid material as userData.solid and draws a MeshBasicMaterial of its own: the gauge painted the solid only, so under the
+// default wire look the lift field stayed the cyan it was drawn in, whatever the armour) take the gauge's colour as wireLook takes a lit part's
+// (30 % toward white), and the armour's parts mix toward it by the armour lost: the wire's colour from its own as drawn, the solid's emissive from
+// its own (a MeshBasicMaterial has none: guarded). Every base is kept on the material the first time it is painted.
+const WHITE3 = [1, 1, 1];
+function mixInto(c, base, to, k) { c.setRGB(base[0] + (to[0] - base[0]) * k, base[1] + (to[1] - base[1]) * k, base[2] + (to[2] - base[2]) * k); }
+const baseOf = (m, key, c) => (m.userData[key] ??= [c.r, c.g, c.b]);
+function paintGauge(unit, beam, rgb, frac) {
+  const G = HULL_DENT.gauge, parts = (unit.userData.gaugeParts ??= collectGauge(unit, beam, G.parts)), lit = rgb.map((v, i) => v + (WHITE3[i] - v) * 0.3);
+  const k = G.share * Math.min(1, Math.max(0, 1 - frac) * G.ramp);
+  for (const o of parts.beam) { const w = o.userData.wire; if (w?.color && o.material === w) w.color.setRGB(lit[0], lit[1], lit[2]); }
+  for (const o of parts.armour) {
+    const w = o.userData.wire, solid = o.userData.solid ?? o.material;
+    if (w?.color) mixInto(w.color, baseOf(w, 'gaugeBase', w.color), lit, k);
+    if (solid?.emissive) mixInto(solid.emissive, baseOf(solid, 'gaugeGlow', solid.emissive), rgb, k * G.glow);
+  }
+}
+function collectGauge(unit, beam, parts) {
+  const out = { beam: [], armour: [] };
+  unit.traverse?.((o) => {
+    if (!o.isMesh) return;
+    const m = [o.userData.solid ?? o.material].flat()[0];
+    if (beam.includes(m)) out.beam.push(o); else if (m && parts.test(m.name ?? '')) out.armour.push(o);
+  });
+  return out;
+}
+
 // Paint a unit's health accents. Safe on units that have none.
 export function applyTankHealth(unit, frac) {
   const mats = healthMaterials(unit && unit.userData && unit.userData.healthBeam);
   if (!mats.length) return;
   const [r, g, b] = healthColor(frac);
+  paintGauge(unit, mats, [r, g, b], frac);
   for (const m of mats) {
     // The hue goes in EMISSIVE and the diffuse stays dark. These are running
     // lights: lit at full diffuse they wash toward white under the scene's
