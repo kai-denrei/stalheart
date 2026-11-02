@@ -30,7 +30,7 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], when: { phase: 'expedition' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
   { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
-  { id: 'radar', label: 'radar', islands: ['radar'], structures: ['radar'], when: { sector: 2 }, seconds: 12, metres: 18, brief: 'build_radar', perk: 'uplink' },
+  { id: 'radar', label: 'radar', islands: ['radar'], structures: ['radar'], when: { sector: 2 }, seconds: 12, metres: 18, brief: 'build_radar', perk: 'uplink', closeup: 'antenna' },   // closeup: the print on screen, its line said over the cut (ANTENNA_CLOSEUP below)
   { id: 'assembly', label: 'assembly line', islands: ['assembly'], structures: ['assembly'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_assembly', perk: 'rebuild' },
   // THE BACK GATE (owner, 2026-09-18: "back gate is a reminder that focusing on defense on one side leaves one open; surprise it
   // opens! ... Then Isao installs a gate and we can put sentries"). It is NOT pre-built: sector 2 cracks the mouth behind the bays
@@ -68,6 +68,24 @@ export const BASE_PROGRAMME = Object.freeze([
 // ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the
 // AFR-01 and back to the gate plot cost more than the prints themselves. Nothing is skipped at 4.2 — he is simply not dawdling.
 export const BASE_BUILDER = Object.freeze({ cellsPerSecond: 4.2 });
+
+// THE ANTENNA, PRINTED ON SCREEN (owner, 2026-11-02, round 4 note 4: the Ridgebacks came too early after the K9's print; a skippable antenna build
+// close-up, Isao says the reinforcements come in 8 days, the drop 8 days later). A step with `closeup` holds its line until Isao is over the plot
+// (src/fx/programme-host.js), then src/fx/antenna-print.js cuts to the rising structure for the rest of the print and `tail` seconds after it, its
+// line asked for the panel as the cut starts (src/fx/brief-queue.js want); never over a manned seat or another shot, and not when less than
+// `latest` of the print is left to show (the line is still said). `angles` the four cuts in the plot's metres (x right of its heading, y up, z
+// along it; each eye and look eased over [from, to] s from the cut's start, fov in degrees: src/domain/pet-print.js printCamera); `shot` the
+// live cut's rule, the companions' print's (5 s mandatory, then Space skips, its hint; the near plane lowered while it runs).
+export const ANTENNA_CLOSEUP = Object.freeze({
+  step: 'radar', latest: 0.5, tail: 1.5,
+  angles: Object.freeze([
+    { from: 0, to: 3.5, eye: [[30, 9, 34], [25, 11, 29]], look: [[0, 5, 0], [0, 8, 0]], fov: 50 },   // wide, three-quarter front: the plot and Isao over it
+    { from: 3.5, to: 7, eye: [[10, 2, 12], [12, 3.5, 8]], look: [[0, 3, 0], [0, 6, 0]], fov: 52 },   // low and close at the foot, the slice climbing
+    { from: 7, to: 10.5, eye: [[-7, 1.4, 8], [-9, 1.8, 4]], look: [[0, 10, 0], [0, 14, 0]], fov: 60 },   // under it, looking up the mast to the beam
+    { from: 10.5, to: 14, eye: [[-26, 18, -20], [-30, 13, -10]], look: [[0, 10, 0], [0, 11, 0]], fov: 48 },   // high rear three-quarter, round to its side as it stands
+  ].map((a) => Object.freeze(a))),
+  shot: Object.freeze({ id: 'antennaPrint', lock: 5, skipKey: ' ', hint: 'SPACE · SKIP', near: 0.00025, hintId: 'antenna-skip-hint' }),
+});
 
 // what the perks are worth where the game reads a number: the HUGIN arm fills the gunship call-in meter faster; the assembly line
 // rebuilds this many lost hulls at each sector start

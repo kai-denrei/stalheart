@@ -1501,6 +1501,31 @@ try{
   console.log(`  drive: closest ${min} m, hull top ${top} m/s, dodges ${c.dodges-d0}; ${log.filter((_,k)=>k%5===0).join(' ')}`);
   assert.ok(top>2,`the hull drove (${top} m/s)`);assert.ok(c.dodges>d0,`${pick.id} dodged`);assert.ok(min>2.5,`the hull never within 2.5 m of ${pick.id} (closest ${min} m)`);
   if(!shot){current='companions-dodge';await finish();}}
+ } else if(args.includes('--antenna-print')) {
+ // THE ANTENNA, PRINTED ON SCREEN (owner, 2026-11-02, round 4 note 4): the grown base of sector 4 has its radar standing and the call made at the load,
+ // due eight days on; the harness replays the radar's print under the close-up (antennaPrint(): the real path is the radar step at sector 2, --grow):
+ // the live cut 'antennaPrint' frames the rising structure through four angles (artifacts/browser/antenna-print-1..4.png), the near plane lowered, a plain
+ // key inside the 5 s lock leaving it, the hint after the lock, Isao's line with the wait ("Eight days out."); Space then skips: the lens and the hint
+ // gone, the radar standing whole again.
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), AN=(s)=>s.antenna, {ANTENNA_CLOSEUP}=await import('../src/content/base-programme.js'), {REINFORCEMENTS}=await import('../src/content/reinforcements.js');
+ const keyEv=async(o)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',...o});await send('Input.dispatchKeyEvent',{type:'keyUp',...o});await delay(300);};
+ const frame=async(name)=>{const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(output,name+'.png'),Buffer.from(s.data,'base64'));};
+ await go('antenna-print',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td`);await evaluate(SEEN_LOG);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart") && !!${T}.state().antenna`,120000).catch(async()=>assert.fail('the antenna host created'));
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")');
+ await until(`${T}.state().reinforcements?.called===true`,20000).catch(async()=>assert.fail(`the call (${JSON.stringify((await st()).reinforcements)})`));
+ {const s=await st(),r=s.reinforcements;console.log(`  antenna-print: called on day ${r.calledDay}, due ${r.due}; antenna ${JSON.stringify(AN(s))}`);assert.equal(r.due,r.calledDay+REINFORCEMENTS.days,'the drop eight days on');assert.equal(REINFORCEMENTS.days,8);}
+ await until(`(window.__seen?.briefs||[]).some(b=>/eight days to fall/.test(b))`,40000).catch(async()=>assert.fail(`Isao's call line (${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-6))})`));
+ await until(`!${T}.state().shot`,30000).catch(()=>{});await delay(3000);
+ assert.equal(await evaluate(`${T}.antennaPrint()`),true,'the close-up forced');
+ {const s=await st();console.log(`  antenna-print: cut ${JSON.stringify(AN(s))}, shot ${s.shot}`);assert.equal(s.shot,'antennaPrint');assert.ok(AN(s).lens&&AN(s).lens.near===ANTENNA_CLOSEUP.shot.near,'the near plane lowered');assert.equal(AN(s).said,true,'the line asked');}
+ await keyEv({key:'x',code:'KeyX'});{const s=await st();assert.equal(s.shot,'antennaPrint','a plain key inside the lock leaves it running');assert.equal(AN(s).hint,false,'no hint inside the lock');}
+ for(let k=0;k<4;k++){const A=ANTENNA_CLOSEUP.angles[k];await until(`(${T}.state().antenna.cut?.t??99)>=${A.from+Math.min(2.2,(A.to-A.from)*0.6)}`,30000).catch(()=>{});const s=await st();console.log(`  antenna-print: angle ${k+1}: ${JSON.stringify(AN(s).cut)}, shot ${s.shot}`);if(!AN(s).cut)break;assert.equal(AN(s).cut.angle,k,`angle ${k+1}`);await frame(`antenna-print-${k+1}`);}
+ {const s=await st();assert.ok(AN(s).hint,'the hint after the lock');assert.equal(await evaluate(`document.getElementById('antenna-skip-hint')?.textContent??null`),ANTENNA_CLOSEUP.shot.hint);}
+ await keyEv({key:' ',code:'Space'});
+ {const s=await st();console.log(`  antenna-print: after Space ${JSON.stringify(AN(s))}, shot ${s.shot}`);assert.notEqual(s.shot,'antennaPrint','Space skips after the lock');assert.equal(AN(s).lens,null,'the lens put back');assert.equal(AN(s).skips,1,'a skip');assert.equal(await evaluate(`!!document.getElementById('antenna-skip-hint')`),false,'the hint node removed');}
+ await until(`(window.__seen?.briefs||[]).some(b=>/Eight days out/.test(b))`,40000).catch(async()=>assert.fail(`Isao's antenna line (${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-6))})`));
+ await delay(1500);current='antenna-print-end';await finish();
  } else if(args.includes('--pet-print')) {
  // ISAO PRINTS THE COMPANIONS (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable
  // scene where Isao whimsically prints the cat ... Close up on the creation, showing various angles." / "same with the Cheetah later."): on the finished base
@@ -1933,13 +1958,13 @@ try{
  current='reinforce-timer-landed';await finish();
  // THE STREAK'S LORE (round 3, decision 2): every kill counts toward a streak (the sentries' and the mechs' too) until a leak ends it; with the sector
  // quiet and its field cleared (the unmanned base leaks into the Stålheart), sixteen bodies beside the hunter and an arena mech make one; Isao's
- // once-brief is asked at 1.5x (the tenth kill) and lands on his panel when it is free
+ // once-brief (chain_lore since round 4 note 2) is asked at the first STREAK callout (the fifth kill) and lands on his panel when it is free
  {const s=await st(),ms=R(s).mechs,hunt=ms.find(m=>m.role==='hunt'),ar=ms.find(m=>m.role==='arena');console.log(`  reinforcements-timer: streak before ${JSON.stringify(s.streak)}`);
   await evaluate(`${T}.sectorQuiet(true)`);await evaluate(`${T}.sectorClearField()`);await delay(2000);
   await evaluate(`${T}.spawnHere(${hunt.cell},16)`);await evaluate(`${T}.spawnHere(${ar.cell},16)`);}
- await until(`(window.__seen?.briefs||[]).some(b=>/their cells bind as they go/.test(b))`,120000).catch(async()=>assert.fail(`Isao's streak lore (streak ${JSON.stringify((await st()).streak)}; ${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-8))})`));
+ await until(`(window.__seen?.briefs||[]).some(b=>/membranes cross-link before they break down/.test(b))`,120000).catch(async()=>assert.fail(`Isao's streak lore (streak ${JSON.stringify((await st()).streak)}; ${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-8))})`));
  console.log(`  reinforcements-timer: streak at the lore ${JSON.stringify((await st()).streak)}`);
- console.log(`  reinforcements-timer: the streak's lore said (${(await evaluate('window.__seen.briefs')).filter(b=>/their cells bind|seeps into the ground/.test(b)).length} of its 2 lines seen)`);
+ console.log(`  reinforcements-timer: the streak's lore said (${(await evaluate('window.__seen.briefs')).filter(b=>/membranes cross-link|scoop it|Keep the chain going/.test(b)).length} of its 3 lines seen)`);
  } else if(args.includes('--reinforcements')) {
  // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23; spec docs/superpowers/specs/2026-10-23-feids26-reinforcements-design.md): ?reinforce=1 drops them as soon
  // as the world stands: the drop's phase within 10 s, the camera cut to the arena on the cinematic (shot 'feidsDrop', live), the four touchdowns at the

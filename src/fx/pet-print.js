@@ -7,7 +7,8 @@
 // default look) closing up behind it a band lower; then the print fades, the unit takes its first idle, Isao goes back up and the unit walks off
 // into its play. A live cut (the world runs under it) through four close angles round the bed (printCamera), five seconds mandatory then Space
 // skips (src/fx/camera-shot.js lockFor / skipKey, the FEIDS-26 drop's rule and hint); a skip finishes the print at once. The camera's near plane
-// is lowered for the close-up as the drop's cut does, and put back at its end. Lines are text only (src/isaobriefs.js).
+// is lowered for the close-up as the drop's cut does, and put back at its end (the rail is src/fx/print-closeup.js since round 4, 2026-11-02, shared
+// with the antenna's print). Lines are text only (src/isaobriefs.js).
 //   host: scene, camera, metres(), startShot, endShot, snapCamera, showBrief, companions(), isao() (the drone's record or null), phase() (the story beat),
 //         perk(id), day(), sectorRun(), shotActive(), seated(), card(), isaoBusy(), alive(), won(), slabAt(p, padM) (the raised island's top under a
 //         unit point, metres, or null: src/fx/story-base.js)
@@ -15,25 +16,22 @@
 import * as THREE from '../../vendor/three.module.js';
 import { COMPANIONS } from '../content/companions.js';
 import { STORY_PHASES } from '../domain/automation.js';
-import { nextPrint, printGates, printReady, printEnd, printTimeline, printCamera } from '../domain/pet-print.js';
+import { nextPrint, printGates, printReady, printEnd, printTimeline } from '../domain/pet-print.js';
 import { loadModelFixture, cloneFixture, modelClips } from './model-fixture.js';
+import { createPrintCloseup, framePoint } from './print-closeup.js';
 
 const P = COMPANIONS.prints, K = COMPANIONS.print, TL = K.timeline, END = printEnd(TL), UNITS = COMPANIONS.units;
 const unitIndex = (id) => UNITS.findIndex((u) => u.id === id);
 
 export function createPetPrint(h) {
   const bornDay = new Map();   // id -> the day it was born (the next trigger's `days`)
-  let held = 0, forced = -1, run = null, why = 'idle', prints = 0, skips = 0, bedLeft = null, hint = null, lens = null, last = null;
+  let held = 0, forced = -1, run = null, why = 'idle', prints = 0, skips = 0, bedLeft = null, last = null;
+  const cu = createPrintCloseup({ camera: h.camera, startShot: h.startShot, endShot: h.endShot, snapCamera: h.snapCamera }, { ...K.shot, hintId: 'pet-skip-hint' });
   const v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Quaternion(), tmp = new THREE.Object3D();
   const day = () => h.day?.() ?? 0;
 
-  function hintOn() { if (hint || typeof document === 'undefined') return; hint = document.createElement('div'); hint.id = 'pet-skip-hint'; hint.innerHTML = `<footer><span>${K.shot.hint}</span></footer>`; document.body.append(hint); }
-  function hintOff() { hint?.remove(); hint = null; }
-  function lensOn(fov) { if (!lens) lens = { fov: h.camera.fov, near: h.camera.near }; h.camera.near = K.shot.near; h.camera.fov = fov; h.camera.updateProjectionMatrix(); }
-  function lensOff() { if (!lens) return; h.camera.near = lens.near; h.camera.fov = lens.fov; h.camera.updateProjectionMatrix(); lens = null; }
-
   // a bed-metre point (x right of the facing, y up, z the facing) in world units
-  const at = (r, p, out) => out.copy(r.origin).addScaledVector(r.x, p[0] * r.m).addScaledVector(r.up, p[1] * r.m).addScaledVector(r.z, p[2] * r.m);
+  const at = framePoint;
   const cutAt = (r, plane, share) => plane.setFromNormalAndCoplanarPoint(w.copy(r.up).negate(), at(r, [0, -0.02 + share * (r.box.h + 0.04), 0], v));
 
   function makeBed(r) {
@@ -111,13 +109,8 @@ export function createPetPrint(h) {
   }
   function shot(r) {
     r.cut = true;
-    const eye = new THREE.Vector3(), look = new THREE.Vector3(), m4 = new THREE.Matrix4();
-    h.startShot({ id: K.shot.id, dur: END + 1, skippable: true, lockFor: K.shot.lock, skipKey: K.shot.skipKey, onEnd: () => { r.cut = false; r.cutDone = true; hintOff(); lensOff(); if (!r.done) { r.skipped = true; skips++; finish(r); } h.snapCamera(); }, poseAt(u, out) {
-      if (r.done) return;
-      const cam = printCamera(r.t, K.angles, r.size);
-      at(r, cam.eye, eye); at(r, cam.look, look); m4.lookAt(eye, look, r.up);
-      out.pos.copy(eye); out.quat.setFromRotationMatrix(m4);
-    } });
+    cu.begin({ origin: r.origin, x: r.x, up: r.up, z: r.z, m: r.m, angles: K.angles, size: r.size, dur: END + 1, clock: () => r.t, done: () => r.done,
+      onEnd: () => { r.cut = false; r.cutDone = true; if (!r.done) { r.skipped = true; skips++; finish(r); } } });
   }
   function poseIsao(r, s) {
     const I = r.isao; if (!I) return;
@@ -146,10 +139,7 @@ export function createPetPrint(h) {
     }
     if (!s.still && !r.woke) { r.woke = true; c?.wake(r.i); }
     if (s.phase === 'wake' && !r.said) { r.said = true; h.showBrief(UNITS[r.i].born); }
-    if (r.cut) {
-      const a = printCamera(r.t, K.angles, r.size).angle; lensOn(K.angles[a].fov); if (r.t >= K.shot.lock) hintOn();
-      if (a !== r.angle) { r.angle = a; if (dt > 0) h.snapCamera(); }   // a cut, not the game camera's glide
-    }
+    if (r.cut) { cu.tick(dt); r.angle = cu.angle(); }   // the lens, the hint, a cut between angles (src/fx/print-closeup.js)
     if (r.t >= END) finish(r);
   }
   // the print done (its end, or a skip): the unit born and in its play, the print and the beam gone, the bed fading, Isao back to his work
@@ -202,11 +192,11 @@ export function createPetPrint(h) {
     },
     state: () => ({ why, held: +held.toFixed(1), forced, prints, skips, printing: run ? { id: run.id, t: +run.t.toFixed(2), phase: printTimeline(run.t, TL, K.band).phase, angle: run.angle, cut: run.cut, cell: run.cell, isao: !!run.isao, ghost: !!run.ghost, size: +run.size.toFixed(2), box: Object.fromEntries(Object.entries(run.box).map(([k, x]) => [k, +x.toFixed(2)])),
       eyeM: +(h.camera.position.distanceTo(run.origin) / run.m).toFixed(2), eyeUp: +(h.camera.position.clone().sub(run.origin).dot(run.up) / run.m).toFixed(2), fov: +h.camera.fov.toFixed(1), isaoM: run.isao ? [+run.isao.foot.toFixed(2), +run.isao.tall.toFixed(2), +(run.isao.rec.obj.position.clone().sub(run.origin).dot(run.up) / run.m).toFixed(2)] : null } : null,
-      last, bornDay: Object.fromEntries(bornDay), lens: lens ? { near: h.camera.near, fov: h.camera.fov } : null, hint: !!hint, end: END }),
+      last, bornDay: Object.fromEntries(bornDay), lens: cu.lens(), hint: cu.hint(), end: END }),
     restore() {
       if (run) { const r = run; r.done = true; unclipSkin(r); h.scene.remove(r.bed); h.scene.remove(r.beam); if (r.isao) r.isao.rec.held = false; run = null; }
       if (bedLeft) { h.scene.remove(bedLeft.g); bedLeft = null; }
-      hintOff(); lensOff();
+      cu.restore();
     },
   };
 }

@@ -77,7 +77,7 @@ export function createProgrammeHost(c) {
       programmeBegin(pg, step);
       orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, head: c.story().chapter?.head[step.id] ?? 0, step, bed: c.story().print.bed(step) });   // head: a tutorial chapter's start finds this print under way
       spawnIsao();
-      if (!c.pilotMode() && !c.briefQ()) showBrief(step.brief);   // his line as he starts, never over a manned seat or another line
+      if (!step.closeup && !c.pilotMode() && !c.briefQ()) showBrief(step.brief);   // his line as he starts, never over a manned seat or another line; a close-up step's over its cut (src/fx/antenna-print.js, round 4)
       updateHud();
     },
     // THE SIDE BREACH (src/domain/side-breach.js, sector 5): where it can come up outside the gate's wall, and the wall it breaks

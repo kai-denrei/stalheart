@@ -18,6 +18,12 @@
 // "Oh well. Rebuild." Two short lines at most; the second line is always what
 // he does next. Curiosity over dread, resources over blame.
 import { SECTORS, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_CANYON_AGAIN } from './content/sectors.js';
+import { REINFORCEMENTS } from './content/reinforcements.js';
+
+// THE WAIT, SPOKEN FROM THE KNOB (round 4, 2026-11-02, note 4): every line that names the reinforcements' wait reads REINFORCEMENTS.days
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+export const daysWord = (n = REINFORCEMENTS.days) => NUMBER_WORDS[n] ?? String(n);
+const capital = (w) => w.charAt(0).toUpperCase() + w.slice(1);
 
 export const BRIEFS = {
   // --- THE STORY -----------------------------------------------------------
@@ -311,7 +317,7 @@ export const BRIEFS = {
   },
   build_radar: {
     id: 'build_radar', face: 'focused', title: 'COMMS · ISAO', once: true,
-    lines: ['SOL-82 needs someone to talk to.', 'Printing the radar. With that we can call reinforcements.'],   // the precursor (owner, 2026-10-30: 'when Isao prints the Radar Dish, he says; with that we can call reinforcements'): the FEIDS-26 come a few days after the dish (src/fx/reinforcements-host.js); two lines, the panel's
+    lines: ['SOL-82 needs someone to talk to.', `Printing the antenna. Once it stands I can call for reinforcements. ${capital(daysWord())} days out.`],   // round 4, 2026-11-02, note 4: said over the antenna's close-up (src/fx/antenna-print.js), the wait from REINFORCEMENTS.days   // the precursor (owner, 2026-10-30: 'when Isao prints the Radar Dish, he says; with that we can call reinforcements'): the FEIDS-26 come a few days after the dish (src/fx/reinforcements-host.js); two lines, the panel's
   },
   build_assembly: {
     id: 'build_assembly', face: 'determined', title: 'COMMS · ISAO', once: true,
@@ -481,7 +487,7 @@ export const BRIEFS = {
   day_42_over: { id: 'day_42_over', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Party\'s over. They heard the bass.'] },
   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23: "have Isao call out planetary re-inforcements after having built the radar, and after a few in-game days
   // the FEIDS26 will come"; src/fx/reinforcements-host.js): the call as the radar stands, the drop as the camera cuts to the arena, the four down
-  reinforcements_called: { id: 'reinforcements_called', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Radar\'s up! We can ask the colony for reinforcements.', 'I\'ve sent the call. They\'ll take a few days to fall.'] },   // round 3, 2026-10-26: the owner's lines, a caption until recorded
+  reinforcements_called: { id: 'reinforcements_called', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Radar\'s up! We can ask the colony for reinforcements.', `I've sent the call. They'll take ${daysWord()} days to fall.`] },   // round 3, 2026-10-26: the owner's lines, a caption until recorded; the wait read from REINFORCEMENTS.days (round 4)
   reinforcements_inbound: { id: 'reinforcements_inbound', face: 'awe', title: 'COMMS · ISAO', once: true, lines: ['Here they come. Look at the other side of the planet.'] },
   reinforcements_landed: { id: 'reinforcements_landed', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Hmm. These mechs were all they could send as support.', 'Two hold the arena, one walks home, one hunts.'] },   // round 3: the owner's line
   // ISAO PRINTS THE COMPANIONS (owner, 2026-10-30: "a skippable scene where Isao whimsically prints the cat because he wants a companion"; src/fx/pet-print.js):

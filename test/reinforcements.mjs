@@ -74,5 +74,11 @@ assert.equal(dropPhase(-1, TL), 'idle'); assert.equal(dropPhase(5, TL), 'droppin
   assert.equal(dropCentre({ adj, dist, from: 9, hops: 20 }), 0, 'stops at the heart');
   assert.equal(dropCentre({ adj, dist, from: 9, hops: 5, open: (c) => c !== 6 }), 7, 'never onto a closed cell');
   assert.equal(dropCentre({ adj, dist, from: -1, hops: 5 }), -1); }
-assert.ok(REINFORCEMENTS.days === 3 && REINFORCEMENTS.pace === 0.08 && REINFORCEMENTS.roles.length === 4);
+assert.ok(REINFORCEMENTS.days === 8 && REINFORCEMENTS.pace === 0.08 && REINFORCEMENTS.roles.length === 4);
+// THE WAIT SPOKEN FROM THE KNOB (round 4, 2026-11-02, note 4): the radar's brief and the call name REINFORCEMENTS.days in words
+{ const { BRIEFS, daysWord } = await import('../src/isaobriefs.js'), w = daysWord(REINFORCEMENTS.days);
+  assert.equal(w, 'eight'); assert.equal(daysWord(3), 'three');
+  assert.ok(BRIEFS.build_radar.lines[1].toLowerCase().includes(`${w} days out`), BRIEFS.build_radar.lines[1]);
+  assert.ok(BRIEFS.reinforcements_called.lines[1].includes(`${w} days to fall`), BRIEFS.reinforcements_called.lines[1]);
+  assert.ok(!Object.values(BRIEFS).some((b) => b.lines?.some((l) => /a few days/.test(l))), 'no line says "a few days"'); }
 console.log('reinforcements: the timeline, the cues, the camera, the trigger and the centre hold');
