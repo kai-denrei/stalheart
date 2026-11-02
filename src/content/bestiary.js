@@ -41,6 +41,13 @@ export const TERMINAL = freeze({
   consoleTrigger: 'console_first',
 });
 
+// THE CHAIN (owner, 2026-11-02, round 4 note 2: "Keep the chain going" explained with believable technobabble and written in the bestiary): the
+// streak's lore (src/isaobriefs.js chain_lore) as a note on the soft entries flagged `chain` (the chain's bodies), shown on a full reading
+export const CHAIN_NOTE = freeze({
+  title: 'BIOMASS · THE CHAIN',
+  text: 'Kills within a few metres of each other cross-link as they die: the membranes knit into a lattice that holds the biomass on the surface for the treads. A lone kill liquefies and seeps into the rock. Each kill in the chain pays more; a leak breaks it.',
+});
+
 // THE ENTRIES (section 6). One per Pearl tier (its types are PEARL_OF's: test/bestiary.mjs holds the two equal), then the kit creatures as
 // entries of their own once met. `stage` false: the card shows without a live stage (the Reeds' kit simulates on a frame of its own on the
 // unit sphere, src/fx/creature-reed.js, and does not seat on the stage's bent disc in this piece; the Nih-Dairia's stage is out of this piece).
@@ -51,12 +58,14 @@ export const ENTRIES = freeze([
     'Small, soft, and in no hurry to be anything else. They come in numbers because one of them is not an argument.',
     'The amoeba hunts whatever opened the ground. The phage crawls. Both go under the treads with a sound I have stopped finding funny.',
     'If you see one, you are looking at the wrong one.',
-  ] },
+    'Kill them close together: the dying membranes cross-link and the mass stays up where the treads can take it. Keep the chain going.',
+  ], chain: true },
   { id: 'yellow', name: 'CUTIS-SOFT LEMON', kind: 'tier', types: ['ghost', 'scoutufo'], stage: true, isao: [
     'Fast, light, and convinced it is a fighter pilot. It is not.',
     'The scout maps you. The ghost just wants to see what happens. Neither has a plan for the treads.',
     'Rammable. Satisfyingly so.',
-  ] },
+    'One alone liquefies into the rock. A run of them knits into a lattice the treads can scoop. That is the chain.',
+  ], chain: true },
   { id: 'blue', name: 'CUTIS-SOFT SKY', kind: 'tier', types: ['saucer', 'jellyfish', 'gslime'], stage: true, isao: [
     'Three bad ideas in one belt: a saucer that weaves, a jellyfish that pulses, and a slime that heals if you let it.',
     'Do not let it. Ram the slime first, admire the jellyfish later.',

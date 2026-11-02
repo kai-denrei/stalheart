@@ -41,7 +41,7 @@ import { showContact, contactsLogged, onContact } from './contact-card.js';
 import { isaoSpeak } from './isao-voice.js';
 import { storage } from '../storage.js';
 import { bestiaryRoster, entryIdOf, entryState, entryCard, readSightings, noteSighting, terminalRoster, unitState, unitCard } from '../domain/bestiary.js';
-import { ENTRIES, TERMINAL, TERMINAL_CRT, BESTIARY_STAGE, BESTIARY_BENCH, BESTIARY_STORE, CREATURE_SPEC, CREATURE_LABELS, SECTIONS, UNIT_ENTRIES } from '../content/bestiary.js';
+import { ENTRIES, TERMINAL, TERMINAL_CRT, BESTIARY_STAGE, BESTIARY_BENCH, BESTIARY_STORE, CREATURE_SPEC, CREATURE_LABELS, SECTIONS, UNIT_ENTRIES, CHAIN_NOTE } from '../content/bestiary.js';
 import { TOWER_BY_KEY, effectiveStats, MAX_TIER } from '../towers.js';
 import { PEARL_TIERS, PEARL_OF } from '../content/pearl-enemies.js';
 import { ENEMY_SPEC, INTROS } from '../enemyspec.js';
@@ -107,7 +107,7 @@ export function createTerminalScreen(root, host) {
   function select(k) {
     selected = Math.max(0, Math.min(roster.length - 1, k));
     const e = roster[selected], st = states[selected], unit = e.kind === 'unit';
-    const c = unit ? unitCard(e, st, { copy: TERMINAL, facts: sentryFacts(e) }) : entryCard(e, st, { spec: SPEC, labels: LABELS, sightings: sightings(), log: contacts(), copy: TERMINAL });
+    const c = unit ? unitCard(e, st, { copy: TERMINAL, facts: sentryFacts(e) }) : entryCard(e, st, { spec: SPEC, labels: LABELS, sightings: sightings(), log: contacts(), copy: TERMINAL, chain: CHAIN_NOTE });
     for (const li of listEl.children) li.classList.toggle('on', +li.dataset.k === selected);
     listEl.querySelector('.t-row.on')?.scrollIntoView?.({ block: 'nearest' });
     cardEl.innerHTML = `<div class="t-c-head">${esc(c.head)}</div><div class="t-c-name"><i class="t-sw" style="--sw:${hex(c.swatch)}"></i>${esc(c.name)}</div>`
@@ -117,6 +117,7 @@ export function createTerminalScreen(root, host) {
       + (c.met ? `<div class="t-met">${dated(c.met)}</div>` : '')
       + (c.warning ? `<div class="t-warn">${esc(c.warning)}</div>` : '')
       + (c.text ? `<div class="t-text">${c.text.map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : '')
+      + (c.lore ? `<div class="t-lore"><b>${esc(c.lore.title)}</b><p>${esc(c.lore.text)}</p></div>` : '')
       + (c.note ? `<div class="t-note">${dated(c.note)}</div>` : '');
     cardEl.dataset.state = st;
     const warn = cardEl.querySelector('.t-warn'); if (warn) { warn.classList.remove('blink'); void warn.offsetWidth; warn.classList.add('blink'); }

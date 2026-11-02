@@ -31,7 +31,7 @@ export function bestiaryRoster({ entries, tiers, of, spec = {} }) {
   const creatureRows = entries.filter((e) => e.kind === 'creature').map((e) => ({ e, types: [...e.types], rank: null, cored: e.types.every((k) => spec[k] ? !spec[k].rammable : true), swatch: e.swatch ?? 0xffffff, label: e.label ?? 'CREATURE' }));
   const rows = [...tierRows, ...creatureRows];
   return rows.map(({ e, types, rank, cored, swatch, label }, k) => Object.freeze({
-    id: e.id, kind: e.kind, index: k + 1, total: rows.length, name: e.name, label, types: Object.freeze(types), rank, cored, swatch, stage: e.stage !== false, isao: Object.freeze([...(e.isao ?? [])]),
+    id: e.id, kind: e.kind, index: k + 1, total: rows.length, name: e.name, label, types: Object.freeze(types), rank, cored, swatch, stage: e.stage !== false, isao: Object.freeze([...(e.isao ?? [])]), chain: !!e.chain,
   }));
 }
 
@@ -46,8 +46,8 @@ export function entryState(entry, { log = [], sightings = {}, all = false } = {}
 }
 
 // `spec` the types' combat rows, `labels` type -> its name (INTROS' labels), `sightings` the record, `log` this run's types, `copy` the
-// content's TERMINAL (ram words, the notes) -> the card
-export function entryCard(entry, state, { spec = {}, labels = {}, sightings = {}, log = [], copy }) {
+// content's TERMINAL (ram words, the notes), `chain` the content's CHAIN_NOTE (a `chain` entry's lore) -> the card
+export function entryCard(entry, state, { spec = {}, labels = {}, sightings = {}, log = [], copy, chain = null }) {
   const met = sightings?.[entry.id] ?? null, unseen = state === 'unseen';
   const shown = entry.types.find((t) => log.includes(t)) ?? entry.types[0] ?? null;
   const nameOf = (t) => String(labels[t] ?? t ?? '').replace(/^THE /, '').toUpperCase();
@@ -62,6 +62,7 @@ export function entryCard(entry, state, { spec = {}, labels = {}, sightings = {}
     met: met && !unseen ? `MET: run ${met.runs} · first ${met.first}` : null,
     warning: !unseen && entry.cored ? copy.warning : null,
     text: state === 'full' ? entry.isao.slice() : null,
+    lore: state === 'full' && entry.chain && chain ? { title: chain.title, text: chain.text } : null,   // THE CHAIN (round 4 note 2): a soft entry's note
     note: state === 'silhouette' ? copy.silhouetteNote.replace('{date}', met?.last ?? met?.first ?? '—') : unseen ? copy.unseenNote : null,
   };
 }

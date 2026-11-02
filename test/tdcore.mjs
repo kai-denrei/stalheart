@@ -142,10 +142,10 @@ console.log('economy:');
   check('leak resets the streak', eco.streak === 0 && eco.multiplier() === 1);
   for (let i = 0; i < 200; i++) eco.award(1);
   check(`multiplier caps at x${STREAK_CAP}`, eco.multiplier() === STREAK_CAP);
-  // THE STREAK'S LORE (round 3, 2026-10-26): Isao's once-brief is asked at 1.5x, the tenth kill of a streak
-  { const { BRIEFS } = await import('../src/isaobriefs.js'), lore = BRIEFS.streak_lore, e2 = makeEconomy(); let k = 0;
-    while (e2.multiplier() < lore.at) { e2.award(1); k++; }
-    check('the streak lore: once, two lines, at 1.5x (the tenth kill)', lore.once && lore.lines.length === 2 && lore.at === 1.5 && k === 10, `k ${k}`); }
+  // THE STREAK'S LORE (round 3, 2026-10-26; round 4 note 2, 2026-11-02): Isao's once-brief is asked at the first STREAK callout, the fifth kill
+  { const { BRIEFS, dwellFor } = await import('../src/isaobriefs.js'), lore = BRIEFS.chain_lore;
+    check('the streak lore: once, three lines, at the first streak callout (the fifth kill), "Keep the chain going." last', lore.once && lore.lines.length === 3 && lore.streak === 5 && lore.at === undefined && lore.lines[2].endsWith('Keep the chain going.'));
+    check('the streak lore: every line readable inside the panel\'s ceiling', lore.lines.every((l) => dwellFor(l) < 7), lore.lines.map(dwellFor).join(' ')); }
   const ramPay = makeEconomy().award(10, { ram: true });
   check(`ram premium x${RAM_PREMIUM}`, ramPay === Math.round(10 * RAM_PREMIUM * 1.05));
   const eco2 = makeEconomy({ startBiomass: 50 });

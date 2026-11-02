@@ -5089,6 +5089,9 @@ body.seat-gliding #seat-vignette { display: none; }
 #terminal .t-warn.blink { animation: t-blink 0.9s steps(2, jump-none) 1; }
 @keyframes t-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
 #terminal .t-text p { margin: 0 0 8px; color: #dff3ec; }
+#terminal .t-lore { border-left: 2px solid rgba(150, 230, 205, 0.45); padding: 2px 0 2px 8px; margin: 0 0 10px; }
+#terminal .t-lore b { display: block; color: #8fb8ad; letter-spacing: 0.12em; font-weight: 400; font-size: 0.85em; margin-bottom: 4px; }
+#terminal .t-lore p { margin: 0; color: #cfe7df; }
 #terminal .t-note { color: #a8c9c0; letter-spacing: 0.12em; border-top: 1px dashed rgba(150, 230, 205, 0.3); padding-top: 8px; }
 #terminal .t-date { white-space: nowrap; }
 #terminal .t-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; padding-top: 6px; border-top: 1px solid rgba(150, 230, 205, 0.22); color: #8fb8ad; font-size: 0.85em; }

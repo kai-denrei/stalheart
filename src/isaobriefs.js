@@ -433,9 +433,12 @@ export const BRIEFS = {
   },
 
   // THE STREAK'S LORE (owner, 2026-10-26, round 3 note 5: "when they die closer to each other, the dying cells of various organisms bound in a way
-  // that preserves more mass, otherwise it seeps into the ground"): said once, the first time the streak multiplier reaches `at` (src/td-tab.js
-  // noteStreak); the campaign debrief's 'longest streak' tile carries the one-line version. A caption until recorded
-  streak_lore: { id: 'streak_lore', face: 'curious', title: 'COMMS · ISAO', once: true, at: 1.5, lines: ['When they die close together, their cells bind as they go. More of the mass holds.', 'Alone, it just seeps into the ground. Keep the kills tight.'] },
+  // that preserves more mass, otherwise it seeps into the ground"; round 4, 2026-11-02, note 2: "Keep the chain going" explained by Isao with
+  // believable technobabble): said once, at the run's FIRST streak callout (the `streak`-th consecutive kill, src/td-tab.js noteStreak, the same
+  // every-5th the STREAK callout keys on), so the chain is explained before the trickle's recorded "Keep the chain going." is heard; the bestiary's
+  // soft entries carry it too (src/content/bestiary.js CHAIN_NOTE). Renamed from streak_lore so a browser that saw the old two lines hears
+  // these (the seen list is kept per browser). A caption until recorded
+  chain_lore: { id: 'chain_lore', face: 'curious', title: 'COMMS · ISAO', once: true, streak: 5, lines: ['When they die close together, their membranes cross-link before they break down. A lattice.', 'The lattice holds the biomass up on the surface, where the treads can scoop it.', 'One alone just liquefies and seeps into the rock. Keep the chain going.'] },
 
   // THE SECTORS (docs/superpowers/specs/2026-09-15-v1-session-design.md): Isao's two lines on each sector's brief. The lines
   // are the content table's (src/content/sectors.js), so the brief and the debrief's "next sector" lines cannot drift.

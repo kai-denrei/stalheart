@@ -5,7 +5,7 @@
 // reading; the content's entries complete (every tier at least three lines, every creature one entry).
 import assert from 'node:assert/strict';
 import { bestiaryRoster, entryIdOf, entryState, entryCard, lurePoint, lureStep, packSeats, readSightings, noteSighting, ENTRY_STATES } from '../src/domain/bestiary.js';
-import { ENTRIES, TERMINAL, BESTIARY_STAGE, CREATURE_SPEC, CREATURE_LABELS, BESTIARY_STORE } from '../src/content/bestiary.js';
+import { ENTRIES, TERMINAL, BESTIARY_STAGE, CREATURE_SPEC, CREATURE_LABELS, BESTIARY_STORE, CHAIN_NOTE } from '../src/content/bestiary.js';
 import { PEARL_TIERS, PEARL_OF } from '../src/content/pearl-enemies.js';
 import { ENEMY_SPEC, INTROS } from '../src/enemyspec.js';
 import { exportRecords } from '../src/storage.js';
@@ -50,6 +50,12 @@ assert.deepEqual(roster.filter((e) => e.kind === 'tier' && e.cored).map((e) => e
   assert.equal(full.head, 'ENTRY 04 / 11 · CUTIS-CORE PUMPKIN'); assert.equal(full.name, 'WAVE SATURN', 'the type met, by its INTROS label');
   assert.equal(full.met, 'MET: run 3 · first 2026-10-14'); assert.equal(full.text.length, 3); assert.equal(full.note, null); assert(full.selectable);
   assert.deepEqual(full.data.map((d) => [d.type, d.hp, d.ram]), [['drifter', 2, 'SOLID CORE']]);
+  // THE CHAIN (round 4 note 2): the soft entries flagged `chain` carry the lore on a full reading only, and say "Keep the chain going." / "chain"
+  assert.equal(full.lore, null, 'a cored entry has no chain note');
+  const chainOn = roster.filter((e) => e.chain).map((e) => e.id); assert.deepEqual(chainOn, ['white', 'yellow'], 'the ivory and the lemon');
+  const wFull = entryCard(white, 'full', { spec, labels, log: ['amoeba'], copy: TERMINAL, chain: CHAIN_NOTE });
+  assert.deepEqual(wFull.lore, { title: 'BIOMASS · THE CHAIN', text: CHAIN_NOTE.text }); assert(/chain/i.test(wFull.text.at(-1)));
+  assert.equal(entryCard(white, 'silhouette', { spec, labels, log: [], copy: TERMINAL, chain: CHAIN_NOTE }).lore, null, 'not on an archive reading');
   const sil = entryCard(white, 'silhouette', { spec, labels, log: [], copy: TERMINAL, sightings });
   assert.equal(sil.text, null, 'the text replaced'); assert.equal(sil.note, 'NO RECENT READING · last logged 2026-10-09'); assert.equal(sil.data.length, 2, 'the data lines kept');
   assert.equal(sil.data[0].ram, 'goes under the treads'); assert(sil.selectable);

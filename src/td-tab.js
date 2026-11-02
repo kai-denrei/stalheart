@@ -2124,7 +2124,7 @@ export function initTdTab(root) {
       streakMark = st - (st % 5);
       showCallout(`STREAK ×${eco.multiplier().toFixed(2)}`, 'co-streak');
     }
-    if (eco.multiplier() >= BRIEFS.streak_lore.at) briefs.want('streak_lore');   // THE STREAK'S LORE (round 3, 2026-10-26): once, at 1.5x, waiting for Isao's panel (src/fx/brief-queue.js want)
+    if (st >= BRIEFS.chain_lore.streak) briefs.want('chain_lore');   // THE STREAK'S LORE (2026-10-26; round 4 note 2): once, at the first STREAK callout, waiting for Isao's panel (src/fx/brief-queue.js want)
     if (rs) rs.maxRank = Math.max(rs.maxRank, tankRank);
     run.maxRank = Math.max(run.maxRank, tankRank);
     checkAchievements();
