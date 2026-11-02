@@ -26,25 +26,40 @@ risePose(f, T.rise, out); { const m = measureDoor(f, out.pos, out.quat); assert.
   const startShot = (s) => { if (shot?.onEnd) shot.onEnd(); shot = s; shots.push(s.id); };
   const door = createHoleDoor({ camera, startShot, cellSide: () => cs, centers: () => [center] });
   const frames = [];
-  globalThis.document = { createElement: () => { const el = { hidden: false, setAttribute() {}, remove() { el.removed = true; } }; frames.push(el); return el; } };
+  globalThis.document = { createElement: () => { const el = { hidden: false, posted: [], setAttribute() {}, remove() { el.removed = true; } }; el.contentWindow = { postMessage: (m) => el.posted.push(m) }; frames.push(el); return el; } };
+  let listener = null; globalThis.addEventListener = (type, fn) => { if (type === 'message') listener = fn; }; globalThis.removeEventListener = () => { listener = null; };
   const story = { arena: { cell: 0 } }, calls = [];
-  const host = createDescentHost({ appendChild() {} }, { pause: (v) => { paused = v; }, showBrief: () => {}, speak: () => {}, story: () => story, mobile: false, t: () => t, briefing: () => briefing,
+  let held = false, wallT = 100;
+  const host = createDescentHost({ appendChild() {} }, { hold: (v) => { paused = held = v; }, wall: () => wallT, showBrief: () => {}, speak: () => {}, story: () => story, mobile: false, t: () => t, briefing: () => briefing,
     look: (ci) => { calls.push('look'); door.look(ci); }, dive: (ci, s) => { calls.push('dive'); door.dive(ci, s); }, rise: (ci) => { calls.push('rise'); door.rise(ci); }, door: (ci) => door.measure(ci) });
   const timers = []; globalThis.setTimeout = (fn) => { timers.push(fn); return timers.length; }; globalThis.clearTimeout = () => {};
   const run = () => { const fns = timers.splice(0); for (const fn of fns) fn(); };
   const pose = (secs) => { const o = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }; shot.poseAt(Math.min(1, secs / shot.dur), o); camera.position.copy(o.pos); camera.quaternion.copy(o.quat); };
   let ended = false;
   host.begin(() => { ended = true; }); run();
-  assert.deepEqual(calls, ['look'], 'the rim view first'); t = 5; run(); assert.equal(host.state().shown, false, 'the brief still read: no dive, no cave');
-  assert.deepEqual(calls, ['look']); briefing = null; t = 6; run();
+  // THE CAVE LOADS BEHIND A STILL GAME (2026-11-02, note 10): the glide to the rim view live, then the game held still and only then the cave's frame
+  assert.deepEqual(calls, ['look'], 'the rim view first'); assert.equal(frames.length, 0, 'no cave while the camera glides'); assert.equal(held, false);
+  t = DESCENT.still; run(); assert.equal(held, true, 'the glide done: the game stands still'); assert.equal(frames.length, 1, 'the cave starts loading under the still frame');
+  assert.equal(frames[0].hidden, true); assert.equal(host.state().phase, 'load');
+  wallT += 5; run(); assert.equal(host.state().phase, 'load', 'not ready, the brief on the panel: still'); assert.deepEqual(calls, ['look']);
+  listener({ data: { belowReady: true }, source: {} }); assert.equal(host.state().readyAt, null, 'a ready from another window is nothing');
+  wallT += 3; listener({ data: { belowReady: true }, source: frames[0].contentWindow }); assert.equal(host.state().readyAt, 8, 'the cave ready 8 s into the load');
+  run(); assert.equal(host.state().phase, 'load', 'ready, but Isao still speaking'); assert.equal(held, true);
+  briefing = null; wallT += 1; run();
+  assert.equal(held, false, 'ready and read: the game runs for the dive'); assert.equal(host.state().loadedIn, 9);
   assert.deepEqual(calls, ['look', 'dive'], 'the brief read: the dive'); assert.equal(host.state().shown, false, 'the cave waits for the dive');
-  t = 6 + DESCENT.lookHold; pose(DESCENT.lookHold); run(); assert.equal(host.state().shown, false, 'and the settle');
-  t = 6 + DESCENT.lookHold + T.settle; run(); assert.equal(host.state().shown, true, 'then the cave'); assert.equal(paused, true);
+  const t1 = t; t = t1 + DESCENT.lookHold; pose(DESCENT.lookHold); run(); assert.equal(host.state().shown, false, 'and the settle');
+  t = t1 + DESCENT.lookHold + T.settle; run(); assert.equal(host.state().shown, true, 'then the cave'); assert.equal(paused, true); assert.equal(held, true, 'nothing drawn behind the cave');
+  assert.deepEqual(frames[0].posted, [{ belowShow: true }], 'the cave told it is shown');
   { const m = host.state().door; assert.ok(m.fromCentre < 2 && m.along > 0.9, `the hand-over: within 2 cells of the hole's centre, looking along -normal (${JSON.stringify(m)})`); assert.ok(camera.fov < 50, 'the view narrowed'); }
-  host.report('rescued'); assert.deepEqual(calls, ['look', 'dive', 'rise'], 'out the same way'); assert.equal(paused, false); assert.equal(camera.fov, 50, 'the fov back');
+  host.report('rescued'); assert.deepEqual(calls, ['look', 'dive', 'rise'], 'out the same way'); assert.equal(paused, false); assert.equal(held, false); assert.equal(camera.fov, 50, 'the fov back');
   pose(T.rise); { const m = host.state().door; assert.ok(m.fromRim < 2, `the return: within 2 cells of the rim (${JSON.stringify(m)})`); }
   run(); assert.equal(ended, true, 'then the ending');
   assert.deepEqual(shots, ['descentLook', 'descentLook', 'descentLook']);
+  // a cave that never says it is ready: the game runs again after DESCENT.readyCap real seconds
+  t = 0; briefing = null; host.begin(() => {}); run(); t = DESCENT.still; run(); assert.equal(host.state().phase, 'load');
+  wallT += DESCENT.readyCap - 0.1; run(); assert.equal(host.state().phase, 'load'); wallT += 0.2; run(); assert.equal(host.state().phase, 'dive', 'the ready cap');
+  host.dispose(); delete globalThis.addEventListener; delete globalThis.removeEventListener;
   delete globalThis.document;
 }
 console.log('Hole door: the rim view, the dive down the hole\'s axis to under the lip (the view narrowing), the rise back to the rim; the host dives once the brief is read and rises as the cave goes.');

@@ -18,5 +18,10 @@ export const DESCENT = Object.freeze({
   // rise: the climb back to the rim view; settle: game seconds the hand-over holds under the lip before the cave shows (the camera eases to its goal);
   // hold: how long a shot holds its last pose until the next one replaces it
   door: Object.freeze({ rimOut: 0.3, rimUp: 1, top: 2.5, under: 1.5, fov: 0.55, turn: 0.4, glide: 1.2, rise: 2.5, settle: 0.5, hold: 600 }),
+  // THE CAVE LOADS BEHIND A STILL GAME (owner, 2026-11-02, note 10: "just before BELOW the fps drops to 17 in the tank view"): `still` game seconds into
+  // the look (the glide to the rim view done, the camera eased to it) the game stands still on its last frame (no sim, no draw; Isao's panel reads on)
+  // and the cave's page starts loading; the game runs again for the dive once the cave posts it is ready (`readyCap` real seconds at most) and the
+  // brief is read (briefCap, in real seconds while still)
+  still: 1.8, readyCap: 25,
   jokeHold: 7,   // seconds Isao's line stays up after the cave closes before the ending begins (a caption needs reading)
 });

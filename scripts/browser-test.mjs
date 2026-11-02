@@ -1559,10 +1559,25 @@ try{
  {const d=await st();assert.equal(d.descent.open,false);assert.equal(d.descent.outcome,null);}
  // the cave's page is served beside the game (below/, scripts/import-below.mjs)
  {const ok=await evaluate(`fetch(${JSON.stringify(DESCENT.page)}).then(r=>r.ok&&r.text()).then(t=>typeof t==='string'&&t.includes('src/main.js'))`);assert.ok(ok,'below/index.html is served beside the game');}
- await evaluate(`${T}.descentNow()`);await delay(500);
- {const d=await st(),panel=await evaluate('!document.querySelector("#td-brief").classList.contains("hidden")');assert.equal(d.descent.open,true,'the frame is made at once (it loads hidden)');assert.equal(d.descent.shown,false,`the cave waits while Isao speaks (${JSON.stringify(d.descent)})`);assert.equal(d.paused,false,'the game runs under the brief');assert.ok(panel,'Isao\'s panel is up with the brief');console.log(`  on the panel at the hand-off: ${(await evaluate('document.querySelector("#td-brief-line").textContent')).slice(0,80)}`);}
+ // THE CAVE LOADS BEHIND A STILL GAME (owner, 2026-11-02, note 10): the glide to the rim view on the live game, then the game held on its last frame (paused,
+ // nothing drawn: the canvas's GL draws counted) with Isao's panel reading over it, the cave's frame made only then; the cave says it is ready, the brief
+ // ends, the game runs for the dive, and stands still again under the shown cave
+ await evaluate(`${T}.descentNow()`);await delay(300);
+ {const d=await st(),panel=await evaluate('!document.querySelector("#td-brief").classList.contains("hidden")');assert.ok(['look','load'].includes(d.descent.phase),`the look first (${JSON.stringify(d.descent)})`);assert.equal(d.descent.shown,false,'the cave waits while Isao speaks');assert.ok(panel,'Isao\'s panel is up with the brief');console.log(`  on the panel at the hand-off: ${(await evaluate('document.querySelector("#td-brief-line").textContent')).slice(0,80)}`);}
  const briefT0=Date.now();
- await until(`${T}.state().paused===true`,(DESCENT.briefCap+12)*1000).catch(async()=>assert.fail(`the game pauses under the cave once the look and Isao's brief are over (${JSON.stringify((await st()).descent)})`));   /* the camera looks at the arena first (2026-10-16), the brief is read before the cave covers it (2026-10-18 review); +12 s: a line already up (the arrival's) goes first */
+ await until(`${T}.state().descent.phase==='load'`,30000).catch(async()=>assert.fail(`the game stands still once the look has glided to the rim (${JSON.stringify((await st()).descent)})`));
+ const DRAWS=`(()=>{if(window.__draws!=null)return;window.__draws=0;for(const c of [...document.querySelectorAll('canvas')].filter(c=>c.clientWidth>innerWidth/2)){const gl=c.getContext('webgl2')||c.getContext('webgl');if(!gl)continue;for(const k of ['drawElements','drawArrays','drawElementsInstanced','drawArraysInstanced']){const f=gl[k];if(f)gl[k]=function(...a){window.__draws++;return f.apply(this,a);};}}})()`;
+ {const d=await st();assert.equal(d.paused,true,'the game is paused under the brief');assert.equal(d.descent.open,true,'the cave\'s frame is made under the still game');assert.equal(d.descent.shown,false,'and loads hidden');
+  await evaluate(DRAWS);const line0=await evaluate('document.querySelector("#td-brief-line").textContent');await delay(1500);
+  assert.equal(await evaluate('window.__draws'),0,'nothing drawn while the game stands still (its last frame stays on the canvas)');
+  assert.ok(await evaluate('!document.querySelector("#td-brief").classList.contains("hidden")')||(await st()).descent.phase!=='load','Isao\'s panel reads over the still frame');
+  console.log(`  still ${((Date.now()-briefT0)/1000).toFixed(1)} s after the hand-off; the panel: ${line0.slice(0,60)}`);current='descent-still';await finish();}
+ await until(`${T}.state().descent.readyAt!=null||${T}.state().descent.phase!=='load'`,(DESCENT.readyCap+5)*1000);
+ console.log(`  the cave ready ${(await st()).descent.readyAt?.toFixed?.(1)} s into its load`);
+ await until(`${T}.state().paused===true&&${T}.state().descent.shown===true`,(DESCENT.briefCap+DESCENT.readyCap+30)*1000).catch(async()=>assert.fail(`the cave shows once ready, the brief read and the dive done (${JSON.stringify((await st()).descent)})`));
+ {const d=(await st()).descent;console.log(`  loaded in ${d.loadedIn?.toFixed(1)} s (ready at ${d.readyAt?.toFixed?.(1)}), shown ${((Date.now()-briefT0)/1000).toFixed(1)} s (wall) after the hand-off`);
+  const n0=await evaluate('window.__draws');await delay(1000);assert.equal(await evaluate('window.__draws'),n0,'nothing drawn behind the shown cave');
+  assert.ok(n0>0,'the dive was drawn on the live game');}
  {const d=await st(),panel=await evaluate('(e=>e.classList.contains("hidden")?"":e.textContent)(document.querySelector("#td-brief"))');assert.equal(panel,'',`Isao's panel is empty when the cave covers the game (${panel})`);assert.equal(d.descent.shown,true,'the frame shows');console.log(`  the cave opened ${((Date.now()-briefT0)/1000).toFixed(1)} s (wall), ${d.descent.openedAt?.toFixed(1)} game s after the hand-off`);}
  {const d=await st();assert.equal(d.descent.open,true,`the frame is open (${JSON.stringify(d.descent)})`);assert.ok(d.descent.src.endsWith(DESCENT.page),`with the cave's page (${d.descent.src})`);assert.equal(d.paused,true,'the game paused under it');
   const f=await evaluate('(f=>f?{cls:f.className,allow:f.getAttribute("allow"),w:f.getBoundingClientRect().width}:null)(document.querySelector("iframe.descent-frame"))');assert.ok(f&&/pointer-lock/.test(f.allow)&&f.w>300,`the frame over the tab (${JSON.stringify(f)})`);}

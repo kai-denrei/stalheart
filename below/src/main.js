@@ -3,7 +3,7 @@ import { createWorld } from './world.js';
 import { createAudio } from './audio.js';
 import {impactCue} from './audio-cues.js';
 import {createFlight,fly} from './flight.js';
-import { parseMode, endingAction, postOutcome } from './handoff.js';
+import { parseMode, endingAction, postOutcome, postReady, isShow, briefingIdle } from './handoff.js';
 import { DOOR, tiltAt, climbAt } from './door.js';
 import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE } from './mission.js';
 
@@ -103,7 +103,7 @@ function event(type){
     say('One hundred seconds. Find the shaft. Get me out.',5,'ISAO',9);   // mission.js FUSE (100 s since 2026-10-18), spelled out like 'Thirty seconds.'; test/mission.test.mjs checks the words against FUSE
   } else if(type==='extracted'){
     mode='surface';keys.clear();velocity.set(0,0,0);world.player.set(-17,2.5,22);if(document.pointerLockElement)document.exitPointerLock();$('alert').textContent='';alertUntil=0;   // no PRESS Q hint over the surface
-    dialogueQueue=[];say('I’m out. The charge is still counting.',6);
+    dialogueQueue=[];say(mission.rush?'I’m out. Bringing the charge forward.':'I’m out. The charge is still counting.',6);   // the fuse hurries when he is out early (mission.js FUSE_RUSH, note 12)
   } else if(type==='signal-lost'){
     mode='surface';keys.clear();velocity.set(0,0,0);if(document.pointerLockElement)document.exitPointerLock();$('alert').textContent='';alertUntil=0;say('ISAO — SIGNAL LOST',6,'CONTROL');
   } else if(type==='detonated'){
@@ -234,12 +234,17 @@ try{
   world=await createWorld($('view'));
   $('begin').disabled=false;$('begin-label').textContent=stalheart?'TAKE THE FEED':'TAKE CONTROL OF ISAO';
   if(stalheart){const w=document.querySelector('.wordmark');if(w)w.style.visibility='hidden';const c=document.querySelector('.brief-copy');if(c)c.innerHTML='The arena’s sinkhole is the way down to the nest.<br>MÖRK is too big for it.<br>ISAO takes the bomb to their Queen.';}   // Stålheart's own card: no link out, the campaign's words (2026-10-18: the arena's hole, as Isao's brief over the game says it; that brief sits under this frame)
+  // in Stålheart's frame: ready once the first frame is drawn, then idle under the game until it shows the frame (src/handoff.js, note 10)
+  const framed=globalThis.parent!==globalThis;let shown=!framed,drawn=false;
+  globalThis.addEventListener('message',(e)=>{if(e.source===globalThis.parent&&isShow(e.data))shown=true;});
   function frame(now){
     const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;
+    if(mode==='briefing'&&briefingIdle({stalheart,framed,shown,drawn})){requestAnimationFrame(frame);return;}
     if(mode==='briefing'){
       simulationTime+=dt;world.camera.position.set(31+Math.sin(simulationTime*.035)*2,36,39);world.camera.lookAt(0,-7,0);world.update(simulationTime,mission,true);
     }else if(mode==='climb')climbStep(dt);else step(dt);
     world.render();frameTimes.push(dt);if(frameTimes.length>120)frameTimes.shift();requestAnimationFrame(frame);
+    if(!drawn){drawn=true;if(stalheart)postReady();}
   }
   requestAnimationFrame(frame);
   // Explicit test URL only; the normal game exposes no debug controls.

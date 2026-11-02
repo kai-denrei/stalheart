@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { descentDue, descentResult, descentNext, descentOpenDue } from '../src/domain/descent.js';
+import { descentDue, descentResult, descentNext, descentOpenDue, descentLoadDone } from '../src/domain/descent.js';
 import { DESCENT } from '../src/content/descent.js';
 import { brief, lineDwell } from '../src/isaobriefs.js';
 
@@ -28,4 +28,10 @@ assert.equal(descentOpenDue({ waited: 0, min: 0, briefing: false, cap: 22 }), tr
 assert.equal(descentOpenDue({ waited: 30, min: 2.5, briefing: true, briefWaited: 10, cap: 22 }), false, 'a line said before the brief does not eat its cap');
 assert.equal(descentOpenDue({ waited: 30, min: 2.5, briefing: true, briefWaited: 22, cap: 22 }), true, 'the brief up for the cap: open');
 { const b = brief(DESCENT.brief), dwell = b.lines.reduce((a, _, i) => a + lineDwell(b, i), 0); assert.ok(DESCENT.briefCap >= dwell + 2, `the cap covers the brief's dwell (${dwell} s) with a margin`); }
+// the still game runs again for the dive once the cave is ready (or the ready cap is out) and the brief read (or its cap is out), real seconds (2026-11-02, note 10)
+{ const L = (o) => descentLoadDone({ readyCap: DESCENT.readyCap, cap: DESCENT.briefCap, ...o });
+  assert.equal(L({ ready: false, loadWaited: 3 }), false, 'loading'); assert.equal(L({ ready: true, loadWaited: 3 }), true, 'ready, nothing said');
+  assert.equal(L({ ready: true, loadWaited: 3, briefing: true, briefWaited: 3 }), false, 'ready, Isao speaking'); assert.equal(L({ ready: true, loadWaited: 30, briefing: true, briefWaited: DESCENT.briefCap }), true, 'the brief cap');
+  assert.equal(L({ ready: false, loadWaited: DESCENT.readyCap }), true, 'a cave that never says so: the ready cap');
+  assert.ok(DESCENT.still > DESCENT.door.glide, 'the game stands still after the glide to the rim view, not mid-glide'); }
 console.log('Descent: due after the final sector, the cave\'s outcome validated, the ending or a retry.');
