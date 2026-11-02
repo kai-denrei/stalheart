@@ -6355,7 +6355,8 @@ const killReal=(Date.now()-t0)/1000;
  const start=Date.now();while(!consoleLines.some(x=>x.includes('S drives, T shields'))&&Date.now()-start<12000)await delay(200);
  assert(consoleLines.some(x=>x.includes('S drives, T shields')));await finish();
 await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
- await until('window.__stalheartTest?.state().explosions?.spawned["tank.shell"]===1',30000);await finish();
+ // the shell lands as the 40 mm's burst since 2026-10-13 (src/fx/shell-blast.js 'tank.blast'); the step waited for 'tank.shell' and was red on every tree since (re-based 2026-11-02, round 4)
+ await until('(window.__stalheartTest?.state().explosions?.spawned["tank.blast"]??0)>=1',30000);await finish();
  await go('terraformer','index.html?sw=0&cine=0&acceptance=1#td');
  await until('window.__stalheartTest.state().heartAsset === "sentry-terraformer"',30000);
  // Each spare hull must deploy onto open ground and respond to real input.
