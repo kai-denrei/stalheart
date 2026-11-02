@@ -49,7 +49,11 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   const soft = PEARL_TIERS.filter((t) => !t.cored), cored = PEARL_TIERS.filter((t) => t.cored);
   assert.deepEqual(Object.keys(PEARL_MEMBRANE).sort(), PEARL_TIERS.map((t) => t.id).sort(), 'a membrane row a tier');
   // THE SKY MODEL (2026-10-30): every membrane at Sky's .65 (the cored read's thinner skins, the full skins and their pearl drawn over retired); the colours stay
-  for (const t of PEARL_TIERS) { assert.equal(t.values.membraneOpacity, 0.65, `${t.id}: the membrane at Sky's .65`); assert.equal(t.values.pearlShow, undefined, `${t.id}: the pearl under the skin, as in the lab`); }
+  const FULL = ['purple', 'brown'];   // the full skin back on the planet (2026-11-02, round 4, note 3): a gain past 1 with the pearl drawn over it
+  for (const t of PEARL_TIERS) {
+    if (FULL.includes(t.id)) { assert(t.values.membraneOpacity >= 1.25, `${t.id}: a full skin over lit ground (${t.values.membraneOpacity})`); assert(t.values.pearlShow > 0.3 && t.values.pearlShow < 1, `${t.id}: its pearl drawn over the full skin, part-seen`); continue; }
+    assert.equal(t.values.membraneOpacity, 0.65, `${t.id}: the membrane at Sky's .65`); assert.equal(t.values.pearlShow, undefined, `${t.id}: the pearl under the skin, as in the lab`);
+  }
   for (const t of cored) {
     assert(t.values.membraneTint > 0 && t.values.membraneTint < 1, `${t.id}: the cored skin is pulled toward its tint, not replaced by it`);
     assert(t.values.glintShare > 0, `${t.id}: its glints are not the soft tiers' white`);
@@ -88,9 +92,14 @@ console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived 
   for (const l of white.p.geo.levels) assert.equal(l.membrane.renderOrder, 2, 'white: the kit\'s order');
   // THE SKY MODEL (2026-10-30): every cored pool's pearls under its skin, opaque, as the kit (the full skins' pearls drawn over and their depth twins of 2026-10-19 retired with the gain)
   const brown = family.add('rolling', { x: -10, z: 0 }), orange = family.add('drifter', { x: -5, z: 0 });
-  for (const [id, h] of [['purple', purple], ['brown', brown], ['orange', orange]]) {
+  for (const [id, h] of [['orange', orange]]) {
     for (const m of h.p.cores.meshes) { assert.equal(m.renderOrder, 1, `${id}: its pearls under its skin, as the kit`); assert.equal(m.material.opacity, 1); }
     assert.equal(h.p.backs, null, `${id}: a skin at Sky's .65 writes no depth`);
+  }
+  // purple and brown (2026-11-02, round 4, note 3): the pearl drawn after the cored skins at PEARL_MEMBRANE's `pearl`, depth-tested, and the depth twin
+  for (const [id, h] of [['purple', purple], ['brown', brown]]) {
+    for (const m of h.p.cores.meshes) { assert.equal(m.renderOrder, PEARL_MEMBRANE[id].order + 0.5, `${id}: its pearls after the cored skins`); assert.equal(m.material.opacity, PEARL_MEMBRANE[id].pearl); assert.notEqual(m.material.depthTest, false); }
+    assert.notEqual(h.p.backs, null, `${id}: the full skin writes its back faces' depth`);
   }
   assert.equal(white.p.backs, null, 'white: a soft skin writes no depth (round three\'s rule)');
   // the bestiary's copy keeps the reference: the thin skin, no pearl over it, no depth twin (dropping its pearlShow override would draw the pearl over the lab's skin)

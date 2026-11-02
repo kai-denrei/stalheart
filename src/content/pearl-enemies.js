@@ -69,14 +69,19 @@ const ROWS = [
 // THE SKY MODEL (2026-10-30, above): every membrane at Sky's .65, the soft tiers' translucency, a cored tier's pearl seen through it as in the lab (the
 // cored read's .26, the full skins' gain 1.35 with their pearl drawn over, and black's .4 retired; `pearl` with them). The colours stay each tier's: the
 // cored tiers' pull toward their warning hue and their tinted glints as they were (the separate colours), the soft tiers their skin and white glints.
+// THE PURPLE READS WHITE AGAIN (owner, 2026-11-02, round 4, note 3: sector 1's barbed, not the Quiver chapter's): the Sky skin is the 2026-10-19 cause
+// again (a .65 front face covers ~.4 of what lies behind it, and a site's barbed walk among forty to eighty daylit ivories on the pale pad), so purple and
+// brown take the full skin back (gain 1.35, the pearl drawn over at .55, the depth twins: src/fx/creature-pearl.js depthBacks) on the Sky body (its
+// stalks, cycle, pace and size are not the membrane's). The Quiver's single barbed reads purple because it stands alone at night on dark floor: the same
+// spawn path and tier pool as a site guard (src/platform/story-world.js, src/fx/expedition-glue.js openSite: both through the enemy loop's release).
 export const PEARL_MEMBRANE = freeze({
   white: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
   yellow: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },
   blue: { opacity: 0.65, tint: 0xffffff, share: 0, glint: 0, order: 2 },   // THE MODEL
   orange: { opacity: 0.65, tint: 0x853b20, share: 0.4, glint: 0.6, order: 3 },
   green: { opacity: 0.65, tint: 0x3fbf5a, share: 0.4, glint: 0.6, order: 3 },
-  purple: { opacity: 0.65, tint: 0xb44bff, share: 0.6, glint: 1, order: 3 },   // opacity was 1.35 with pearl .55 (2026-10-19), .45 (round three), .4 before
-  brown: { opacity: 0.65, tint: 0x8a5a2b, share: 0.6, glint: 1, order: 3 },   // as purple
+  purple: { opacity: 1.35, tint: 0xb44bff, share: 0.6, glint: 1, order: 3, pearl: 0.55 },   // the full skin back (2026-11-02, round 4, note 3); .65 under THE SKY MODEL, 1.35 with pearl .55 (2026-10-19), .45 (round three), .4 before
+  brown: { opacity: 1.35, tint: 0x8a5a2b, share: 0.6, glint: 1, order: 3, pearl: 0.55 },   // as purple
   black: { opacity: 0.65, tint: 0xff0000, share: 0.3, glint: 1, order: 3 },   // was .4
 });
 // a tier: `values` is the kit config's Pearl part (over src/fx/cutis-maku/config.js DEFAULT_CONFIG; r0 is set per body by the game's size)
