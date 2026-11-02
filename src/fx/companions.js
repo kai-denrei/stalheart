@@ -13,7 +13,8 @@
 // placement jump of more than HULL_JUMP m in a frame resets it) gives the play each unit's hullMotion; 'fromHull' resolves to the roam cell off
 // the hull's line of travel, ahead of the unit's own side of it, best by distance from that line.
 //   host: scene, metres(), cellSide(), graph(), dungeon(), inside(ci) (the clearing), solidAt(p, pad), hull() (the hull's unit point or null),
-//         eye(), wire() (the wireframe options or null), seed, born (true: both born at once)
+//         eye(), wire() (the wireframe options or null), seed, born (true: both born at once), party() (round 4: DAY 42's dance floor, the
+//         ground point under the ball while the party is on, else null: src/fx/disco-party.js floor)
 //   createCompanions(host) -> { tick(dt, t), state(), contacts(), roots(), frameOf(i, pos, quat), spots(cells, padM), print(i, ci), wake(i), birth(i),
 //         life(i), born(), loaded(i), dispose() }
 import * as THREE from '../../vendor/three.module.js';
@@ -92,6 +93,13 @@ export function createCompanions(h) {
       }
       return u.goal.fromArray(centre(best >= 0 ? best : pickCell())).normalize();
     }
+    if (token === 'floor') {   // DAY 42's floor: a roam cell floorM from the ball's foot, clear of the structures and hullM off the hull (the dance, round 4)
+      const p = h.party?.(), m = h.metres(), [lo, hi] = K.play.dance.floorM; if (!p) return u.goal.fromArray(centre(pickCell())).normalize();
+      const hp = h.hull(), clear = (c) => !hp || Math.hypot(c[0] - hp[0], c[1] - hp[1], c[2] - hp[2]) / m > K.play.dance.hullM;   // off the parked hull, so the cut's close shot sees past it
+      w.set(p[0], p[1], p[2]).normalize(); const ring = roam.filter((ci) => { const d = v.fromArray(centre(ci)).distanceTo(w) / m; return d >= lo && d <= hi && clear(centre(ci)); });
+      for (let k = 0; k < 8 && ring.length; k++) { const ci = ring[Math.min(ring.length - 1, Math.floor(rand() * ring.length))]; if (!h.solidAt(centre(ci), pad())) return u.goal.fromArray(centre(ci)).normalize(); }
+      return u.goal.copy(w);
+    }
     if (token === 'detour') { let best = -1, bd = Infinity; for (let k = 0; k < 6; k++) { const ci = pickCell(); v.fromArray(centre(ci)); const d = v.distanceTo(u.pos); if (d > 3 * h.metres() && d < bd) { bd = d; best = ci; } } return u.goal.fromArray(centre(best >= 0 ? best : pickCell())).normalize(); }
     return u.goal.fromArray(centre(pickCell())).normalize();
   }
@@ -162,7 +170,7 @@ export function createCompanions(h) {
     now: 0, rand, units: K.units.map((d) => ({ top: d.top, trot: d.trot, idle: d.idle, sit: d.sit, tricks: d.tricks })),
     dist: (i, j) => metresBetween(units[i].pos, units[j].pos), toTarget: (i) => metresBetween(units[i].pos, units[i].goal),
     toHull: (i) => { const p = h.hull(); return p ? Math.hypot(units[i].pos.x - p[0], units[i].pos.y - p[1], units[i].pos.z - p[2]) / h.metres() : null; },
-    blocked: (i) => units[i].blocked, clipSecs, present: (i) => units[i]?.life === 'born',
+    blocked: (i) => units[i].blocked, clipSecs, present: (i) => units[i]?.life === 'born', dancing: () => !!h.party?.(),
     hullMotion: (i) => {   // the hull as unit i sees it (metres, m/s): the play's dodge (src/domain/companion-play.js)
       if (!hullSeen) return null; const m = h.metres(), u = units[i];
       w.copy(u.pos).sub(hullP); const d = w.length() / m, speed = hullV.length() / m, along = speed > 1e-9 ? w.dot(hullV) / hullV.length() : 0;

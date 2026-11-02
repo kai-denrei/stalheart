@@ -11,7 +11,10 @@
 // one up and one pending (the --day-42 step, 2026-10-18: a beat with SOL-82's first pass pending behind it outlasted 12 s)
 export const DAY_42 = Object.freeze({
   day: 42, patience: 6, countdown: 30, back: 20, sayWait: 20, seconds: 43.8, loadAhead: 2,
-  shot: Object.freeze({ id: 'discoReveal', at: 1.5, seconds: 10, radius: 70, height: 28, easeIn: 1.2 }),
+  // THE COMPANIONS IN THE CUT (owner, 2026-11-02, round 4 note 8): each printed companion (C-07, then RECKON K9) takes `petSecs` of the cut from
+  // `petsAt` s, a close shot from `petEye` metres in its own frame (x right of its facing, y up, z its facing) on a point `petLook` m up it, the
+  // near plane at `near` meanwhile; the cut grows to petsAt + petSecs x the printed (14 s with both) and stays `seconds` with none
+  shot: Object.freeze({ id: 'discoReveal', at: 1.5, seconds: 10, radius: 70, height: 28, easeIn: 1.2, petsAt: 6, petSecs: 4, petEye: Object.freeze([2.3, 1.1, 3.1]), petLook: 0.45, near: 0.00025 }),
   hoist: 4, lower: 3, loop: 16,
   // THE REPLAY AT THE ENDING (owner, 2026-10-26, round 3 note 8: "we re-do a brief animation of the 42 days celebration, while the scoreboard also
   // displays"; src/fx/disco-party.js replay, src/fx/finale-diorama.js): `seconds` long (the ball up from the first frame, the klaxon `lower` s

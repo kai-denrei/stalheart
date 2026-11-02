@@ -24,10 +24,13 @@
 // replayStop() clears it; replayState() for the harness (state().ending.party).
 // The host: scene, camera, metres() (world units a metre), sfx (src/audio.js), startShot, snapCamera, showBrief, callout(text, cls), armWave,
 // boards() (the two scoreboards, src/fx/scoreboard.js: override(lines, colours); the party face from the start to the done, 2026-10-18), daylight(), sectorRun(), base() (the story base: structure(id)), shotActive, seated, card, warning (the board's wave warning counting
-// down: no party over it), alive, won, isaoBusy, warm (src/fx/shader-warm.js: compile(root)); loadGlb and now (the wall clock in ms, performance.now by default) for a test.
+// down: no party over it), alive, won, isaoBusy, warm (src/fx/shader-warm.js: compile(root)); loadGlb and now (the wall clock in ms, performance.now by default) for a test;
+// pets() (round 4, 2026-11-02, note 8: the companions, src/fx/companions.js: born() and frameOf(i, pos, quat), or null): each printed one gets a close
+// shot in the reveal cut (DAY_42.shot petsAt / petSecs), and floor() hands the companions the ground under the ball while the party is on (their dance).
 import * as THREE from '../../vendor/three.module.js';
 import { loadGlb } from '../glbmodels.js';
 import { DAY_42 } from '../content/day-42.js';
+import { COMPANIONS } from '../content/companions.js';
 import { createPartyClock } from '../domain/disco-party-clock.js';
 import { celebrationPose, hoistBlend, HOOK_LOCAL_OFFSET, PARTY_COLORS, CELEBRATION_JOINTS, faceLines, partyCss } from '../domain/disco-celebration.js';
 
@@ -54,7 +57,7 @@ export function createDiscoParty(h) {
   let rep = null;   // THE REPLAY's own state (round 3): { t, seconds, where, at, up, lit, klaxon, done }
   let ball = null, loading = false, failed = false, music = null, t = 0, appear = 0, tiers = [], overAt = 0, spots = [], lasers = [], lastWall = null, shrinkFrom = 1, warmLeft = 0;
   const wallNow = h.now ?? (() => performance.now());
-  const tip = new THREE.Vector3(), up = new THREE.Vector3(), base = new THREE.Vector3(), m4 = new THREE.Matrix4();
+  const tip = new THREE.Vector3(), up = new THREE.Vector3(), base = new THREE.Vector3(), m4 = new THREE.Matrix4(), floorAt = [0, 0, 0];
   const metres = () => h.metres?.() ?? 1;
   const node = (root, name) => root?.getObjectByName(name) ?? null;
   // the nodes the loop drives every frame, looked up once (final review, 2026-10-18: getObjectByName walks the whole tree per call): the
@@ -169,20 +172,45 @@ export function createDiscoParty(h) {
   // THE CUT: a slow quarter-orbit round the tip, `radius` out and `height` above along the base's radial, on the hanging ball, eased in
   // from wherever the camera was (the sites tour's blend, td-tab freeLook). The seat and the shot are asked again at 1.5 s (final review,
   // 2026-10-18): a scripted beat never evicts a gunner (owner, 2026-09-15) nor cuts over another shot; the party goes on without its cut
+  // THE COMPANIONS' HIGHLIGHTS (round 4): the printed ones in COMPANIONS order, each a close shot of petSecs from petsAt; the segment shown is
+  // noted by the pose and the tick cuts to it (snapCamera) and lowers the near plane for it, put back at the orbit and at the cut's end
+  let cut = null;
+  const petFrame = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, px = new THREE.Vector3(), py = new THREE.Vector3(), pz = new THREE.Vector3();
+  function petPose(i, out, eye, look) {
+    const S = DAY_42.shot, m = metres(); if (!h.pets?.()?.frameOf(i, petFrame.pos, petFrame.quat)) return false;
+    px.set(1, 0, 0).applyQuaternion(petFrame.quat); py.set(0, 1, 0).applyQuaternion(petFrame.quat); pz.set(0, 0, 1).applyQuaternion(petFrame.quat);
+    eye.copy(petFrame.pos).addScaledVector(px, S.petEye[0] * m).addScaledVector(py, S.petEye[1] * m).addScaledVector(pz, S.petEye[2] * m);
+    look.copy(petFrame.pos).addScaledVector(py, S.petLook * m); m4.lookAt(eye, look, py);
+    out.pos.copy(eye); out.quat.setFromRotationMatrix(m4); return true;
+  }
+  function cutTick() {
+    if (!cut || cut.seg === cut.shown) return;
+    cut.shown = cut.seg; h.snapCamera();
+    if (cut.seg >= 0) { cut.lens ??= h.camera.near; h.camera.near = DAY_42.shot.near; } else if (cut.lens != null) { h.camera.near = cut.lens; cut.lens = null; }
+    h.camera.updateProjectionMatrix();
+  }
+  let lastCut = null;
+  function cutOff() { if (cut?.lens != null) { h.camera.near = cut.lens; h.camera.updateProjectionMatrix(); } if (cut) lastCut = { dur: cut.dur, shown: cut.segs.map((i) => COMPANIONS.units[i].id) }; cut = null; }
   function shot() {
     if (h.seated() || h.shotActive()) return;
     const st = structure(), root = st?.near ?? st?.root; if (!root || !tipOf(root)) return;
     const S = DAY_42.shot, start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() };
+    const born = h.pets?.()?.born?.() ?? [], pets = COMPANIONS.units.map((u, i) => (born.includes(u.id) ? i : -1)).filter((i) => i >= 0);
+    const dur = pets.length ? Math.max(S.seconds, S.petsAt + pets.length * S.petSecs) : S.seconds;
+    cut = { seg: -1, shown: -1, lens: null, pets, dur, segs: [] };
     const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();
-    h.startShot({ id: S.id, dur: S.seconds, skippable: true, onEnd: () => h.snapCamera(), poseAt(u, out) {
+    h.startShot({ id: S.id, dur, skippable: true, onEnd: () => { cutOff(); h.snapCamera(); }, poseAt(u, out) {
+      const ts = u * dur, seg = ts >= S.petsAt ? Math.floor((ts - S.petsAt) / S.petSecs) : -1;
+      if (cut && seg >= 0 && seg < pets.length && petPose(pets[seg], out, eye, look)) { cut.seg = seg; if (!cut.segs.includes(pets[seg])) cut.segs.push(pets[seg]); return; }
+      if (cut) cut.seg = -1;
       const live = structure(), r = live?.near ?? live?.root ?? root, m = metres(); if (!tipNow(r)) return;
       (live?.holder ?? r).getWorldPosition(base); n.copy(base.lengthSq() < 1e-12 ? Y : base.normalize());   // the base's radial: the orbit's plane stays level while the arm sways
       e1.crossVectors(n, Math.abs(n.y) < 0.9 ? Y : X).normalize(); e2.crossVectors(n, e1);
-      const a = -0.3 + u * Math.PI / 2, R = S.radius * m;
+      const a = -0.3 + Math.min(1, ts / S.seconds) * Math.PI / 2, R = S.radius * m;
       eye.copy(tip).addScaledVector(e1, Math.cos(a) * R).addScaledVector(e2, Math.sin(a) * R).addScaledVector(n, S.height * m);
       look.copy(tip).addScaledVector(n, -HOOK_LOCAL_OFFSET[1] / 2 * m);   // halfway down the hang: the arm's tip and the ball both in frame
       m4.lookAt(eye, look, n); q.setFromRotationMatrix(m4);
-      const k = Math.min(1, u * S.seconds / S.easeIn), e = k * k * (3 - 2 * k);
+      const k = Math.min(1, ts / S.easeIn), e = k * k * (3 - 2 * k);
       out.pos.lerpVectors(start.pos, eye, e); out.quat.slerpQuaternions(start.quat, q, e);
     } });
   }
@@ -310,7 +338,7 @@ export function createDiscoParty(h) {
         else if (ev === 'done') finish();
         else if (ev === 'cancel') held = [];   // the hull lost or the win in the countdown: nothing of the party was up, nothing more to say
       }
-      sayHeld(dt);
+      sayHeld(dt); cutTick();
       const now = clock.state().phase;
       if (now !== 'party' && now !== 'over') return;
       if (!events.includes('start')) t += dt;   // the party's own time from its first frame; the loop keeps turning as the ball goes down
@@ -328,8 +356,15 @@ export function createDiscoParty(h) {
       hang(root, p);
     },
     holding: () => clock.holding(),
+    // THE DANCE FLOOR (round 4, note 8): the ground point under the ball (under the Stålheart's holder before it hangs) while the party is on, else null
+    floor() {
+      if (clock.state().phase !== 'party') return null;
+      const hd = structure()?.holder; if (!hd) return null;
+      hd.getWorldPosition(base); const r = base.length(); if (ball?.parent) base.copy(ball.position).setLength(r);
+      return base.toArray(floorAt);
+    },
     force() { clock.force(); fetchBall(); },
-    state: () => { const c = clock.state(); return { ...c, t: c.phase === 'countdown' ? c.t : +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music }; },   // the countdown's t is the clock's own
-    restore() { replayStop(); rep = null; finish(); clock.reset(); held = []; },
+    state: () => { const c = clock.state(); return { ...c, t: c.phase === 'countdown' ? c.t : +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music, cut: cut ? { dur: cut.dur, seg: cut.seg, pets: cut.pets.map((i) => COMPANIONS.units[i].id), shown: cut.segs.map((i) => COMPANIONS.units[i].id), near: h.camera.near } : { last: lastCut } }; },   // the countdown's t is the clock's own; cut: the reveal's companions (round 4)
+    restore() { replayStop(); rep = null; finish(); clock.reset(); held = []; cutOff(); },
   };
 }

@@ -16,6 +16,7 @@ import { onStation, startStation, selectGun } from '../domain/gunship.js';
 import { makeTrack } from '../domain/gunship-track.js';
 import { GUNSHIP_CALL, GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../content/gunship.js';
 import { startDiveShot } from './dive-shot.js';
+import { dioramaCast } from './finale-diorama.js';
 
 export function createShowcaseHooks(host) {
   const { camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall, explosions, gameBreaches, storyApi,
@@ -187,6 +188,7 @@ export function createShowcaseHooks(host) {
     },
     // the moments the reel has kept so far (src/fx/moment-reel.js; the --moment-reel step)
     finale: () => !!storyApi.finale?.(() => { globalThis.__stalheartFinaleDone = (globalThis.__stalheartFinaleDone ?? 0) + 1; }),   // the --finale step
+    diorama: () => dioramaCast(),   // the finale's staging: who stood in it and how far off the shot's line (round 4, note 14: the companions in the frame)
     lapse: () => (host.story()?.lapse?.stills() ?? []).map((x) => x.label),
     lapseFrame: (i) => host.story()?.lapse?.stills()[i]?.frame.toDataURL() ?? null,
     reelFrame: (kind, i) => host.story()?.reel?.clips().find((c) => c.kind === kind)?.frames[i]?.toDataURL() ?? null,

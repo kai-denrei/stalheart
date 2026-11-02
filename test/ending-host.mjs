@@ -187,7 +187,7 @@ const orbital = (got) => got.filter((x) => x[0] === 'playOrbitalFinale');
   h.host.finale(() => {});
   take();
   assert.ok(seen && seen !== h.c, 'the diorama is handed a literal of its own, not the ending\'s host');
-  assert.deepEqual(Object.keys(seen).sort(), ['cellSide', 'hull', 'isao', 'party', 'scene', 'spawnIsao', 'startShot', 'story'], 'exactly story, startShot, scene, cellSide, hull, isao, spawnIsao and party (the DAY 42 replay, round 3)');
+  assert.deepEqual(Object.keys(seen).sort(), ['cellSide', 'hull', 'isao', 'party', 'pets', 'scene', 'spawnIsao', 'startShot', 'story'], 'exactly story, startShot, scene, cellSide, hull, isao, spawnIsao, party (the DAY 42 replay, round 3) and pets (the companions in the frame, round 4)');
   for (const k of Object.keys(seen)) assert.equal(seen[k], h.c[k], `${k} is the host's own member, passed through`);
 }
 console.log('Ending host: the interlude is retired; the finale pauses off, stages the diorama (handed its eight members) when boards stand, and reaches `then` through the orbital finale\'s done.');

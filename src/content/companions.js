@@ -14,6 +14,9 @@
 //                  the game over after `secs`; `every` seconds between games, `first` the delay before the first one; a pair further than
 //                  `startM` apart trots together first; the fleer picks its next point within `awayM` of itself (it dodges, it does not cross the base)
 //   play.greet     the trot to the hull, sitting `nearM` metres from it, `every` seconds apart; only once the hull has stood still `dodge.stillS`
+//   play.dance     DAY 42 ON THE DANCE FLOOR (owner, 2026-11-02, round 4 note 8): during the party a dash at `dash` of the top speed for `dashS`
+//                  seconds at most to a point `floorM` metres from the ball's foot and `hullM` off the hull (the first --day-42 frame had the parked
+//                  hull between C-07 and the cut's lens), then a trick or a sit (`sitSecs`) in place, in turn, until the klaxon
 //   play.dodge     OUT OF THE TANK'S WAY (owner, 2026-11-02, round 4 note 5): a hull moving faster than `movingMps` and closing faster than
 //                  `closingMps` on a unit within `nearM` metres, or within `rangeM` and `laneM` of its line and due on it inside `leadS` seconds,
 //                  sends the unit off its line at its top speed; it rests once the hull is past, slower than `stillMps` or `clearM` off (or
@@ -36,6 +39,7 @@ export const COMPANIONS = freeze({
     idle: [1.5, 4], wander: [0.45, 0.65], dash: [0.75, 1], trot: 2.3, sitSecs: [3, 6], trick: 0.25, wanderMax: 14,
     chase: { secs: [8, 14], tagM: 1.6, flee: 0.75, every: [20, 45], first: 8, startM: 25, awayM: 20 },
     greet: { nearM: 3, every: [40, 90], first: 25 },
+    dance: { dash: [0.45, 0.7], dashS: 3, sitSecs: [1.5, 2.5], floorM: [5, 13], hullM: 9 },
     dodge: { nearM: 6, rangeM: 60, laneM: 5, leadS: 3, movingMps: 0.5, closingMps: 0.3, stillMps: 0.3, stillS: 1, clearM: 12, maxS: 6 },
   },
   crossfade: 0.25, rate: [0.45, 1.6],   // the blend between clips, and the clip rate's clamp (a gait asked for beyond its band plays no faster than this)

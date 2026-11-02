@@ -1850,7 +1850,7 @@ try{
  // ahead, Isao's "we need to celebrate" with the sector clock already standing, "come back to the base" twenty seconds in, then the party as before
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {DAY_42}=await import('../src/content/day-42.js');
  const released=s=>(s.sector?.breaches??[]).reduce((n,b)=>n+(b.wavesReleased??0),0), planned=s=>(s.sector?.breaches??[]).reduce((n,b)=>n+(b.wavesPlanned??0),0);
- await go('day-42-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&day=42#td`);
+ await go('day-42-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&day=42&pets=born#td`);   // ?pets=born (round 4, note 8): both companions printed, on the dance floor and in the cut
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
  {const s=await st();assert.ok(s.day>=42,`the run opened on day 42 (${s.day})`);assert.equal(s.daylight?.day,s.day,'the rig and the harness agree on the day');assert.equal(s.party?.phase,'idle',`no party before the sector fights (${JSON.stringify(s.party)})`);}
@@ -1878,7 +1878,16 @@ try{
  // the track: a loop voice once it has decoded (asked again until the cut, src/fx/disco-party.js)
  {const s=await st();assert.equal(s.party.music,true,`the track plays (${JSON.stringify({party:s.party,loopVoices:s.loopVoices})})`);assert.ok((s.loopVoices||[]).includes(DAY_42.music.key),`the music voice is live (${JSON.stringify(s.loopVoices)})`);}
  current='day-42-party';await finish();
+ // THE COMPANIONS ON THE DANCE FLOOR AND IN THE CUT (owner, 2026-11-02, round 4 note 8): both dance through the party; the cut grows to petsAt + 2 x petSecs
+ // (14 s) and closes on C-07 (6-10 s) then RECKON K9 (10-14 s), the near plane lowered for each (frames artifacts/browser/day-42-c07.png, -k9.png)
+ {const s=await st(),c=s.party.cut;console.log(`  day-42 cut ${JSON.stringify(c)}, companions ${JSON.stringify(s.companions?.units?.map(u=>[u.id,u.mode,u.oneShot??u.clip]))}`);
+  assert.equal(c?.dur,DAY_42.shot.petsAt+2*DAY_42.shot.petSecs,'the cut grows to 14 s with both printed');assert.deepEqual(c.pets,['c07','k9']);
+  assert.ok(s.companions.units.every(u=>u.mode==='dance'),`both dance (${s.companions.units.map(u=>u.mode)})`);}
+ for(const [seg,id] of [[0,'c07'],[1,'k9']]){await until(`${T}.state().party.cut?.seg===${seg}`,12000).catch(()=>{});await delay(1800);const s=await st(),c=s.party.cut,u=s.companions.units.find(x=>x.id===id);
+  console.log(`  day-42 highlight ${id}: cut ${JSON.stringify(c)}, ${id} ${u.mode} ${u.clip} ${u.speed} m/s ${u.eyeM} m from the eye, far ${u.far}`);
+  assert.equal(c?.seg,seg,`the cut on ${id}`);assert.equal(c.near,DAY_42.shot.near,'the near plane lowered');assert.ok(u.eyeM<=8,`${id} close (${u.eyeM} m)`);current=`day-42-${id}`;await finish();}
  await until(`${T}.state().shot!=='${DAY_42.shot.id}'`,20000);
+ {const s=await st();console.log(`  day-42 after the cut: ${JSON.stringify(s.party.cut)}`);assert.deepEqual(s.party.cut?.last?.shown,['c07','k9'],'both highlights shown');}
  {const s=await st();assert.equal(s.party.phase,'party','the party goes on after the cut');assert.equal(s.party.hanging,true,'the ball still hangs');}
  current='day-42-after-cut';await finish();
  await until(`${T}.state().party.phase!=='party'`,60000).catch(async()=>assert.fail(`the alarm at the track's end (${JSON.stringify((await st()).party)})`));
@@ -2251,13 +2260,18 @@ try{
  } else if(args.includes('--finale')) {
  // THE FINALE (owner, 2026-10-06): the diorama, the player's MÖRK and Isao before the rivalry boards, then the next step
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
- await go('finale',`index.html?sw=0&acceptance=1&cine=0&skip=defence${process.env.HOLE==='0'?'&hole=0':''}#td`);
+ await go('finale',`index.html?sw=0&acceptance=1&cine=0&skip=defence&pets=born${process.env.HOLE==='0'?'&hole=0':''}#td`);   // ?pets=born (round 4, note 14): both companions in the final frame
  await until(`!!${T}`,90000);await delay(2500);await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
  await until(`!${T}.state().deploying`,30000);await delay(1500);
  await until(`(${T}.state().programme.printed||[]).includes('board')||(${T}.state().programme.done||[]).includes('board')`,300000).catch(async()=>console.log('FINALE no board yet: '+JSON.stringify(await evaluate(`${T}.state().programme.next`))));await delay(2000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
  assert(await evaluate(`${T}.showcase.finale()`),'the host takes the finale (the boards stand on a finished base)');
  await until(`${T}.state().shot==="diorama"`,5000);
+ // THE COMPANIONS IN THE FRAME (owner, 2026-11-02, round 4 note 14): copies of C-07 and RECKON K9 staged beside the hull, each inside 0.9 of the screen's
+ // half extents at both ends of the shot's rail through the game's default lens (artifacts/browser/finale-pets.png)
+ {const d=await evaluate(`${T}.showcase.diorama()`);console.log(`FINALE cast ${JSON.stringify(d)}`);const of=(n)=>d?.cast?.find(x=>x.name===n);
+  const inside=(p)=>Math.abs(p[0])<0.9&&Math.abs(p[1])<0.9;for(const n of ['hull','c07','k9']){const x=of(n);assert.ok(x,`${n} staged`);assert.ok(inside(x.from)&&inside(x.to),`${n} in the frame at both ends (NDC ${x.from} / ${x.to})`);}
+  await delay(1200);current='finale-pets';await finish();}
  // THE DAY 42 REPLAY (round 3, 2026-10-26, decision 3b): with the boards read, the disco party's short form (src/fx/disco-party.js replay), the diorama
  // holding as long (DAY_42.replay.seconds); where the ball hangs (the Stålheart's tip in the shot's view, or over the boards), the klaxon before its end
  {const {DAY_42}=await import('../src/content/day-42.js'),P=async()=>(await st()).ending?.party;

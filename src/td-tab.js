@@ -2404,7 +2404,7 @@ export function initTdTab(root) {
     // the story planet has a day
     daylight?.restore();
     daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, ...(({ phase, day }) => ({ phase, dayNo: day }))(dayFlag(flags.day)), dial: root }) : null;
-    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, startShot, snapCamera, showBrief, cutBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide),
+    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, pets: () => companions, startShot, snapCamera, showBrief, cutBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide),
       daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveClock.in() >= 0, boards: () => story?.boards ?? [],   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen(), alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(), warm: warmShaders }) : null;
     mechSquad?.restore(); mechSquad = story ? createMechSquad({ scene, metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => (playerHP > 0 ? player.pos : null), towerDef: (k) => TOWER_BY_KEY[k], towerId: () => nextTowerId++, seed: params.seed, eye: () => camera.position, wire: () => (wire ? wireOpts : null) }) : null;
@@ -2413,7 +2413,7 @@ export function initTdTab(root) {
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
-    companions?.dispose(); companions = story && flags.pets !== '0' ? createCompanions({ scene, metres: () => metresToArc(1, cellSide), graph: () => graph, dungeon: () => dungeon, inside: (ci) => !!story.inside?.(ci), solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false,
+    companions?.dispose(); companions = story && flags.pets !== '0' ? createCompanions({ scene, party: () => discoParty?.floor() ?? null, metres: () => metresToArc(1, cellSide), graph: () => graph, dungeon: () => dungeon, inside: (ci) => !!story.inside?.(ci), solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false,
       hull: () => (playerHP > 0 ? player.pos : null), eye: () => camera.position, wire: () => (wire ? wireOpts : null), seed: params.seed, born: flags.pets === 'born' }) : null;   // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions (src/fx/companions.js), printed by Isao since 2026-10-30 (?pets=born: on the clearing from the first frame); ?pets=0 leaves them out
     petPrint?.restore(); petPrint = companions ? createPetPrint({ scene, camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, showBrief, companions: () => companions, isao: () => isao, phase: () => story?.beats?.phase?.() ?? null, perk: (id) => programme.hasPerk(id), day: () => daylight?.day?.() ?? 0, sectorRun: () => sectorRun,   /* ISAO PRINTS THE COMPANIONS (owner, 2026-10-30; src/fx/pet-print.js) */
       shotActive: () => shotActive() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() || !!controlsCard?.state().shown, isaoBusy: () => !!briefs.queue(), alive: () => playerHP > 0, won: () => !!player.won, slabAt: (p, pad) => storyBase?.slabAt(p, pad) ?? null }) : null;
@@ -4700,7 +4700,7 @@ export function initTdTab(root) {
     cellSide: () => cellSide,
     hull: () => playerMesh,
     isao: () => isao,
-    spawnIsao, party: () => discoParty,   /* the DAY 42 replay at the ending's diorama (round 3, 2026-10-26) */
+    spawnIsao, party: () => discoParty, pets: () => companions,   /* the DAY 42 replay at the ending's diorama (round 3, 2026-10-26) */
   });
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, tankReady, the programme's part of the tick, repaired, printed
   const programme = createProgrammeHost({

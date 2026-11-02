@@ -119,3 +119,23 @@ console.log('Companions: an unprinted unit stays out of the play; tag waits for 
   assert(!st.units.some((p) => p.mode === 'greet'), 'and the greet breaks off as it moves');
 }
 console.log('Companions: out of the tank\'s way: a hull driven at a sitting unit at 6-30 m/s never within 4 m; the greet waits for a parked hull');
+// 7. DAY 42 ON THE DANCE FLOOR (owner, 2026-11-02, round 4 note 8): with the party on both go to the floor and alternate tricks, sits and short dashes,
+// no game of tag starts and a running one ends, a hull driving at a dancer does not break the dance; the klaxon (the party off) ends it
+{
+  let s = 8; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
+  const st = createPlay(COMPANIONS.play), party = { on: false }, set = [0, 0], shots = [new Set(), new Set()], moves = [0, 0];
+  const ctx = { now: 0, rand, units: COMPANIONS.units.map((d) => ({ top: d.top, idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => 5, toTarget: (i) => (ctx.now - set[i] > 2 ? 0.5 : 8), toHull: () => 30, blocked: () => false, clipSecs: () => 2,
+    hullMotion: () => ({ d: 5, speed: 6, closing: 6, lateral: 0 }), dancing: () => party.on };
+  ctx.hullMotion = () => null;
+  for (let t = 0; t < 30; t += 0.05) { ctx.now = t; stepPlay(st, 0.05, ctx); st.units.forEach((p, i) => { if (p.retarget) { p.retarget = false; set[i] = t; } }); }
+  party.on = true; const games0 = st.game.games;
+  for (let t = 30; t < 70; t += 0.05) {
+    ctx.now = t; if (t > 50) ctx.hullMotion = () => ({ d: 5, speed: 6, closing: 6, lateral: 0 });
+    stepPlay(st, 0.05, ctx);
+    st.units.forEach((p, i) => { if (p.retarget) { p.retarget = false; set[i] = t; if (p.target === 'floor') moves[i]++; } if (t > 30.1) assert.equal(p.mode, 'dance', `unit ${i} dances through the party (t ${t.toFixed(2)})`); if (p.oneShot) shots[i].add(p.oneShot); });
+  }
+  assert.equal(st.game.on, false); assert.equal(st.game.games, games0, 'no game of tag during the party');
+  for (let i = 0; i < 2; i++) { const u = COMPANIONS.units[i]; assert(shots[i].has(u.sit) && u.tricks.some((x) => shots[i].has(x)), `unit ${i}: tricks and sits (${[...shots[i]]})`); assert(moves[i] >= 4, `unit ${i}: dashes round the floor (${moves[i]})`); }
+  party.on = false; ctx.hullMotion = () => null; ctx.now = 70; stepPlay(st, 0.05, ctx); assert(st.units.every((p) => p.mode !== 'dance'), 'the klaxon ends the dance');
+}
+console.log('Companions: DAY 42: both dance through the party (tricks, sits, dashes), no tag, the klaxon ends it');
