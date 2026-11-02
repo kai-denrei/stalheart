@@ -219,3 +219,12 @@ for (const born of [['c07', 'k9'], ['k9'], []]) {
   const f = p.floor(); assert.ok(Array.isArray(f) && f.length === 3, 'the floor during the party');
 }
 console.log('disco-party: the companions in the cut (14 s with both, a close shot each), the floor under the ball');
+// the close shot looks past the parked hull: with the hull on C-07's front-right quarter the lens takes another quarter
+{
+  const at = new THREE.Vector3(0, 100, 30), pets = { born: () => ['c07'], frameOf: (i, pos, quat) => { pos.copy(at); quat.identity(); return true; } };
+  const { h, log } = host({ pets }); h.hull = () => [at.x + 6, at.y, at.z + 8]; const p = createDiscoParty(h);
+  p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 1.6);
+  const out = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }; log.lastShot.poseAt((DAY_42.shot.petsAt + 1) / log.lastShot.dur, out);
+  assert.ok(!(out.pos.x > at.x && out.pos.z > at.z), `not the hull's quarter (${out.pos.x - at.x}, ${out.pos.z - at.z})`);
+}
+console.log('disco-party: the close shot takes the quarter away from the hull');

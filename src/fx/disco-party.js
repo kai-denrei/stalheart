@@ -26,7 +26,8 @@
 // boards() (the two scoreboards, src/fx/scoreboard.js: override(lines, colours); the party face from the start to the done, 2026-10-18), daylight(), sectorRun(), base() (the story base: structure(id)), shotActive, seated, card, warning (the board's wave warning counting
 // down: no party over it), alive, won, isaoBusy, warm (src/fx/shader-warm.js: compile(root)); loadGlb and now (the wall clock in ms, performance.now by default) for a test;
 // pets() (round 4, 2026-11-02, note 8: the companions, src/fx/companions.js: born() and frameOf(i, pos, quat), or null): each printed one gets a close
-// shot in the reveal cut (DAY_42.shot petsAt / petSecs), and floor() hands the companions the ground under the ball while the party is on (their dance).
+// shot in the reveal cut (DAY_42.shot petsAt / petSecs), and floor() hands the companions the ground under the ball while the party is on (their dance);
+// hull() (the hull's point or null): each close shot takes the quarter round its companion (petEye mirrored in x and z) whose line of sight passes farthest from it.
 import * as THREE from '../../vendor/three.module.js';
 import { loadGlb } from '../glbmodels.js';
 import { DAY_42 } from '../content/day-42.js';
@@ -176,11 +177,17 @@ export function createDiscoParty(h) {
   // noted by the pose and the tick cuts to it (snapCamera) and lowers the near plane for it, put back at the orbit and at the cut's end
   let cut = null;
   const petFrame = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, px = new THREE.Vector3(), py = new THREE.Vector3(), pz = new THREE.Vector3();
-  function petPose(i, out, eye, look) {
+  const QUARTERS = [[1, 1], [-1, 1], [1, -1], [-1, -1]], seg3 = new THREE.Line3(), hp = new THREE.Vector3(), cp = new THREE.Vector3();
+  function petPose(i, out, eye, look, side) {
     const S = DAY_42.shot, m = metres(); if (!h.pets?.()?.frameOf(i, petFrame.pos, petFrame.quat)) return false;
     px.set(1, 0, 0).applyQuaternion(petFrame.quat); py.set(0, 1, 0).applyQuaternion(petFrame.quat); pz.set(0, 0, 1).applyQuaternion(petFrame.quat);
-    eye.copy(petFrame.pos).addScaledVector(px, S.petEye[0] * m).addScaledVector(py, S.petEye[1] * m).addScaledVector(pz, S.petEye[2] * m);
-    look.copy(petFrame.pos).addScaledVector(py, S.petLook * m); m4.lookAt(eye, look, py);
+    look.copy(petFrame.pos).addScaledVector(py, S.petLook * m);
+    const at = (q) => eye.copy(petFrame.pos).addScaledVector(px, q[0] * S.petEye[0] * m).addScaledVector(py, S.petEye[1] * m).addScaledVector(pz, q[1] * S.petEye[2] * m);
+    if (side.q == null) {   // the quarter whose line of sight passes farthest from the hull, chosen once a close shot (the parked hull hid C-07 in the first frames)
+      const hull = h.hull?.(); side.q = 0;
+      if (hull) { hp.set(hull[0], hull[1], hull[2]); let best = -1; QUARTERS.forEach((q, k) => { seg3.set(at(q).clone(), look); const d = seg3.closestPointToPoint(hp, true, cp).distanceTo(hp); if (d > best) { best = d; side.q = k; } }); }
+    }
+    at(QUARTERS[side.q]); m4.lookAt(eye, look, py);
     out.pos.copy(eye); out.quat.setFromRotationMatrix(m4); return true;
   }
   function cutTick() {
@@ -197,11 +204,11 @@ export function createDiscoParty(h) {
     const S = DAY_42.shot, start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() };
     const born = h.pets?.()?.born?.() ?? [], pets = COMPANIONS.units.map((u, i) => (born.includes(u.id) ? i : -1)).filter((i) => i >= 0);
     const dur = pets.length ? Math.max(S.seconds, S.petsAt + pets.length * S.petSecs) : S.seconds;
-    cut = { seg: -1, shown: -1, lens: null, pets, dur, segs: [] };
+    cut = { seg: -1, shown: -1, lens: null, pets, dur, segs: [], sides: [] };
     const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();
     h.startShot({ id: S.id, dur, skippable: true, onEnd: () => { cutOff(); h.snapCamera(); }, poseAt(u, out) {
       const ts = u * dur, seg = ts >= S.petsAt ? Math.floor((ts - S.petsAt) / S.petSecs) : -1;
-      if (cut && seg >= 0 && seg < pets.length && petPose(pets[seg], out, eye, look)) { cut.seg = seg; if (!cut.segs.includes(pets[seg])) cut.segs.push(pets[seg]); return; }
+      if (cut && seg >= 0 && seg < pets.length && petPose(pets[seg], out, eye, look, cut.sides[seg] ??= {})) { cut.seg = seg; if (!cut.segs.includes(pets[seg])) cut.segs.push(pets[seg]); return; }
       if (cut) cut.seg = -1;
       const live = structure(), r = live?.near ?? live?.root ?? root, m = metres(); if (!tipNow(r)) return;
       (live?.holder ?? r).getWorldPosition(base); n.copy(base.lengthSq() < 1e-12 ? Y : base.normalize());   // the base's radial: the orbit's plane stays level while the arm sways
