@@ -23,5 +23,9 @@ export const DESCENT = Object.freeze({
   // and the cave's page starts loading; the game runs again for the dive once the cave posts it is ready (`readyCap` real seconds at most) and the
   // brief is read (briefCap, in real seconds while still)
   still: 1.8, readyCap: 25,
+  // ONE PLACE (owner, 2026-11-05, round 5 note 10: "entering and leaving feel like loading a different game"): the cave starts where the dive ends and the climb
+  // hands its last pose back (src/domain/descent-handoff.js); each cut is covered by the last frame before it fading out over `fade` s, the way in once the cave
+  // says its first frame is drawn, or `fadeCap` real seconds after the show at the latest
+  fade: 0.6, fadeCap: 3,
   jokeHold: 7,   // seconds Isao's line stays up after the cave closes before the ending begins (a caption needs reading)
 });

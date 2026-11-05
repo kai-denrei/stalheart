@@ -1629,13 +1629,28 @@ try{
  await until('(()=>{const f=document.querySelector("iframe.descent-frame");const d=f&&f.contentDocument;return !!d&&!!d.getElementById("begin");})()',30000).catch(()=>assert.fail('the cave\'s page booted inside the frame'));
  await until('(()=>{const d=document.querySelector("iframe.descent-frame")?.contentDocument;const b=d&&d.getElementById("begin-label");return !!b&&/TAKE THE FEED|FEED UNAVAILABLE|INITIALIZING/.test(b.textContent);})()',60000);
  {const label=await evaluate('document.querySelector("iframe.descent-frame").contentDocument.getElementById("begin-label").textContent');console.log(`  the cave's card inside the frame: ${label}`);}
+ // ONE PLACE (owner, 2026-11-05, round 5 note 10; src/domain/descent-handoff.js): the cave asked before it built its world and was answered with the dive's last pose
+ // in hole units (half a hole radius down the axis, looking down it) and the sky; the game's last frame covered the cave and faded once the cave had drawn
+ {const d=(await st()).descent,{ARENA}=await import('../src/content/sectors.js'),h=d.handoff;console.log(`  the handoff: ${JSON.stringify(h&&{pose:h.pose,sky:h.sky,carcass:h.carcass&&{limbs:h.carcass.limbs,moved:h.carcass.moved}})}`);
+  assert.ok(h&&Math.abs(h.pose.pos[1]+DESCENT.door.under/ARENA.craterCells)<1e-6&&Math.hypot(h.pose.pos[0],h.pose.pos[2])<1e-6,`the cave asked and was answered with the dive's last pose (${JSON.stringify(h)})`);
+  assert.ok(h.pose.fwd[1]<-0.999,'looking down the axis');assert.ok(h.sky&&Number.isFinite(h.sky.bg)&&h.sky.daylight>=0,`the game's sky (${JSON.stringify(h.sky)})`);
+  await until(`(${T}.state().descent.fades[0]||{}).gone!=null`,(DESCENT.fadeCap+DESCENT.fade+2)*1000).catch(async()=>assert.fail(`the game's last frame over the cave faded and went (${JSON.stringify((await st()).descent.fades)})`));
+  const fd=(await st()).descent.fades[0];console.log(`  the cover in: up ${((fd.fading-fd.at)/1000).toFixed(2)} s, gone ${((fd.gone-fd.at)/1000).toFixed(2)} s after the show`);assert.equal(fd.kind,'in');
+  assert.equal(await evaluate('document.querySelectorAll(".descent-fade").length'),0,'no cover left');}
  current='descent-open';await finish();
  // a lost descent: the frame stays
  await evaluate(`${T}.descentReport('lost')`);await delay(300);
  {const d=await st();assert.equal(d.descent.open,true,'a lost descent keeps the cave open for its TRY AGAIN');assert.equal(d.descent.outcome,'lost');assert.equal(d.paused,true);}
  // rescued: the frame goes, the game runs, the joke, the ending
  const shot0=(await st()).shotId??null;
- await evaluate(`${T}.descentReport('rescued')`);await delay(600);
+ // the cave's way out (its climb's last pose at the throat's mouth looking up, hole units, and a still of its last frame) posted as the cave posts it
+ const climbEnd={pos:[0,-0.55,0],fwd:[0,1,0],up:[0,0,-1],fov:72};
+ await evaluate(`(()=>{const c=document.createElement('canvas');c.width=64;c.height=40;const x=c.getContext('2d');x.fillStyle='#0b1a3a';x.fillRect(0,0,64,40);window.postMessage({below:'rescued',pose:${JSON.stringify(climbEnd)},still:c.toDataURL('image/jpeg',.8)},'*');})()`);
+ await until(`!document.querySelector("iframe.descent-frame")`,5000);
+ {const d=(await st()).descent,m=d.door;console.log(`  out: the rise from ${JSON.stringify(d.risenFrom)}, the camera ${JSON.stringify(m)}`);assert.deepEqual(d.risenFrom,climbEnd,'the rise starts from the cave\'s last pose');
+  assert.ok(m&&m.phase==='rise'&&m.along<-0.9,`the camera starts up the axis looking up (${JSON.stringify(m)})`);assert.equal(d.fades.at(-1)?.kind,'out','the cave\'s still over the game');}
+ await until(`(${T}.state().descent.fades.at(-1)||{}).gone!=null`,5000).catch(async()=>assert.fail(`the cave's still faded and went (${JSON.stringify((await st()).descent.fades)})`));
+ await delay(300);
  {const d=await st();assert.equal(d.descent.open,false,'the frame is gone');assert.equal(d.descent.outcome,'rescued');assert.equal(d.paused,false,'the game runs again');
   assert.equal(await evaluate('!!document.querySelector("iframe.descent-frame")'),false,'no frame in the DOM');
   assert.deepEqual(d.descent.said,['descent_brief','descent_back'],`the brief, then Isao's decoding joke (${JSON.stringify(d.descent.said)})`);}

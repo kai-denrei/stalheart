@@ -3,9 +3,9 @@ import { createWorld } from './world.js';
 import { createAudio } from './audio.js';
 import {impactCue} from './audio-cues.js';
 import {createFlight,fly} from './flight.js';
-import { parseMode, endingAction, postOutcome, postReady, isShow, briefingIdle } from './handoff.js';
+import { parseMode, endingAction, postOutcome, postReady, isShow, briefingIdle, askHandoff, handoffOf, postShown, poseToCave, poseToHole } from './handoff.js';
 import { DOOR, tiltAt, climbAt } from './door.js';
-import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE, START_CARD, startCard } from './mission.js';
+import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE, START_CARD, startCard, HOLE_SCALE } from './mission.js';
 import { BEACON } from './flares.js';
 
 const $=id=>document.getElementById(id);
@@ -16,6 +16,10 @@ let world,mission=createMission(),flight=createFlight(START),mode='briefing',res
 let simulationTime=0,lastTime=performance.now(),lastScan=-10,lastHit=-10,alertUntil=0,commsUntil=0,impact=0,lookDelta=0,cardUntil=0;
 let dialogueQueue=[],seen=new Set(),frameTimes=[];
 let climbing=null,skyFade=null;   // the climb out of the arena's hole (src/door.js): its seconds, and the sky's fade over the page
+// ONE PLACE (Stålheart's round 5, note 10; src/handoff.js): the game's handoff (asked before the world is built), its dive's last pose in the cave's metres, and the
+// climb's last frame still to post with the outcome. Without a handoff (the page on its own, or ?stalheart=1 opened alone) the door plays as before
+const framed=globalThis.parent!==globalThis,HANDOFF_WAIT=2000,CAVE_FOV=72;
+let handoff=null,handoffPose=null,capturePending=false;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const formatTime=s=>{const total=Math.max(0,Math.ceil(s));return `${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;};
 
@@ -152,29 +156,37 @@ function step(dt){
   if(simulationTime>alertUntil)$('alert').textContent=mission.payload&&mission.lidarAvailable&&!seen.has('lidar-used')?LIDAR_HINT:'';   // other alerts pass over it, then it is back; not on the escape (the bomb placed), and surface/detonation never come here
   impact=Math.max(0,impact-dt*.7);$('impact').style.opacity=String(impact);
   const route=nearestRoute(player);audio.update(velocity.length(),simulationTime,player.y<SINKHOLE_THROAT-1,!keys.has('KeyE')&&mission.fuse>10,route.s,route.branch);world.update(simulationTime,mission,false,{flight,dt,yaw,pitch,reducedMotion});
-  if(stalheart&&!reducedMotion&&simulationTime<DOOR.tilt)doorLook(tiltAt(simulationTime));
+  if(stalheart&&!reducedMotion&&simulationTime<DOOR.tilt)doorLook(tiltAt(simulationTime));else if(handoffPose)setFov(CAVE_FOV);
   updateHUD();
 }
 // THE DOOR'S FIRST SECONDS (src/door.js): from looking straight up the throat at the mouth of sky to the chase camera's view of the cave ahead
 const upPos=new THREE.Vector3(),upQ=new THREE.Quaternion(),chasePos=new THREE.Vector3(),chaseQ=new THREE.Quaternion(),looker=new THREE.PerspectiveCamera();   // a camera's lookAt aims its -z
 function doorLook(u){
   const cam=world.camera,p=world.player;chasePos.copy(cam.position);chaseQ.copy(cam.quaternion);
+  // ONE PLACE (note 10): with the game's handoff the view starts where the game's dive ended (down the throat, the game's narrowed view) and eases to ISAO's
+  if(handoffPose){const k=1-u;setPose(looker,handoffPose);cam.position.lerpVectors(chasePos,looker.position,k);cam.quaternion.slerpQuaternions(chaseQ,looker.quaternion,k);setFov(CAVE_FOV+((handoffPose.fov??CAVE_FOV)-CAVE_FOV)*k);looker.up.set(0,1,0);return;}
   // behind ISAO where the chase camera sits (not under it: it would fill the view), looking up the throat's axis at the mouth of sky, its top toward the
   // cave ahead; the tilt then only lowers the view
   const fx=-Math.sin(yaw),fz=-Math.cos(yaw),mouth=world.doorStart.mouth;upPos.set(p.x-fx*3,p.y-.3,p.z-fz*3);looker.position.copy(upPos);looker.up.set(fx,0,fz);looker.lookAt(0,mouth+6,0);upQ.copy(looker.quaternion);looker.up.set(0,1,0);
   const k=1-u;cam.position.lerpVectors(chasePos,upPos,k);cam.quaternion.slerpQuaternions(chaseQ,upQ,k);
 }
-// THE CLIMB OUT (src/door.js): the ending's RETURN TO THE SURFACE rises up the hole's axis to its mouth of sky and fades to it, then posts the outcome
+// a camera put on a pose ({ pos, fwd, up, fov } cave metres; the fov left to the caller), and the cave's camera's pose now; the camera's vertical fov
+function setPose(cam,pose){cam.position.set(...pose.pos);cam.up.set(...pose.up);cam.lookAt(pose.pos[0]+pose.fwd[0],pose.pos[1]+pose.fwd[1],pose.pos[2]+pose.fwd[2]);}
+const fwdV=new THREE.Vector3(),upV=new THREE.Vector3();
+function cameraPose(){const c=world.camera;fwdV.set(0,0,-1).applyQuaternion(c.quaternion);upV.set(0,1,0).applyQuaternion(c.quaternion);return {pos:c.position.toArray(),fwd:fwdV.toArray(),up:upV.toArray(),fov:c.fov};}
+function setFov(f){const c=world.camera;if(Math.abs(c.fov-f)>1e-4){c.fov=f;c.updateProjectionMatrix();}}
+// THE CLIMB OUT (src/door.js): the ending's RETURN TO THE SURFACE rises up the hole's axis to its mouth of sky and fades to it, then posts the outcome. With the
+// game's handoff (note 10) no fade: the climb ends looking up the throat at the sky, and that last frame and pose go with the outcome (the game rises from there)
 function climb(){
   if(climbing!==null)return;
-  climbing=0;mode='climb';$('ending').hidden=true;
-  if(!skyFade){skyFade=document.createElement('div');skyFade.id='door-sky';skyFade.style.cssText=`position:fixed;inset:0;pointer-events:none;z-index:30;opacity:0;background:radial-gradient(circle at 50% 50%,#${DOOR.sky.toString(16).padStart(6,'0')} 0,#${DOOR.skyEdge.toString(16).padStart(6,'0')} 70%)`;document.body.append(skyFade);}
+  climbing=0;mode='climb';$('ending').hidden=true;setFov(CAVE_FOV);
+  if(!skyFade&&!handoffPose){skyFade=document.createElement('div');skyFade.id='door-sky';skyFade.style.cssText=`position:fixed;inset:0;pointer-events:none;z-index:30;opacity:0;background:radial-gradient(circle at 50% 50%,#${DOOR.sky.toString(16).padStart(6,'0')} 0,#${DOOR.skyEdge.toString(16).padStart(6,'0')} 70%)`;document.body.append(skyFade);}
 }
 function climbStep(dt){
   climbing+=dt;const c=climbAt(climbing,world.doorStart),cam=world.camera;
   cam.position.set(0,c.y,0);looker.position.copy(cam.position);looker.up.set(0,0,-1);looker.lookAt(0,c.y+30,0);looker.up.set(0,1,0);cam.quaternion.copy(looker.quaternion);   // straight up: the up vector across the axis
-  skyFade.style.opacity=String(c.fade);
-  if(c.done&&mode==='climb'){mode='ended';postOutcome(mission.outcome);}
+  if(skyFade)skyFade.style.opacity=String(c.fade);
+  if(c.done&&mode==='climb'){mode='ended';if(handoffPose)capturePending=true;else postOutcome(mission.outcome);}   // the still is taken right after this frame is drawn (frame below)
 }
 function updateHUD(){
   const cinematic=mode==='surface'||mode==='detonation';
@@ -236,21 +248,38 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
 window.addEventListener('blur',()=>{keys.clear();if(['playing','surface','detonation'].includes(mode))pause();});
 window.addEventListener('resize',()=>world?.resize());
 
+// the game's handoff, asked for and waited on (HANDOFF_WAIT ms at most) before the world is built: the world takes its sky (and, src/door.js, its carcass)
+function waitHandoff(ms){
+  return new Promise((resolve)=>{
+    let done=false;const finish=(h)=>{if(done)return;done=true;clearTimeout(timer);globalThis.removeEventListener('message',on);resolve(h);};
+    const timer=setTimeout(()=>finish(null),ms),on=(e)=>{if(e.source===globalThis.parent&&e.data&&typeof e.data==='object'&&'belowHandoff' in e.data)finish(handoffOf(e.data));};   // answered null: no hole to share, go on
+    globalThis.addEventListener('message',on);if(!askHandoff())finish(null);
+  });
+}
 try{
-  world=await createWorld($('view'),{carcass:stalheart});
+  if(stalheart&&framed)handoff=await waitHandoff(HANDOFF_WAIT);
+  handoffPose=handoff?poseToCave(handoff.pose,HOLE_SCALE):null;
+  world=await createWorld($('view'),{carcass:stalheart,sky:handoff?.sky??null});
+  if(handoffPose)world.showDoor(true);   // the throat's foot under the game's last view: its rubble, the green flare's place
   $('begin').disabled=false;$('begin-label').textContent=stalheart?'TAKE THE FEED':'TAKE CONTROL OF ISAO';
   if(stalheart){const w=document.querySelector('.wordmark');if(w)w.style.visibility='hidden';const c=document.querySelector('.brief-copy');if(c)c.innerHTML='The arena’s sinkhole is the way down to the nest.<br>MÖRK is too big for it.<br>ISAO takes the bomb to their Queen.';}   // Stålheart's own card: no link out, the campaign's words (2026-10-18: the arena's hole, as Isao's brief over the game says it; that brief sits under this frame)
   // in Stålheart's frame: ready once the first frame is drawn, then idle under the game until it shows the frame (src/handoff.js, note 10)
-  const framed=globalThis.parent!==globalThis;let shown=!framed,drawn=false;
-  globalThis.addEventListener('message',(e)=>{if(e.source===globalThis.parent&&isShow(e.data))shown=true;});
+  let shown=!framed,drawn=false,shownPosted=false;
+  // shown: with the game's sky at that moment (its day ran on through the dive) and the dive's last pose
+  globalThis.addEventListener('message',(e)=>{if(e.source===globalThis.parent&&isShow(e.data)){shown=true;if(e.data.sky)world.setSky(e.data.sky);if(handoffOf({belowHandoff:{pose:e.data.pose}}))handoffPose=poseToCave(e.data.pose,HOLE_SCALE);}});
   function frame(now){
     const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;
     if(mode==='briefing'&&briefingIdle({stalheart,framed,shown,drawn})){requestAnimationFrame(frame);return;}
     if(mode==='briefing'){
-      simulationTime+=dt;world.camera.position.set(31+Math.sin(simulationTime*.035)*2,36,39);world.camera.lookAt(0,-7,0);world.update(simulationTime,mission,true);
+      simulationTime+=dt;
+      if(handoffPose){setPose(world.camera,handoffPose);setFov(handoffPose.fov??CAVE_FOV);}   // ONE PLACE: where the game's dive ended, under the card
+      else{world.camera.position.set(31+Math.sin(simulationTime*.035)*2,36,39);world.camera.lookAt(0,-7,0);}
+      world.update(simulationTime,mission,true);
     }else if(mode==='climb')climbStep(dt);else step(dt);
     world.render();frameTimes.push(dt);if(frameTimes.length>120)frameTimes.shift();requestAnimationFrame(frame);
     if(!drawn){drawn=true;if(stalheart)postReady();}
+    if(shown&&framed&&stalheart&&!shownPosted){shownPosted=true;postShown();}   // the game fades its last frame out over this one
+    if(capturePending){capturePending=false;let still=null;try{still=$('view').toDataURL('image/jpeg',.85);}catch{still=null;}postOutcome(mission.outcome,{pose:poseToHole(cameraPose(),HOLE_SCALE),still});}   // drawn this task: the buffer is still there
   }
   requestAnimationFrame(frame);
   // Explicit test URL only; the normal game exposes no debug controls.
@@ -265,6 +294,7 @@ try{
     hurt:(value)=>{mission.integrity=Math.max(0,mission.integrity-value);},
     pose:(x,y,z)=>{world.player.set(x,y,z);velocity.set(0,0,0);},
     nearQueen:()=>{world.player.set(QUEEN.x+37,QUEEN.y,QUEEN.z+8);velocity.set(0,0,0);},
+    handoff:()=>handoff, cameraPose:()=>cameraPose(),
     viewUp:(y)=>{mode='paused';resumeMode='playing';const cam=world.camera;cam.position.set(0,y,0);looker.position.copy(cam.position);looker.up.set(0,0,-1);looker.lookAt(0,y+30,0);looker.up.set(0,1,0);cam.quaternion.copy(looker.quaternion);if(skyFade)skyFade.style.opacity='0';},   // the climb's view at height y, held (the door's frames)
     scan, pause, resume, start, dropFlare, hit:receiveImpact, selectView, climb, climbStep, end,
     capturePose:(s,y=0,p=-.15)=>{const c=center(s);world.player.copy(c);yaw=y;pitch=p;mission.lidarAvailable=true;mission.lidar=true;world.scan(simulationTime);world.update(simulationTime+1,mission,false,{flight,dt:.016,yaw,pitch,reducedMotion});world.render();}

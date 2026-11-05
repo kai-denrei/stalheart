@@ -1248,6 +1248,8 @@ html, body {
 
 /* THE DESCENT (src/fx/descent-host.js): the cave game over the whole tab while it plays */
 .descent-frame { position: fixed; inset: 0; width: 100vw; height: 100vh; border: 0; z-index: 200; background: #000; }
+/* THE DESCENT'S CROSS-FADES (2026-11-05, note 10; src/fx/descent-host.js): the last frame before each cut over the next, fading out */
+.descent-fade { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 201; pointer-events: none; opacity: 1; transition: opacity 0.6s linear; object-fit: cover; }
 
 /* THE CHOICE CARD (owner, 2026-10-15, THE BOSS; src/fx/choice-card.js): Isao's line and two buttons over the paused game, the debrief's look */
 .choice-card { position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 120; width: min(560px, calc(100vw - 32px)); padding: 18px 20px; background: rgba(4, 12, 10, 0.92); border: 1px solid rgba(53, 255, 208, 0.45); box-shadow: 0 0 24px rgba(53, 255, 208, 0.18); color: #c9ffe9; font: 500 14px ui-monospace, Menlo, monospace; letter-spacing: 0.04em; }
