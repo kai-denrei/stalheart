@@ -1,5 +1,5 @@
-// THE ENDING'S HOST (moved out of src/fx/programme-host.js unchanged, the refactor run, 2026-10-07): the sector loop's interlude
-// (retired) and the finale. playDiorama (src/fx/finale-diorama.js) gets its own literal of the members it reads, story, startShot, scene,
+// THE ENDING'S HOST (moved out of src/fx/programme-host.js unchanged, the refactor run, 2026-10-07): the finale (the sector loop's interlude,
+// retired here, is the build board's since round 6: src/fx/build-board.js). playDiorama (src/fx/finale-diorama.js) gets its own literal of the members it reads, story, startShot, scene,
 // cellSide, hull, isao, spawnIsao, party (the disco party for the DAY 42 replay, round 3, 2026-10-26) and pets (the companions staged in the frame, round 4) (refactor round 2: `c` is no longer handed on); the finale itself reads storyBase, map, dungeon, graph, pause, hud and sfx.
 import * as THREE from '../../vendor/three.module.js';
 import { playDiorama } from './finale-diorama.js';
@@ -7,9 +7,6 @@ import { playOrbitalFinale } from './orbital-finale.js';
 
 export function createEndingHost(c) {
   return {
-    // THE PAINT SHOP AT THE BREAK is retired (2026-10-03: the palettes are all open, the bays' purple pad is the shop): the sector loop's
-    // ask is answered no, and the next sector begins as it always did
-    interlude: () => false,
     // THE FINALE (src/fx/finale-diorama.js, then src/fx/orbital-finale.js): the world runs again under the host's own shot, and
     // `then` (the next sector, or a new run) runs when they end
     finale: (then) => {

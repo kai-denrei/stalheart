@@ -1,4 +1,4 @@
-// The ending's host (src/fx/ending-host.js) over a recording controller: the retired interlude answers no; the finale pauses off and
+// The ending's host (src/fx/ending-host.js) over a recording controller (the interlude is the build board's since round 6): the finale pauses off and
 // stages the diorama when two boards stand (src/fx/finale-diorama.js, the real one, over real Object3Ds), then pauses on and hands the
 // orbital finale (src/fx/orbital-finale.js, replaced here by a recording stub through a module loader hook: it owns a WebGL context)
 // its root and `{ sfx, done, planet }`, the planet built from the host: the board's map, the heart's unit vector, the base's group, the
@@ -41,12 +41,10 @@ function host(o = {}) {
 const board = (x, name) => { const g = new THREE.Group(); g.position.set(x, 10, 0); g.updateMatrixWorld(true); return { group: g, celebrate: (s) => log.push([`${name}.celebrate`, s]), tick: (dt) => log.push([`${name}.tick`, dt]) }; };
 const orbital = (got) => got.filter((x) => x[0] === 'playOrbitalFinale');
 
-// ---- the interlude is retired
+// ---- the interlude left this host (round 6: the build board's, src/fx/build-board.js)
 {
   const { host: h } = host();
-  assert.equal(h.interlude(), false, 'the sector loop\'s ask at the break is answered no');
-  assert.equal(h.interlude({ sector: 3 }), false, 'whatever it is asked');
-  assert.deepEqual(Object.keys(h).sort(), ['finale', 'interlude'], 'the surface is the interlude and the finale');
+  assert.deepEqual(Object.keys(h).sort(), ['finale'], 'the surface is the finale');
   assert.deepEqual(take(), [], 'nothing touched');
 }
 
@@ -190,4 +188,4 @@ const orbital = (got) => got.filter((x) => x[0] === 'playOrbitalFinale');
   assert.deepEqual(Object.keys(seen).sort(), ['cellSide', 'hull', 'isao', 'party', 'pets', 'scene', 'spawnIsao', 'startShot', 'story'], 'exactly story, startShot, scene, cellSide, hull, isao, spawnIsao, party (the DAY 42 replay, round 3) and pets (the companions in the frame, round 4)');
   for (const k of Object.keys(seen)) assert.equal(seen[k], h.c[k], `${k} is the host's own member, passed through`);
 }
-console.log('Ending host: the interlude is retired; the finale pauses off, stages the diorama (handed its eight members) when boards stand, and reaches `then` through the orbital finale\'s done.');
+console.log('Ending host: the finale pauses off, stages the diorama (handed its eight members) when boards stand, and reaches `then` through the orbital finale\'s done.');

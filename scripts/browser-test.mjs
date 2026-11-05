@@ -568,6 +568,8 @@ try{
   await thumb('.sdb-acts [data-act=continue]','CONTINUE');await reachable('.sdb-acts [data-act=continue]','CONTINUE');
   current='phone-debrief-last';await finish();
   await tap('.sdb-acts [data-act=continue]','CONTINUE');
+  // THE BUILD BOARD (round 6) opens on CONTINUE before sector 2: its tiles at 390 px, then SKIP
+  await until(`${T}.state().board.open`,8000);current='phone-board';await finish();await tap('.build-board .bb-skip','SKIP');
   await until(`${T}.state().sector.n===2 && !${T}.state().sector.debriefOpen`,15000);}
  current='phone-sector-2';await finish();
  // 9. LANDSCAPE, 844x390. Portrait is the layout this pass rules; landscape is held to the contract that matters —
@@ -1070,7 +1072,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','landing','foundry','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['board','garage','armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','landing','foundry','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,[],`nothing is owed: the colony is the build board's now (round 6), the passable back gate and launcher never were (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
@@ -2552,7 +2554,7 @@ try{
   console.log(`  director: door ${door}: axis ${got.axis.length} columns, lanes ${JSON.stringify(got.lanes)}`);
   assert.equal(got.axis.length,want.columns,`door ${door}: the axis has every column`);
   for(const l of ['sectors','prints','drops','cutscenes','isao','jumps'])assert.equal(got.lanes[l],want[l],`door ${door}: the ${l} lane draws every row`);
-  assert.ok(got.lanes.prints>=16&&got.lanes.cutscenes>=19&&got.lanes.jumps===13,`door ${door}: sixteen prints, the shots, the jumps`);
+  assert.ok(got.lanes.prints>=10&&got.lanes.board===6&&got.lanes.cutscenes>=19&&got.lanes.jumps===13,`door ${door}: sixteen prints, the shots, the jumps`);
   const names=await evaluate(`${D}.door(${door})`);assert.equal(names[door-1],`${door}:THE BACK DOOR`,`door ${door}: the door at ${door}`);assert.equal(names.at(-1),`${door+2}:BOTH WALLS`,'BOTH WALLS two after it');
   await evaluate('document.querySelector("#tab-director").scrollTop=0');await delay(200);current=`director-door-${door}`;await finish();await full(`director-board-${door}.png`);
  }
@@ -2788,6 +2790,53 @@ try{
  writeFileSync(join(output,`ledger${process.env.TAG?'-'+process.env.TAG:''}.json`),JSON.stringify({from,to,pay,board,wallSeconds:Math.round((Date.now()-t0)/1000),rows,picks},null,1));
  console.log(`LEDGER BANK ${rows.map(r=>`S${r.n} ${r.bank}`).join(' · ')} (${Math.round((Date.now()-t0)/1000)} s wall)`);
  current='ledger';await finish();
+ } else if(args.includes('--board')) {
+ // THE BUILD BOARD (owner, 2026-11-05, round 6 note 2; src/fx/build-board.js): sector 1 of a skipped opening held, the debrief's real CONTINUE
+ // (played by the ledger's paying defender) opens the board over the paused game: at most six tiles, no two alike, none of the spine, each with a price and an effect, the bank on the
+ // card; an unaffordable tile cannot be picked; keys pick (1-6 toggle), the second pick re-checks the bank, ENTER orders; the purchase is paid
+ // (the bank falls by the prices), the structure is bought on the programme, the sector after begins and Isao prints the bought structure at
+ // its gate (the sector kept quiet so its idle gate holds). KEEP HOLDING-style continues (the harness's own) pass the board by. SHOTS=<dir>
+ // keeps the board's frame too (board-open.png is always written to artifacts/browser).
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
+ await go('board',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=1#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===1`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ {const p=(await st()).programme;assert.deepEqual(p.bought.slice().sort(),['board','garage'],`a jump to sector 1 stands in for the boards before it: the board and the garage bought (${JSON.stringify(p.bought)})`);}
+ // sector 1 played and held by the ledger's ideal defender (every body killed, paid as the tank's kill: the bank the board is priced for), the debrief up;
+ // then its real CONTINUE
+ await until(`(()=>{const S=${T}.state().sector;if(S.phase==='fighting')${T}.sectorCull(999,'tank');document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return S.debriefOpen;})()`,600000).catch(async()=>assert.fail(`sector 1 is held (${JSON.stringify((await st()).sector)})`));
+ await delay(1200);
+ await evaluate(`document.querySelector('.sdb-acts [data-act=continue]').click()`);
+ await until(`${T}.state().board.open`,8000).catch(async()=>assert.fail(`CONTINUE opens the build board (${JSON.stringify((await st()).board)})`));
+ const b0=await st(),bd=b0.board;console.log(`  board before sector ${bd.n}: bank ${bd.bank} kg; ${bd.offers.map(o=>`${o.label} ${o.price} kg`).join(' · ')}`);
+ assert.equal(bd.n,2,'the board before sector 2');assert.equal(b0.sector.n,1,'the next sector waits for the board');assert(b0.paused,'over the paused game');
+ assert(bd.offers.length>=3&&bd.offers.length<=6,`three to six tiles (${bd.offers.length})`);assert.equal(new Set(bd.offers.map(o=>o.id)).size,bd.offers.length,'no two alike');
+ assert(!bd.offers.some(o=>/^build:(gate|stalheart|landing|foundry|solar|bays|hugin|radar|assembly|backgate)$/.test(o.id)),'the spine is never on the board');
+ assert(bd.offers.some(o=>o.id==='build:armory'),'the armory (sector 2) is offered; the board and the garage are already bought');
+ {const dom=await evaluate(`[...document.querySelectorAll('.build-board .bb-tile')].map(t=>({id:t.dataset.offer,name:t.querySelector('.bb-name').textContent,price:t.querySelector('.bb-price').textContent,effect:t.querySelector('.bb-effect').textContent,disabled:t.disabled}))`);
+  assert.equal(dom.length,bd.offers.length,'a tile per offer');assert(dom.every(t=>t.name&&/\d+ kg/.test(t.price)&&t.effect),`every tile has a name, a price and an effect (${JSON.stringify(dom)})`);
+  assert(dom.every(t=>t.disabled===(bd.offers.find(o=>o.id===t.id).price>bd.bank)),'a tile the bank cannot buy is disabled');}
+ current='board-open';await finish();if(shots){const sh=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'board-open.png'),Buffer.from(sh.data,'base64'));}
+ // the pick: the armory and the cheapest other card, by their keys; a third key is refused
+ const idx=(id)=>bd.offers.findIndex(o=>o.id===id)+1,other=bd.offers.filter(o=>o.id!=='build:armory').sort((x,y)=>x.price-y.price)[0];
+ const key=async(k)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code:/^\d$/.test(k)?'Digit'+k:k,text:/^\d$/.test(k)?k:undefined});await send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code:/^\d$/.test(k)?'Digit'+k:k});await delay(120);};
+ await key(String(idx('build:armory')));await key(String(idx(other.id)));
+ const third=bd.offers.find(o=>o.id!=='build:armory'&&o.id!==other.id);if(third)await key(String(idx(third.id)));
+ {const p=(await st()).board.picked;assert.deepEqual(p,['build:armory',other.id],`two picks by their keys, the third refused (${JSON.stringify(p)})`);}
+ if(shots){const sh=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'board-picked.png'),Buffer.from(sh.data,'base64'));}
+ const bank0=bd.bank,price=bd.offers.find(o=>o.id==='build:armory').price+other.price;
+ await key('Enter');
+ await until(`!${T}.state().board.open && ${T}.state().sector.n===2`,15000).catch(async()=>assert.fail(`ENTER orders and sector 2 begins (${JSON.stringify((await st()).board)} ${JSON.stringify((await st()).sector?.n)})`));
+ {const s=await st();console.log(`  ordered: ${JSON.stringify(s.board.last)}; bank ${bank0} -> ${s.biomass}`);
+  assert.deepEqual(s.board.last.took,['build:armory',other.id],'both picks placed');assert(s.programme.bought.includes('armory'),'the armory is bought on the programme');
+  assert(bank0-s.biomass>=price-1,`paid at the pick: the bank fell by ${price} kg (${bank0} -> ${s.biomass})`);}
+ await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`(${T}.state().programme.printed||[]).includes('armory')`,300000).catch(async()=>assert.fail(`Isao prints the bought armory at its gate (${JSON.stringify((await st()).programme)})`));
+ console.log(`  the armory printed: ${JSON.stringify((await st()).programme.printed)}`);
+ // the harness's own continue passes the board by (an acceptance run reading on)
+ await until(`(()=>{const S=${T}.state().sector;for(const b of S.breaches)if(b.live)${T}.sectorClose(b.id,'gunship');${T}.sectorClearField();return S.debriefOpen;})()`,120000).catch(async()=>assert.fail(`sector 2 is held (${JSON.stringify((await st()).sector)})`));
+ await delay(800);await evaluate(`${T}.sectorContinue()`);await until(`${T}.state().sector.n===3`,15000);assert.equal((await st()).board.open,false,'the harness continue opens no board');
+ current='board-after';await finish();
  } else if(args.includes('--voice-rate')) {
  // ISAO'S RATE (owner, 2026-10-13: "make him speak less often. Sometimes a line is triggered, sometimes it's silence"): a sector from its
  // start with the voice log. Every moment asked of him (src/fx/isao-voice.js isaoSay.asked) and every line said (isaoSay.log), against

@@ -111,11 +111,17 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   sectors.push({ id: 'ending', col: 'ending', label: 'THE ENDING', sub: 'the diorama, the report, the campaign card', rule: 'after the descent (or straight on without the cave)', when: { after: 'descent' }, tags: ['code'], src: [{ file: 'src/fx/sector-run.js', find: 'const finale = (then)' }] });
   sectors.push({ id: 'endless', col: 'endless', label: 'KEEP HOLDING', sub: `alive +${t.generator.aliveStep} a sector to ${t.generator.aliveCap}`, rule: `sides cycle ${t.generator.sides.map(breachText).join(' / ')}`, when: { generator: true }, tags: [], src: [{ file: SECTORS_FILE, find: ARC_FIND.generated }] });
 
-  // PRINTS: every programme step at its `when`
-  const prints = t.programme.map((s) => ({ id: `print-${s.id}`, col: stepCol(s), label: s.label.toUpperCase(), sub: `${s.seconds} s print${s.perk ? ` · perk ${s.perk}` : ''}`, rule: whenText(s.when), when: s.when,
+  // PRINTS: every automatic programme step at its `when`; BUILD BOARD (round 6): the six the player buys between sectors, from the first board
+  // that may offer one (the break before sector 2 at the earliest) to the end
+  const prints = t.programme.filter((s) => !s.board).map((s) => ({ id: `print-${s.id}`, col: stepCol(s), label: s.label.toUpperCase(), sub: `${s.seconds} s print${s.perk ? ` · perk ${s.perk}` : ''}`, rule: whenText(s.when), when: s.when,
     tags: [s.when.idle && 'at the lull', s.passable && 'passable', s.closeup && 'close-up', s.hull && 'first hull', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
     src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }] }));
   if (t.strike) prints.push({ id: 'isao-strike', col: `s:${t.strike.minSector}`, to: endCol, label: 'ISAO\'S MISSILE', sub: `once a run, from sector ${t.strike.minSector}`, rule: `a door under ${t.strike.gateShare} of its hp, ${t.strike.alive}+ bodies, the hull on screen`, when: { minSector: t.strike.minSector, gateShare: t.strike.gateShare, alive: t.strike.alive }, tags: ['once'], src: [{ file: PROGRAMME_FILE, find: 'export const ISAO_STRIKE' }] });
+
+  const boardFrom = (s) => Math.max(2, s.when.sector ?? 2), price = (s) => t.buildBoard?.structures?.[s.id]?.price ?? null;
+  const offers = t.programme.filter((s) => s.board).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: `${price(s)} kg · offered from sector ${boardFrom(s)}`,
+    rule: `on THE BUILD BOARD before sector ${boardFrom(s)} (the debrief's CONTINUE); once bought Isao prints it ${whenText(s.when)}`, when: s.when, tags: ['bought on the board', s.passable && 'passable', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
+    src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }, { file: 'src/content/build-board.js', find: `${s.id}: Object.freeze({ price` }] }));
 
   // DROPS & COMPANIONS: the day-gated moments, the day rule written on them
   const dayS = t.storyDay?.seconds ?? 30;
@@ -190,7 +196,7 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
     rule: `the door at ${t.sectorDoor.earliest} if everything is unlocked when sector ${t.sectorDoor.earliest - 1} begins (every landing site's part home, Isao's programme printed but for the passable steps), else at ${t.sectorDoor.latest}`,
     src: [{ file: SECTORS_FILE, find: 'export const SECTOR_DOOR' }, { file: 'src/domain/sectors.js', find: 'export const backDoorNext' }, { file: 'src/fx/sector-run.js', find: 'const unlocked = ()' }] };
   const lanes = [
-    { id: 'sectors', label: 'SECTORS', rows: sectors }, { id: 'prints', label: 'PRINTS', rows: prints }, { id: 'drops', label: 'DROPS & COMPANIONS', rows: drops },
+    { id: 'sectors', label: 'SECTORS', rows: sectors }, { id: 'prints', label: 'PRINTS', rows: prints }, { id: 'board', label: 'BUILD BOARD', rows: offers }, { id: 'drops', label: 'DROPS & COMPANIONS', rows: drops },
     { id: 'cutscenes', label: 'CUTSCENES', rows: cutscenes }, { id: 'isao', label: 'ISAO', rows: isao }, { id: 'jumps', label: 'JUMPS', rows: jumps },
   ];
   const codeShots = t.shots.filter((s) => !s.data && !s.at.outside), codeBriefs = placed.filter((p) => p.how === 'code').map((p) => p.id);

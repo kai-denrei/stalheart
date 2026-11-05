@@ -106,7 +106,7 @@ export function createSectorRun(h) {
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-    onContinue: () => cont(), onNewRun: () => h.reload(), onKeepHolding: next,
+    onContinue: () => cont(), onNewRun: () => h.reload(), onKeepHolding: () => next('hold'),
   }));
   // THE FINALE (owner, 2026-10-06, twenty-sixth notes: the diorama and the orbital constellation; twenty-seventh notes, 9: "play as a
   // celebration cinematic AFTER the final wave, before the score is looked at"): the host plays it once, when the final sector (the one
@@ -320,12 +320,14 @@ export function createSectorRun(h) {
     const show = () => { const ending = phase === 'finale'; phase = outcome === 'lost' ? 'lost-shown' : 'debrief'; h.pause(true); debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines(), confirm: ending }); h.hud(); };   // the ending's card asks before a skip (round 3)
     if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); const fin = () => finale(show); if (!api.descent?.(fin)) fin(); } else show();   // THE DESCENT (src/fx/descent-host.js) before THE ENDING before the score
   }
-  // the break between sectors: the host may take it (the paint shop, src/fx/programme-host.js interlude) and hand it back when done
-  function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); const go = () => { h.pause(false); begin(def.n + 1); }; phase = 'break'; if (!api.interlude?.(go)) go(); }
-  function cont() {
+  // the break between sectors: the host may take it (THE BUILD BOARD since round 6, src/fx/build-board.js; the paint shop before it) and hand it
+  // back when done. `via` says how the card was left: 'continue' (its CONTINUE: the board opens), 'hold' (KEEP HOLDING: the hold is its own
+  // choice, no board), 'harness' (an acceptance run reading on: no board unless the run asks for it with 'continue')
+  function next(via = 'continue') { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); const go = () => { h.pause(false); begin(def.n + 1); }; phase = 'break'; if (!api.interlude?.(go, { n: def.n + 1, via })) go(); }
+  function cont(via = 'continue') {
     if (phase === 'lost-shown') { h.reload(); return; }
     if (phase === 'debrief' && finalSector() && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports), clips: story.reel?.clips() ?? [], lapse: story.lapse?.stills() ?? [] }, { isao: nextLines(), confirm: finaleShown }); return; }
-    next();
+    next(via);
   }
 
   // THE BACK DOOR RUMBLES in the sector before it falls (src/content/sectors.js BACK_OMENS): after a pulse, the omen that pulse
@@ -530,8 +532,8 @@ export function createSectorRun(h) {
       release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const sent = sendWave(b, sp, now()); if (sent) h.push(sent.entries); omen(); h.hud(); return sent?.r ?? null; },
       close: (id, by) => { const sp = sps.get(id); if (!sp?.alive) return null; h.seal(sp, by); return breachOf(id)?.closedBy ?? null; },
       clearField: () => h.clearField(),
-      cont: () => cont(),
-      keepHolding: () => next(),
+      cont: (via = 'harness') => cont(via),
+      keepHolding: () => next('hold'),
       // an acceptance run about something else (towers, the gunship, expeditions): no programme waves and no gate wear
       quiet: (on) => { quiet = !!on; },
       forgo: () => { const t = now(), ids = pending.splice(0); for (const id of ids) closeBreach(sector, id, CLOSER_OF.strike, t); if (ids.length) { retarget(); h.hud(); } return ids.length; },   // the breaches still to open never do: closed as struck (N for nuke, dev: the round ends once the bodies are dead; a breach is born 'open', so isSecure needs them closed)

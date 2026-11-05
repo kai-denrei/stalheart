@@ -90,7 +90,7 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   begin(st, steps[3]); finish(st, steps[3]);
   assert.equal(due(st, { phase: 'expedition', sector: 9 }), null, 'the programme runs out');
   assert.deepEqual([...perks(st)].sort(), ['gate', 'hulls', 'rebuild']); perks(st).clear(); assert.ok(hasPerk(st, 'gate'), 'perks() hands out a copy');
-  assert.deepEqual(snapshot(st), { active: null, done: ['a', 'b', 'c', 'd'], printed: ['a', 'b', 'c', 'd'], next: null, owed: [], perks: ['gate', 'hulls', 'rebuild'], lost: [] });
+  assert.deepEqual(snapshot(st), { active: null, done: ['a', 'b', 'c', 'd'], printed: ['a', 'b', 'c', 'd'], next: null, owed: [], bought: [], perks: ['gate', 'hulls', 'rebuild'], lost: [] });
 }
 
 // standing steps count as printed from the start, perks included, and are never printed again
