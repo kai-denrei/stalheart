@@ -5,13 +5,17 @@
 // src/domain/rover-run.js (the trip), src/domain/bio-pearls.js (the bank), the scene src/fx/rover.js, src/fx/bio-pearls.js,
 // src/fx/biomass-piles.js, src/fx/hull-flare.js, the wiring src/fx/rover-glue.js. Models pinned in docs/a6-settlement-assets.lock.json.
 //
-// THE SIZING (design, 2026-11-06, docs/superpowers/specs/2026-11-06-round-8-seven-notes-design.md "Pacing and cost"): the --ledger probe of round 6
-// on the base (every body killed and paid as the tank's kill) earned 11.4k, 25.3k, 70.0k, 61.3k, 77.6k kg in sectors 1-5; the reference player
-// (the towers', the gunship's and SOL's kills pay half) is half of that. Income is no longer instant: the player flags the field and the rover's
-// trips are the income's clock. A trip of 2,000 kg is ~13 s of harvest and ~7 s of unload plus the drive (9 m/s: a truck, slower
-// than the hull at its run-up, src/content/tank.js TANK_DRIVE), so a reference sector 1 (~5.7k kg) comes home in three trips with the sector still on.
+// THE SIZING, MEASURED (2026-11-06). The design (docs/superpowers/specs/2026-11-06-round-8-seven-notes-design.md "Pacing and cost") sized the
+// rover from the round-6 ledger: 2,000 kg a trip at 9 m/s, 150 kg/s at the rake, 300 kg/s into the pearls, so that "a sector's reference income
+// lands within the sector". Measured, it does not: the bodies fall at the breach down the lane and the rover's road there from the depot is
+// 455-500 m of cells (--rover: 52.8 s out, 13.4 s harvest, 54.8 s back, 6.7 s unload for 2,000 kg, 2026-11-06), and the --ledger probe
+// (the ideal defender, the reference flagger: a flare on the richest ground whenever the rover stands idle) banked 700 kg at sector 1's debrief
+// (11,996 on the base d67d5fb7) and 3,454 at sector 2's (36,380), nothing rotted: the round-6 bar (about 6.3k kg in hand at the board before
+// sector 2) failed on the trip's clock, not on the rot, so lowering the rot's pressure (the design's first lever) could not help. THE TRIP IS
+// THREE TIMES THE TRUCK: 6,000 kg a trip at 16 m/s, 400 kg/s at the rake, 1,000 kg/s into the pearls (~95 s a trip on that road, ~63 kg/s,
+// the reference player's sector 1-2 income); the prices are unchanged. The owner turns these four numbers down to make the harvest bite more.
 // The pearls' 36,000 kg sit above a reference sector 5's income and below the ledger's ideal: a player who banks everything and spends nothing
-// meets STORAGE FULL by sector 4 and buys the fourth pearl or spends. The board's prices are unchanged this round (round 6 re-based them).
+// meets STORAGE FULL by sector 3 or 4 and buys the fourth pearl or spends.
 //   ROVER.capacity     kg aboard a trip (the author's demo: 100 units; balance is game-owned, assets/models/yushi-rover/runtime.js SPEC)
 //   ROVER.harvestRate  kg/s off a pile under the intake; unloadRate kg/s into the pearls
 //   ROVER.speed        m/s along its road; turn the on-the-spot turn's rate (rad/s), the author's mission.js 0.8
@@ -20,7 +24,7 @@
 //   FIELD.decaySeconds a pile untouched this long rots (a sector's kills must be flagged within four minutes); maxPiles the instanced mesh's cap
 //   PEARLS             the three vessels standing with the depot, each `capacity` kg; the fourth is the build board's card (src/content/build-board.js)
 export const ROVER = Object.freeze({
-  capacity: 2000, harvestRate: 150, unloadRate: 300, speed: 9, turn: 0.8, reach: 3, price: 3600,
+  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600,
   model: 'assets/models/yushi-rover/yushirover_d0_lod1.glb', far: 'assets/models/yushi-rover/yushirover_d0_lod2.glb',
   // where it stands on the depot island (metres off the island's centre, the island's frame): its pad on the west half, facing the mouth (-Z);
   // the dock beside a pearl is the author's (mission.js: the rover's root 8 m -X and 3.9175 m -Z of the vessel's, facing pi), so its
