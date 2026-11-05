@@ -18,13 +18,19 @@
 //     through when they come to investigate": a hull moving toward the unit, within `dodge.nearM` or due on it inside `dodge.leadS` seconds along
 //     its lane, sends it off the hull's line at its top speed ('fromHull', resolved by the scene) until the hull is past or still and `clearM` off;
 //     it pre-empts every mode but the dance; the greet starts only after the hull has stood still for `stillS` and breaks off as it moves)
+//   THE HEAVY ONE (round 6, 2026-11-05, the Nih-Dairia mech: ctx.units[i].heavy): a slow, heavy study, not a runner. It never plays tag, never
+//     dodges or flees the hull (it cannot: the pets treat it as an obstacle, src/fx/companions.js), never dances (through DAY 42's party it rests
+//     where it is and watches); at rest `heavy.idle` s, then a walk to a roam point (`heavy.walk` of the rests, at its own wander band), else its
+//     sit (the anchor) or a trick (the reach, `heavy.trick` of the others); once the hull has stood still `heavy.greet.stillS` s it walks to it
+//     (its own `greetAt`, `heavy.greet.every` apart) and stops `heavy.greet.nearM` m off (centres: the hull is 10 m long, the mech 7.6 m), anchors there
+//     ('greeted') and is up as the hull moves off
 //     | dance (DAY 42 ON THE DANCE FLOOR, owner 2026-11-02, round 4 note 8: while the party is on both go to the floor under the ball ('floor', resolved
 //     by the scene) and alternate a one-shot in place (a trick, then a sit) with a short dash round the floor, until the klaxon; no tag meanwhile)
 const span = ([a, b], rand) => a + (b - a) * rand();
 export const MOVING = new Set(['wander', 'dash', 'chase', 'flee', 'greet', 'dodge', 'dance']);
 
 export function createPlay(knobs, n = 2) {
-  const p = () => ({ mode: 'idle', until: 0, target: null, retarget: false, speed: 0, oneShot: null, moves: 0, blockedAt: -1, with: null });
+  const p = () => ({ mode: 'idle', until: 0, target: null, retarget: false, speed: 0, oneShot: null, moves: 0, blockedAt: -1, with: null, greetAt: knobs.heavy?.greet.first ?? 0 });
   return { units: Array.from({ length: n }, p), game: { on: false, pair: [0, 1], chaser: 0, until: 0, nextAt: knobs.chase.first, tagLock: 0, tags: 0, games: 0 }, greetAt: knobs.greet.first, hullStill: 0, dodges: 0, knobs };
 }
 
@@ -45,7 +51,7 @@ export function stepPlay(s, dt, ctx) {
   const dancing = !!ctx.dancing?.(), kn = k.dance;
   if (dancing && g.on) { g.on = false; g.nextAt = now + span(k.chase.every, rand); }   // the party ends a game of tag
   // the game of tag over the pair
-  const free = () => { const out = []; for (let i = 0; i < n; i++) if (here(i) && (s.units[i].mode === 'idle' || s.units[i].mode === 'wander')) out.push(i); return out; };
+  const free = () => { const out = []; for (let i = 0; i < n; i++) if (here(i) && !ctx.units[i].heavy && (s.units[i].mode === 'idle' || s.units[i].mode === 'wander')) out.push(i); return out; };
   if (g.on) {
     const [a, b] = g.pair;
     if (now >= g.until) { g.on = false; g.nextAt = now + span(k.chase.every, rand); rest(s.units[a], now, k, rand); rest(s.units[b], now, k, rand); }
@@ -64,6 +70,7 @@ export function stepPlay(s, dt, ctx) {
     if (!here(i)) continue;
     const p = s.units[i], u = ctx.units[i], blocked = ctx.blocked(i);
     if (blocked) p.blockedAt = now;
+    if (u.heavy) { stepHeavy(s, p, i, u, ctx, blocked, dancing, hullSpeed); continue; }
     if (dancing && p.mode !== 'dance') { goTo(p, 'dance', 'floor', Math.min(u.trot ?? k.trot, u.top), now + k.wanderMax); p.dances = 0; continue; }
     if (!dancing && p.mode === 'dance') { rest(p, now, k, rand); continue; }
     const threat = p.mode !== 'dance' && hullThreat(motion[i], kd);
@@ -97,6 +104,27 @@ export function stepPlay(s, dt, ctx) {
     }
   }
   return s;
+}
+
+function stepHeavy(s, p, i, u, ctx, blocked, dancing, hullSpeed) {
+  const { now, rand } = ctx, k = s.knobs, H = k.heavy, kd = k.dodge;
+  if (dancing) { if (p.mode !== 'idle') rest(p, now, { idle: H.idle }, rand); p.until = Math.max(p.until, now + 1); return; }   // the party: it watches from where it is
+  switch (p.mode) {
+    case 'idle': if (now >= p.until) {
+      const d = ctx.toHull(i), r = rand();
+      if (d != null && now >= p.greetAt && s.hullStill >= H.greet.stillS && d > H.greet.nearM + 2) { p.greetAt = now + span(H.greet.every, rand); goTo(p, 'greet', 'hull', Math.min(u.trot ?? u.top, u.top), now + H.wanderMax); }
+      else if (r < H.walk) goTo(p, 'wander', 'pick', Math.min(u.top, span(u.wander ?? k.wander, rand)), now + H.wanderMax);
+      else if (rand() >= H.trick || !u.tricks.length) { p.mode = 'sit'; p.oneShot = u.sit; p.speed = 0; p.until = now + ctx.clipSecs(i, u.sit) + span(H.sitSecs, rand); }
+      else { const t = u.tricks[Math.min(u.tricks.length - 1, Math.floor(rand() * u.tricks.length))]; p.mode = 'trick'; p.oneShot = t; p.speed = 0; p.until = now + ctx.clipSecs(i, t); }
+    } break;
+    case 'wander': if (now >= p.until || ctx.toTarget(i) < 3) rest(p, now, { idle: H.idle }, rand); else if (blocked) { p.target = 'pick'; p.retarget = true; } break;
+    case 'greet': { const d = ctx.toHull(i);
+      if (d == null || now >= p.until || hullSpeed > kd.stillMps || blocked) rest(p, now, { idle: H.idle }, rand);
+      else if (d < H.greet.nearM) { p.mode = 'greeted'; p.oneShot = u.sit; p.speed = 0; p.target = null; p.until = now + ctx.clipSecs(i, u.sit) + span(H.sitSecs, rand); } } break;
+    case 'greeted': if (now >= p.until || hullSpeed > kd.movingMps) rest(p, now, { idle: H.idle }, rand); break;
+    case 'sit': case 'trick': if (now >= p.until) rest(p, now, { idle: H.idle }, rand); break;
+    default: rest(p, now, { idle: H.idle }, rand);
+  }
 }
 
 // the gait a speed asks for: the first clip whose band holds it (the last past every band), and its rate, clamped

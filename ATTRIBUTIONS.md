@@ -105,4 +105,5 @@ Models and animations by **jelaludo** — https://jelaludo.github.io/SentryTower
 
 - **C-07 Mechanical Cheetah** and **RECKON K9** (`assets/models/c07/`, `assets/models/reckon-k9/`), revision `ab4642deb90836628ee5f7c8b0049ec9a7b5dfae`; pins `docs/companions-assets.lock.json`.
 - **K0-TECH-01** (`assets/models/k0-tech/`), revision `cd0b1349168beef51fef2601f93a8e4d612072c3`; pins `docs/companions-assets.lock.json`.
+- **The Nih-Dairia mech** (Nih-Dairia / Isao mechanical study, tripad v1.1; `assets/models/nih-dairia-mech/`, with its unchanged `runtime.js` pose script, ported as `src/domain/mech-pose.js`), revision `cd0b1349168beef51fef2601f93a8e4d612072c3`; pins `docs/companions-assets.lock.json`. Mechanical model by jelaludo; creature concept reference: kai-denrei / lab-creatures (https://kai-denrei.github.io/lab-creatures/?specimen=nih-dairia).
 - **FEIDS-26 delivery capsule** and **MX-06 Ridgeback** (`assets/models/feids26/`, `assets/models/ridgeback/`), revision `38eed564831b1be30e406f261da7052485eeeb87`; pins `docs/feids26-assets.lock.json`.

@@ -21,9 +21,16 @@ assert(GAME_FLAG_KEYS.includes('pets'), '?pets=0 is a game flag');
 for (const u of COMPANIONS.units) {
   const pin = lock.files.find((f) => f.path === u.model), far = lock.files.find((f) => f.path === u.far);
   assert(pin && far, `${u.id}'s tiers pinned`);
-  for (const c of [u.idle, u.sit, ...u.tricks, ...u.gaits.map((g) => g.clip)]) assert(pin.clips.includes(c), `${u.id} ${c} is a clip of the game tier`);
+  if (u.pose === 'mech') {   // round 6, the mech: no clips; its motions are the runtime's (test/mech-pose.mjs holds the port)
+    assert.deepEqual(pin.clips, [], `${u.id}'s game tier pinned with no clips`);
+    const names = Object.values(u.rig.motions).map((m) => m.name);
+    for (const c of [u.idle, u.sit, ...u.tricks, ...u.gaits.map((g) => g.clip)]) assert(names.includes(c), `${u.id} ${c} is a motion of its rig`);
+    assert(u.top <= u.gaits[0].max && u.kind === 'heavy', `${u.id}: heavy, its top within its walk's band`);
+  } else {
+    for (const c of [u.idle, u.sit, ...u.tricks, ...u.gaits.map((g) => g.clip)]) assert(pin.clips.includes(c), `${u.id} ${c} is a clip of the game tier`);
+    assert(u.top <= u.gaits[u.gaits.length - 1].max && u.top > u.gaits[0].max, `${u.id}'s top within its fastest gait's band`);
+  }
   for (let k = 1; k < u.gaits.length; k++) assert(u.gaits[k].mps > u.gaits[k - 1].mps && u.gaits[k].max > u.gaits[k - 1].max, `${u.id}'s gaits in speed order`);
-  assert(u.top <= u.gaits[u.gaits.length - 1].max && u.top > u.gaits[0].max, `${u.id}'s top within its fastest gait's band`);
   assert(UNIT_ENTRIES.some((e) => e.id === u.id && e.model.url === u.model && e.needs.pet === u.id), `${u.id} in the terminal, on the books once Isao has printed it (2026-10-30)`);
 }
 
@@ -101,8 +108,8 @@ console.log('Companions: an unprinted unit stays out of the play; tag waits for 
     }
     return { min, dodged, st };
   }
-  // round 6: K0-TECH (3.2 m/s) cannot clear 4 m in the 1.3 s a 30 m/s hull takes from 40 m; from 100 m the 60 m range sees it in time (5.4 m)
-  for (const unit of COMPANIONS.units.map((_, i) => i)) for (const v of [6, 12, 20, 30]) { if (COMPANIONS.units[unit].top < 4 && v >= 30) { const r = drive({ unit, vel: [v, 0], hull0: [-100, 0] }); assert(r.dodged && r.min > 4, `${COMPANIONS.units[unit].id}: a hull at ${v} m/s from 100 m never within 4 m (closest ${r.min.toFixed(2)} m)`); continue; } const r = drive({ unit, vel: [v, 0] }); assert(r.dodged, `${COMPANIONS.units[unit].id} dodged a hull at ${v} m/s`); assert(r.min > 4, `${COMPANIONS.units[unit].id}: a hull at ${v} m/s never within 4 m (closest ${r.min.toFixed(2)} m)`); }
+  // the mech never dodges (round 6: section 9)
+  for (const unit of COMPANIONS.units.map((_, i) => i).filter((i) => COMPANIONS.units[i].kind !== 'heavy')) for (const v of [6, 12, 20, 30]) { const r = drive({ unit, vel: [v, 0] }); assert(r.dodged, `${COMPANIONS.units[unit].id} dodged a hull at ${v} m/s`); assert(r.min > 4, `${COMPANIONS.units[unit].id}: a hull at ${v} m/s never within 4 m (closest ${r.min.toFixed(2)} m)`); }
   { const r = drive({ unit: 1, hull0: [-5, 0], vel: [4, 0] }); assert(r.min > 2, `a hull starting 5 m off at 4 m/s (already on it as it moves off) never within 2 m (closest ${r.min.toFixed(2)} m)`); }
   { const r = drive({ unit: 1, vel: [12, 0], lane: 12 }); assert(!r.dodged, 'a hull passing 12 m to the side sends no one running'); }
   { const r = drive({ unit: 1, vel: [0, 0], hull0: [-4, 0] }); assert(!r.dodged && r.st.units[1].mode === 'greeted', 'a parked hull 4 m off: the unit stays sat'); }
@@ -148,7 +155,7 @@ console.log('Companions: DAY 42: both dance through the party (tricks, sits, das
   assert(COMPANIONS.units[k0].tricks.includes('Pounce') && !COMPANIONS.units[k0].gaits.some((g) => g.clip === 'Pounce'), 'Pounce is a trick, never a gait (1.6 m of root travel)');
   let s = 17; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
   const st = createPlay(COMPANIONS.play, n), set = new Array(n).fill(0), present = COMPANIONS.units.map(() => true), pairs = new Set(), wanders = [];
-  const ctx = { now: 0, rand, units: COMPANIONS.units.map((d) => ({ top: d.top, trot: d.trot, wander: d.wander, idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => (st.game.on && ctx.now % 7 < 0.05 ? 1 : 10), toTarget: (i) => (ctx.now - set[i] > 3 ? 0.5 : 8), toHull: () => 30, blocked: () => false, clipSecs: () => 4, present: (i) => present[i] };
+  const ctx = { now: 0, rand, units: COMPANIONS.units.map((d) => ({ top: d.top, trot: d.trot, wander: d.wander, heavy: d.kind === 'heavy', idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => (st.game.on && ctx.now % 7 < 0.05 ? 1 : 10), toTarget: (i) => (ctx.now - set[i] > 3 ? 0.5 : 8), toHull: () => 30, blocked: () => false, clipSecs: () => 4, present: (i) => present[i] };
   for (let t = 0; t < 900; t += 0.05) {
     ctx.now = t; stepPlay(st, 0.05, ctx);
     if (st.game.on) { const [a, b] = st.game.pair; pairs.add(`${a}${b}`); assert(a !== b && present[a] && present[b], 'a game of two present ones');
@@ -160,4 +167,32 @@ console.log('Companions: DAY 42: both dance through the party (tricks, sits, das
   const [lo, hi] = COMPANIONS.units[k0].wander; assert(wanders.length && wanders.every((v) => v >= lo - 1e-9 && v <= hi + 1e-9), `K0-TECH wanders in its band (${wanders.length} walks)`);
   const lone = createPlay(COMPANIONS.play, n); for (let t = 0; t < 200; t += 0.05) { ctx.now = t; ctx.present = (i) => i === k0; stepPlay(lone, 0.05, ctx); } assert.equal(lone.game.games, 0, 'one printed alone: no game');
   console.log(`Companions: three: ${st.game.games} games over pairs ${[...pairs].join(', ')}, K0-TECH's ${wanders.length} walks in ${lo}-${hi} m/s`);
+}
+// 9. THE HEAVY ONE (round 6, the Nih-Dairia mech): never in a game of tag, never dodging a hull bearing down on it, never dancing (it rests where
+// it is through the party); it walks within its top, sits (the anchor, held its motion's 8 s and more) and reaches; once the hull has stood still
+// heavy.greet.stillS it walks to it and anchors heavy.greet.nearM off, up as the hull moves; a hull moving is never greeted
+{
+  const n = COMPANIONS.units.length, mi = COMPANIONS.units.findIndex((u) => u.kind === 'heavy'), H = COMPANIONS.play.heavy, mu = COMPANIONS.units[mi];
+  assert(mi >= 0 && H.greet.nearM * 1 > (mu.keepFromHull ?? 0), 'it greets outside its own keep-off');
+  let s = 29; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
+  const st = createPlay(COMPANIONS.play, n), set = new Array(n).fill(0), hull = { d: 40, speed: 0, closing: 0 }, party = { on: false }, modes = new Set(), sitAt = [];
+  const secs = (i, name) => (i === mi ? mu.rig.motions[Object.keys(mu.rig.motions).find((k) => mu.rig.motions[k].name === name)]?.secs ?? 2 : 4);
+  const ctx = { now: 0, rand, units: COMPANIONS.units.map((d) => ({ top: d.top, trot: d.trot, wander: d.wander, heavy: d.kind === 'heavy', idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => 10,
+    toTarget: (i) => (ctx.now - set[i] > 3 ? 0.5 : 8), toHull: (i) => (i === mi ? hull.d : 30), blocked: () => false, clipSecs: secs, dancing: () => party.on,
+    hullMotion: (i) => ({ d: i === mi ? hull.d : 30, speed: hull.speed, closing: hull.closing, lateral: 0 }) };
+  for (let t = 0; t < 1200; t += 0.05) {
+    ctx.now = t;
+    if (t > 300 && t < 320) { hull.speed = 8; hull.closing = 8; hull.d = Math.max(2, 40 - (t - 300) * 8); } else if (t >= 320 && t < 330) { hull.speed = 0; hull.closing = 0; hull.d = 40; }   // driven straight at it, then parked again
+    party.on = t > 900 && t < 960;
+    stepPlay(st, 0.05, ctx); const p = st.units[mi]; modes.add(p.mode);
+    if (p.retarget) { p.retarget = false; set[mi] = t; }
+    if (p.mode === 'greet' && hull.d > H.greet.nearM && hull.speed === 0) hull.d = Math.max(H.greet.nearM - 1, hull.d - p.speed * 0.05);   // it closes on the parked hull
+    assert(!['chase', 'flee', 'dodge', 'dance', 'dash'].includes(p.mode), `the mech never ${p.mode}s (t ${t.toFixed(1)})`); assert(p.speed <= mu.top + 1e-9, 'within its top');
+    if (party.on && t > 900.1) assert(!MOVING.has(p.mode), `it watches the party (t ${t.toFixed(1)}, ${p.mode})`);
+    if (p.mode === 'greeted' && !sitAt.length) sitAt.push(t, hull.d);
+    assert(!st.game.on || !st.game.pair.includes(mi), 'never in a game of tag');
+  }
+  for (const m of ['idle', 'wander', 'sit', 'trick', 'greet', 'greeted']) assert(modes.has(m), `the mech reaches ${m} (saw ${[...modes]})`);
+  assert(sitAt.length && sitAt[1] < H.greet.nearM && sitAt[1] >= H.greet.nearM - 1, `it anchored ${sitAt[1]?.toFixed(1)} m off the parked hull`);
+  console.log(`Companions: the mech walks, anchors, reaches and greets a parked hull ${H.greet.nearM} m off; never tags, dodges or dances (${[...modes].join(', ')})`);
 }

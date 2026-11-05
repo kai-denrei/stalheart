@@ -497,6 +497,8 @@ export const BRIEFS = {
   pet_born_c07: { id: 'pet_born_c07', face: 'glee', title: 'COMMS · ISAO', lines: ['C-07. Mechanical cheetah. Seven metres a second, mostly sideways.', 'Do androids dream of electric gazelles? She will let us know.'] },
   pet_print_third: { id: 'pet_print_third', face: 'curious', title: 'COMMS · ISAO', lines: ['A small one. For the mice we do not have.', 'The greenhouse is up. Something should guard the lettuce.'] },
   pet_born_k0: { id: 'pet_born_k0', face: 'glee', title: 'COMMS · ISAO', lines: ['K0-TECH. Forty-one centimetres of opinion.', 'She sleeps on warm machines. I have many warm machines.'] },
+  pet_print_mech: { id: 'pet_print_mech', face: 'curious', title: 'COMMS · ISAO', lines: ['I watched her for a long time. I built what I understood.', 'Six limbs. One borrowed idea. She would not approve; she is not here to say so.'] },
+  pet_born_mech: { id: 'pet_born_mech', face: 'glee', title: 'COMMS · ISAO', lines: ['Seven point six metres. It walks the way she walked, slower and kinder.', 'It does not chase anything. It watches. I know the feeling.'] },
   pet_born_k9: { id: 'pet_born_k9', face: 'glee', title: 'COMMS · ISAO', lines: ['RECKON K9. I left the radio out and the ears in.', 'He will want to play tag. He will lose. He will not mind.'] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },

@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { COMPANIONS } from '../src/content/companions.js';
 import { STORY_PHASES } from '../src/domain/automation.js';
-import { nextPrint, printGates, printReady, printEnd, printTimeline, printCamera } from '../src/domain/pet-print.js';
+import { nextPrint, printGates, printReady, printEnd, printTimeline, printCamera, printKnobs } from '../src/domain/pet-print.js';
 import { brief } from '../src/isaobriefs.js';
 import { readFileSync } from 'node:fs';
 
@@ -88,3 +88,23 @@ for (const A of K.angles) {
 }
 const half = printCamera(5, K.angles, 0.5), whole = printCamera(5, K.angles, 1); assert(whole.eye.every((x, i) => Math.abs(x * 0.5 - half.eye[i]) < 1e-9), 'scaled by the body');
 console.log(`Pet print: order ${P.order.join(' -> ')}, triggers ${P.triggers.map((t) => [t.phase, t.perk, t.days != null ? `${t.days} d` : null, `${t.delay} s`].filter(Boolean).join('+')).join(' | ')}, ${END} s scene in ${phases.length - 1} phases, ${K.angles.length} angles`);
+
+// 7. THE FOURTH (round 6, 2026-11-05): the Nih-Dairia mech after THE ARENA's kill: the order of four, a trigger each, the `boss` gate (nothing
+// else asked of it), strictly after K0-TECH; its own print over the default (a 9 m plot, 20 s print, 2 s skin, 4 s wake), its four angles in
+// order over its longer scene, scaled to a 7.6 m body (the eye 8-40 m off its look), the cheetah's print untouched; the lines exist
+{
+  const mech = COMPANIONS.units.find((u) => u.id === 'mech'), k = P.order.indexOf('mech'), tr = P.triggers[k];
+  assert.deepEqual(P.order, ['c07', 'k9', 'k0', 'mech'], 'the order of four'); assert.equal(P.triggers.length, 4, 'a trigger each');
+  assert.equal(tr.boss, true, 'the mech after the kill'); assert(!tr.phase && !tr.perk && tr.days == null, 'nothing else asked of it');
+  assert.equal(printGates(tr, w({ phase: null, boss: false })), false, 'the mother alive: no mech'); assert.equal(printGates(tr, w({ phase: null, boss: true })), true, 'her dead: the mech may come');
+  assert.equal(nextPrint(P.order, ['c07', 'k9']), 'k0', 'the cat before the mech even after the kill');
+  const KM = printKnobs(K, mech), TM = KM.timeline, EM = printEnd(TM);
+  assert.equal(KM.bedM * 2 >= 9 && KM.bedM * 2 < 10, true, `a 9 m plot (radius ${KM.bedM})`); assert.equal(KM.refLength, 7.6); assert.deepEqual([TM.print, TM.skin, TM.wake], [20, 2, 4], 'print 20 s, skin 2 s, wake 4 s');
+  assert.equal(KM.colour, K.colour, 'the default colour kept'); assert.equal(printKnobs(K, COMPANIONS.units[0]), K, 'the cheetah\'s print untouched');
+  assert.equal(KM.angles[0].from, 0); assert(KM.angles[KM.angles.length - 1].to >= EM, `the last angle covers its ${EM} s`);
+  for (let j = 1; j < KM.angles.length; j++) assert.equal(KM.angles[j].from, KM.angles[j - 1].to, 'its angles cut one into the next');
+  const seenM = new Set(); for (let t = 0; t < EM; t += 0.1) seenM.add(printCamera(t, KM.angles).angle); assert.equal(seenM.size, KM.angles.length, 'every angle of its shown');
+  for (const A of KM.angles) { const a = printCamera(A.from, KM.angles), d = Math.hypot(...a.eye.map((x, i) => x - a.look[i])); assert(d > 8 && d < 40, `an angle sized for a 7.6 m body (${d.toFixed(1)} m)`); }
+  for (const id of [tr.brief, mech.born, P.triggers[2].brief, COMPANIONS.units[2].born]) assert(brief(id)?.lines.length >= 1, `${id} is a line of Isao's`);
+  console.log(`Pet print: the mech fourth on the kill, ${EM} s on a ${KM.bedM * 2} m plot over ${KM.angles.length} angles`);
+}

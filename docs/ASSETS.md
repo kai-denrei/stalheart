@@ -32,5 +32,6 @@ Models by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/, reused w
 | C-07 Mechanical Cheetah | `assets/models/c07/` | `ab4642de` | `docs/companions-assets.lock.json` |
 | RECKON K9 | `assets/models/reckon-k9/` | `ab4642de` | `docs/companions-assets.lock.json` |
 | K0-TECH-01 | `assets/models/k0-tech/` | `cd0b1349` | `docs/companions-assets.lock.json` (per-entry `baseUrl`) |
+| Nih-Dairia mech (tripad v1.1, no clips; `runtime.js` kept, ported as `src/domain/mech-pose.js`; creature reference kai-denrei/lab-creatures) | `assets/models/nih-dairia-mech/` | `cd0b1349` | `docs/companions-assets.lock.json` (per-entry `baseUrl`) |
 | FEIDS-26 delivery capsule | `assets/models/feids26/` | `38eed564` | `docs/feids26-assets.lock.json` |
 | MX-06 Ridgeback | `assets/models/ridgeback/` | `38eed564` | `docs/feids26-assets.lock.json` |

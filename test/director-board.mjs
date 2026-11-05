@@ -42,6 +42,7 @@ for (const doorAt of [t.sectorDoor.earliest, t.sectorDoor.latest]) {
   // DROPS & COMPANIONS
   const drops = lane('drops');
   ok(`door ${doorAt}: C-07 in EXPEDITION, RECKON K9 at the radar plus 3 days`, drops.find((r) => r.id === 'pet-c07')?.col === 'ch:expedition' && drops.find((r) => r.id === 'pet-k9')?.col === 's:2' && drops.find((r) => r.id === 'pet-k9').tags.includes('days'));
+  ok(`door ${doorAt}: the mech at THE ARENA (s:${doorAt + 1}), after the kill (round 6)`, drops.find((r) => r.id === 'pet-mech')?.col === `s:${doorAt + 1}` && drops.find((r) => r.id === 'pet-mech').tags.includes('after the kill') && /mother dead/.test(drops.find((r) => r.id === 'pet-mech').rule));
   ok(`door ${doorAt}: K0-TECH at the greenhouse (s:3) plus 2 days (round 6)`, drops.find((r) => r.id === 'pet-k0')?.col === 's:3' && drops.find((r) => r.id === 'pet-k0').tags.includes('days'));
   ok(`door ${doorAt}: the FEIDS-26 drop spans the radar to THE ARENA, its days written`, (() => { const r = drops.find((x) => x.id === 'feids-drop'); return r?.col === 's:2' && r.to === `s:${doorAt + 1}` && r.sub.includes(`${t.reinforcements.days} days`); })());
   ok(`door ${doorAt}: DAY 42 in a lane of its own days, not a sector`, (() => { const r = drops.find((x) => x.id === 'day-42'); return r?.to === 'endless' && r.label === `DAY ${t.day42.day}` && r.tags.includes('days'); })());

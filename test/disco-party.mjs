@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { createDiscoParty } from '../src/fx/disco-party.js';
+import { COMPANIONS } from '../src/content/companions.js';
 import { DAY_42 } from '../src/content/day-42.js';
 // a Stålheart with the diorama's joint names and a tip, and a ball with the ball's, both plain groups
 function gantry() { const names = ['GANTRY_TRAVEL_Y', 'CARRIAGE_TRAVEL_X', 'TOOL_LIFT_Z', 'J1_BASE_YAW', 'J2_SHOULDER', 'J3_ELBOW', 'J4_FOREARM_ROLL', 'J5_WRIST_PITCH', 'J6_TOOL_ROLL', 'EXTRUSION_TIP']; const root = new THREE.Group(); let p = root; for (const n of names) { const g = new THREE.Group(); g.name = n; p.add(g); p = g; } p.position.set(0, 11.6, 2.6); root.userData.actions = { Terraforming_Cycle: { paused: false } }; return root; }
@@ -204,18 +205,20 @@ console.log('disco-party ok');
 // THE COMPANIONS IN THE CUT AND ON THE FLOOR (round 4, 2026-11-02, note 8): with both printed the cut grows to petsAt + 2 x petSecs and closes on C-07,
 // then RECKON K9 (a pose within petEye of each), the near plane lowered for them and put back; one printed: the cut stays `seconds`, one close shot;
 // floor() is null outside the party and the ground under the ball during it
-for (const born of [['c07', 'k9'], ['k9'], []]) {
-  const at = [new THREE.Vector3(0, 100, 30), new THREE.Vector3(10, 100, 30)];
+// (round 6: K0-TECH's close shot at its shotScale; the mech printed gets none: it watches)
+const UNIT_IDS = COMPANIONS.units.map((u) => u.id);
+for (const born of [['c07', 'k9'], ['k9'], [], ['k0', 'mech']]) {
+  const at = [new THREE.Vector3(0, 100, 30), new THREE.Vector3(10, 100, 30), new THREE.Vector3(20, 100, 30), new THREE.Vector3(30, 100, 30)], shots = born.filter((id) => COMPANIONS.units[UNIT_IDS.indexOf(id)].kind !== 'heavy');
   const pets = { born: () => born, frameOf: (i, pos, quat) => { pos.copy(at[i]); quat.identity(); return true; } };
   const { h, log } = host({ pets }); const p = createDiscoParty(h);
   p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); assert.equal(p.floor(), null, 'no floor before the party');
   countdown(p); assert.equal(p.state().phase, 'party'); tickTo(p, 1.6);
-  const S = DAY_42.shot, want = born.length ? Math.max(S.seconds, S.petsAt + born.length * S.petSecs) : S.seconds;
+  const S = DAY_42.shot, want = shots.length ? Math.max(S.seconds, S.petsAt + shots.length * S.petSecs) : S.seconds;
   assert.equal(log.lastShot.dur, want, `${born.length} printed: a ${want} s cut`);
   const out = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, eyeM = Math.hypot(...S.petEye);
-  born.forEach((id, k) => { const i = ['c07', 'k9'].indexOf(id); log.lastShot.poseAt((S.petsAt + k * S.petSecs + 1) / want, out); assert.ok(Math.abs(out.pos.distanceTo(at[i]) - eyeM) < 1e-6, `${id}'s close shot (${out.pos.distanceTo(at[i])})`); });
+  shots.forEach((id, k) => { const i = UNIT_IDS.indexOf(id), e = eyeM * (COMPANIONS.units[i].shotScale ?? 1); log.lastShot.poseAt((S.petsAt + k * S.petSecs + 1) / want, out); assert.ok(Math.abs(out.pos.distanceTo(at[i]) - e) < 1e-6, `${id}'s close shot (${out.pos.distanceTo(at[i])})`); });
   log.lastShot.poseAt(2 / want, out); assert.ok(out.pos.distanceTo(at[0]) > 20, 'the orbit before the highlights');
-  if (born.length) { log.lastShot.poseAt((S.petsAt + 0.5) / want, out); const near0 = h.camera.near; p.tick(0.1); assert.equal(h.camera.near, S.near, 'the near plane lowered for the close shot'); log.lastShot.onEnd(); assert.equal(h.camera.near, near0, 'and put back'); assert.deepEqual(p.state().cut.last.shown, born, 'each highlight noted'); }
+  if (shots.length) { log.lastShot.poseAt((S.petsAt + 0.5) / want, out); const near0 = h.camera.near; p.tick(0.1); assert.equal(h.camera.near, S.near, 'the near plane lowered for the close shot'); log.lastShot.onEnd(); assert.equal(h.camera.near, near0, 'and put back'); assert.deepEqual(p.state().cut.last.shown, shots, 'each highlight noted'); }
   const f = p.floor(); assert.ok(Array.isArray(f) && f.length === 3, 'the floor during the party');
 }
 console.log('disco-party: the companions in the cut (14 s with both, a close shot each), the floor under the ball');

@@ -39,11 +39,45 @@ export const COMPANIONS = freeze({
       idle: 'Alert_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw', 'Jump'], top: 5.5, accel: 5, turn: 2.8, born: 'pet_born_k9',
       gaits: [{ clip: 'Walk_Cycle', mps: 0.3571, max: 0.7 }, { clip: 'Run_Cycle', mps: 2.182, max: 2.7 }, { clip: 'Gallop_Cycle', mps: 3.1, max: 3.8 }, { clip: 'Sprint_Cycle', mps: 4.43, max: 7 }] },
     // K0-TECH-01 (owner, 2026-11-05, round 6 note 1a: "the small feline"): 0.30 x 0.41 x 1.05 m, half C-07's height; the stalk is the slow creep,
-    // a nimble top of 3.2 m/s (not C-07's 7); its own wander band (its walk is 0.24 m/s: play.wander would put it on the gallop at the rate's floor);
+    // a nimble top of 4.2 m/s (not C-07's 7) and a quick 14 m/s^2: the design's 3.2 and 7 left the hull 0.82 m from it in --companions' drive (the
+    // hull 8 -> 27 m/s over 20 m), 4.2 is as fast as its gallop plays without sliding (2.69 m/s x the 1.6 rate clamp); its own wander band (its walk is
+    // 0.24 m/s: play.wander would put it on the gallop at the rate's floor);
     // Pounce carries 1.6 m of root travel on MOTION, so it is a trick played in place, never a gait
     { id: 'k0', name: 'K0-TECH', kind: 'feline', model: 'assets/models/k0-tech/k0_tech_d0_lod1.glb', far: 'assets/models/k0-tech/k0_tech_d0_lod2.glb',
-      idle: 'Watch_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw', 'Pounce'], top: 3.2, accel: 7, turn: 3.6, trot: 1.6, wander: [0.2, 0.34], shotScale: 0.5, born: 'pet_born_k0',
-      gaits: [{ clip: 'Stalk_Cycle', mps: 0.0893, max: 0.12 }, { clip: 'Feline_Walk_Cycle', mps: 0.2383, max: 0.5 }, { clip: 'Gallop_Cycle', mps: 2.6889, max: 4 }] },
+      idle: 'Watch_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw', 'Pounce'], top: 4.2, accel: 14, turn: 3.6, trot: 1.6, wander: [0.2, 0.34], shotScale: 0.5, born: 'pet_born_k0',
+      gaits: [{ clip: 'Stalk_Cycle', mps: 0.0893, max: 0.12 }, { clip: 'Feline_Walk_Cycle', mps: 0.2383, max: 0.5 }, { clip: 'Gallop_Cycle', mps: 2.6889, max: 4.4 }] },
+    // THE NIH-DAIRIA MECH (owner, 2026-11-05, round 6 note 1b: "a Nih-Dairia mech about the tank's size", Isao's own, printed after THE ARENA's kill):
+    // 6.6 x 1.8 x 7.6 m (the hull is 10 m long: scale 1), NO baked clips. `pose: 'mech'` drives it through src/fx/mech-pose.js (the workshop's
+    // runtime.js ported, src/domain/mech-pose.js); its idle, sit and trick name the runtime's motions, `rig` holds that script's numbers (metres, s).
+    // `kind: 'heavy'` is its own play (src/domain/companion-play.js): a slow roam, a walk to a still hull that stops `play.heavy.greet.nearM` off,
+    // no tag, no flight, no dance; `padM` its half width against the structures (the pets keep `padM` + 0.6 m off it), `keepFromHull` its centre's
+    // least distance from the hull's (metres; the hull is 10 m long and the mech 7.6 m, so the design's "6 m off" is a gap, not a centre distance),
+    // `turnRadius` its heading turns as a vehicle does (the walk has no turn solve: a turn on the spot would slide all six feet), `lodMetres` its
+    // far tier's distance (its manifest's 150 m)
+    //   rig.rateCap   the walk's playback rate cap: the body at rig.walk.mps x the rate keeps every stance foot fixed at any rate (measured: drift
+    //                 under 1e-12 m/s), so the cap is how fast the step still reads as a step: at 3 the swing lasts 0.35 s (21 frames at 60 fps) and
+    //                 the pad moves 0.07 m a frame, 7 % of its 1.03 m width (test/mech-pose.mjs; scratch ratecap.txt 2026-11-05); `top` is mechTop
+    //   rig.blend     seconds a change of motion eases from the last pose (the runtime has no transitions: idle <-> walk popped six feet)
+    { id: 'mech', name: 'NIH-DAIRIA MECH', kind: 'heavy', pose: 'mech', model: 'assets/models/nih-dairia-mech/nih_dairia_mech_d0_lod1.glb', far: 'assets/models/nih-dairia-mech/nih_dairia_mech_d0_lod2.glb',
+      idle: 'Observation_Idle', sit: 'Anchor_Deploy', tricks: ['Reach_Cycle'], top: 0.9, accel: 0.25, turn: 0.3, turnRadius: 10, trot: 0.8, wander: [0.45, 0.75], padM: 4, keepFromHull: 12, lodMetres: 150, born: 'pet_born_mech',
+      gaits: [{ clip: 'Tripod_Walk_Cycle', mps: 0.3, max: 0.9 }],
+      rig: {
+        upper: 1.15, lower: [1.85, 2.43], slack: 0.12, slideBase: 0.35, footOffset: 0.38, footRadius: 3.28, hipRing: 0.62, contactY: 0.16, stroke: 0.58, height: 1.42, heave: 0.018, clawTilt: 0.2,
+        reach: { pair: ['02', '06'], distance: 1.15, lift: 0.68, advance: 0.55, drop: 0.1, times: { lift: 0.8, reach: [0.8, 2], retract: [4, 2], lowerExtend: [6, 1.2], lowerAnchor: [2.8, 1.4], pull: [4.2, 2.6] } },
+        walk: { secs: 3, mps: 0.3, duty: 0.65, lift: 0.34 },
+        motions: { idle: { name: 'Observation_Idle', secs: 6, loop: true }, walk: { name: 'Tripod_Walk_Cycle', secs: 3, loop: true }, extend: { name: 'Reach_Cycle', secs: 8, loop: true }, anchor: { name: 'Anchor_Deploy', secs: 8, loop: false } },
+        rateCap: 3, blend: 0.6, stopS: 0.4,
+      },
+      // its print (over COMPANIONS.print's): a 9 x 9 m plot, the body 7.6 m long, a 20 s print, its own four angles in the bed's metres over 27.6 s
+      print: {
+        spotCells: 3, bedM: 4.6, refLength: 7.6, hoverM: 3.2, timeline: { arrive: 1.6, print: 20, skin: 2, wake: 4 },
+        angles: [
+          { from: 0, to: 5, eye: [[24, 9, 26], [20, 8, 22]], look: [[0, 3, 0], [0, 2.4, 0]], fov: 55 },   // wide, three-quarter front: the plot and Isao coming down
+          { from: 5, to: 12, eye: [[9.5, 3.2, -5], [9.5, 3.6, 4]], look: [[2.4, 0.6, -2], [2.4, 0.9, 1.5]], fov: 50 },   // beside it, along the rising flank and two legs
+          { from: 12, to: 19.5, eye: [[3.5, 1.4, 11], [2.2, 2.2, 9.5]], look: [[0, 0.8, 1], [0, 1.2, 0]], fov: 55 },   // low in front, up past the reaching pair to the beam
+          { from: 19.5, to: 27.6, eye: [[-11, 5, -9], [-12.5, 4, 3]], look: [[0, 0.8, -0.6], [0, 0.9, 0]], fov: 50 },   // three-quarter rear, round to its side as it wakes
+        ],
+      } },
   ],
   play: {
     idle: [1.5, 4], wander: [0.45, 0.65], dash: [0.75, 1], trot: 2.3, sitSecs: [3, 6], trick: 0.25, wanderMax: 14,
@@ -51,6 +85,9 @@ export const COMPANIONS = freeze({
     greet: { nearM: 3, every: [40, 90], first: 25 },
     dance: { dash: [0.45, 0.7], dashS: 3, sitSecs: [1.5, 2.5], floorM: [5, 13], hullM: 9 },
     dodge: { nearM: 6, rangeM: 60, laneM: 5, leadS: 3, movingMps: 0.5, closingMps: 0.3, stillMps: 0.3, stillS: 1, clearM: 12, maxS: 6 },
+    // THE HEAVY ONE (round 6, the mech): seconds at rest, the share of rests that end in a walk (else the anchor or the reach, `trick` of them the
+    // reach), how long a walk may last, the walk to a hull that has stood still `greet.stillS` s, stopping `greet.nearM` m off its point (centres)
+    heavy: { idle: [5, 11], walk: 0.6, trick: 0.4, wanderMax: 45, sitSecs: [3, 6], greet: { nearM: 15, every: [70, 130], first: 40, stillS: 3 } },
   },
   crossfade: 0.25, rate: [0.45, 1.6],   // the blend between clips, and the clip rate's clamp (a gait asked for beyond its band plays no faster than this)
   // ISAO PRINTS THEM (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable
@@ -62,7 +99,10 @@ export const COMPANIONS = freeze({
   //                    done, the Stålheart up, the hull the player's and the sites shown), `perk` a programme perk held ('uplink': the radar printed,
   //                    sector 2's step), `days` in-game days since the print before it; then `delay` game seconds with every gate held, then the
   //                    first quiet moment (no shot, seat, card or line of Isao's, the hull alive, no win, not the arena, the sector in a breath or
-  //                    secure or not begun); past `patience` seconds a fight no longer holds it (the rest still do); `brief` Isao's line as it starts
+  //                    secure or not begun); past `patience` seconds a fight no longer holds it (the rest still do); `brief` Isao's line as it starts;
+  //                    `boss` (round 6, the mech) THE ARENA's Nih-Dairia killed (src/fx/sector-run.js bossDown: the arena's SECURE); the arena's own hold is lifted once she
+  //                    is dead (the sector's fight still holds it, as any). Each print still waits for the one before it (strictly in order)
+  //   units[].print    a unit's own print over `print` (round 6, the mech: its spot, plot radius `bedM`, refLength, Isao's hover, timeline and angles)
   //   print            the scene: `spotCells` the bed's least distance from the heart (hops; up to two more), `slabClear` the metres its plot keeps
 //                    off a raised island's slab (tried in turn: a bed beside a slab hid behind its edge), `bedM` its radius and `hoverM` Isao's height over it (metres),
   //                    `colour` the print's wireframe, `band` the bright fresh layer above the finished skin (share of the height), the timeline
@@ -71,11 +111,12 @@ export const COMPANIONS = freeze({
   //                    unit's facing, y up, z its facing; each eye and look eased from the first to the second over [from, to] s, fov in degrees),
   //                    scaled by the body's length over `refLength`; `shot` the live cut (5 s mandatory, then Space skips, as the FEIDS-26 drop)
   prints: {
-    order: ['c07', 'k9', 'k0'],
+    order: ['c07', 'k9', 'k0', 'mech'],
     triggers: [
       { phase: 'expedition', delay: 20, patience: 150, brief: 'pet_print_first' },   // the colony up, the first wave dealt with, the hull the player's: the first quiet moment after
       { phase: 'expedition', perk: 'uplink', days: 3, delay: 10, patience: 150, brief: 'pet_print_second' },   // "later": three days on and the radar up
       { phase: 'expedition', perk: 'farm', days: 2, delay: 10, patience: 150, brief: 'pet_print_third' },   // K0-TECH (round 6): the greenhouse up (sector 3) and two days on
+      { boss: true, delay: 10, patience: 150, brief: 'pet_print_mech' },   // THE MECH (round 6): THE ARENA's Nih-Dairia dead, then the first quiet moment
     ],
   },
   print: {

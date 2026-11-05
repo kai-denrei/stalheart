@@ -47,6 +47,7 @@ assert.equal(unitState(by('sol82'), { sector: 3 }), 'full'); assert.equal(unitSt
 assert.equal(unitState(by('sol88'), { sol88: true }), 'full'); assert.equal(unitState(by('sol88'), { perks: ['launcher'] }), 'unseen', 'the launcher printed is not the launch');
 assert.equal(unitState(by('ball'), { ball: true }), 'full'); assert.equal(unitState(by('ball'), {}), 'unseen');
 assert.equal(unitState(by('c07'), { pets: ['c07'] }), 'full'); assert.equal(unitState(by('c07'), { pets: ['k9'] }), 'unseen', 'a companion on the books once printed (2026-10-30)'); assert.equal(unitState(by('k9'), { pets: new Set(['k9']) }), 'full');
+assert.equal(unitState(by('mech'), { pets: ['c07', 'k9', 'k0'] }), 'unseen', 'the mech on the books once printed (round 6)'); assert.equal(unitState(by('mech'), { pets: ['mech'] }), 'full');
 assert.equal(unitState(by('k0'), { pets: ['c07', 'k9'] }), 'unseen', 'K0-TECH on the books once printed (round 6)'); assert.equal(unitState(by('k0'), { pets: ['k0'] }), 'full');
 for (const e of roster.filter((x) => x.kind === 'unit')) assert.equal(unitState(e, null, true), 'full', `${e.id}: the lab opens it`);
 

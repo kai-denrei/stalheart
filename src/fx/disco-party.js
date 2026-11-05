@@ -205,7 +205,7 @@ export function createDiscoParty(h) {
     if (h.seated() || h.shotActive()) return;
     const st = structure(), root = st?.near ?? st?.root; if (!root || !tipOf(root)) return;
     const S = DAY_42.shot, start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() };
-    const born = h.pets?.()?.born?.() ?? [], pets = COMPANIONS.units.map((u, i) => (born.includes(u.id) ? i : -1)).filter((i) => i >= 0);
+    const born = h.pets?.()?.born?.() ?? [], pets = COMPANIONS.units.map((u, i) => (born.includes(u.id) && u.kind !== 'heavy' ? i : -1)).filter((i) => i >= 0);   // the mech watches, it does not dance (round 6)
     const dur = pets.length ? Math.max(S.seconds, S.petsAt + pets.length * S.petSecs) : S.seconds;
     cut = { seg: -1, shown: -1, lens: null, pets, dur, segs: [], sides: [] };
     const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();

@@ -32,19 +32,20 @@ export function sectorRole(n, tableLength, doorAt) {
   return n === doorAt - 1 ? 'canyonAgain' : n < doorAt ? 'hold' : n === doorAt ? 'door' : n === doorAt + 1 ? 'arena' : n === doorAt + 2 ? 'both' : 'generated';
 }
 
-// a `when` in words: the programme's { phase, sector, idle, back, manned }, the companions' { phase, perk, days, delay, patience }
+// a `when` in words: the programme's { phase, sector, idle, back, manned }, the companions' { phase, perk, boss, days, delay, patience }
 export function whenText(w = {}) {
   const out = [];
   if (w.phase) out.push(`beat '${w.phase}' reached`);
   if (w.sector) out.push(`from sector ${w.sector}`);
   if (w.perk) out.push(`perk '${w.perk}' standing`);
+  if (w.boss) out.push('THE ARENA\'s mother dead');
   if (w.days) out.push(`${w.days} days after the print before`);
   if (w.back === 'held') out.push('once the back mouth is held (THE BACK DOOR)');
   if (w.manned) out.push(`after ${w.manned} manned SOL-82 passes`);
   if (w.idle) out.push('at the lull, between waves');
   if (w.delay) out.push(`${w.delay} s on, at the first quiet moment`);
   if (w.patience) out.push(`a fight holds it ${w.patience} s at most`);
-  for (const [k, v] of Object.entries(w)) if (!['phase', 'sector', 'perk', 'days', 'back', 'manned', 'idle', 'delay', 'patience', 'brief'].includes(k)) out.push(`${k}: ${JSON.stringify(v)}`);
+  for (const [k, v] of Object.entries(w)) if (!['phase', 'sector', 'perk', 'boss', 'days', 'back', 'manned', 'idle', 'delay', 'patience', 'brief'].includes(k)) out.push(`${k}: ${JSON.stringify(v)}`);
   return out.join(', ');
 }
 
@@ -76,7 +77,7 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   const perkStep = (perk) => t.programme.find((s) => s.perk === perk) ?? null;
   const pets = (t.companions.prints.triggers ?? []).map((tr, i) => {
     const unit = t.companions.units.find((u) => u.id === t.companions.prints.order[i]);
-    const col = later(tr.phase ? phaseCol(tr.phase) : null, tr.perk && perkStep(tr.perk) ? stepCol(perkStep(tr.perk)) : null);
+    const col = tr.boss ? arcCol('arena') : later(tr.phase ? phaseCol(tr.phase) : null, tr.perk && perkStep(tr.perk) ? stepCol(perkStep(tr.perk)) : null);   // the mech (round 6): after THE ARENA
     return { tr, unit, col };
   });
   const uplink = perkStep('uplink'), dropFrom = uplink ? stepCol(uplink) : firstSector, dropTo = arcCol('arena');
@@ -120,7 +121,7 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   // DROPS & COMPANIONS: the day-gated moments, the day rule written on them
   const dayS = t.storyDay?.seconds ?? 30;
   const drops = pets.map(({ tr, unit, col }, i) => ({ id: `pet-${unit?.id ?? i}`, col, label: `${unit?.name ?? '?'} PRINTED`, sub: tr.days ? `+${tr.days} days` : `+${tr.delay} s quiet`, rule: whenText(tr), when: tr,
-    tags: [tr.days && 'days', 'close-up'].filter(Boolean), src: [{ file: 'src/content/companions.js', find: `brief: '${tr.brief}'` }] }));
+    tags: [tr.days && 'days', tr.boss && 'after the kill', 'close-up'].filter(Boolean), src: [{ file: 'src/content/companions.js', find: `brief: '${tr.brief}'` }] }));
   if (uplink) {
     drops.push({ id: 'feids-call', col: dropFrom, label: 'REINFORCEMENTS CALLED', sub: `the ${uplink.label} printed`, rule: `perk '${uplink.perk}' standing (sector ${uplink.when.sector})`, when: uplink.when, tags: [], src: [{ file: 'src/content/reinforcements.js', find: 'days: ' }, { file: PROGRAMME_FILE, find: `{ id: '${uplink.id}',` }] });
     drops.push({ id: 'feids-drop', col: dropFrom, to: dropTo, label: 'FEIDS-26 DROP', sub: `uplink + ${t.reinforcements.days} days`, rule: `${t.reinforcements.days} days (${t.reinforcements.days * dayS} s of game clock) after the call, a seat, card and line clear; THE ARENA's start at the latest`, when: { days: t.reinforcements.days, arena: true }, tags: ['days'], src: [{ file: 'src/content/reinforcements.js', find: 'days: ' }, { file: 'src/domain/reinforcements.js', find: 'export function dropReady' }] });

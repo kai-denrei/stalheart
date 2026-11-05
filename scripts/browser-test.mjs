@@ -1466,33 +1466,37 @@ try{
  // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions on the clearing from the first frame, wireframed, at their true size; over 70 game
  // seconds they walk, dash, play tag (a tag swaps the roles) and stay on the roam (the clearing near the heart, off the solid structures); the
  // paws' clip runs at the rate of the ground speed; a live look beside the cheetah mid-move is artifacts/browser/companions.png
- const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), C=(s)=>s.companions;
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), C=(s)=>s.companions, {COMPANIONS}=await import('../src/content/companions.js');
  await go('companions',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&pets=born#td`);   // ?pets=born: both on the clearing from the first frame (since 2026-10-30 Isao prints them: --pet-print)
  await until(`!!${T} && !!${T}.state().companions`,120000).catch(async()=>assert.fail('the companions host created'));
  await until(`${T}.state().companions.loaded`,60000).catch(async()=>assert.fail(`both models loaded (${JSON.stringify(C(await st()))})`));
- {const c=C(await st());console.log('  loaded: '+JSON.stringify(c));assert.ok(c.roam>20,'a roam of cells');for(const u of c.units){assert.ok(u.onRoam,`${u.id} starts on the roam`);assert.equal(u.wire[0],u.wire[1],`${u.id} every mesh wireframed`);assert.ok(u.wire[1]>=6,`${u.id} drawn (${u.wire[1]} meshes)`);}}
+ {const c=C(await st());console.log('  loaded: '+JSON.stringify(c));assert.ok(c.roam>20,'a roam of cells');for(const u of c.units){assert.ok(u.onRoam,`${u.id} starts on the roam`);assert.equal(u.wire[0],u.wire[1],`${u.id} every mesh wireframed`);assert.ok(u.wire[1]>=(u.pose?1:6),`${u.id} drawn (${u.wire[1]} meshes)`);}assert.ok(c.units.some(u=>u.id==='mech'&&u.pose),'the mech posed, not clipped (round 6)');}
  // 70 game seconds sampled: the modes seen, the top speeds, every sample on the roam, the clip's rate matching the speed, a game of tag
- const seen={c07:new Set(),k9:new Set()},top={c07:0,k9:0},clips={c07:new Set(),k9:new Set()};let games=0,tags=0,off=0,samples=0,t0=null;
- for(let k=0;k<140;k++){await delay(500);const c=C(await st());if(!c)continue;samples++;t0??=c.t;games=c.game.games;tags=c.game.tags;for(const u of c.units){seen[u.id].add(u.mode);top[u.id]=Math.max(top[u.id],u.speed);if(u.clip)clips[u.id].add(u.clip);if(!u.onRoam)off++;}
+ // (round 6: K0-TECH and the Nih-Dairia mech too: tag is a game of two among three, the mech never runs past its capped walk nor plays)
+const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i,new Set()])),top=Object.fromEntries(ids.map(i=>[i,0])),clips=Object.fromEntries(ids.map(i=>[i,new Set()])),poses=new Set(),tagged=new Set();let games=0,tags=0,off=0,samples=0,t0=null,mechRate=0;
+ for(let k=0;k<140;k++){await delay(500);const c=C(await st());if(!c)continue;samples++;t0??=c.t;games=c.game.games;tags=c.game.tags;for(const u of c.units){seen[u.id].add(u.mode);top[u.id]=Math.max(top[u.id],u.speed);if(u.clip)clips[u.id].add(u.clip);if(!u.onRoam)off++;if(u.mode==='chase'||u.mode==='flee')tagged.add(u.id);if(u.pose){poses.add(u.pose.mode);mechRate=Math.max(mechRate,u.pose.rate);assert.ok(u.speed<=COMPANIONS.units[3].top+1e-6,`the mech within its top (${u.speed})`);assert.ok(!['chase','flee','dodge','dance','dash'].includes(u.mode),`the mech never ${u.mode}s`);}}
   if(k%20===0)console.log(`  t ${c.t}: ${c.units.map(u=>`${u.id} ${u.mode} ${u.speed} m/s ${u.clip}@${u.rate}${u.blocked?' BLOCKED':''}`).join(' | ')} dist ${c.dist} m game ${JSON.stringify(c.game)}`);
   if(c.t-t0>70)break;}
- const c=C(await st());console.log(`  after ${(c.t-t0).toFixed(1)} game s / ${samples} samples: modes ${JSON.stringify({c07:[...seen.c07],k9:[...seen.k9]})}, top ${JSON.stringify(top)}, clips ${JSON.stringify({c07:[...clips.c07],k9:[...clips.k9]})}, games ${games}, tags ${tags}, off the roam ${off}`);
+ const c=C(await st());console.log(`  after ${(c.t-t0).toFixed(1)} game s / ${samples} samples: modes ${JSON.stringify(Object.fromEntries(ids.map(i=>[i,[...seen[i]]])))}, top ${JSON.stringify(top)}, clips ${JSON.stringify(Object.fromEntries(ids.map(i=>[i,[...clips[i]]])))}, games ${games}, tags ${tags}, played tag ${[...tagged]}, mech poses ${[...poses]} rate ${mechRate}, off the roam ${off}`);
  assert.ok(c.t-t0>=60,'the game clock ran');assert.equal(off,0,'every sample on the roam');
- for(const id of ['c07','k9']){assert.ok(seen[id].has('wander')||seen[id].has('dash'),`${id} moved on its own`);assert.ok(seen[id].has('chase')||seen[id].has('flee'),`${id} played tag`);assert.ok(top[id]>=3,`${id} reached a run (${top[id]} m/s)`);assert.ok(clips[id].size>=2,`${id} changed gait (${[...clips[id]]})`);}
- assert.ok(games>=1,'a game of tag played');
+ for(const id of ['c07','k9']){assert.ok(seen[id].has('wander')||seen[id].has('dash'),`${id} moved on its own`);assert.ok(top[id]>=3,`${id} reached a run (${top[id]} m/s)`);assert.ok(clips[id].size>=2,`${id} changed gait (${[...clips[id]]})`);}
+ assert.ok(seen.k0.has('wander')||seen.k0.has('dash')||seen.k0.has('chase')||seen.k0.has('flee'),'K0-TECH moved on its own');assert.ok(clips.k0.size>=2,`K0-TECH changed gait (${[...clips.k0]})`);
+ assert.ok(games>=1&&tagged.size>=2,`a game of tag played (two of three: ${[...tagged]})`);assert.ok(!tagged.has('mech'),'the mech never tagged');
+ assert.ok(mechRate<=COMPANIONS.units[3].rig.rateCap+1e-6,`the mech's walk rate within its cap (${mechRate})`);if(seen.mech.has('wander')||seen.mech.has('greet'))assert.ok(poses.has('walk'),`the mech walked on its walk (${[...poses]})`);
  // the look: beside the cheetah while it moves (the next move after a rest), the frame for the owner
  await until(`['wander','dash','chase','flee','greet'].includes(${T}.state().companions.units[0].mode) && ${T}.state().companions.units[0].speed>0.3`,60000).catch(()=>{});
  assert.equal(await evaluate(`${T}.petLook(0)`),true,'the look at the cheetah');await delay(1200);
  {const s=await st(),u=C(s).units[0];console.log(`  look: shot ${s.shot}, c07 ${u.mode} ${u.speed} m/s ${u.clip}@${u.rate}, ${u.eyeM} m from the eye, far ${u.far}`);assert.equal(s.shot,'mechLook','the look live');assert.equal(u.far,false,'the cheetah on its game tier in the look');}
  current='companions';await finish();
  await evaluate(`${T}.petLook(1)`);await delay(1200);current='companions-k9';await finish();
+ await evaluate(`${T}.petLook(2)`);await delay(1200);current='companions-k0';await finish();   // round 6: K0-TECH
  // OUT OF THE TANK'S WAY (owner, 2026-11-02, round 4 note 5): the hull aimed at where a companion stands 12 m or more off and driven straight at it (W held,
  // no re-aim) for 6 s: the companion dodges (state().companions.dodges) and the hull's point never comes within 2.5 m of it (the drive's closest logged);
  // the frame mid-dodge is artifacts/browser/companions-dodge.png
  {await evaluate(`${T}.showcase.look?.([0,0,1])`).catch(()=>{});await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")');
   const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});let pick=null;
-  for(let k=0;k<60&&!pick;k++){const c=C(await st());const u=c.units.map((u,i)=>({...u,i})).filter(u=>u.speed<0.5&&u.hullM>=12&&u.hullM<=45).sort((a,b)=>a.hullM-b.hullM)[0];if(u)pick=u;else await delay(500);}
-  assert.ok(pick,'a companion standing 12-45 m from the hull to drive at');
+  for(let k=0;k<60&&!pick;k++){const c=C(await st());const u=c.units.map((u,i)=>({...u,i})).filter(u=>!u.pose&&u.speed<0.5&&u.hullM>=12&&u.hullM<=45).sort((a,b)=>a.hullM-b.hullM)[0];if(u)pick=u;else await delay(500);}
+  assert.ok(pick,'a companion standing 12-45 m from the hull to drive at (not the mech: it never dodges, round 6)');
   const d0=C(await st()).dodges;console.log(`  drive at ${pick.id} (cell ${pick.cell}, ${pick.hullM} m off, ${pick.mode})`);
   await evaluate(`${T}.showcase.aimHull(${pick.cell})`);await delay(150);await K('keyDown','w','KeyW',87);
   let min=Infinity,top=0,shot=false,log=[];const t0=Date.now();
@@ -1581,6 +1585,22 @@ try{
  await until(`!${T}.state().companions.print.printing`,120000).catch(async()=>assert.fail(`RECKON K9's print ended (${JSON.stringify(PR(await st()))})`));
  {const s=await st(),p=PR(s),u=C(s).units[1];console.log(`  K9's end: last ${JSON.stringify(p.last)}, shot ${s.shot}, k9 ${u.life} ${u.clip}, lens ${JSON.stringify(p.lens)}, bornDay ${JSON.stringify(p.bornDay)}`);
   assert.equal(p.last.id,'k9');assert.equal(p.last.skipped,false,'run to its end');assert.ok(p.last.t>=p.end-0.2,`the whole ${p.end} s`);assert.equal(u.life,'born');assert.notEqual(s.shot,COMPANIONS.print.shot.id,'the cut over');assert.equal(p.lens,null,'the lens put back');assert.equal(p.prints,2);}
+ // ROUND 6 (2026-11-05): K0-TECH third (its gates: the greenhouse and two days) and the Nih-Dairia mech fourth (its gate: THE ARENA's kill), each forced
+ // and run to its end: a frame mid-print and one as it wakes (artifacts/browser/pet-print-k0.png, -k0-born.png, -mech.png, -mech-born.png)
+ for(const [i,id,mid] of [[2,'k0',8.5],[3,'mech',13]]){
+  await until(`!${T}.state().shot`,30000).catch(()=>{});
+  {const p=PR(await st());console.log(`  ${id} waits: why ${p.why}`);assert.equal(p.why,'gates',`${id} held by its gates`);}
+  assert.equal(await evaluate(`${T}.petPrint(${i})`),true,`${id}'s print forced`);
+  await until(`${T}.state().companions.print.printing?.id==='${id}'`,30000).catch(async()=>assert.fail(`${id}'s print began (${JSON.stringify(PR(await st()))})`));
+  {const p=PR(await st()).printing;console.log(`  ${id} printing: end ${p.end} s, bed ${p.bedM} m, size ${p.size}, box ${JSON.stringify(p.box)}, cell ${p.cell}`);if(id==='mech'){assert.equal(p.end,27.6,'the mech\'s 27.6 s scene');assert.ok(p.bedM>=4.5,'its 9 m plot');assert.ok(p.box.l>6.5&&p.box.l<8.5,`its 7.6 m body (${p.box.l})`);}}
+  await until(`(${T}.state().companions.print.printing?.t??0)>=${mid}`,90000).catch(()=>{});await frame(`pet-print-${id}`);
+  {const s=await st(),p=PR(s).printing,u=C(s).units[i];console.log(`  frame pet-print-${id}: t ${p?.t} ${p?.phase} angle ${p?.angle} eye ${p?.eyeM} m fov ${p?.fov}; ${id} ${u.life} ${u.clip} pose ${JSON.stringify(u.pose)}`);assert.equal(p?.phase,'print',`${id} mid-print in the frame`);}
+  await until(`${T}.state().companions.print.printing?.phase==='wake'`,90000).catch(()=>{});await delay(id==='mech'?1500:800);await frame(`pet-print-${id}-born`);
+  {const s=await st(),p=PR(s).printing,u=C(s).units[i];console.log(`  frame pet-print-${id}-born: t ${p?.t} ${p?.phase} angle ${p?.angle}; ${id} ${u.life} ${u.clip} pose ${JSON.stringify(u.pose)}`);}
+  await until(`!${T}.state().companions.print.printing`,90000).catch(async()=>assert.fail(`${id}'s print ended (${JSON.stringify(PR(await st()))})`));
+  {const s=await st(),p=PR(s),u=C(s).units[i];console.log(`  ${id}'s end: last ${JSON.stringify(p.last)}, ${id} ${u.life} ${u.mode} ${u.clip}`);assert.equal(p.last.id,id);assert.equal(p.last.skipped,false);assert.equal(u.life,'born');assert.equal(p.lens,null,'the lens put back');assert.equal(p.prints,i+1);}}
+ await until(`['wander','sit','trick','greet','idle'].includes(${T}.state().companions.units[3].mode)`,20000).catch(()=>{});
+ {const u=C(await st()).units[3];console.log(`  the mech after its print: ${u.mode} ${u.speed} m/s pose ${JSON.stringify(u.pose)}, on the roam ${u.onRoam}`);assert.ok(u.onRoam,'the mech on the roam');}
  await delay(1500);current='pet-print';await finish();
  } else if(args.includes('--wire')) {
  // THE WIREFRAME, THE DEFAULT (owner, 2026-10-26 as ?wire=1, 2026-10-27 the default): the hull, every sentry and the four Ridgebacks drawn as wireframes with no flag; the gunship and SOL untouched; ?wire=0 the solids
@@ -1865,6 +1885,16 @@ try{
  {const c=await evaluate(C);console.log(`  on BOTH WALLS, ${c.age.toFixed(1)} s after the lay: ${c.label}, opacity ${c.opacity}`);
   assert.equal(JSON.stringify(c.pieces.map(p=>[p.state,p.own])),JSON.stringify(c0.pieces.map(p=>[p.state,p.own])),'the same carcass: nothing gone, nothing moved');assert.equal(c.opacity,1,'no fade');
   current='arena-carcass-60s';await finish();}
+ await evaluate(`${T}.showcase.follow()`);
+ // ROUND 6 (2026-11-05): Isao's mech after the kill. The kill is recorded (sector-run bossDown, the mech's trigger); this run has no pet born, and the
+ // prints go strictly in order, so the mech's print is forced (--pet-print runs the order): the bed by the base, its distance from the carcass in hops
+ // logged; a frame mid-print (artifacts/browser/arena-carcass-mech.png)
+ {const s=await st();assert.ok(s.sector?.bossDown!=null,`the kill recorded for the mech's trigger (${s.sector?.bossDown})`);console.log(`  after the kill: bossDown ${s.sector.bossDown}; print ${JSON.stringify(s.companions?.print?{why:s.companions.print.why,prints:s.companions.print.prints}:null)}`);}
+ assert.equal(await evaluate(`${T}.petPrint(3)`),true,'the mech\'s print forced after the kill');
+ await until(`${T}.state().companions.print.printing?.id==='mech'`,60000).catch(async()=>assert.fail(`the mech's print began (${JSON.stringify((await st()).companions?.print)})`));
+ await until(`(${T}.state().companions.print.printing?.t??0)>=12`,90000).catch(()=>{});
+ {const s=await st(),p=s.companions.print.printing,hops=await evaluate(`(()=>{const T=${T},a=${cell},b=${p?.cell??-1},seen=new Map([[a,0]]),q=[a];while(q.length){const c=q.shift(),d=seen.get(c);if(c===b)return d;if(d>=400)return -1;for(const n of T.creatures.neighbours(c))if(!seen.has(n)){seen.set(n,d+1);q.push(n);}}return -1;})()`);
+  console.log(`  the mech mid-print at t ${p?.t} (${p?.phase}), bed cell ${p?.cell}, ${hops} hops from the carcass's cell ${cell} (-1: more than 400)`);current='arena-carcass-mech';await finish();}
  } else if(args.includes('--arena-fight')) {
  // THE ARENA FIGHT ON THE LAB'S ENGINE (owner, 2026-10-23: "the Nih-Dairia fight; there is a well-tuned version in the lab and we keep reproducing something that does
  // not work. a) not enough nukes on the gunship, b) nih-dairia aggro is different, c) the whole idea is the monster aggro on the tank, acting as a lure, and it leaves
@@ -2001,9 +2031,11 @@ try{
  // THE COMPANIONS ON THE DANCE FLOOR AND IN THE CUT (owner, 2026-11-02, round 4 note 8): both dance through the party; the cut grows to petsAt + 2 x petSecs
  // (14 s) and closes on C-07 (6-10 s) then RECKON K9 (10-14 s), the near plane lowered for each (frames artifacts/browser/day-42-c07.png, -k9.png)
  {const s=await st(),c=s.party.cut;console.log(`  day-42 cut ${JSON.stringify(c)}, companions ${JSON.stringify(s.companions?.units?.map(u=>[u.id,u.mode,u.oneShot??u.clip]))}`);
-  assert.equal(c?.dur,DAY_42.shot.petsAt+2*DAY_42.shot.petSecs,'the cut grows to 14 s with both printed');assert.deepEqual(c.pets,['c07','k9']);
-  assert.ok(s.companions.units.every(u=>u.mode==='dance'),`both dance (${s.companions.units.map(u=>u.mode)})`);}
- for(const [seg,id] of [[0,'c07'],[1,'k9']]){await until(`${T}.state().party.cut?.seg===${seg}`,12000).catch(()=>{});await delay(1800);const s=await st(),c=s.party.cut,u=s.companions.units.find(x=>x.id===id);
+  // round 6: K0-TECH dances and has its close shot (the cut grows to 18 s); the Nih-Dairia mech, printed too, watches: no dance, no close shot
+  assert.equal(c?.dur,DAY_42.shot.petsAt+3*DAY_42.shot.petSecs,'the cut grows to 18 s with the three dancers printed');assert.deepEqual(c.pets,['c07','k9','k0']);
+  assert.ok(s.companions.units.filter(u=>u.id!=='mech').every(u=>u.mode==='dance'),`the three dance (${s.companions.units.map(u=>u.mode)})`);
+  {const m=s.companions.units.find(u=>u.id==='mech');assert.ok(m&&m.mode!=='dance'&&m.speed<0.05,`the mech watches (${m?.mode} ${m?.speed} m/s)`);}}
+ for(const [seg,id] of [[0,'c07'],[1,'k9'],[2,'k0']]){await until(`${T}.state().party.cut?.seg===${seg}`,12000).catch(()=>{});await delay(1800);const s=await st(),c=s.party.cut,u=s.companions.units.find(x=>x.id===id);
   console.log(`  day-42 highlight ${id}: cut ${JSON.stringify(c)}, ${id} ${u.mode} ${u.clip} ${u.speed} m/s ${u.eyeM} m from the eye, far ${u.far}`);
   assert.equal(c?.seg,seg,`the cut on ${id}`);assert.equal(c.near,DAY_42.shot.near,'the near plane lowered');assert.ok(u.eyeM<=8,`${id} close (${u.eyeM} m)`);current=`day-42-${id}`;await finish();}
  if((await st()).shot===DAY_42.shot.id){await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await delay(400);   // Escape skips the rest of the cut, and does not pause
@@ -2011,7 +2043,7 @@ try{
   assert.equal(await evaluate(`!!document.querySelector('#${DAY_42.shot.hintId}')`),false,'the hint goes with the cut');}
  else console.log('  day-42: the cut ended on its own before the Escape check');
  await until(`${T}.state().shot!=='${DAY_42.shot.id}'`,20000);
- {const s=await st();console.log(`  day-42 after the cut: ${JSON.stringify(s.party.cut)}`);assert.deepEqual(s.party.cut?.last?.shown,['c07','k9'],'both highlights shown');}
+ {const s=await st();console.log(`  day-42 after the cut: ${JSON.stringify(s.party.cut)}`);assert.deepEqual(s.party.cut?.last?.shown,['c07','k9','k0'],'the three highlights shown (round 6: not the mech)');}
  {const s=await st();assert.equal(s.party.phase,'party','the party goes on after the cut');assert.equal(s.party.hanging,true,'the ball still hangs');}
  current='day-42-after-cut';await finish();
  await until(`${T}.state().party.phase!=='party'`,60000).catch(async()=>assert.fail(`the alarm at the track's end (${JSON.stringify((await st()).party)})`));
@@ -2394,7 +2426,8 @@ try{
  // THE COMPANIONS IN THE FRAME (owner, 2026-11-02, round 4 note 14): copies of C-07 and RECKON K9 staged beside the hull, each inside 0.9 of the screen's
  // half extents at both ends of the shot's rail through the game's default lens (artifacts/browser/finale-pets.png)
  {const d=await evaluate(`${T}.showcase.diorama()`);console.log(`FINALE cast ${JSON.stringify(d)}`);const of=(n)=>d?.cast?.find(x=>x.name===n);
-  const inside=(p)=>Math.abs(p[0])<0.9&&Math.abs(p[1])<0.9;for(const n of ['hull','c07','k9']){const x=of(n);assert.ok(x,`${n} staged`);assert.ok(inside(x.from)&&inside(x.to),`${n} in the frame at both ends (NDC ${x.from} / ${x.to})`);}
+  const inside=(p)=>Math.abs(p[0])<0.9&&Math.abs(p[1])<0.9;for(const n of ['hull','c07','k9','k0','mech']){const x=of(n);assert.ok(x,`${n} staged`);assert.ok(inside(x.from)&&inside(x.to),`${n} in the frame at both ends (NDC ${x.from} / ${x.to})`);}
+  // round 6: K0-TECH and the Nih-Dairia mech in the frame too (the mech measured at NDC 0.46,-0.16 / 0.64,-0.22 on 2026-11-05)
   await delay(1200);current='finale-pets';await finish();}
  // THE DAY 42 REPLAY (round 3, 2026-10-26, decision 3b): with the boards read, the disco party's short form (src/fx/disco-party.js replay), the diorama
  // holding as long (DAY_42.replay.seconds); where the ball hangs (the Stålheart's tip in the shot's view, or over the boards), the klaxon before its end
