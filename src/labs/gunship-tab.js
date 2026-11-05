@@ -18,7 +18,7 @@ import { planetBake } from '../platform/planet-bake.js';
 import { createStoryPlanetSurface } from './story-planet-mesh.js';
 import { createInsetHud } from '../fx/laser-inset-hud.js';
 import { planBase } from '../domain/base-plan.js';
-import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, withBaseLayout, baseLayoutMode } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
 import { createExplosions } from '../fx/explosions.js';
 import { EXPLOSION_SCARE, SCARE_FREEZE_S } from '../content/explosions.js';
@@ -288,7 +288,7 @@ export function initGunshipTab(root) {
     scene.add(sphereRoot);
     explosions = createExplosions(sphereRoot, { onError: (e) => errors.push(`explosions: ${e.message}`) });
 
-    plan = planBase(planet, { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES }, STAGE);
+    plan = planBase(planet, { ...withBaseLayout(ISLANDS, STRUCTURES, baseLayoutMode(location.search)), kit: KIT, stages: STAGES }, STAGE);   // ?base=dome: the dome city (round 8 note 6)
     /* THE GROUND UNDER A LANDED ROCKET IS FLOOR (owner, 2026-09-15: the rockets on rock). The game's story world opens
        plan.open, every cell within each landing site's clear radius and the long sightline to the sinkhole, before it
        builds the base (src/platform/story-world.js); the lab now does the same, patches those cells into the surface, and

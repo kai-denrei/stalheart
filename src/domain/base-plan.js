@@ -13,8 +13,12 @@ import { drop } from '../core/terrace-profile.js';
 // THE GATES ARE A LIST (2026-09-18): `plan.gates` is every door on the base, entry 0 the front gate on the open mouth. `plan.gate`
 // stays as entry 0 so every single-gate consumer reads exactly what it read before. `backMouth` (from src/domain/back-door.js) adds
 // the back door, always pending — the swarm cracks that mouth open in play and Isao prints a gate there afterwards.
+// FOUNDED PIECES (owner, 2026-11-05, round 8 note 6, the dome city: "the main base"; src/content/dome-city.js): `founded: true` is never
+// pending. A plain stage places it from its own stage as before; a grown base (wider reach) stands it from the first frame, because no step of
+// Isao's programme prints it (the colony arrived with its domes). `anchor: 'frame'`: a structure at its own frame x, z on natural ground, with
+// no island (a bridge whose ends stand in two domes' plots).
 export function planBase(planet, layout, stage, { reach = stage, backMouth = null } = {}) {
-  const pending = (n) => (n > stage ? { pending: true } : {});
+  const pending = (n, piece = null) => (n > stage && !piece?.founded ? { pending: true } : {});
   const { radius } = planet;
   const centroidOf = (cells) => { const c = cells.map((ci) => planet.graph.centers[ci]).reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]); const l = Math.hypot(...c) || 1; return [c[0] / l, c[1] / l, c[2] / l]; };
   const nearestCell = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (const ci of planet.clearing.cells) { const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
@@ -113,7 +117,7 @@ export function planBase(planet, layout, stage, { reach = stage, backMouth = nul
   }
   const anchored = layout.islands.map((i) => (i.anchor === 'forward' && forwardCell >= 0 ? { ...i, x: frameOf(forwardCell)[0], z: frameOf(forwardCell)[1] } : i));
   const islands = anchored.filter((i) => i.stage <= reach).map((i) => ({
-    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z), ...pending(i.stage),
+    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z), ...pending(i.stage, i),
   }));
   // every island's lattice cell, whether or not its slab is placed yet: the beats need them from the landing on
   const cells = Object.fromEntries(anchored.map((i) => [i.id, i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z)]));
@@ -122,10 +126,11 @@ export function planBase(planet, layout, stage, { reach = stage, backMouth = nul
   const nearestOpen = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (let ci = 0; ci < planet.graph.centers.length; ci++) { if (planet.dungeon.tags[ci] === 0 || planet.clearing.cells.has(ci)) continue; const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
   const structures = layout.structures.filter((s) => s.stage <= reach && (s.until == null || stage < s.until)).map((s) => {   // `until`: a structure a later stage replaces
     if (s.anchor === 'open') { const ci = nearestOpen(s.x, s.z); const [x, z] = frameOf(ci); return { ...s, x, z, y: 0, heading: s.heading ?? [0, 1], cell: ci, ...pending(s.stage) }; }
+    if (s.anchor === 'frame') return { ...s, y: 0, heading: s.heading ?? [0, 1], cell: nearestCell(s.x, s.z), ...pending(s.stage, s) };
     if (s.anchor === 'wall' && wallCell >= 0) { const p = sockets[0].pos, f = planet.worldToFrame([p[0] * radius, p[1] * radius - radius, p[2] * radius]); return { ...s, x: f[0], z: f[2], y: layout.kit.wallMetres ?? 4, heading: [0, 1], cell: wallCell, ...pending(s.stage) }; }
     const i = islandById.get(s.island);
     // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground
-    return { ...s, x: i.x, z: i.z, y: reach >= i.stage ? 0.06 : 0, heading: s.heading ?? [0, 1], ...pending(s.stage) };   // once the slab is placed (or will be, in a grown base), whatever stands on it rides a hair above; before that, natural ground
+    return { ...s, x: i.x, z: i.z, y: reach >= i.stage ? 0.06 : 0, heading: s.heading ?? [0, 1], ...pending(s.stage, s) };   // once the slab is placed (or will be, in a grown base), whatever stands on it rides a hair above; before that, natural ground
   });
   cells.forward = forwardCell; cells.rotor = wallCell; cells.quiver = wallCell2; cells.rotorLane = rotorLane; cells.fodder = fodderCell;
   // THE BERTHS: each bay's centre along the container model's X, its doors along the structure heading, and

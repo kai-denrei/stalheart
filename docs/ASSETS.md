@@ -35,3 +35,16 @@ Models by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/, reused w
 | Nih-Dairia mech (tripad v1.1, no clips; `runtime.js` kept, ported as `src/domain/mech-pose.js`; creature reference kai-denrei/lab-creatures) | `assets/models/nih-dairia-mech/` | `cd0b1349` | `docs/companions-assets.lock.json` (per-entry `baseUrl`) |
 | FEIDS-26 delivery capsule | `assets/models/feids26/` | `38eed564` | `docs/feids26-assets.lock.json` |
 | MX-06 Ridgeback | `assets/models/ridgeback/` | `38eed564` | `docs/feids26-assets.lock.json` |
+
+## The Dome City — the Dome Colony modules
+
+Models by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/, the owner's own, reused with attribution under the upstream `ASSET-LICENSE.md` (credited in `ATTRIBUTIONS.md`, "Models by jelaludo"). Round 8 note 6 (2026-11-06): the second layout of the base, `?base=dome` (`src/content/dome-city.js`, placed by the pure `withBaseLayout` in `src/content/base-layout.js`). D0 only, game tier LOD1 near and the static one-draw LOD2 beyond `KIT.lod.metres`; plain GLBs, meshopt-packed into dist by the build; metres, +Y up, +Z forward, no baked clips (`MOUNT_YAW` / `CRADLE_PITCH` are engine pivots, not driven yet: the domes' sentry cradles are a follow-up). The connected port caps (`PORT_CAP_N` / `PORT_CAP_S`) are hidden by name on the linked side; the LOD2 files keep those names as empty nodes. The author's `layout.json` (nine domes on an 80 m grid, twelve bridges) is the reference, kept in the vault; the game places six domes and four bridges (the reading is in the module's header).
+
+| module | folder | placed | revision | lock |
+| --- | --- | --- | --- | --- |
+| habitat dome (LOD1 5,880 tris, 8 draws; LOD2 2,304, 1) | `assets/models/dome-colony/` | `dome-nw`, `dome-sw` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| biosphere dome | `assets/models/dome-colony/` | `dome-w` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| fabrication dome | `assets/models/dome-colony/` | `dome-e` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| logistics dome | `assets/models/dome-colony/` | `dome-ne`, `dome-se` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| 52 m long bridge (`bridge_long`, LOD1 1,060 tris, 2 draws) | `assets/models/dome-colony/` | `bridge-w1`, `bridge-w2`, `bridge-e1`, `bridge-e2` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| research and power domes | `assets/models/dome-colony/` | pinned, not placed (the Stålheart is the power dome; the north centre is the mouth corridor) | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |

@@ -30,7 +30,7 @@ import { createLaserScope, scopeRect } from '../fx/laser-scope.js';
 import { makeAudio } from '../audio.js';
 import { createSol82Briefing } from '../fx/sol82-briefing.js';
 import { planBase } from '../domain/base-plan.js';
-import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, withBaseLayout, baseLayoutMode } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
 import { createSinkhole } from '../sinkhole.js';
 import { createBreachRubble } from '../breach-rubble.js';
@@ -510,7 +510,7 @@ export function initLaserTab(root) {
     sphereRoot.add(rubbleHost);
     rubble = createBreachRubble(rubbleHost);
 
-    const LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
+    const LAYOUT = { ...withBaseLayout(ISLANDS, STRUCTURES, baseLayoutMode(location.search)), kit: KIT, stages: STAGES };   // ?base=dome: the dome city (round 8 note 6)
     plan = planBase(planet, LAYOUT, STAGE);
     /* THE GROUND UNDER A LANDED ROCKET IS FLOOR (owner, 2026-09-15: the rockets on rock). The game's story world opens
        plan.open, every cell within each landing site's clear radius and the long sightline to the sinkhole, before it
