@@ -51,6 +51,16 @@ export function sectorDef(n, table, generator, arc = null) {
 // or n + 1 has reached `latest` (SECTOR_DOOR)
 export const backDoorNext = ({ n, earliest, latest, unlocked }) => n + 1 >= earliest && (!!unlocked || n + 1 >= latest);
 
+// THE DOOR OF A RUN OPENED PAST THE LANE (?skip=defence&sector=N, src/fx/sector-run.js): opened at or past the door's earliest, the door is that
+// sector; opened one before it, the canyon again and the door next; `boss` (?boss=1) opens ON THE ARENA, the door counted as the sector before.
+// null: the door is left to backDoorNext
+export const openingDoorAt = ({ first, earliest, boss = false }) => (boss && first >= earliest + 1 ? first - 1 : first >= earliest - 1 ? Math.max(first, earliest) : null);
+
+// ISAO'S BRIEF FOR SECTOR n (src/isaobriefs.js ids): the table's own, then the arc's by its place round the door (THE ARENA at doorAt + 1, BOTH WALLS at
+// doorAt + 2); `tableLength` the fixed opening's rows (SECTORS), `doorAt` null while the door is not decided
+export const sectorBriefId = (n, tableLength, doorAt) => (n <= tableLength ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'arena_go'
+  : doorAt !== null && n === doorAt + 2 ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
+
 // breaches: [{ id, side, cell }], one per breach the caller placed. waveIndexBase is the ladder wave number before the
 // breach's first wave (def.waveBase) and ladderCap the highest ladder wave it is ever sized at.
 export function makeSector(def, breaches, t) {

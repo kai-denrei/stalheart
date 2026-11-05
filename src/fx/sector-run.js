@@ -12,7 +12,7 @@ import { ARENA, SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
-import { firstSectorDue, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
+import { firstSectorDue, sectorDef, backDoorNext, openingDoorAt, sectorBriefId, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
@@ -102,7 +102,7 @@ export function createSectorRun(h) {
   const defOf = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arc());
   // EVERYTHING UNLOCKED: every landing site's part is home and Isao's programme is printed but for the back gate (which needs the door)
   const unlocked = () => { const sites = story.expeditions?.sites ?? [], owed = story.programme ? programmeSnapshot(story.programme).owed : []; return sites.length > 0 && sites.every((x) => x.state === 'delivered') && owed.length === 0; };   // the back gate and the launcher are passable: never owed
-  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'arena_go' : doorAt !== null && n === bothAt() ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
+  const briefOf = (n) => sectorBriefId(n, SECTORS.length, doorAt);   // src/domain/sectors.js (the director board reads the same)
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
@@ -401,8 +401,7 @@ export function createSectorRun(h) {
       if (!h.ready()) return;
       readySince ??= t;
       const first = Math.max(1, h.firstSector ?? 1);   // a harness or drawer entry may open the run past the lane (?skip=defence&sector=N)
-      if (story.bossStart && first >= SECTOR_DOOR.earliest + 1) doorAt ??= first - 1;   // ?boss=1 (2026-10-16): the run opens ON THE BOSS, the door counted as the sector before (a playtest entry)
-      if (first >= SECTOR_DOOR.earliest - 1) doorAt ??= Math.max(first, SECTOR_DOOR.earliest);   // opened at or past the door's earliest: the door is that sector; opened one before it: the canyon again, the door next
+      doorAt ??= openingDoorAt({ first, earliest: SECTOR_DOOR.earliest, boss: !!story.bossStart });   // ?boss=1 (2026-10-16) opens ON THE BOSS; at or past the earliest the door is that sector, one before it the canyon again (src/domain/sectors.js)
       // the expedition the tank has just been sent on comes first: a part home, or the grace, opens the first sector
       if (!firstSectorDue({ sinceReady: t - readySince, grace: first > 1 || story.lateStart ? 0 : SECTOR_TIMING.firstGrace ?? 0, partsHome: h.poll().delivered?.length ?? 0 })) return;
       begin(first); return;
