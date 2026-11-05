@@ -34,6 +34,8 @@ import * as THREE from '../../vendor/three.module.js';
 import { surfaceFrame, toPlane, toPlaneInto } from '../domain/surface-projection.js';
 import { hubFrames, nearestHub, remapPlane, hubTurn } from '../domain/surface-hubs.js';
 import { createReachQuery, clearOf } from '../domain/body-reach.js';
+import { holeFloor } from '../domain/hole-floor.js';
+import { emergence } from '../domain/breach-waves.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -62,7 +64,11 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     return sp;
   };
   let toSphere = [];
+  // IN THE BOWL (owner, 2026-11-05, round 5, note 6a: "the sinkhole is a hole; nothing hovers over it"): sink(hub, x, z) the metres the ground lies under the
+  // planet's surface at that plane point (0 off the open holes; src/domain/hole-floor.js over the holes the enemy loop hands step())
+  let floors = null;
   const hubs = { count: 12, quat: (k) => quats[k] ?? quats[0], remap: (a, b, x, z) => remapPlane(frames[a], frames[b], x, z, R),
+    sink: (k, x, z) => (floors?.length && frame && toSphere[0] ? holeFloor((toSphere[k] ?? toSphere[0])(x, z), floors) * R : 0),
     reach: (k, x, z, dx, dz, max, cell) => { if (!query || !frame) return max; reaches++; return query(toSphere[k] ?? toSphere[0], x, z, dx, dz, max, cell >= 0 ? cell : query.cell); },
     clear: (k, x, z, rho, cell, out, steps = 3) => {
       if (!query || !frame) { out[0] = out[1] = 0; out[2] = rho; out[3] = 1; out[4] = 0; out[5] = out[6] = rho * 2; return out; }
@@ -109,8 +115,11 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   }
 
   const planeOf = (p, hub = 0) => toPlane(frames[hub] ?? frame, p, R);
-  // the record's lift under the ground while it rises out of a breach (src/fx/enemy-step.js's emergence, 1.2 s)
-  const liftOf = (e, r0) => (e.breachSource && e.emergeAge < 1.2 ? -(1 - clamp01(e.emergeAge / 1.2)) * follow.emergeRadii * r0 : 0);
+  // the record's lift under the ground while it rises out of a breach (src/fx/enemy-step.js's emergence): round 5 (owner, 2026-11-05, note 6b), from the
+  // lip wall's depth (the record's `riseFrom`, world units) to the ground over the rise itself (`riseDur`), eased as its opacity is, so it ends where it
+  // walks (it stepped up the last 0.75 of follow.emergeRadii radii at once when the clock jumped to 1.2); a record without one rises as before
+  const liftOf = (e, r0) => (!e.breachSource || !(e.emergeAge < 1.2) ? 0 : e.riseFrom != null ? e.riseFrom * R * (1 - emergence(Math.max(0, Math.min(e.riseDur ?? 1.2, e.emergeAge)), e.riseDur ?? 1.2).rise)
+    : -(1 - clamp01(e.emergeAge / 1.2)) * follow.emergeRadii * r0);
   // the point `follow.lead` seconds ahead along the record's walk (cells a second: its spec's speed x its own pace), into `out` (a body's own array)
   function aheadOf(e, out = [0, 0, 0]) {
     const d = (e.walkPace ?? (e.spec?.speed ?? 0) * (e.paceJitter ?? 1)) * follow.lead * side, p = e.pos, dir = e.dir;   // the record's walk as it is this frame (the tune panel's and the knob's multipliers in it, src/fx/enemy-step.js walkPace)
@@ -214,8 +223,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   // once a frame, after the records have walked: every body follows its record; a body whose record left the list without dying (the
   // board cleared) goes; then each family steps and draws for `camera` (`height` the canvas's device pixels, the kit's LOD; `cull` false while a second
   // view of the scene is up, so a body off the main camera's view still draws there)
-  function step(dt, enemies, camera, height, cull = true) {
-    place(); refreshBoard();
+  function step(dt, enemies, camera, height, cull = true, holes = null) {
+    floors = holes; place(); refreshBoard();
     if (!frame) return;
     stamp++;
     for (const e of enemies) {

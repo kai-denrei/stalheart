@@ -11,7 +11,7 @@ import { SINKHOLE_BOUNDARY_GLSL } from './core/sinkhole-shape.js';
 export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=createSinkhole}={}){
  const entries=new Set(),limit=32,matrices={value:Array.from({length:limit},()=>new THREE.Matrix4())},holes={value:Array(limit).fill(0)},count={value:0},radius={value:1};
  const rubble=createBreachRubble(scene);
- let clock=0;const patched=new WeakSet();
+ let clock=0;const patched=new WeakSet(),axis=new THREE.Vector3();
  // THE SHADERS BEFORE THE FIRST BREACH. The frame the ground first opened linked every sinkhole program the game had
  // not drawn yet (the crater's stone, the fissures, the particle systems, the decals) and uploaded the four stone
  // maps: 100 ms at dpr 1, 148 ms at dpr 2, on the shot's own cut (2026-09-18 dive profile). One hidden template
@@ -37,6 +37,7 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
   seal(obj){const e=obj.userData.breach;if(!e||!entries.has(e))return false;rubble.add(obj,e.fx.tune.craterRadius);obj.userData.dispose();return true;},
   rubbleState:()=>rubble.state(), rubbleShow:(on)=>rubble.show(on),   /* the montage's ram beat hides the sealed caps while its camera is low over the lane (src/fx/showcase.js) */
   craters:()=>[...entries].map(e=>({p:e.obj.position.toArray(),r:e.fx.tune.craterRadius*(e.cells??1)})),   // where the ground is open, and how wide: the hull may not drive onto it
+  floors:()=>[...entries].map(e=>{const q=e.obj.quaternion;return {c:e.obj.position.toArray(),x:axis.set(1,0,0).applyQuaternion(q).toArray(),z:axis.set(0,0,1).applyQuaternion(q).toArray(),s:e.obj.scale.x,open:e.fx.hole.value};}),   // each hole's frame and how far open: the bowl's depth under a body (src/domain/hole-floor.js; round 5, note 6a)
   warm(w){if(template)return;warmer=w;template=makeSinkhole(scene,camera,{game:true,sounds});Object.assign(template.tune,CONTENT.breach,{spawnWaves:false,sound:false});if(look)template.tune.look=look();
    template.group.visible=true;template.update(0,0);template.group.visible=false;uploads.push(...template.textures());return template.warm(warmer);},   // one update dresses the template as create()+update() would (look, wraps) before its materials compile
   update(dt,onClear,onOpen=()=>{}){clock+=dt;const opened=[];rubble.update(dt);   // sealed caps pile up over breach-rubble's SETTLE_S

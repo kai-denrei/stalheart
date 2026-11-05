@@ -56,10 +56,10 @@ const SILHOUETTE = 'BESTIARY_SILHOUETTE';
 export function packType(entry) {
   return entry.types.filter((t) => BODIES[t]).sort((a, b) => BODIES[a].r0 - BODIES[b].r0)[0] ?? null;
 }
-// a Pearl type's record walk in m/s: its spec x its tier's pace, capped at its body's radii a second (PEARL_PACE), at the sector's pace
+// a Pearl type's record walk in m/s: its spec x its tier's pace, capped at its body's radii a second and its tier's metres (PEARL_PACE), at the sector's pace
 export function packWalk(type) {
   const b = BODIES[type], pace = PEARL_PACE[b.tier];
-  return pearlSpeed({ speed: ENEMY_SPEC[type].speed * pace.speed, radii: pace.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: CELL }) * PEARL_GAIT.sectorPace * CELL;
+  return pearlSpeed({ speed: ENEMY_SPEC[type].speed * pace.speed, radii: pace.radii, metres: pace.mps, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: CELL }) * PEARL_GAIT.sectorPace * CELL;
 }
 
 // the stage's copy of the set: every hop cycle x body.cycle, and the lab's skin (BESTIARY_STAGE.skin, 2026-10-19): the reference opacity over the
@@ -100,7 +100,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   const B = S.body;
   const set = stageSet(S);
   const gait = { ...PEARL_GAIT, hop: PEARL_GAIT.hop * B.reach, config: { ...PEARL_GAIT.config, timing: B.timing ?? PEARL_GAIT.config.timing } };
-  const pace = Object.fromEntries(Object.entries(PEARL_PACE).map(([id, p]) => [id, p.hop ? { ...p, hop: p.hop * B.reach } : p]));   // a tier's own stride stretched too (the whites, 2026-10-15)
+  const pace = Object.fromEntries(Object.entries(PEARL_PACE).map(([id, p]) => [id, p.hop || p.timing ? { ...p, ...(p.hop ? { hop: p.hop * B.reach } : {}), ...(B.timing ? { timing: null } : {}) } : p]));   // a tier's own stride stretched too (the whites, 2026-10-15); the stage's own stage shares over a tier's (round 5, note 8: the white's)
   const pearl = createPearlFamily({ parent: world, tiers: BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set,
     tune: { ...PEARL_FOLLOW, lod, capacity, leadHops: PEARL_FOLLOW.leadHops * B.lead }, pace, gait, impact: PEARL_IMPACT, hubs: { count: 1, quat: () => null } });
   pearl.setPlanet(PLANET_R);

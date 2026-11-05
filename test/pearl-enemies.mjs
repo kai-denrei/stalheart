@@ -40,7 +40,10 @@ for (let k = 1; k < 8; k++) assert(PEARL_TIERS[k].labR0 > PEARL_TIERS[k - 1].lab
 for (const t of PEARL_TIERS) assert(t.values.aggression >= 1.3 && t.values.aggression <= 2.5, `${t.id}: a slight variation round Sky's 1.7 (${t.values.aggression}; the set ran .35 to 4)`);
 const skinOf = Object.values(PEARL_BODY.scale); assert(Math.min(...skinOf) >= 0.6 && Math.max(...skinOf) <= 1.2 && PEARL_BODY.scale.blue === 0.8, 'the sizes a slight ladder round Sky\'s 0.8');
 for (let k = 1; k < 8; k++) assert(PEARL_BODY.scale[PEARL_TIERS[k].id] > PEARL_BODY.scale[PEARL_TIERS[k - 1].id], 'the sizes grow with the ladder');
-for (const [id, p] of Object.entries(PEARL_PACE)) assert.deepEqual([p.speed, p.radii, p.glide, p.reach, p.hop], [1.08, PEARL_TIERS.find((t) => t.id === id).cored ? 0.9 : 1, false, undefined, undefined], `${id}: walks as Sky (x1.08, 1 radius a second, hopping; the cored tiers 0.9, the audit's margin)`);
+// round 5 (owner, 2026-11-05, note 8: the ladder back): every tier still x1.08 and hopping; the white at the audit's ceiling, 1.2 radii a second, on its own
+// stride and stage shares; the rest under the yellow's metres (`mps`, test/pearl-motion.mjs orders them)
+for (const [id, p] of Object.entries(PEARL_PACE)) assert.deepEqual([p.speed, p.radii, p.glide, p.reach, p.hop], [1.08, id === 'white' ? 1.2 : PEARL_TIERS.find((t) => t.id === id).cored ? 0.9 : 1, false, undefined, id === 'white' ? 3.6 : undefined], `${id}: walks as Sky (x1.08, hopping; the white 1.2 radii a second on a 3.6-radius stride, the yellow and the blue 1, the cored 0.9)`);
+for (const id of ['blue', 'orange', 'green', 'purple', 'brown', 'black']) assert(PEARL_PACE[id].mps > 0 && PEARL_PACE[id].mps < 1.65, `${id}: under the yellow's metres (${PEARL_PACE[id].mps})`);
 assert(Object.isFrozen(PEARL_TIERS) && Object.isFrozen(PEARL_TIERS[2].values));
 console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived values');
 
@@ -131,8 +134,8 @@ for (const [type, b] of Object.entries(bodies)) {
   const s = pearlSpec(type), slow = PEARL_PACE[b.tier];
   // round four (owner, 2026-10-13: "slower and organic feeling is a must"): every tier is paced, its walk capped at its PEARL_PACE radii of its body a
   // second at the sector's pace (and never faster than its own), the bursts and the jink off; every other key is the game's own
-  const cap = slow.radii * b.r0 / (PEARL_GAIT.sectorPace * 10), want = Math.min(ENEMY_SPEC[type].speed * slow.speed, cap);
-  close(pearlSpeed({ speed: ENEMY_SPEC[type].speed, mult: slow.speed, radii: slow.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: 10 }), want, 1e-12, `${type}: pearlSpeed`);
+  const cap = Math.min(slow.radii * b.r0, slow.mps ?? Infinity) / (PEARL_GAIT.sectorPace * 10), want = Math.min(ENEMY_SPEC[type].speed * slow.speed, cap);   // and the tier's metres (round 5, note 8)
+  close(pearlSpeed({ speed: ENEMY_SPEC[type].speed, mult: slow.speed, radii: slow.radii, metres: slow.mps, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: 10 }), want, 1e-12, `${type}: pearlSpeed`);
   for (const [k, v] of Object.entries(ENEMY_SPEC[type])) {
     if (k === 'speed') close(s.speed, want, 1e-12, `${type}: the slowed speed`);
     else if (k === 'erratic' || k === 'jink') assert.equal(s[k], false, `${type}: no ${k}`);
@@ -146,7 +149,7 @@ for (const [type, b] of Object.entries(bodies)) {
 }
 assert.equal(pearlSpec('jelly'), null);
 assert.deepEqual(Object.keys(PEARL_PACE).sort(), ['black', 'blue', 'brown', 'green', 'orange', 'purple', 'white', 'yellow']);
-assert.equal(ENEMY_SPEC.amoeba.speed, 1.15, 'the dot-cloud game\'s own spec is untouched');
+assert.equal(ENEMY_SPEC.amoeba.speed, 1.5, 'the dot-cloud game\'s own spec is untouched by the Pearl pacing (1.5 since round 5, note 8: the dot ladder, src/enemyspec.js)');
 console.log('PASS the mapping: every type of the wave programme, the ram verdict = the body, r0 = size x 5.6 (the knot x 1.5), the spec kept whole but the pace (round four: every tier at most its radii a second, no bursts, no jink)');
 
 // ---- the rules ----

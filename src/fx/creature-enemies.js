@@ -48,7 +48,7 @@ const SPECS = new Map();
 // tiers paced by PEARL_PACE: the owner's "much slower, a slow controlled threat", their walk slowed and their bursts off)
 export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY }));
 // round four: every tier paced, its walk capped at PEARL_PACE's `radii` body radii a second (src/domain/pearl-bodies.js pearlSpeed), its bursts and jink off
-const paced = (s, p, b) => (p ? { ...s, hp: s.hp * (p.hp ?? 1), heartDmg: (s.heartDmg ?? 1) * (p.heart ?? 1), speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
+const paced = (s, p, b) => (p ? { ...s, hp: s.hp * (p.hp ?? 1), heartDmg: (s.heartDmg ?? 1) * (p.heart ?? 1), speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, metres: p.mps, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
   ...(typeof p.erratic === 'boolean' ? { erratic: p.erratic } : {}), ...(typeof p.jink === 'boolean' ? { jink: p.jink } : {}) } : s);   // the tier's bursts, on or off
 // round four (owner: "white and yellow, should feel very easy to run over"): `lightRam` on a tier PEARL_IMPACT.tiers rams by its body (no run-over drag)
 export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier, ...(PEARL_IMPACT.tiers?.[b.tier]?.ram ? { lightRam: true } : {}) })])));
@@ -313,10 +313,10 @@ export function createCreatureEnemies(host) {
     // spawnOne), so an apply during the arena does not put them back to 1x
     retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1, ns = size * (e.ownSize ?? 1); if (ns !== os) { e.sizeMul = ns; e.size = e.size * ns / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
-    step(dt) {
+    step(dt, holes = null) {   // holes: the open holes' frames (src/game-breaches.js floors()), the bowl's depth under a body (round 5, note 6a)
       standGarrison();
       clock += dt;
-      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.() && !uncull);
+      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.() && !uncull, holes);
       // round four: a body that walked into the hull where it stands is shoved out of it
       if (pearl && bodies && host.tank?.()?.pos) hullContact.settle(host.tank().pos);
       probe?.step(dt);

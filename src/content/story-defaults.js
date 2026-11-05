@@ -129,7 +129,12 @@ export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1
 // the exit-facing half as before), hidden under the ground for `climb` seconds while a blob of its tint crests the lip at `rim` and slides out to it
 // (src/fx/emerge-blob.js, src/domain/emerge-climb.js), then pops up whole over `pop` seconds and walks; nothing of it is ever drawn over the hole.
 // A body risen up the lane (the head start, the canyon's column) keeps its spread and the old 1.2 s rise.
-export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2, out: 1.35, climb: 1.1, pop: 0.3 });
+// FASTER, AND OUT OF THE LIT WALL (owner, 2026-11-05, round 5, note 6: "waves emerging from sinkholes: an overhaul"): `climb` 1.1 -> 0.5 (the hidden wait after the
+// queue's delay), `pop` 0.3 -> 0.25; the rise starts at the bowl's depth under the lip (`rim` along the way out, src/domain/hole-floor.js), not at the throat's
+// -0.55 crater radii, and ends where the body stands; a Pearl body rises without the blob (it is drawn in its own colour as it rises; the blob stays for the
+// dot clouds); a record is born at the point it rises from, so its body never crosses the hole to reach it. Measured: release to a visible body 1.27 -> 0.64 s
+// after the queue's delay (docs/log entry 2026-11-05 round 5 stream A)
+export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2, out: 1.35, climb: 0.5, pop: 0.25 });
 // ROUND AN OPEN HOLE, NOT ACROSS IT (owner, 2026-11-02, round 4, note 6; src/domain/crater-dodge.js through src/fx/enemy-step.js): a record within
 // `zone` crater radii of an open hole (src/game-breaches.js craters(), the hull's keep-off rule) is offset sideways off its heading so it stays `pad`
 // cells (a body's radius) beyond the crater's rim, the offset eased over `ease` s; its own hole is skipped while it is still climbing out of it.

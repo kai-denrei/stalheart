@@ -142,11 +142,13 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
       for(const [name,size] of specs){const array=level.attributes[name].array,from=source[name],base=name==='iState'?0:i*size;for(let k=0;k<size;k++)array[index*size+k]=from[base+k];}
       // round three: the room, its axis and the sweep's damping ride in the positions' unused .y, the room across the axis in iParams.z (./shaders.js deform)
       level.attributes.iOffset.array[index*3+1]=swarm.room[i];level.attributes.iAnchor.array[index*3+1]=swarm.roomAxis[i];level.attributes.iHeading.array[index*3+1]=swarm.sweepDamp[i];level.attributes.iParams.array[index*4+2]=swarm.roomAcross[i];
+      // round 5 (owner, 2026-11-05, note 6a): the bowl's depth under the body rides in iParams.x (the reach, which the shader never reads; WebGL's sixteen attributes are spent)
+      level.attributes.iParams.array[index*4]=swarm.sink[i];
       // the shadow: under the body's present position, sized with it, spread by a puddle, faded by opacity, deflate and sinking below ground
       const p=swarm.positionInto(i,at3),Li=swarm.life,deflate=Li[i*4+1],radius=r0*swarm.scale[i];
       // round three: within the body's room (a soft blob: shrunk all round, a corner's wall too)
       const room=swarm.room[i],spread=1+.6*Math.max(0,deflate),size=radius*1.2*(room>0?Math.min(spread,room):spread);
-      matrix.makeScale(size,size,size).setPosition(p[0],lift,p[2]);
+      matrix.makeScale(size,size,size).setPosition(p[0],lift+swarm.sink[i],p[2]);   // round 5: on the bowl's floor under a body in a hole
       shadows.setMatrixAt(shown,matrix);
       fade.array[shown]=Li[i*4+2]*(1-.6*Math.max(0,deflate))*(1-Math.min(1,Math.max(0,-Li[i*4]/radius)));
       shadowHub.array[shown]=swarm.hub[i];

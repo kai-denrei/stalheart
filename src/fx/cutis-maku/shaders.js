@@ -50,6 +50,9 @@ attribute vec4 iState;
 attribute vec4 iParams;
 attribute vec3 iProbe0,iProbe1,iProbe2;
 attribute vec4 iLife;
+// round 5 (owner, 2026-11-05, note 6a: "the sinkhole is a hole; nothing hovers over it"): the ground's depth under the body (m, below zero over an open hole), the whole body
+// lowered; packed in iParams.x (./geometry.js: the swarm's reach, never read here), the sixteen attributes being spent
+#define iSink iParams.x
 // iState.w = hub x 16 + probe count x 4 + chosen probe (round two: the hub packed in)
 #define iProbeCount floor(mod(iState.w,16.)/4.)
 #define iChosenProbe mod(iState.w,4.)
@@ -213,7 +216,7 @@ vec4 deform(vec3 bodyN){
     float k=min(1.,iOffset.y),k2=iParams.z>0.?min(1.,iParams.z):1.;
     if(k<1.){vec2 ax=vec2(cos(iAnchor.y),sin(iAnchor.y)),pe=vec2(-ax.y,ax.x),c=mix(iOffset.xz,iAnchor.xz,phase<.62?0.:phase<.85?accelerated:1.),d=p.xz-c;p.xz-=(ax*dot(d,ax)*(1.-k)+pe*dot(d,pe)*(1.-k2))*squeezeW;}
   }
-  p.y+=drop;
+  p.y+=drop+iSink;
   float stretch=1.+lead*extension*probe.y/max(.01*SC,r)*(1.-smoothstep(.66,.85,phase))+fold*2.;
   return vec4(bendToPlanet(p,uPlanetR),stretch);
 }

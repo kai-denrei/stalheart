@@ -94,6 +94,7 @@ console.log('PASS bendPoint is PLANET_BEND term for term, on the sphere');
   for (let f = 0; f < 700; f++) sw.step(STEP);
   const flat = corePose(sw, 0, 0), bent = corePose(sw, 0, R), c = sw.getCoreContact(0), b = bendPoint(c.center.x, c.center.y, c.center.z, R);
   for (let j = 0; j < 3; j++) { close(flat[j], [c.center.x, c.center.y, c.center.z][j], 1e-9, 'alive, no lift: the contact centre'); close(bent[j], b[j], 1e-7, 'bent as the shell is'); }
+  sw.sink[0] = -2; close(corePose(sw, 0, 0)[1], flat[1] - 2, 1e-9, 'round 5: the core sinks with its body in a hole (iSink)'); sw.sink[0] = 0;
   sw.hold[0] = 1; sw.phase[0] = .3; sw.life[1] = 1; sw.life[2] = .4; sw.life[0] = -1.5;   // a dead one: deflated, faded, sinking
   const dead = corePose(sw, 0, 0), alive = sw.getCoreContact(0);
   assert(dead[1] < alive.center.y * .2 - 1.4, `the core sinks with the puddle (${dead[1]} from ${alive.center.y})`);

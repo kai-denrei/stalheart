@@ -11,7 +11,7 @@ import { SCARE_FREEZE_S } from '../content/explosions.js';
 import { STORY_EXPEDITIONS, EMERGENCE, WALK_BIAS, CRATER_DODGE } from '../content/story-defaults.js';
 import { craterDodge } from '../domain/crater-dodge.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
-import { sinkholeGroundHeight } from '../core/sinkhole-shape.js';
+import { holeFloor, lipDepth } from '../domain/hole-floor.js';   /* the bowl's depth under a body: nothing hovers over a hole (round 5, note 6a) */
 import { CONTENT } from '../content/runtime.js';
 import { record } from '../diagnostics.js';
 import { guardExits } from '../domain/guard-aggro.js';
@@ -251,15 +251,20 @@ export function createEnemyStep(host) {
       // THE BLOB (src/fx/emerge-blob.js): the picture of this one climbing out, in its tint, from the lip to where the record waits; the record itself pops up when it is done
       // NO BLOB FOR HER (owner, 2026-10-23, note 3: "a giant green blob preceding the large boss"; BOSS_RUBBLE): the boss record (src/domain/boss-sector.js bossWaves' `boss`)
       // rises with no blob; as she breaks the surface (the climb's wait over) the drop's rock chunks are thrown from the lip toward her (src/fx/rock-chunks.js)
-      const blob = atHole && !!emergeOff && !entry.boss; let rubble = false;
+      // NO BLOB FOR A BODY (owner, 2026-11-05, round 5, note 6c: "the simplified shapes read odd at close range"): a Pearl body rises in its own colour, it is its own
+      // announce; the blob stays for the dot clouds (?creatures=dots), which have no body to rise
+      const blob = atHole && !!emergeOff && !entry.boss && !spec.body; let rubble = false;
       if (atHole && emergeOff && entry.boss) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]), metre = host.cellSide() / METRES_PER_CELL; rubble = !!host.rubble?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), offset: lip / metre, metre, delay: (entry.delay ?? 0) + EMERGENCE.climb }); }
+      // OUT OF THE LIT WALL (owner, 2026-11-05, round 5, note 6b: "emerge faster, never in the dark part for long"): the rise starts at the bowl's depth under the lip
+      // (EMERGENCE.rim along the record's way out), one body under it, not at the throat's -0.55 crater radii; `riseFrom` in world units
+      const riseFrom = atHole && emergeOff ? (() => { const c0 = host.graph().centers[ci], out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); return lipDepth(floorsNow, c0, scale3(emergeOff, 1 / out), EMERGENCE.rim) - scale0; })() : null;
       if (blob) { const lip = CONTENT.breach.craterRadius * holeCells * EMERGENCE.rim * host.cellSide(), out = Math.hypot(emergeOff[0], emergeOff[1], emergeOff[2]); host.emerge?.({ center: host.graph().centers[ci], dir: scale3(emergeOff, 1 / out), lip, out: out * 0.95, size: scale0 * (obj.userData.reach ?? 1), tint: PEARL_TIERS.find((t) => t.id === PEARL_OF[type])?.values.skinTint ?? CREATURE_TINTS[type], delay: entry.delay ?? 0, climb: EMERGENCE.climb }); }
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),blob,rubble,boss:!!entry.boss,tierKey,sizeMul:grow,ownSize:entry.sizeMul??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),blob,rubble,boss:!!entry.boss,tierKey,sizeMul:grow,ownSize:entry.sizeMul??1,hpMul:tk?.hp??1,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0)-(atHole&&emergeOff?EMERGENCE.climb:0),riseDur:atHole&&emergeOff?EMERGENCE.pop:1.2,riseFrom,harmless:!!entry.harmless,emergeOff,riseAt:atHole?ci:-1,   /* at the hole: under the ground while the blob climbs, then a quick pop (2026-10-16) */
         cur: ci, prev: -1,
         next,
-        prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
+        prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: atHole && emergeOff ? norm3(add3(host.graph().centers[ci], emergeOff)) : host.graph().centers[ci].slice(), dir: [0, 1, 0],   /* born where it rises, not in the hole's centre: a body made there crossed the hole to its record (round 5, note 6a) */
         obj, alive: true, phase: host.whim()() * 6.283,
         // a deterministic pace of its own: identical speeds are what let a
         // clump that chose the same exit stay one silhouette all the way in
@@ -320,7 +325,9 @@ export function createEnemyStep(host) {
     if (ci >= 0 && ci !== e.cur) { e.prev = e.cur; e.cur = ci; }
     e.next = e.cur; e.prog = 0;
   }
+  let floorsNow = [];   // the open holes' frames, once a frame (src/game-breaches.js floors(), src/domain/hole-floor.js)
   function updateEnemies(dt, tNow) {
+    floorsNow = host.gameBreaches.floors?.() ?? [];
     const holes = (host.gameBreaches.craters?.() ?? []).map((k) => { const l = Math.hypot(k.p[0], k.p[1], k.p[2]); return { c: [k.p[0] / l, k.p[1] / l, k.p[2] / l], R: (k.r + CRATER_DODGE.pad) * host.cellSide() }; });   // the open holes, once a frame (round 4, note 6)
     huntField(tNow); unpackSquads(tNow);
     releaseSpawns(dt);
@@ -329,8 +336,8 @@ export function createEnemyStep(host) {
       const spec = e.spec;
       if(e.breachSource&&e.emergeAge<1.2){
         const dur=e.riseDur??1.2;e.emergeAge+=dt;const f=emergence(Math.max(0,Math.min(dur,e.emergeAge)),dur),entry=e.breachSource.userData.breach;   // a record past the lip rises over its own `riseDur` (EMERGENCE.pop); 1.2 is the harness's mark for risen
-        const height=-CONTENT.breach.craterRadius*(e.breachSource.userData.cells??1)*.55*host.cellSide()+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);
-        const n=norm3(e.emergeOff?add3(host.graph().centers[e.cur],e.emergeOff):host.graph().centers[e.cur]);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
+        const n=norm3(e.emergeOff?add3(host.graph().centers[e.cur],e.emergeOff):host.graph().centers[e.cur]),stand=holeFloor(n,floorsNow)+e.scale0*(e.obj.userData.lift??.85);   // from the lip's wall (riseFrom) to where it stands, no step at the end (round 5, note 6b)
+        const height=e.riseFrom!=null?e.riseFrom+(stand-e.riseFrom)*f.rise:-CONTENT.breach.craterRadius*(e.breachSource.userData.cells??1)*.55*host.cellSide()+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
         e.obj.quaternion.copy(e.breachSource.quaternion);e.obj.userData.tick?.(tNow+e.phase);if(e.emergeAge>=dur)e.emergeAge=1.2;continue;
       }
       // HK healOOC: regenerators knit themselves back together while
@@ -470,7 +477,7 @@ export function createEnemyStep(host) {
       if (l > 1e-9 && !ringed) e.dir = scale3(flat, 1 / l);
       const s = host.cellSide() * (e.size ?? spec.size);
       let lift = s * (e.obj.userData.lift ?? 0.85);
-      if(e.breachSource){const entry=e.breachSource.userData.breach;if(entry){const local=new THREE.Vector3(...e.pos).applyMatrix4(entry.fx.inverseFrame.value),r=entry.fx.tune.planetRadius;local.y+=r;const a=Math.atan2(Math.hypot(local.x,local.z),local.y)*r,angle=Math.atan2(local.z,local.x);lift+=sinkholeGroundHeight(Math.cos(angle)*a,Math.sin(angle)*a,entry.fx.hole.value)*host.cellSide();}}
+      lift += holeFloor(e.pos, floorsNow);   // IN THE BOWL, NOT OVER IT (round 5, note 6a): every open hole's depth under the record, not only its own breach's
 
       e.obj.position.set(e.pos[0] + n[0] * lift, e.pos[1] + n[1] * lift, e.pos[2] + n[2] * lift);
       host.tmpObj.position.copy(e.obj.position);
@@ -559,7 +566,7 @@ export function createEnemyStep(host) {
         }
         if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; host.playerHit(e.type, e.pos); host.creatures?.()?.touched?.(e); e.shove = { dir: shoveVec(e.pos, host.player.pos, host.player.heading), t: host.shieldTune.shoveLife }; e.stagUntil = tNow + host.shieldTune.shoveStun; }   // the story's first wave cannot hurt the tank; a Pearl body recoils; A HARD CORE IS PUSHED OUT OF THE WAY (owner, 2026-10-16: "ramming a hardcore pushes it out of the way and damages the tank"): the shield's shove on its record, the dent on the hull (HULL_ARMOUR)
       }
-    }   let live = 0; for (const e of host.enemies) if (e.alive) host.enemies[live++] = e; host.enemies.length = live; host.creatures?.()?.step(dt);   /* the creatures' bodies follow their records (src/fx/creature-enemies.js) */   /* THE DEAD ARE LET GO (2026-09-25): killCreature only marks a record, and every per-frame walk over this array paid for every body ever spawned (~28 KB each, ~100 MB by sector 3). Compacted in place once a frame, after the walk: nothing keeps an index into it across frames */
+    }   let live = 0; for (const e of host.enemies) if (e.alive) host.enemies[live++] = e; host.enemies.length = live; host.creatures?.()?.step(dt, floorsNow);   /* the creatures' bodies follow their records (src/fx/creature-enemies.js) */   /* THE DEAD ARE LET GO (2026-09-25): killCreature only marks a record, and every per-frame walk over this array paid for every body ever spawned (~28 KB each, ~100 MB by sector 3). Compacted in place once a frame, after the walk: nothing keeps an index into it across frames */
   }
 
   function killCreature(e, fx = false) {

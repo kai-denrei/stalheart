@@ -45,6 +45,8 @@ export class CutisSwarm {
     // 1 = stepped and drawn; [lift m (the origin's depth, negative = below ground), deflate 0..1 (round two: signed, an impact's rebound below 0), opacity 0..1, ice tint 0..1 (round two: the slow)]; the planted next anchor [x,z,flag]
     this.target=new Float32Array(cap*2);this.pace=new Float32Array(cap).fill(1);this.hold=new Uint8Array(cap);this.active=new Uint8Array(cap);
     this.life=new Float32Array(cap*4);this.plant=new Float32Array(cap*3);
+    // round 5 (owner, 2026-11-05, note 6a): the ground's depth under the body (m, below zero over an open hole), the whole body lowered by it (./shaders.js iSink)
+    this.sink=new Float32Array(cap);
     this.forced=new Uint8Array(cap);
     // round four: the heading a hop turns toward ([x, z] unit; the drawn heading turns to it at config.turnRate)
     this.goal=new Float32Array(cap*2);

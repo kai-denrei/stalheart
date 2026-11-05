@@ -88,7 +88,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // the first waves' pace (src/content/pearl-enemies.js PEARL_PACE): a slowed tier hops shorter, so it creeps in frequent hops rather than lunging
     if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
     // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
-    if (gait) Object.assign(config, gait.config, { reach: pace?.[id]?.hop ?? gait.hop });   // a tier's own stride over the gait's (the whites, 2026-10-15)
+    if (gait) Object.assign(config, gait.config, { reach: pace?.[id]?.hop ?? gait.hop }, pace?.[id]?.timing ? { timing: pace[id].timing } : {});   // a tier's own stride over the gait's (the whites, 2026-10-15), and its own stage shares (round 5, note 8: the white's longer transfer)
     if (IMPACT?.death) config.death = IMPACT.death;   // the dead's grey (PEARL_IMPACT.death: ./cutis-maku/material.js, ./cutis-maku/hard-core.js)
     // THE CORED READ (owner, 2026-10-18: "the core is slightly colored but the membrane is almost opaque white"; src/content/pearl-enemies.js
     // PEARL_MEMBRANE): the drawn skin pulled toward the tier's tint by its share, the glints (white in the kit) toward it by theirs; a soft tier's shares are 0
@@ -495,6 +495,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         sw.life[i * 4 + 1] = impactStep(sw, i, j, t);
       }
       hubTable(sw); sw.advance(dt);
+      // IN THE BOWL (owner, 2026-11-05, round 5, note 6a): each body lowered by the ground's depth under its drawn centre (the seam's hubs.sink; 0 off the holes)
+      if (hubs?.sink) for (let i = 0; i < sw.count; i++) if (sw.active[i]) { const pos = sw.positionInto(i, POS); sw.sink[i] = hubs.sink(sw.hub[i], pos[0], pos[2]); }
       if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); p.backs?.sync(); }
     }
     motion?.sample(pools, dt);
@@ -598,7 +600,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       const slot = h.slots[0];
       if (!slot) return { tier: h.p.id, type: h.type, slots: 0, dead: h.dead };
       const { p } = h, sw = p.swarm, i = slot.i, pos = sw.position(i), L = sw.life;
-      return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
+      return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], sink: sw.sink[i], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
         stage: sw.getState(i), phase: sw.phase[i], reach: sw.params[i * 4], active: !!sw.active[i], dead: h.dead, hub: h.hub,
         stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, absorb: !!p.dying.get(i)?.st?.absorb, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, room: +sw.room[i].toFixed(3), sweepDamp: +sw.sweepDamp[i].toFixed(3), pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
