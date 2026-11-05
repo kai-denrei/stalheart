@@ -2854,6 +2854,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const dom=await evaluate(`[...document.querySelectorAll('.build-board .bb-tile')].map(t=>({id:t.dataset.offer,name:t.querySelector('.bb-name').textContent,price:t.querySelector('.bb-price').textContent,effect:t.querySelector('.bb-effect').textContent,disabled:t.disabled}))`);
   assert.equal(dom.length,bd.offers.length,'a tile per offer');assert(dom.every(t=>t.name&&/\d+ kg/.test(t.price)&&t.effect),`every tile has a name, a price and an effect (${JSON.stringify(dom)})`);
   assert(dom.every(t=>t.disabled===(bd.offers.find(o=>o.id===t.id).price>bd.bank)),'a tile the bank cannot buy is disabled');}
+ // round 7 note 4: every tile carries its wireframe thumbnail (src/fx/board-thumbs.js), the GLBs' within 5 s
+ await until(`(()=>{const b=${T}.state().board;return b.thumbs===b.offers.length;})()`,5000).catch(async()=>assert.fail(`every tile has its thumbnail within 5 s (${(await st()).board.thumbs} of ${bd.offers.length})`));
+ {const th=await evaluate(`[...document.querySelectorAll('.build-board .bb-tile')].map(t=>{const i=t.querySelector('img.bb-thumb');return {id:t.dataset.offer,src:(i?.src||'').slice(0,22),w:i?.naturalWidth||0};})`);
+  console.log(`  thumbs: ${th.map(x=>`${x.id} ${x.w}px`).join(' · ')}`);assert(th.every(x=>x.src.startsWith('data:image/png')&&x.w>0),`every thumbnail is a drawn image (${JSON.stringify(th)})`);}
  current='board-open';await finish();if(shots){const sh=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'board-open.png'),Buffer.from(sh.data,'base64'));}
  // the pick: the armory and the cheapest other card, by their keys; a third key is refused
  const idx=(id)=>bd.offers.findIndex(o=>o.id===id)+1,other=bd.offers.filter(o=>o.id!=='build:armory').sort((x,y)=>x.price-y.price)[0];

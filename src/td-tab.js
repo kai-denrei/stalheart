@@ -2035,7 +2035,7 @@ export function initTdTab(root) {
     else if (cl.contains('msg-back')) showBriefing();
   });
 
-  function spriteShot(key, build) { return waveCard.spriteShot(key, build); }   // the cards' icons: one frame of the real object (src/fx/wave-card.js)
+  function spriteShot(key, build) { return waveCard.spriteShot(key, build); }   // src/fx/wave-card.js
 
   // the briefing card draws whatever is ACTUALLY at the pole, so the picture
   // can never disagree with the board — the same rule the hostiles glossary
@@ -4658,7 +4658,7 @@ export function initTdTab(root) {
   // THE BUILD BOARD (owner, 2026-11-05, round 6 note 2; src/fx/build-board.js): the sector loop's break, on the debrief's CONTINUE: six offers, two picks
   const buildBoard = createBuildBoard({ root, endShot, eco: () => eco, story: () => story, towers: () => towers, orders, placeError, graph: () => graph, cellSide: () => cellSide, orderTower, orderUpgrade, callout: (x, c) => showCallout(x, c), manned: () => laserStation.manned?.() ?? 0, petLife: (i) => companions?.life?.(i) ?? null, printPet: (i) => petPrint?.force(i),
     hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
-    shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) });
+    shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base), spriteShot, towerLook: () => params.towerLook });
   // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
   const endingHost = createEndingHost({
     storyBase: () => storyBase,
