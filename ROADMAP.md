@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 71 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 72 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Round 7 stream C: SOL-82's second seat at once, the Ridgebacks as batteries, the mech's print a beat of THE ARENA's SECURE
+
+`2026-11-05-round-7-stream-c-sol-at-once-ridgebacks-as-batteries-the-mech-print-before-the-debrief` · change · **observed**
+
+Owner, 2026-11-05, nine notes on b14ed61f (spec docs/superpowers/specs/2026-11-05-round-7-nine-notes-design.md, stream C): 5) the second commandeering of SOL should be almost immediate once announced, Isao's later comms happening while we control the satellite; 7) the mechs at THE MOTHER's site should be more aggressive and shoot more often; 8) before BELOW, Isao prints something but we have no time to see it. Branch round-7-arena off 21eee83a, port 18183, unpushed.
 
 ### Round 6 stream C: the gunship facing the sky near the boss hole not reproduced headless (instrumented as state().camSky); the streak callouts step aside, left and right
 
