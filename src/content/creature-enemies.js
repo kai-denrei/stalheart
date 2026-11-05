@@ -70,15 +70,19 @@ export const tierSize = (t) => sizeOf(t.r0);
 // alike; the probe runs without it, it measures the true cost), `reanchor` metres from its frame's origin before a body's frame moves
 // under it (at least `reanchorSizes` of its width). THE DEATH (the v1 death, the boss lab's): its motion off, the gravity to
 // `deathGravity`, it collapses `collapse` s, then its solver stops and it sinks `sink` of its height and fades over `fade` s, and goes
-// (no carcasses in the game yet).
+// (the arena's mother excepted since 2026-11-05: `remains`).
 // `grey` (owner, 2026-10-19, round four, note 1: "color of dead enemies must immediately fade to grey so we don't mistake them for alive ones"): at the
 // kill the body's tissue colours go to one grey, `grey` (linear) with `pattern` of its pale and dark tissue kept as light and shade, no hue left (the live
 // Reed is olive, pale #b8b99a over dark #374237), its see-through tint (the transmission's attenuation) to the grey `attenuation` and its clear coat's
 // glints to `clearcoat` (kept over 0: a coat of 0 is another shader program, a relink at the kill)
+// `remains` (owner, 2026-11-05, round 5 note 7: "when we kill Nih-Dairia, leave its corpse for longer: intact, with only one leg cut"): a body-led one (THE ARENA's
+// mother, src/fx/boss-run.js) does not sink and fade once collapsed: it is laid as the lab's carcass where it fell (src/fx/boss-carcass/remains.js, the shape
+// and hop numbers BOSS_FIGHT.bossCarcass), one grey `tone` (the dead grey above), ONE leg cut at the lay, the cut leg's piece never crumbling (`crumble`), no timer
 export const CREATURE_REED = freeze({
   motion: NIH_DAIRIA_PREDATOR, batch: 3, coarse: { on: true, above: 10, hz: 120 }, budget: 10, reanchor: 20, reanchorSizes: 1,
   deathGravity: BOSS_FIGHT.deathGravity, collapse: BOSS_FIGHT.wave.corpse, fade: 3, sink: 0.35,
   grey: { grey: 0.3, pattern: 0.3, attenuation: 0x8a8a8a, clearcoat: 0.02 },
+  remains: { on: true, tone: 0.3, crumble: false },
 });
 
 // HOW A BODY FOLLOWS ITS RECORD. The record walks the cell graph (src/fx/enemy-step.js); the body hunts the record's point `lead` seconds

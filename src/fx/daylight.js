@@ -41,6 +41,9 @@ export function createDaylight({ hemi, sun, bg, day, tune, phase = 0, dayNo = 1,
     // the rig's night back on the lights, before another rig is built over them (2026-09-25: a NEW RUN at noon took noon for night)
     restore() { discs?.dispose(); face?.dispose(); hemi.color.copy(night.hemi[0]); hemi.groundColor.copy(night.hemi[1]); hemi.intensity = night.hemi[2]; sun.color.copy(night.sun[0]); sun.intensity = night.sun[1]; bg.copy(night.bg); },
     state: () => ({ phase: +p.toFixed(4), day: days, daylight: +d.toFixed(3), elevation: +elevation.toFixed(3), dusk: +g.toFixed(3), sunShown: !!discs }),
+    // THE SKY FOR BELOW (owner, 2026-11-05, round 5 note 10; src/fx/descent-host.js): the daylight now, the background colour, the star sky's brightness (the
+    // share td-tab dims it to: 1 at night, `skyDim` at noon) and the hemisphere's two colours: the cave's sky over the hole and its surface light take these
+    sky: () => ({ daylight: +d.toFixed(3), bg: bg.getHex(), stars: +(1 - d * (1 - (tune.skyDim ?? 1))).toFixed(3), hemi: [hemi.color.getHex(), hemi.groundColor.getHex()] }),
   };
 }
 

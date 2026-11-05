@@ -7,7 +7,7 @@ import {createIsao} from './isao.js';
 import {createTunnelCreatures} from './creatures.js';
 import {createDetonation} from './detonation.js';
 import {createFlares} from './flares.js';
-import {createDoor,carcassGeometry} from './door.js';
+import {createDoor,carcassGeometry,handoffCarcass} from './door.js';
 import {surveyGLSL} from './lidar.js';
 import {MAIN_TENTACLES,LEFT_TENTACLES,BLIND_TENTACLES,colonyPresence,colonyDistance} from './cave-pacing.js';
 
@@ -16,7 +16,9 @@ function random(seed=9317){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)
 const rand=random();
 const vec=(p)=>new THREE.Vector3(p.x,p.y,p.z);
 
-export async function createWorld(canvas,{carcass=false}={}){   // carcass: Nih-Dairia's body by the hole (Stålheart's page, src/door.js)
+// carcass: Nih-Dairia's body by the hole (Stålheart's page, src/door.js); sky: the game's at the handoff (src/handoff.js); remains: THE carcass from Stålheart's handoff
+// (src/door.js handoffCarcass), else the Reed (named so: `body` below is this world's mesh maker)
+export async function createWorld(canvas,{carcass=false,sky=null,remains=null}={}){
   const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
   renderer.setSize(innerWidth,innerHeight);
@@ -107,7 +109,9 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
   const network=createCaveNetwork({body,stone,scene});
   const nursery=await createNursery({scene,body,points,sample,stone,flesh,rand});
   const door=createDoor(scene);   // the arena's hole as the way in and out, in Stålheart's page only (src/door.js)
-  if(carcass){const [m,b]=await Promise.all([fetch('./assets/models/reed.json').then(r=>r.json()),fetch('./assets/models/reed.bin').then(r=>r.arrayBuffer())]);door.addCarcass(carcassGeometry(b,m));}   // the cave's Reed, dead by the hole (note 13)
+  const handed=carcass&&remains?handoffCarcass(remains):null;   // THE body from the arena (Stålheart's round 5, note 10)
+  if(handed)door.addCarcass(null,handed);
+  else if(carcass){const [m,b]=await Promise.all([fetch('./assets/models/reed.json').then(r=>r.json()),fetch('./assets/models/reed.bin').then(r=>r.arrayBuffer())]);door.addCarcass(carcassGeometry(b,m));}   // the cave's Reed, dead by the hole (note 13): the fallback
   const flares=createFlares(scene,uniforms,door.clearance);   // flares land on the door's rubble too
   const isao=await createIsao(scene,camera);
   const creatures=await createTunnelCreatures({scene,body,points,material,uniforms,camera});
@@ -115,6 +119,10 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
   // Only surface light fades in the throat; darkness below still requires the lamp.
   const surfaceHemi=new THREE.HemisphereLight(0x7097bb,0x0a1018,.9);scene.add(surfaceHemi);
   const surfaceSun=new THREE.DirectionalLight(0xb8d4e1,1.3);surfaceSun.position.set(20,50,10);scene.add(surfaceSun);
+  // the game's sky at the handoff (Stålheart's round 5, note 10; src/door.js skyOf): the disc's colours and stars, the surface light's colours and strength
+  let skyLight=1;
+  function setSky(game){const l=door.setSky(game);if(!l)return false;surfaceHemi.color.setHex(l.sky);surfaceHemi.groundColor.setHex(l.ground);skyLight=l.strength;return true;}
+  if(sky)setSky(sky);
 
   const blast=createDetonation(scene,entrance);
 
@@ -168,7 +176,7 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
     uniforms.uLampPosition.value.copy(player).add(new THREE.Vector3(0,-.15,-.8).applyAxisAngle(new THREE.Vector3(0,1,0),flightData?.yaw||0));
     uniforms.uLampDirection.value.set(-Math.sin(flightData?.yaw||0),-.1,-Math.cos(flightData?.yaw||0)).normalize();uniforms.uLampStrength.value=lampStrength(mission);
     uniforms.uTime.value=time;uniforms.uLidar.value=mission.lidar&&!preview&&!cinematic?1:0;uniforms.uPreview.value=0;
-    const location=nearestRoute(player),surface=cinematic||preview?1:exteriorExposure(player.y,colonyDistance(location.s,location.branch));exposure=surface;surfaceHemi.intensity=surface*.9;surfaceSun.intensity=surface*1.3;
+    const location=nearestRoute(player),surface=cinematic||preview?1:exteriorExposure(player.y,colonyDistance(location.s,location.branch));exposure=surface;surfaceHemi.intensity=surface*.9*skyLight;surfaceSun.intensity=surface*1.3*skyLight;
     scene.background.setRGB(.002+surface*.003,.005+surface*.004,.004+surface*.012);
     scene.fog.density=(mission.lidar||preview)? .002 : .035*(1-surface)+.005;
     dust.visible=false;
@@ -185,5 +193,5 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
   function reset(){flares.reset();isao.reset();creatures.reset();nursery.reset();blast.reset();dropTime=null;drop.visible=false;uniforms.uScanTime.value=-100;}
   function render(){renderer.render(scene,camera);}
   function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);}
-  return {camera,player,renderer,scene,update,render,resize,scan,contacts,constrainBodies:nursery.constrain,contactSamples:()=>({...nursery.contactSamples(),tentacle:limbs[0].path[16].toArray(),enemy:creatures.contactSample()}),reset,uniforms,dropFlare:flares.drop,dropBeacon:flares.beacon,showDoor:door.show,doorStart:door.start,startDetonation:blast.start,setLidarMode:(mode)=>{uniforms.uScanMode.value=mode;},flashHit:isao.flashHit,stats:()=>({exteriorExposure:exposure,...network.stats(),...nursery.stats(),...isao.stats(),...creatures.stats(),...blast.stats(),flares:flares.stats(),door:door.stats(),sinkhole:entrance.source,shaftDepth:SHAFT_TOP-CHAMBER_LIP,tentacles:limbs.length,tentaclePlacements:limbs.map(l=>({s:l.s,branch:l.branch,bio:l.bio}))})};
+  return {camera,player,renderer,scene,update,render,resize,scan,contacts,constrainBodies:nursery.constrain,contactSamples:()=>({...nursery.contactSamples(),tentacle:limbs[0].path[16].toArray(),enemy:creatures.contactSample()}),reset,uniforms,dropFlare:flares.drop,dropBeacon:flares.beacon,showDoor:door.show,doorStart:door.start,setSky,startDetonation:blast.start,setLidarMode:(mode)=>{uniforms.uScanMode.value=mode;},flashHit:isao.flashHit,stats:()=>({exteriorExposure:exposure,...network.stats(),...nursery.stats(),...isao.stats(),...creatures.stats(),...blast.stats(),flares:flares.stats(),door:door.stats(),sinkhole:entrance.source,shaftDepth:SHAFT_TOP-CHAMBER_LIP,tentacles:limbs.length,tentaclePlacements:limbs.map(l=>({s:l.s,branch:l.branch,bio:l.bio}))})};
 }

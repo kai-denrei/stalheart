@@ -17,11 +17,18 @@ export const DESCENT = Object.freeze({
   // -normal; fov: the dive's narrowing (of the camera's own); turn: the share of the dive spent reaching the axis; glide: the look's glide to the rim view;
   // rise: the climb back to the rim view; settle: game seconds the hand-over holds under the lip before the cave shows (the camera eases to its goal);
   // hold: how long a shot holds its last pose until the next one replaces it
-  door: Object.freeze({ rimOut: 0.3, rimUp: 1, top: 2.5, under: 1.5, fov: 0.55, turn: 0.4, glide: 1.2, rise: 2.5, settle: 0.5, hold: 600 }),
+  // `under` 1.5 -> 1 (2026-11-05, note 10, measured on the real road, --descent-carcass): the arena's hole is 3 cells round and its throat's black floor 1.65 cells
+  // down (src/sinkhole-terrain.js, 0.55 of the hole's radius); at 1.5 the camera stood 0.002 world units over it, inside the near plane (0.004), and the game's
+  // last frame was the planet's far side seen through its own ground; at 1 (0.0086 over it) the last frame is the throat's black, as the cave's first from that pose
+  door: Object.freeze({ rimOut: 0.3, rimUp: 1, top: 2.5, under: 1, fov: 0.55, turn: 0.4, glide: 1.2, rise: 2.5, settle: 0.5, hold: 600 }),
   // THE CAVE LOADS BEHIND A STILL GAME (owner, 2026-11-02, note 10: "just before BELOW the fps drops to 17 in the tank view"): `still` game seconds into
   // the look (the glide to the rim view done, the camera eased to it) the game stands still on its last frame (no sim, no draw; Isao's panel reads on)
   // and the cave's page starts loading; the game runs again for the dive once the cave posts it is ready (`readyCap` real seconds at most) and the
   // brief is read (briefCap, in real seconds while still)
   still: 1.8, readyCap: 25,
+  // ONE PLACE (owner, 2026-11-05, round 5 note 10: "entering and leaving feel like loading a different game"): the cave starts where the dive ends and the climb
+  // hands its last pose back (src/domain/descent-handoff.js); each cut is covered by the last frame before it fading out over `fade` s, the way in once the cave
+  // says its first frame is drawn, or `fadeCap` real seconds after the show at the latest
+  fade: 0.6, fadeCap: 3,
   jokeHold: 7,   // seconds Isao's line stays up after the cave closes before the ending begins (a caption needs reading)
 });

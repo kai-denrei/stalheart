@@ -114,7 +114,7 @@ function createPost(renderer, scene, camera) {
 // ({ fight, rotary, bofors, nuke }), `focus()` the local point a round opens on, `clear()` the stage's px the lab panel covers on the
 // right, `leave()` back to the tank, `pause()` the lab's pause, `orbitGround(x, z)` the sphere-space surface point (metres) of a point
 // [x, z] round the arena's centre, world-fixed (the orbit's ground track), `isaoCam()` Isao's camera ({ from, pos } sphere space, null when he is not flying),
-// `afterKill()` true while a KILLED round still has something to shoot at (the boss's carcass, ./remains.js): the guns stay live on it
+// `afterKill()` true while a KILLED round still has something to shoot at (the boss's carcass, src/fx/boss-carcass/remains.js): the guns stay live on it
 export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, explosions, planet, ground, local,
   tune, fight, now, creature, isao, parts, resolve, gate, focus, orbitGround, isaoCam = () => null, afterKill = () => false, clear = () => 0, leave = () => {}, pause = () => {}, onError = () => {} }) {
   const params = { reload: RELOAD };

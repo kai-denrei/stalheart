@@ -4,6 +4,7 @@ import {caveClearance} from './flare-physics.js';
 import {createReedActor} from './reed.js';
 import {rimRadius} from './stalheart/sinkhole-shape.js';
 import {LOOKS} from './stalheart/looks.js';
+import {chainGeometry} from './stalheart/carcass-tube.js';
 
 // THE DOOR (owner, 2026-10-26, note 7: "both the entrance to the Cave and when coming out should read as exactly the same sinkhole where the Boss fight
 // took place"). In Stålheart's page the game's camera dives down the arena's hole to just under its lip before this page shows (src/fx/hole-door.js
@@ -17,6 +18,10 @@ export const DOOR=Object.freeze({
   // outside"): the disc is the game's night over the arena (the near-black sky the game draws its stars on, a faint navy glow, `stars` of its cells lit),
   // high and wide enough to sit over the carcass; the ring is the bowl's own rock (tronColors' floor); the carcass below
   sky:0x0b1a3a, skyEdge:0x020610, skyY:40, skyR:90, stars:.9965,   // centre and edge colours, metres up, metres wide, the share of the disc's cells left dark
+  // THE GAME'S SKY AT THAT MOMENT (Stålheart's round 5, note 10, 2026-11-05): with a handoff (src/handoff.js) the disc takes the game's background colour at its
+  // centre (`edge` of it at the rim), its stars as bright as the game's star sky is then, and the surface light the game's hemisphere colours, its strength
+  // `light[0]` at night to `light[1]` at noon (the game's daylight 0..1): night or day as the game showed it when the dive began
+  edge:.3, light:[.45,1],
   rim:LOOKS.tronColors.floors.room, rimTube:.8,   // the rim's silhouette: a ring of the planet's rock at the throat's mouth
   // NIH-DAIRIA, DEAD (note 13): the cave's own Reed body (reed.js, the rest pose, still), the dead grey of the game's corpses (pearl-enemies death.grey
   // 0.12, matte), `span` times the hole's diameter across as the mother is to her hole in the game (40 m out of a 20 m hole), flattened to `flat` of its
@@ -56,9 +61,9 @@ export function rubbleClearance(rocks){
 }
 export function createDoor(scene){
   const start=doorStart(),group=new THREE.Group();group.name='door';group.visible=false;scene.add(group);
-  const sky=new THREE.Mesh(new THREE.CircleGeometry(DOOR.skyR,48),new THREE.ShaderMaterial({fog:false,depthWrite:false,uniforms:{inner:{value:new THREE.Color(DOOR.sky)},edge:{value:new THREE.Color(DOOR.skyEdge)},stars:{value:DOOR.stars}},
+  const sky=new THREE.Mesh(new THREE.CircleGeometry(DOOR.skyR,48),new THREE.ShaderMaterial({fog:false,depthWrite:false,uniforms:{inner:{value:new THREE.Color(DOOR.sky)},edge:{value:new THREE.Color(DOOR.skyEdge)},stars:{value:DOOR.stars},glow:{value:1}},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader:'varying vec2 vUv;uniform vec3 inner,edge;uniform float stars;void main(){float d=length(vUv-.5)*2.;vec3 c=mix(inner,edge,smoothstep(.0,1.,d));float h=fract(sin(dot(floor(vUv*420.),vec2(12.9898,78.233)))*43758.5453);c+=vec3(.75,.85,1.)*step(stars,h)*(.35+.65*fract(h*91.))*(1.-.6*d);gl_FragColor=vec4(c,1.);}'}));
+    fragmentShader:'varying vec2 vUv;uniform vec3 inner,edge;uniform float stars,glow;void main(){float d=length(vUv-.5)*2.;vec3 c=mix(inner,edge,smoothstep(.0,1.,d));float h=fract(sin(dot(floor(vUv*420.),vec2(12.9898,78.233)))*43758.5453);c+=vec3(.75,.85,1.)*glow*step(stars,h)*(.35+.65*fract(h*91.))*(1.-.6*d);gl_FragColor=vec4(c,1.);}'}));
   sky.rotation.x=Math.PI/2;sky.position.y=DOOR.skyY;group.add(sky);   // facing down: seen from under the hole only (culled from above)
   const rim=new THREE.Mesh(new THREE.TorusGeometry(start.hole+DOOR.rimTube*.5,DOOR.rimTube,8,48),new THREE.MeshBasicMaterial({color:new THREE.Color(...DOOR.rim)}));
   rim.rotation.x=Math.PI/2;rim.position.y=start.mouth;group.add(rim);
@@ -69,13 +74,29 @@ export function createDoor(scene){
   // the rock a flare meets: the cave's, and the rubble's while the door is shown
   const clearance=(p)=>{const c=caveClearance(p);return group.visible?Math.min(c,onRubble(p)):c;};
   let carcass=null;
-  function addCarcass(geometry){
-    if(carcass)return carcass;const pose=carcassPose(geometry);
-    carcass=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:new THREE.Color(DOOR.carcass.grey,DOOR.carcass.grey,DOOR.carcass.grey),roughness:1,metalness:0,fog:false}));
-    carcass.name='nih-dairia-carcass';carcass.position.set(pose.position.x,pose.position.y,pose.position.z);carcass.rotation.y=pose.rotationY;carcass.scale.set(pose.scale.x,pose.scale.y,pose.scale.z);carcass.frustumCulled=false;
+  // the Reed's rest pose laid on the lip (the fallback), or THE body from Stålheart's handoff (`body`: handoffCarcass below: its geometry with its own colours and
+  // its matrix into this page's metres)
+  function addCarcass(geometry,body=null){
+    if(carcass)return carcass;
+    if(body){
+      carcass=new THREE.Mesh(body.geometry,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:1,metalness:0,fog:false}));
+      carcass.matrixAutoUpdate=false;carcass.matrix.fromArray(body.matrix);carcass.userData.from='handoff';
+    }else{
+      const pose=carcassPose(geometry);
+      carcass=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:new THREE.Color(DOOR.carcass.grey,DOOR.carcass.grey,DOOR.carcass.grey),roughness:1,metalness:0,fog:false}));
+      carcass.position.set(pose.position.x,pose.position.y,pose.position.z);carcass.rotation.y=pose.rotationY;carcass.scale.set(pose.scale.x,pose.scale.y,pose.scale.z);carcass.userData.from='reed';
+    }
+    carcass.name='nih-dairia-carcass';carcass.frustumCulled=false;
     group.add(carcass);return carcass;
   }
-  return {group,start,clearance,addCarcass,show:(on)=>{group.visible=!!on;},stats:()=>({visible:group.visible,start:start.position,floor:start.floor,mouth:start.mouth,skyY:DOOR.skyY,carcass:!!carcass})};
+  // the game's sky at the handoff (skyOf below): the disc's colours and stars; -> the surface light's colours and strength for the world (null: its own)
+  let light=null;
+  function setSky(game){
+    const s=skyOf(game);if(!s)return null;
+    sky.material.uniforms.inner.value.setHex(s.inner);sky.material.uniforms.edge.value.setHex(s.edge);sky.material.uniforms.glow.value=s.glow;
+    return light=s.light;
+  }
+  return {group,start,clearance,addCarcass,setSky,show:(on)=>{group.visible=!!on;},stats:()=>({visible:group.visible,start:start.position,floor:start.floor,mouth:start.mouth,skyY:DOOR.skyY,carcass:!!carcass,carcassFrom:carcass?.userData.from??null,sky:{inner:sky.material.uniforms.inner.value.getHex(),edge:sky.material.uniforms.edge.value.getHex(),glow:sky.material.uniforms.glow.value},light})};
 }
 // the carcass: the Reed's rest pose from its own soft body (reed.js), copied still; and where it lies (carcassPose): scaled so its widest limb-to-limb span
 // is DOOR.carcass.span times the hole's diameter (2 x HOLE_SCALE), its body on the lip at DOOR.carcass.at, turned so its longest limb points across the hole
@@ -89,4 +110,33 @@ export function carcassPose(geometry){
   const s=span*2*HOLE_SCALE/(2*tip),lip=HOLE_SCALE*rimRadius(at);
   // Object3D.rotation.y = r takes a direction at angle a (atan2(z, x)) to a - r: the tip's angle to the way across the hole, `aim` off it
   return {scale:{x:s,y:s*flat,z:s},rotationY:phi-(at+Math.PI+aim),position:{x:Math.cos(at)*lip,y:-low*s*flat,z:Math.sin(at)*lip},tip:tip*s,lip};
+}
+// the game's sky ({ daylight 0..1, bg (hex: its background colour then), stars 0..1 (its star sky's brightness then), hemi [sky hex, ground hex] }) as the door's:
+// { inner, edge (hex), glow (the stars' brightness), light { sky, ground (hex), strength } }; null for no sky (the door keeps its own night)
+export function skyOf(game){
+  if(!game||typeof game!=='object'||!Number.isFinite(game.bg))return null;
+  const day=Math.min(1,Math.max(0,Number(game.daylight)||0)),c=new THREE.Color(game.bg),e=c.clone().multiplyScalar(DOOR.edge);
+  const hemi=Array.isArray(game.hemi)&&game.hemi.length>=2&&game.hemi.every(Number.isFinite)?game.hemi:null;
+  return {inner:c.getHex(),edge:e.getHex(),glow:Math.min(1,Math.max(0,Number.isFinite(game.stars)?game.stars:1-day)),light:hemi?{sky:hemi[0],ground:hemi[1],strength:DOOR.light[0]+(DOOR.light[1]-DOOR.light[0])*day}:null};
+}
+// THE SAME BODY (Stålheart's round 5, owner 2026-11-05, note 10: "the cave's carcass is a Reed, it should be the Nih-Dairia from the chapter before"): the arena's
+// carcass as the game's handoff carries it ({ chain, C, toHole (16: its native units to hole units), tone, moved: [{ pieces, matrix }], char: [[piece, share]],
+// gone: [pieces] }; Stålheart's src/fx/boss-carcass/remains.js handoff) built with the game's own tube builder (src/stalheart/carcass-tube.js): the same tubes, the cut
+// leg's piece where it landed, one grey (`tone`) scorched toward CHAR where the game's is, the pieces the game no longer draws left out, placed at HOLE_SCALE
+// metres a hole unit: at the same bearing and distance from the hole as in the game. -> { geometry, matrix (16), pieces } or null for no body
+const CHAR=new THREE.Color(0x16110e);
+export function handoffCarcass(body){
+  if(!body?.chain?.limbs||!Array.isArray(body.toHole)||body.toHole.length!==16)return null;
+  const b=chainGeometry(body.chain,body.C,{colors:true}),g=b.geometry,P=g.attributes.position,N=g.attributes.normal,C=g.attributes.color,m=new THREE.Matrix4(),v=new THREE.Vector3();
+  for(const mv of body.moved??[]){
+    m.fromArray(mv.matrix);
+    for(const i of mv.pieces){const pc=b.pieces[i];if(!pc)continue;for(let k=pc.v0;k<pc.v1;k++){v.fromBufferAttribute(P,k).applyMatrix4(m);P.setXYZ(k,v.x,v.y,v.z);v.fromBufferAttribute(N,k).transformDirection(m);N.setXYZ(k,v.x,v.y,v.z);}}
+  }
+  const tone=Number.isFinite(body.tone)?body.tone:DOOR.carcass.grey,base=new THREE.Color(tone,tone,tone),c=new THREE.Color();
+  for(let k=0;k<C.count;k++)C.setXYZ(k,base.r,base.g,base.b);
+  for(const [i,share] of body.char??[]){const pc=b.pieces[i];if(!pc)continue;c.copy(base).lerp(CHAR,Math.min(1,share));for(let k=pc.v0;k<pc.v1;k++)C.setXYZ(k,c.r,c.g,c.b);}
+  const gone=new Set(body.gone??[]),idx=[];
+  b.pieces.forEach((pc,i)=>{if(!gone.has(i))for(let k=pc.i0;k<pc.i1;k++)idx.push(b.full[k]);});
+  g.setIndex(idx);g.computeBoundingSphere();P.needsUpdate=N.needsUpdate=C.needsUpdate=true;
+  return {geometry:g,matrix:new THREE.Matrix4().makeScale(HOLE_SCALE,HOLE_SCALE,HOLE_SCALE).multiply(new THREE.Matrix4().fromArray(body.toHole)).toArray(),pieces:b.pieces.length};
 }

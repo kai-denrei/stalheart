@@ -325,6 +325,8 @@ export function createCreatureEnemies(host) {
     // THE GUNSHIP'S THERMALS (owner, 2026-10-16: "have the hard-cores register more distinctly from the soft-cores"): a cored body runs hot (white emissive), a
     // soft one stays cold, while the thermal view is on (src/fx/creature-pearl.js thermal)
     thermal: (on) => bodies?.thermal?.(on),
+    // THE MOTHER'S CARCASS (2026-11-05, src/fx/creature-reed.js): the remains while one lies (src/fx/boss-carcass/remains.js: state(), handoff()), else null
+    carcass: () => bodies?.carcass() ?? null,
     // THE REACH IS THE WEAK SPOT (owner, 2026-10-12, the boss lab; in the game for THE BOSS sector, 2026-10-15): a hit on a Cutis record is scaled
     // by its body's phase (src/domain/boss-sector.js phaseScale over CUTIS_HITS: full while it coils, reaches and grips, half at rest, none while
     // the body pours through the cup); every other record 1. damageEnemy multiplies by it before the damage is taken
@@ -344,7 +346,7 @@ export function createCreatureEnemies(host) {
     state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
     // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
     // the harness: the bodies' view of a record, a record's handle kept across its death, that handle's view
-    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, footprint: () => bodies?.footprint() ?? null, watch: (opts = {}) => make().watch(opts), motion: () => bodies?.motion() ?? null, quadClear: (on) => bodies?.quadClear(on) ?? false, uncull: (on = true) => { uncull = !!on; }, jolt: () => host.jolt?.state() ?? null,
+    test: { view: (e) => bodies?.view(e) ?? null, carcass: () => bodies?.carcass()?.state() ?? null, audit: () => bodies?.audit() ?? null, footprint: () => bodies?.footprint() ?? null, watch: (opts = {}) => make().watch(opts), motion: () => bodies?.motion() ?? null, quadClear: (on) => bodies?.quadClear(on) ?? false, uncull: (on = true) => { uncull = !!on; }, jolt: () => host.jolt?.state() ?? null,
       // round two: the ram's and the touch's presentation as the enemy loop calls it (the harness cannot drive the tank onto a record): rammed, then the
       // record killed through damageEnemy with its death; touched on a live one
       ram(e) { rammed(e); host.damage(e, e.hp + 1); return !e.alive; }, touch: (e) => touched(e),
