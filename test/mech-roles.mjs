@@ -1,7 +1,7 @@
 // mech-roles.mjs — the four Ridgebacks' walk (src/domain/mech-roles.js; owner, 2026-10-23: "2 will stay near the arena ... 1 makes its way to the
 // main base, the other roams and hunts enemies"): the next cell for each role on a small lattice, deterministic for a seeded draw.
 import assert from 'node:assert/strict';
-import { nextCell, parkCell, huntStep } from '../src/domain/mech-roles.js';
+import { nextCell, parkCell, huntStep, engageRing, batteryDef } from '../src/domain/mech-roles.js';
 
 // a 10 x 10 grid, 4-connected; the heart at (0,0) = cell 0; the gate at (2,0); rock everywhere at x = 3 except the gate's row
 const W = 10, id = (x, y) => y * W + x, adj = [];
@@ -33,4 +33,19 @@ let seed = 7; const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483
   assert.equal(nextCell({ role: 'hunt', cur: id(5, 5), prev: -1, adj, open, rand, targets: new Set([id(9, 5)]), avoid: () => false }), id(6, 5)); }
 // never onto rock, whatever the role
 for (let k = 0; k < 50; k++) assert.ok(open(nextCell({ role: 'hunt', cur: id(2, 5), prev: -1, adj, open, rand, targets: new Set(), avoid: () => false })));
+// THE PAIR CLOSES (round 7, note 7): with the mother's cell as `quarry` the arena pair walks to the ring `engage` hops round her and keeps to it;
+// with her gone it walks back onto its plain
+{ const hop = (a) => { const d = new Map([[a, 0]]), q = [a]; for (let i = 0; i < q.length; i++) for (const nb of adj[q[i]]) if (open(nb) && !d.has(nb)) { d.set(nb, d.get(q[i]) + 1); q.push(nb); } return d; };
+  const quarry = id(5, 5), dq = hop(quarry), ring = engageRing({ adj, open, quarry, hops: 3 });
+  assert.ok(ring.size > 0 && [...ring].every((c) => dq.get(c) >= 2 && dq.get(c) <= 4), 'the ring: 3 +- 1 hops from her');
+  const plain = new Set([id(9, 0), id(9, 1), id(8, 0)]);
+  let cur = id(9, 9), prev = -1, n = 0;
+  for (; n < 40 && !ring.has(cur); n++) { const nx = nextCell({ role: 'arena', cur, prev, adj, open, rand, plain, quarry, engage: 3 }); assert.ok(dq.get(nx) < dq.get(cur), `closing on her (${dq.get(cur)} -> ${dq.get(nx)})`); prev = cur; cur = nx; }
+  assert.ok(ring.has(cur), 'on her ring');
+  for (let k = 0; k < 60; k++) { const nx = nextCell({ role: 'arena', cur, prev, adj, open, rand, plain, quarry, engage: 3 }); assert.ok(ring.has(nx), 'keeps to her ring'); prev = cur; cur = nx; }
+  for (n = 0; n < 40 && !plain.has(cur); n++) { prev = cur; cur = nextCell({ role: 'arena', cur, prev, adj, open, rand, plain }); }
+  assert.ok(plain.has(cur), `her death: back onto the plain (${n} steps)`);
+  const def = { key: 'rotor', rate: 2, range: 4, dmg: 1 }, b = batteryDef(def, { cadence: 1.8, range: 1.35 });
+  assert.deepEqual([b.rate, b.range, b.dmg, b.key, def.rate, def.range], [3.6, 5.4, 1, 'rotor', 2, 4], 'a battery: faster and farther, the def untouched');
+  assert.equal(batteryDef(def, null), def); }
 console.log('mech-roles: the arena pair keeps its plain, the base mech parks outside the gate, the hunter takes the shortest way to the nearest enemy');

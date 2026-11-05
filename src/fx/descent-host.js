@@ -82,47 +82,53 @@ export function createDescentHost(root, c) {
       if (phase) return true;
       if (!descentDue({ outcome, final, mobile: !!c.mobile }, DESCENT)) { if (final && outcome === 'secure') c.showBrief(DESCENT.brief); then?.(); return false; }
       thenFn = then;
-      say(DESCENT.brief);
-      const arena = c.story()?.arena?.cell ?? -1, min = arena >= 0 && c.look ? (DESCENT.lookHold ?? 0) : 0;
-      hole = min ? arena : -1; diveAt = null; stillAt = null; readyAt = null; loadedIn = null; briefFrom = null; openedAt = null; phase = 'look';
-      if (min) c.look(arena);
-      const t0 = c.t(), cap = DESCENT.briefCap ?? 20;
-      const open = () => {
-        poll = null; if (!phase) return;
-        const now = c.t(), b = c.briefing?.() ?? null;   // the brief on the panel (or waiting for it), null when Isao is quiet
-        if (phase === 'look') {   // the glide to the rim view on the live game, then the still frame and the cave's load under it
-          if (min && now - t0 < (DESCENT.still ?? 0)) { poll = setTimeout(open, 100); return; }
-          c.hold(true); phase = 'load'; stillAt = wall();
-          frame = document.createElement('iframe'); frame.hidden = true;
-          frame.className = 'descent-frame'; frame.title = 'BELOW'; frame.src = DESCENT.page; frame.setAttribute('allow', 'pointer-lock; autoplay; fullscreen');
-          root.appendChild(frame);
-        }
-        if (phase === 'load') {   // the cave ready and the brief read (real seconds: the still game's clock does not move)
-          if (b === DESCENT.brief && briefFrom == null) briefFrom = wall();   // the cap runs from the descent's own brief, not a line said before it
-          const w = wall() - stillAt;
-          if (!descentLoadDone({ ready: readyAt != null, loadWaited: w, readyCap: DESCENT.readyCap ?? 25, briefing: !!b, briefWaited: wall() - (briefFrom ?? stillAt), cap })) { poll = setTimeout(open, 100); return; }
-          loadedIn = w; c.hold(false); phase = 'dive';
-        }
-        // the brief read: down the hole on the live game, then the cave (the dive over lookHold, the hand-over settled under the lip)
-        if (hole >= 0 && c.dive && diveAt == null) { diveAt = c.t(); c.dive(hole, DESCENT.lookHold ?? 0); }
-        if (diveAt != null && c.t() - diveAt < (DESCENT.lookHold ?? 0) + (DESCENT.door?.settle ?? 0)) { poll = setTimeout(open, 100); return; }
-        if (!descentOpenDue({ waited: c.t() - t0, min, briefing: false })) { poll = setTimeout(open, 100); return; }
-        openedAt = c.t() - t0; phase = 'shown';
-        coverIn = cover(root, c.still?.() ?? null, fades, 'in');   // the game's last frame, drawn now, over the cave until its first frame is drawn
-        frame.hidden = false; c.hold(true);
-        const h = hole >= 0 ? c.handoff?.(hole) ?? null : null;   // the sky as it is now (the day ran through the dive), the same pose
-        try { frame.contentWindow?.postMessage({ belowShow: true, ...(h ? { sky: h.sky, pose: h.pose } : {}) }, '*'); } catch { /* a frame gone mid-show */ }
-        const lid = coverIn; if (lid) setTimeout(() => lid.away(), (DESCENT.fadeCap ?? 3) * 1000);   // the cave never said it drew: the cover goes anyway
+      // A PRINT IS SEEN TO ITS END (round 7, owner, 2026-11-05, note 8: "before BELOW, Isao prints something but we have no time to see it"): while
+      // one runs (c.printing) the brief, the look and the cave wait, DESCENT.printCap game seconds at most
+      const go = () => {
+        say(DESCENT.brief);
+        const arena = c.story()?.arena?.cell ?? -1, min = arena >= 0 && c.look ? (DESCENT.lookHold ?? 0) : 0;
+        hole = min ? arena : -1; diveAt = null; stillAt = null; readyAt = null; loadedIn = null; briefFrom = null; openedAt = null; phase = 'look';
+        if (min) c.look(arena);
+        const t0 = c.t(), cap = DESCENT.briefCap ?? 20;
+        const open = () => {
+          poll = null; if (!phase) return;
+          const now = c.t(), b = c.briefing?.() ?? null;   // the brief on the panel (or waiting for it), null when Isao is quiet
+          if (phase === 'look') {   // the glide to the rim view on the live game, then the still frame and the cave's load under it
+            if (min && now - t0 < (DESCENT.still ?? 0)) { poll = setTimeout(open, 100); return; }
+            c.hold(true); phase = 'load'; stillAt = wall();
+            frame = document.createElement('iframe'); frame.hidden = true;
+            frame.className = 'descent-frame'; frame.title = 'BELOW'; frame.src = DESCENT.page; frame.setAttribute('allow', 'pointer-lock; autoplay; fullscreen');
+            root.appendChild(frame);
+          }
+          if (phase === 'load') {   // the cave ready and the brief read (real seconds: the still game's clock does not move)
+            if (b === DESCENT.brief && briefFrom == null) briefFrom = wall();   // the cap runs from the descent's own brief, not a line said before it
+            const w = wall() - stillAt;
+            if (!descentLoadDone({ ready: readyAt != null, loadWaited: w, readyCap: DESCENT.readyCap ?? 25, briefing: !!b, briefWaited: wall() - (briefFrom ?? stillAt), cap })) { poll = setTimeout(open, 100); return; }
+            loadedIn = w; c.hold(false); phase = 'dive';
+          }
+          // the brief read: down the hole on the live game, then the cave (the dive over lookHold, the hand-over settled under the lip)
+          if (hole >= 0 && c.dive && diveAt == null) { diveAt = c.t(); c.dive(hole, DESCENT.lookHold ?? 0); }
+          if (diveAt != null && c.t() - diveAt < (DESCENT.lookHold ?? 0) + (DESCENT.door?.settle ?? 0)) { poll = setTimeout(open, 100); return; }
+          if (!descentOpenDue({ waited: c.t() - t0, min, briefing: false })) { poll = setTimeout(open, 100); return; }
+          openedAt = c.t() - t0; phase = 'shown';
+          coverIn = cover(root, c.still?.() ?? null, fades, 'in');   // the game's last frame, drawn now, over the cave until its first frame is drawn
+          frame.hidden = false; c.hold(true);
+          const h = hole >= 0 ? c.handoff?.(hole) ?? null : null;   // the sky as it is now (the day ran through the dive), the same pose
+          try { frame.contentWindow?.postMessage({ belowShow: true, ...(h ? { sky: h.sky, pose: h.pose } : {}) }, '*'); } catch { /* a frame gone mid-show */ }
+          const lid = coverIn; if (lid) setTimeout(() => lid.away(), (DESCENT.fadeCap ?? 3) * 1000);   // the cave never said it drew: the cover goes anyway
+        };
+        poll = setTimeout(open, 0);
+        onMsg = (e) => {
+          const d = e.data, ours = !!frame && e.source === frame.contentWindow;
+          if (d?.belowReady === true) { if (ours && readyAt == null) readyAt = wall() - stillAt; return; }
+          if (d?.belowAsk === true) { if (ours) answer(); return; }
+          if (d?.belowShown === true) { if (ours) coverIn?.away(); return; }
+          take(d);
+        };
+        globalThis.addEventListener?.('message', onMsg);
       };
-      poll = setTimeout(open, 0);
-      onMsg = (e) => {
-        const d = e.data, ours = !!frame && e.source === frame.contentWindow;
-        if (d?.belowReady === true) { if (ours && readyAt == null) readyAt = wall() - stillAt; return; }
-        if (d?.belowAsk === true) { if (ours) answer(); return; }
-        if (d?.belowShown === true) { if (ours) coverIn?.away(); return; }
-        take(d);
-      };
-      globalThis.addEventListener?.('message', onMsg);
+      if (c.printing?.()) { phase = 'print'; const p0 = c.t(), wait = () => { poll = null; if (phase !== 'print') return; if (c.printing() && c.t() - p0 < (DESCENT.printCap ?? 45)) { poll = setTimeout(wait, 100); return; } go(); }; poll = setTimeout(wait, 100); return true; }
+      go();
       return true;
     },
     report: (outcome) => take({ below: outcome }),

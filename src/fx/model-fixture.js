@@ -57,6 +57,8 @@ export function wireLook(o, tint) {
   else { c.lerp(CYAN, 0.3); c.getHSL(hsl); c.setHSL(hsl.h, Math.min(1, hsl.s * 1.2), 0.22 + 0.3 * hsl.l); }   // 0.22-0.52: body lines dim enough that the bloom leaves them alone and the accents stand out
   return { color: c, opacity: 0.7 };
 }
+// [wireframed meshes, meshes] under a root (the harness's wire checks: src/td-tab.js state().wire, src/fx/companions.js; one copy since round 7)
+export const wireCount = (root) => { let n = 0, w = 0; root?.traverse((o) => { if (o.isMesh) { n++; if (o.material?.wireframe) w++; } }); return [w, n]; };
 export function setWireframe(root, on, { tint = false } = {}) {
   if (!root) return;
   root.traverse((o) => {

@@ -23,6 +23,7 @@ import { isStampede, stampedeWave } from '../domain/stampede.js';
 import { sizeWave, pulseBodies, pulseDue, flowDue, flowTarget, streamOffsets } from '../domain/sector-shape.js';
 import { crowdTrace } from './crowd-gate.js';
 import { packSquads } from '../domain/squads.js';
+import { canyonSeatDue } from '../domain/canyon.js';
 import { STORY_CALM } from '../content/story-defaults.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
@@ -319,7 +320,11 @@ export function createSectorRun(h) {
     reports.push(r); lastReport = r;
     if (def?.boss) api.bossEnd?.(outcome);   // THE BOSS: the hull back to the player, Isao free, the seat left (src/fx/boss-run.js)
     const show = () => { const ending = phase === 'finale'; phase = outcome === 'lost' ? 'lost-shown' : 'debrief'; h.pause(true); debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines(), confirm: ending }); h.hud(); };   // the ending's card asks before a skip (round 3)
-    if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); const fin = () => finale(show); if (!api.descent?.(fin)) fin(); } else show();   // THE DESCENT (src/fx/descent-host.js) before THE ENDING before the score
+    if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); const fin = () => finale(show); if (!api.descent?.(fin)) fin(); }   // THE DESCENT (src/fx/descent-host.js) before THE ENDING before the score
+    // THE MECH'S PRINT, A BEAT OF THE ARENA'S SECURE (round 7, owner, 2026-11-05, note 8: "before BELOW, Isao prints something but we have no time to see it"):
+    // the securePause read and bossEnd done, Isao prints his Nih-Dairia mech in its close-up, the game live, and the debrief comes when it is done
+    else if (def?.boss && outcome === 'secure' && api.printNow?.('mech', () => { if (phase === 'print') show(); })) { phase = 'print'; h.hud(); }
+    else show();
   }
   // the break between sectors: the host may take it (THE BUILD BOARD since round 6, src/fx/build-board.js; the paint shop before it) and hand it
   // back when done. `via` says how the card was left: 'continue' (its CONTINUE: the board opens), 'hold' (KEEP HOLDING: the hold is its own
@@ -365,7 +370,8 @@ export function createSectorRun(h) {
     if (!canyon || canyon.phase === 'done') return;
     if (canyon.phase === 'pass') {   // the pass is over (closed: drained or its overhead up, or the overhead's cap): the gate side opens gateAfter later
       const over = t - canyon.passAt >= CANYON.gateAfter + 2 && api.canyonOver?.();
-      if (!over && t - canyon.passAt < CANYON.pass.overhead + CANYON.gateAfter) return;
+      if (canyon.say && !api.briefing?.()) { canyon.say = false; h.brief(CANYON.passBrief); }   // Isao's line over the seat, once his panel is free (round 7, note 5: the queue is one deep)
+      if (!over && t - canyon.passAt < canyon.overhead + CANYON.gateAfter) return;
       // THE SURVIVORS CHARGE (CANYON.charge): the swarm the beam spared rushes the base from here, so the fight follows the pass at once
       const sp = sps.get(canyon.id);
       if (sp) { for (const e of h.enemies()) if (e.alive && e.breachSource === sp.obj) e.paceJitter = (e.paceJitter ?? 1) * CANYON.charge; for (const q of h.queue()) if (q.sp === sp) q.pace = (q.pace ?? 1) * CANYON.charge; }
@@ -379,18 +385,21 @@ export function createSectorRun(h) {
     // held this tick forever), so there is no pass to lay over an empty canyon: the gate side opens now. Sealed by a weapon (the breach
     // closed), not spent: the hole collapses on its own once its one swarm is out, and the pass is laid over the swarm, not the hole
     if (b && b.state === 'closed') { canyon.phase = 'done'; for (const x of sector.breaches) if (x.openAt === Infinity) x.openAt = t; h.hud(); return; }
-    if (!sp || !b || b.wavesReleased < 1) return;
-    canyon.firstAt ??= t;   // the column entered the queue
-    // THE QUEUE NEED NOT EMPTY (owner, 2026-10-16: 'sector 3, the canyon: it fails to unlock and give us the SOL control'): on a slow machine the crowd gate
-    // (src/fx/crowd-gate.js) holds part of the column in the queue until the base kills, far away, so the pass waited on a queue that never drained;
-    // CANYON.queueWait seconds after the first body is up the pass comes anyway, the rest rising under the beam
-    if (h.queued(sp) && t - canyon.firstAt < (CANYON.queueWait ?? Infinity)) return;
-    canyon.upAt ??= t;
-    if (t - canyon.upAt < CANYON.seatAfter) return;
-    canyon.phase = 'pass'; canyon.passAt = t;
+    if (!sp || !b) return;
+    if (b.wavesReleased >= 1) {
+      canyon.firstAt ??= t;   // the column entered the queue
+      // THE QUEUE NEED NOT EMPTY (owner, 2026-10-16: 'sector 3, the canyon: it fails to unlock and give us the SOL control'): on a slow machine the crowd gate
+      // (src/fx/crowd-gate.js) holds part of the column in the queue until the base kills, far away, so the pass waited on a queue that never drained;
+      // CANYON.queueWait seconds after the first body is up the pass comes anyway, the rest rising under the beam
+      if (!h.queued(sp) || t - canyon.firstAt >= (CANYON.queueWait ?? Infinity)) canyon.upAt ??= t;
+    }
+    // THE CANYON AGAIN (round 7, note 5): the seat seatDelay after the announce, the column still rising; the first canyon as before (canyonSeatDue)
+    const again = def.n > SECTORS.length;
+    if (!canyonSeatDue({ again, announcedAt: b.openedAt ?? null, upAt: canyon.upAt, t, tune: CANYON })) return;
+    canyon.phase = 'pass'; canyon.passAt = t; canyon.overhead = again ? CANYON.again?.overhead ?? CANYON.pass.overhead : CANYON.pass.overhead;
     const plan = canyon.plan;
-    api.canyonPass?.({ point: h.centers()[plan.spawn], axis: plan.axis, ...CANYON.pass });
-    h.brief(CANYON.passBrief); h.hud();
+    api.canyonPass?.({ point: h.centers()[plan.spawn], axis: plan.axis, ...CANYON.pass, overhead: canyon.overhead });
+    canyon.say = true; h.hud();
   }
 
   function tick(dt) {
@@ -474,7 +483,7 @@ export function createSectorRun(h) {
     // a breath (2026-10-18): a pulse sector whose last pulse is mostly dead, a flow sector well under its target; what the party waits for
     breathing: () => phase === 'fighting' && !!def && (def.shape === 'flow' ? aliveSectorEnemies(true) < flowTarget(def.flow.alive * swell(), crowdTrace.cap) * 0.25 : lastPulse.sent && aliveSectorEnemies(true) <= (def.breath?.at ?? 0.25) * lastPulse.size),
     // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
-    pulseGap: () => (h.clockHeld?.() ? Infinity : phase === 'fighting' && def ? (canyon?.phase === 'rising' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.shape === 'flow' ? 0 : def.pulse ?? null) : null),   // held (2026-10-18): Infinity, the board's own clock never arms in the party; the canyon's swarm does not wait a whole pulse (2026-10-03); a flow's stream is its own gap (2026-10-15)
+    pulseGap: () => (h.clockHeld?.() ? Infinity : phase === 'fighting' && def ? (canyon && canyon.phase !== 'done' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.shape === 'flow' ? 0 : def.pulse ?? null) : null),   // held (2026-10-18): Infinity, the board's own clock never arms in the party; the canyon's swarm does not wait a whole pulse (2026-10-03); a flow's stream is its own gap (2026-10-15)
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now
@@ -525,7 +534,7 @@ export function createSectorRun(h) {
     state: () => ({
       nest: nest ? { cell: nest.ci, open: !!nest.alive } : null,   // the arena's hole, kept open after its sector (the cave's door)
       bossDown: bossDownAt == null ? null : +bossDownAt.toFixed(1),   // THE ARENA's mother dead, on the sector clock (round 6: the mech's print)
-      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'print', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, hole: !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),

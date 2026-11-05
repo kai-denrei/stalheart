@@ -8,7 +8,25 @@
 //              keep-off); no target in reach: a random walk off `avoid`
 //   parkCell({ dist, gate, hops }) -> the heart distance the base mech stands at: `hops` beyond the gate's own
 //   huntStep({ cur, adj, open, targets, avoid, max }) -> the first step toward the nearest target within `max` hops (cur when standing on one; -1: none)
+// THE PAIR CLOSES (round 7, owner, 2026-11-05, note 7: "the mechs at THE MOTHER's site should be more aggressive and shoot more often"):
+//   'arena' with a `quarry` cell (the mother's, while she is up): toward the ring `engage` (+-1) open hops round her (engageRing), then a walk on it;
+//              no quarry: the plain as before, and a pair off it (left on her ring at her death) walks back onto it
+//   engageRing({ adj, open, quarry, hops, slack }) -> the cells hops +- slack open hops from `quarry`
+//   batteryDef(def, fire) -> a sentry's def as a mech carries it: its rate `fire.cadence` times, its range `fire.range` times (the def itself untouched)
 const pick = (cells, rand) => cells[Math.min(cells.length - 1, Math.floor(rand() * cells.length))];
+
+export const batteryDef = (def, fire) => (def && fire ? { ...def, rate: def.rate * (fire.cadence ?? 1), range: def.range * (fire.range ?? 1) } : def);
+
+export function engageRing({ adj, open, quarry, hops, slack = 1 }) {
+  const d = new Map([[quarry, 0]]), q = [quarry], ring = new Set();
+  for (let i = 0; i < q.length; i++) {
+    const c = q[i], k = d.get(c);
+    if (k >= hops - slack) ring.add(c);
+    if (k >= hops + slack) continue;
+    for (const nb of adj[c]) if (!d.has(nb) && open(nb)) { d.set(nb, k + 1); q.push(nb); }
+  }
+  return ring;
+}
 
 export function parkCell({ dist, gate, hops = 2 }) { return gate >= 0 && Number.isFinite(dist[gate]) ? dist[gate] + hops : 0; }
 
@@ -27,10 +45,12 @@ export function huntStep({ cur, adj, open, targets, avoid = () => false, max = 4
   return -1;
 }
 
-export function nextCell({ role, cur, prev = -1, adj, open, rand, plain = null, dist = null, park = 0, targets = null, avoid = () => false, max = 40 }) {
+export function nextCell({ role, cur, prev = -1, adj, open, rand, plain = null, dist = null, park = 0, targets = null, avoid = () => false, max = 40, quarry = -1, engage = 8 }) {
   const ways = adj[cur].filter((c) => open(c) && !avoid(c));
   if (role === 'arena') {
-    const on = ways.filter((c) => plain?.has(c)), fwd = on.filter((c) => c !== prev);
+    const zone = quarry >= 0 ? engageRing({ adj, open, quarry, hops: engage }) : plain;
+    if (zone?.size && !zone.has(cur)) { const step = huntStep({ cur, adj, open, targets: zone, avoid, max }); if (step >= 0) return step; }   // to her ring, or back onto the plain
+    const on = ways.filter((c) => zone?.has(c)), fwd = on.filter((c) => c !== prev);
     return fwd.length ? pick(fwd, rand) : on.length ? on[0] : cur;
   }
   if (role === 'base') {

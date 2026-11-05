@@ -209,7 +209,7 @@ export function createTowerCombat(host) {
         }
       }
       if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
-      tw.cooldown = shotInterval(eff.rate * (manual ? pilotMultipliers(host.automated(), host.story()?.pilot).rateMul : 1)); if (tw.key === 'rotor') { tw.heat = (tw.heat ?? 0) + SENTRY_HEAT.rotor.perShot; if (tw.heat >= 1) tw.overheated = true; }   // the story's piloted sentry streams rounds; every round heats the barrels
+      tw.cooldown = shotInterval(eff.rate * (manual ? pilotMultipliers(host.automated(), host.story()?.pilot).rateMul : 1)); if (tw.key === 'rotor') { tw.heat = (tw.heat ?? 0) + SENTRY_HEAT.rotor.perShot * (tw.heatMul ?? 1); if (tw.heat >= 1) tw.overheated = true; }   // the story's piloted sentry streams rounds; every round heats the barrels
       if (manual) host.pilot().state.shots++; tw.firedAt = tNow; tw.fireGap = tw.cooldown;   // the first-person bullet track follows the rounds actually fired (owner, 2026-09-15)
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no

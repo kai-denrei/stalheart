@@ -25,3 +25,14 @@ const after = bfs(tags);
 assert.ok(Number.isFinite(after[plan.spawn]), 'once cut, the swarm can walk to the base');
 assert.ok(plan.floor.every((ci) => Number.isFinite(after[ci])), 'every floor cell is reachable');
 console.log(`Canyon: at the antipode, ${plan.floor.length} cells of floor in ${plan.rock.length} of rock, the deep end ${after[plan.spawn]} hops from the heart.`);
+// WHEN THE SEAT COMES (round 7, note 5): the first canyon waits for its column and seatAfter; the canyon again comes again.seatDelay after its announce
+{ const { canyonSeatDue } = await import('../src/domain/canyon.js');
+  const tune = { seatAfter: 2, again: { seatDelay: 2, overhead: 60 } };
+  assert.equal(canyonSeatDue({ again: false, announcedAt: 0, upAt: null, t: 30, tune }), false, 'the first canyon: not before the column is up');
+  assert.equal(canyonSeatDue({ again: false, announcedAt: 0, upAt: 20, t: 21.9, tune }), false, 'the first canyon: seatAfter after it');
+  assert.equal(canyonSeatDue({ again: false, announcedAt: 0, upAt: 20, t: 22, tune }), true);
+  assert.equal(canyonSeatDue({ again: true, announcedAt: 10, upAt: null, t: 11.9, tune }), false, 'the canyon again: not before seatDelay');
+  assert.equal(canyonSeatDue({ again: true, announcedAt: 10, upAt: null, t: 12, tune }), true, 'the canyon again: seatDelay after the announce, the column still rising');
+  assert.equal(canyonSeatDue({ again: true, announcedAt: null, upAt: 5, t: 99, tune }), false, 'not announced: no seat');
+  assert.equal(canyonSeatDue({ again: true, announcedAt: null, upAt: 5, t: 99, tune: { seatAfter: 2 } }), true, 'no again tune: the first canyon\'s order');
+  console.log('Canyon seat: the first after its column and seatAfter, the canyon again seatDelay after its announce.'); }

@@ -111,17 +111,20 @@ export const COMPANIONS = freeze({
   //                    `wake` its first idle while Isao goes back up), `angles` the camera's four cuts in the bed's metres (x right of the
   //                    unit's facing, y up, z its facing; each eye and look eased from the first to the second over [from, to] s, fov in degrees),
   //                    scaled by the body's length over `refLength`; `shot` the live cut (5 s mandatory, then Space skips, as the FEIDS-26 drop)
+  //                    `nowWait` (round 7, note 8: the mech's print as a beat of THE ARENA's SECURE, src/fx/pet-print.js printNow) the game seconds a
+  //                    print asked for now may wait on a running shot before the debrief goes without it: past the FEIDS-26 drop's 28 s cut, which
+  //                    takes the camera as the arena's seat is left when the four were held by it (measured on ?boss=1)
   prints: {
     order: ['c07', 'k9', 'k0', 'mech'],
     triggers: [
       { phase: 'expedition', delay: 20, patience: 150, brief: 'pet_print_first' },   // the colony up, the first wave dealt with, the hull the player's: the first quiet moment after
       { phase: 'expedition', perk: 'uplink', days: 3, delay: 10, patience: 150, brief: 'pet_print_second' },   // "later": three days on and the radar up
       { phase: 'expedition', perk: 'farm', days: 2, delay: 10, patience: 150, brief: 'pet_print_third' },   // K0-TECH (round 6): the greenhouse up (sector 3) and two days on
-      { boss: true, delay: 10, patience: 150, brief: 'pet_print_mech' },   // THE MECH (round 6): THE ARENA's Nih-Dairia dead, then the first quiet moment
+      { boss: true, delay: 10, patience: 150, brief: 'pet_print_mech' },   // THE MECH (round 6): THE ARENA's Nih-Dairia dead, then the first quiet moment; since round 7 printed at THE ARENA's SECURE before its debrief (src/fx/sector-run.js printNow), this the fallback
     ],
   },
   print: {
-    spotCells: 2, slabClear: [8, 4, 0], bedM: 1.9, hoverM: 2.4, colour: 0x7fe9ff, band: 0.12, refLength: 2.78,
+    spotCells: 2, slabClear: [8, 4, 0], bedM: 1.9, hoverM: 2.4, colour: 0x7fe9ff, band: 0.12, refLength: 2.78, nowWait: 35,
     timeline: { arrive: 1.6, print: 9, skin: 1.4, wake: 3.5 },
     angles: [
       { from: 0, to: 3.4, eye: [[11, 2.6, 12], [9, 2.4, 10]], look: [[0, 4.6, 0], [0, 4, 0]], fov: 55 },   // wide, three-quarter front: Isao comes down over the bed
