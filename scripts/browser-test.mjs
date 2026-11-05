@@ -1948,7 +1948,11 @@ try{
  console.log(`ARENA FIGHT speeds (m/s over a second): hers mean ${mean(speeds)} (fight mean ${sf.speedMean}, peak ${sf.speedPeak}), the hull's mean ${mean(hullSpeeds)} (fight mean ${sf.hullMean}); temperament ${sf.temper}, lunges ${sf.lunges}`);
  console.log(`ARENA FIGHT her speed by mode (m/s mean, samples): ${Object.entries(byMode).map(([k,v])=>`${k} ${mean(v)} (${v.length})`).join(', ')}`);
  const cj=await camReport('ARENA FIGHT');
+ // THE SKY METER (owner, 2026-11-05, round 6 note 3: "controlling the gunship while Isao is close to the boss sinkhole makes the gunship face the sky"): every seated
+ // frame's forward against its radial since TAKE THE GUN (state().camSky, src/fx/cam-jump.js); not one may look above the horizon, the glide into the seat included
+ const sky=(await st()).camSky;console.log(`ARENA FIGHT sky meter: ${sky.up} of ${sky.frames} seated frames over the horizon, the highest forward . up ${sky.top}`);for(const e of [...sky.first,...sky.last])console.log('  sky '+JSON.stringify(e));
  current='arena-fight-end';await finish();
+ assert.ok(sky.frames>0&&sky.up===0,`no seated frame faces the sky (${sky.up} of ${sky.frames}, highest ${sky.top})`);
  assert.ok(cj.seated.frames>0&&cj.seated.m<25&&cj.seated.deg<20,`the seated camera never jumps: worst ${cj.seated.m} m, ${cj.seated.deg} degrees over ${cj.seated.frames} seated frames (limits 25 m / 20 degrees)`);
  assert.ok(readyAgain!=null&&readyAgain<=12,`(a) the MK-9 ready again within 12 s of a launch (${readyAgain})`);assert.ok(second!=null,'(a) a second MK-9 in the same pass');
  assert.ok(hullMax<=DISC&&bossMax<=DISC,`(b) neither leaves the disc (hull ${hullMax}, boss ${bossMax}, disc ${DISC})`);assert.ok(gSpan>=Math.min(60,WINDOW)||dead,`(b) watched at least 60 s of game clock (${gSpan})`);

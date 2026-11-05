@@ -1117,9 +1117,9 @@ export function initTdTab(root) {
 
   const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ seconds: 1.0, far: 1.8, hold: () => paused, wait: () => shotId() === 'takeControl' });   /* shorter (owner, 2026-10-16: "the time between announcing SOL and getting control is too long"; was 1.4 / 3.2) */
   const SEAT_GLIDE_PEAK = 150;   // m/s: the gunship seat's glide in never moves faster at its peak (round 3, 2026-10-26: a frame clamped at 0.1 s moves at most 15 m)
-  // THE CAMERA'S JUMP METER (round 3, 2026-10-26: the gunship's view jump-cut; src/fx/cam-jump.js): sampled once a painted frame before the draw, state().camJump
+  // THE CAMERA'S JUMP METER (round 3; src/fx/cam-jump.js), state().camJump, and its sky meter (round 6), state().camSky
   const camJump = createCamJump({ metres: () => metresToArc(1, cellSide), info: () => ({ gunship: { phase: gunship.phase, left: Number.isFinite(gunship.left) ? +gunship.left.toFixed(2) : String(gunship.left), passes: gunship.passes },
-    seat: { pilotMode, gunship: !!pilot?.gunship, map: !!pilot?.isMap?.(), view: pilot?.state.view ?? null, yaw: +(pilot?.state.yaw ?? 0).toFixed(3), pitch: +(pilot?.state.pitch ?? 0).toFixed(3), glide: seatGlide.active(), shot: shotId() ?? null, strip: storyViews?.now?.() ?? null }, boss: bossRun?.on?.() ? bossRun.state().phase : null, paused }) });
+    seat: { pilotMode, gunship: !!pilot?.gunship, map: !!pilot?.isMap?.(), view: pilot?.state.view ?? null, yaw: +(pilot?.state.yaw ?? 0).toFixed(3), pitch: +(pilot?.state.pitch ?? 0).toFixed(3), glide: seatGlide.active(), shot: shotId() ?? null, strip: storyViews?.now?.() ?? null }, boss: bossRun?.on?.() ? bossRun.state().phase : null, hole: bossRun?.on?.() ? bossRun.state().hullCells : null, paused }) });
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -5040,7 +5040,7 @@ export function initTdTab(root) {
         screensOpened: syntheticModal?.opened() ?? 0,
         brassLive: brass?.live() ?? 0,
         daylight: daylight?.state() ?? null, day: daylight?.day() ?? null, party: discoParty?.state() ?? null, ending: { party: discoParty?.replayState?.() ?? null }, streak: { now: eco.streak, best: run.bestStreak, x: +eco.multiplier().toFixed(2) },
-        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(), camJump: camJump.state(),   /* FEIDS-26 (2026-10-23); the scope's friendlies drawn last frame (round 3) */
+        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(), camJump: camJump.state(), camSky: camJump.sky(),   /* FEIDS-26; the scope's friendlies last frame */
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
