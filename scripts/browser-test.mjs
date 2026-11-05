@@ -2936,10 +2936,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // two affordable cards, the board's own (structures, the hull's) first and cheapest first, then sentries, through the real CONTINUE (the build board, src/fx/build-board.js); else the harness continues
  // past it with no pick. No assertions but a page error; the JSON goes to artifacts/browser/ledger(-TAG).json. MAX_S caps the wall time (2400).
  // THE FIELD (round 8 note 7: kills lie on the ground, the rover brings them to the pearls, the pearls are the bank, src/fx/rover-glue.js): ROVER=flare
- // (the default) is the reference flagger: whenever the rover stands idle with biomass on the ground, a flare on the richest ground (the real trips,
- // their clock the income's); ROVER=collect banks the whole field every sample (the ideal stand-in, the round-6 numbers' shape); ROVER=none flags
+ // (the default) is the reference flagger: whenever the rover stands idle and the richest ground holds FLAG_KG (default 0: the first pile; 1500
+ // banked less, 2026-11-06: S1 700, S2 12,086, S3 18,186 kg against 1,031, 12,086, 24,186 at 0), a flare there (the real trips, the income's clock); ROVER=collect banks the whole field every sample (the ideal stand-in, the round-6 numbers' shape); ROVER=none flags
  // nothing. Each row adds the field (on the ground, rotted, brought home) and the rover's trips.
- const T='window.__stalheartTest',from=+process.env.FROM||1,to=+process.env.TO||5,pay=process.env.PAY??'tank',board=process.env.BOARD||'none',maxS=+process.env.MAX_S||2400,reach=+(process.env.R??999),rover=process.env.ROVER||'flare';
+ const T='window.__stalheartTest',from=+process.env.FROM||1,to=+process.env.TO||5,pay=process.env.PAY??'tank',board=process.env.BOARD||'none',maxS=+process.env.MAX_S||2400,reach=+(process.env.R??999),rover=process.env.ROVER||'flare',flagKg=+(process.env.FLAG_KG??0);
  await go('ledger',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${from}#td`);
  await until(`!!${T} && ${T}.state().sector?.n===${from}`,120000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
@@ -2949,7 +2949,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const b=await books();
   if(b.phase==='fighting'){const k=samples[b.n]??={n:0,afford:0};k.n++;if(b.bank>=45)k.afford++;if(pay)await evaluate(`${T}.sectorCull(${reach},${JSON.stringify(pay)})`);}
   if(rover==='collect')await evaluate(`${T}.rover?.collect?.()`);
-  else if(rover==='flare')await evaluate(`(()=>{const r=${T}.rover?.state?.();if(r?.built&&r.mode==='idle'&&!r.queued&&r.field>0&&!r.flares.some(f=>f.id===r.order)){const c=${T}.rover.richest();if(c)${T}.rover.flareAt(c.cell);}})()`);
+  else if(rover==='flare')await evaluate(`(()=>{const r=${T}.rover?.state?.();if(r?.built&&r.mode==='idle'&&!r.queued&&r.field>0&&!r.flares.some(f=>f.id===r.order)){const c=${T}.rover.richest();if(c&&c.kg>=${flagKg})${T}.rover.flareAt(c.cell);}})()`);
   await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();if(${T}.state().screenOpen)document.querySelector('#synthetic-modal [data-continue]')?.click();`);
   if(b.phase==='lost'||b.phase==='lost-shown'){rows.push({n:b.n,lost:true});console.log(`LEDGER sector ${b.n} LOST`);break;}
   if(b.debrief&&b.n!==lastN){lastN=b.n;const L=b.ledger,d=(o,p)=>Object.fromEntries(Object.entries(o??{}).map(([k,v])=>[k,Math.round(v-(p?.[k]??0))]).filter(([,v])=>v));
@@ -2962,7 +2962,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
      for(const id of take)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);await evaluate(`${T}.board.confirm()`);picks.push({before:b.n+1,bank:bd.bank,offers:bd.offers.map(o=>`${o.id}:${o.price}`),took:take});console.log(`LEDGER board before ${b.n+1}: bank ${bd.bank}, offers ${bd.offers.map(o=>`${o.id} ${o.price}`).join(', ')}; took ${take.join(', ')||'none'}`);}}
    else{await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}
   await delay(2000);}
- writeFileSync(join(output,`ledger${process.env.TAG?'-'+process.env.TAG:''}.json`),JSON.stringify({from,to,pay,board,rover,wallSeconds:Math.round((Date.now()-t0)/1000),rows,picks},null,1));
+ writeFileSync(join(output,`ledger${process.env.TAG?'-'+process.env.TAG:''}.json`),JSON.stringify({from,to,pay,board,rover,flagKg,wallSeconds:Math.round((Date.now()-t0)/1000),rows,picks},null,1));
  console.log(`LEDGER BANK ${rows.map(r=>`S${r.n} ${r.bank}`).join(' · ')} (${Math.round((Date.now()-t0)/1000)} s wall)`);
  current='ledger';await finish();
  } else if(args.includes('--board')) {
