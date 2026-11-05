@@ -141,7 +141,7 @@ export function createIsaoWorker(host) {
     const err = host.placeError(ci);
     if (err) { host.flashShopNote(err); return false; }
     if (orderByCell.has(ci)) { host.flashShopNote('already on the list'); return false; }
-    if (!host.eco().spend(def.cost)) {
+    if (!host.eco().spend(def.cost, { category: 'sentry' })) {
       host.flashShopNote('not enough biomass');
       host.showBrief('biomass');   // he has an opinion about this
       return false;
@@ -164,7 +164,7 @@ export function createIsaoWorker(host) {
     const cost = upgradeCost(tower.def, tower.tier);
     if (cost === null) return false;
     if (orderByCell.has(tower.ci)) { host.flashShopNote('already on the list'); return false; }
-    if (!host.eco().spend(cost)) { host.flashShopNote('not enough biomass'); return false; }
+    if (!host.eco().spend(cost, { category: 'upgrade' })) { host.flashShopNote('not enough biomass'); return false; }
     const order = { kind: 'upgrade', ci: tower.ci, tower, cost,
       ring: makeSiteRing(tower.ci, tower.def.color) };
     orders.push(order);

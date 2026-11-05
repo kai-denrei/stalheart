@@ -93,7 +93,7 @@ import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js'; import { garrisonSites as pickGarrisonSites } from './domain/garrison.js';
 import { wallCushion as cushionWalls, breachBlocked as craterBlocked, CRATER_PAD } from './domain/wall-cushion.js'; import { createCtlWatch } from './platform/ctl-watch.js'; import { createShellFlight } from './fx/shell-flight.js';   /* refactor round 4 (2026-10-22) */
 import {TOWERS, TOWER_BY_KEY, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER} from './towers.js';
-import { makeEconomy, sellRefund } from './economy.js';
+import { makeEconomy, sellRefund } from './economy.js'; import { createBuildBoard } from './fx/build-board.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
@@ -2827,7 +2827,7 @@ export function initTdTab(root) {
     e.hp -= squadDamage(e, dmg, src); creatureEnemies.hit(e, src, dmg);   // the creature probe counts the sentries' work
     for (let k = shedSquad(e) + (e.hp <= 0); k > 0; k--) {   // each body pays, a squad's shed members too
       // any weapon's kill pays — but not the same
-      gunshipRig.feed(eco.award(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5)))));
+      gunshipRig.feed(eco.award(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5))), { src }));
       scoreKill(spec.bounty, { src, alive: enemies.filter((x) => x.alive).length });
       noteWaveKill(e.type, src); sectorRun?.kill(e, src, via);
       noteKillContext(e, src);
@@ -3328,17 +3328,7 @@ export function initTdTab(root) {
   // WHERE THE OPENING GARRISON GOES (src/domain/garrison.js): forward of the heart on a wall cell, nearest a live gate, two kept apart
   const GARRISON_BAND = [3, 6];    // cells from the heart, inclusive
   const GARRISON_APART = 4;        // cells between the two, minimum
-  function garrisonSites(want) {
-    return pickGarrisonSites(want, {
-      spawnPoints,
-      dungeon,
-      graph,
-      cellSide,
-      placeError,
-      band: GARRISON_BAND,
-      apart: GARRISON_APART,
-    });
-  }
+  function garrisonSites(want) { return pickGarrisonSites(want, { spawnPoints, dungeon, graph, cellSide, placeError, band: GARRISON_BAND, apart: GARRISON_APART }); }   // src/domain/garrison.js
 
   function commitTower(key, ci, spent) {
     const def = TOWER_BY_KEY[key];
@@ -4685,6 +4675,10 @@ export function initTdTab(root) {
     tdFullTags: () => tdFullTags,
     storyBase: () => storyBase,
   });
+  // THE BUILD BOARD (owner, 2026-11-05, round 6 note 2; src/fx/build-board.js): the sector loop's break, on the debrief's CONTINUE: six offers, two picks
+  const buildBoard = createBuildBoard({ root, endShot, eco: () => eco, story: () => story, towers: () => towers, orders, placeError, graph: () => graph, cellSide: () => cellSide, orderTower, orderUpgrade, callout: (x, c) => showCallout(x, c), manned: () => laserStation.manned?.() ?? 0, petLife: (i) => companions?.life?.(i) ?? null, printPet: (i) => petPrint?.force(i),
+    hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
+    shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) });
   // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
   const endingHost = createEndingHost({
     storyBase: () => storyBase,
@@ -4806,7 +4800,7 @@ export function initTdTab(root) {
     breakSide: canyonRun.breakSide,
     repaired: programme.repaired,
     printed: programme.printed,
-    interlude: endingHost.interlude,
+    interlude: buildBoard.interlude,   // THE BUILD BOARD between sectors (round 6)
     finale: endingHost.finale,
     tier: autoSupport.tier,
     aliveBudget: autoSupport.aliveBudget,
@@ -4992,7 +4986,7 @@ export function initTdTab(root) {
         runGen: runContext.generation,
         heart: heartHP,
         hulls: playerHP,
-        biomass: eco.biomass,
+        biomass: eco.biomass, ledger: eco.ledger, board: buildBoard.state(),   // the ledger by source and the build board (round 6, --ledger, --board)
         towers: towers.length,
         won: player.won,
         paused,
@@ -5113,8 +5107,8 @@ export function initTdTab(root) {
       sectorClearField: () => sectorRun?.test.clearField(), breachAt: (ci) => !!storyApi.breach(ci, {}),
       // THE PACING PROBE'S DEFENDER (--pacing): a body within r cells of a door dies there; it counts arrivals (not harmless
       // leftovers), not a player's kills
-      sectorCull: (r = 8) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { killCreature(e, false); if (!e.harmless) n++; } return n; },
-      sectorContinue: () => sectorRun?.test.cont(),
+      sectorCull: (r = 8, pay = null) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { if (pay) damageEnemy(e, t, e.hp + 1, false, pay); else killCreature(e, false); if (!e.harmless) n++; } return n; },
+      sectorContinue: (via) => sectorRun?.test.cont(via),
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now
@@ -5126,7 +5120,7 @@ export function initTdTab(root) {
       arenaFire: (gun, p) => { const G = pilot?.gunship ? pilotHost?.gunship : null; if (!G || !p) return false; if (gun !== 'heavy') { G.fire(gun, norm3(p), G.guns[gun].travel); return true; } return G.paintHeavy(cellIndex(norm3(p))) && G.launchHeavy() >= 0; },   // THE ARENA FIGHT's harness (2026-10-23): a round from the seat at a unit point, the MK-9 painted and released on its cell
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, blob: !!e.blob, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)
-      sectorKeepHolding: () => sectorRun?.test.keepHolding(),
+      sectorKeepHolding: () => sectorRun?.test.keepHolding(), board: buildBoard.test,   // the build board's hands (round 6: toggle, confirm, skip)
       sectorQuiet: (on) => sectorRun?.test.quiet(on),
       sectorReport: () => sectorRun?.test.report() ?? null,
       breachScenario:()=>{endShot();paused=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveClock.setIn(-1);armWave();},

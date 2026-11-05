@@ -33,9 +33,10 @@ for (const doorAt of [t.sectorDoor.earliest, t.sectorDoor.latest]) {
   // EVERY ROW ON A COLUMN
   ok(`door ${doorAt}: every row sits on a column`, b.lanes.every((l) => l.rows.every((r) => col.has(r.col) && (!r.to || col.has(r.to)))));
   // PRINTS
-  const prints = lane('prints').filter((r) => r.step);
-  ok(`door ${doorAt}: the ${t.programme.length} programme steps are placed`, t.programme.length === 16 && prints.length === 16 && t.programme.every((s) => prints.some((r) => r.step === s.id)));
-  const at = (id) => prints.find((r) => r.step === id).col;
+  const prints = lane('prints').filter((r) => r.step), offers = lane('board');
+  ok(`door ${doorAt}: the ${t.programme.length} programme steps are placed, ten printed on their own and six bought on the board`, t.programme.length === 16 && prints.length === 10 && offers.length === 6 && t.programme.every((s) => [...prints, ...offers].some((r) => r.step === s.id)));
+  ok(`door ${doorAt}: the board's structures run from the first board they may be on to the end, priced`, offers.every((r) => r.to === 'endless' && / kg · offered from sector \d/.test(r.sub)) && offers.find((r) => r.step === 'board').col === 's:2' && offers.find((r) => r.step === 'farm').col === 's:3');
+  const at = (id) => [...prints, ...offers].find((r) => r.step === id).col;
   ok(`door ${doorAt}: the gate in ROTOR, the solar array in EXPEDITION, the radar in S2, the launcher in S4`, at('gate') === 'ch:rotor' && at('solar') === 'ch:expedition' && at('radar') === 's:2' && at('launcher') === 's:4');
   ok(`door ${doorAt}: the back gate waits for the door (s:${doorAt}), passable`, at('backgate') === `s:${doorAt}` && prints.find((r) => r.step === 'backgate').tags.includes('passable'));
   ok(`door ${doorAt}: idle steps say "at the lull"`, prints.filter((r) => t.programme.find((s) => s.id === r.step).when.idle).every((r) => r.tags.includes('at the lull')));

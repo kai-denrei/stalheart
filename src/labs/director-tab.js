@@ -1,6 +1,6 @@
 // THE DIRECTOR BOARD (owner, 2026-11-05, round 5 note 3: "A visual timeline of all the sectors and triggers: when KO-TECH prints, when the cutscenes
 // play, a full director board"). labs.html#director: the story's time left to right (the tutorial's chapters, the sectors to BOTH WALLS, the descent,
-// the ending, the endless sectors) and six lanes under it, read off the content tables by src/domain/director-board.js; the moments that start in
+// the ending, the endless sectors) and seven lanes under it (the build board's since round 6), read off the content tables by src/domain/director-board.js; the moments that start in
 // code come from src/content/director.js, each checked against its file by test/director-board.mjs. DOOR AT 7 / 8 redraws the arc round the door;
 // a hover names every source as file:line (read from the served files, so the number is the tree's own) and the raw `when`; the JUMPS open the game.
 // The voice lab (src/labs/voice-tab.js) is the pattern: a page that reads the tables and reports, plain DOM, no renderer.
@@ -19,6 +19,7 @@ import { DIRECTOR_SHOTS, DIRECTOR_CODE_BRIEFS } from '../content/director.js';
 import { ISAO_TRIGGERS } from '../content/isao-voice.js';
 import { VOICE_HOOKS } from '../content/voice-hooks.js';
 import { createVoiceIndex } from '../domain/voice-match.js';
+import { BUILD_BOARD } from '../content/build-board.js';
 import { directorBoard, boardSources, lineOf } from '../domain/director-board.js';
 import { BRIEFS } from '../isaobriefs.js';
 
@@ -28,7 +29,7 @@ export function directorTables() {
   return {
     chapters: STORY_CHAPTERS, sectors: SECTORS, hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, arena: ARENA_SECTOR, canyonAgain: SECTOR_CANYON_AGAIN,
     generator: SECTOR_GENERATOR, sectorDoor: SECTOR_DOOR, canyon: CANYON, omens: BACK_OMENS, scramble: BACK_SCRAMBLE, sideBreach: SIDE_BREACH,
-    programme: BASE_PROGRAMME, perks: BASE_PERKS, strike: ISAO_STRIKE, companions: COMPANIONS, reinforcements: REINFORCEMENTS, day42: DAY_42, storyDay: STORY_DAY,
+    programme: BASE_PROGRAMME, buildBoard: BUILD_BOARD, perks: BASE_PERKS, strike: ISAO_STRIKE, companions: COMPANIONS, reinforcements: REINFORCEMENTS, day42: DAY_42, storyDay: STORY_DAY,
     arrival: STORY_ARRIVAL, skip: STORY_SKIP, descent: DESCENT, laserAuto: LASER_AUTO, gunshipAuto: GUNSHIP_AUTO, works: ORBITAL_WORKS,
     jumps: STORY_JUMPS, briefs: BRIEFS, shots: DIRECTOR_SHOTS, codeBriefs: DIRECTOR_CODE_BRIEFS, voiced: (id) => !!voice.resolve(id),
   };

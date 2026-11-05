@@ -52,21 +52,26 @@ export function makeEconomy(opts = {}) {
   let earned = 0, spent = 0, peak = biomass;
 
   const ledger = { bounty: 0, grants: 0, refunds: 0, breachGrants: 0 };
+  // THE LEDGER BY SOURCE (round 6, the build board's measure, 2026-11-05): kill pay by who killed (`src`: tank, tower, strike, ram, ...),
+  // credits by category (sector-held, farm, grant, breach-grant, refund) and spends by kind (sentry, upgrade, board, plasma, ...)
+  const bySource = {}, byCategory = {}, spentBy = {};
+  const tally = (o, k, n) => { o[k] = (o[k] ?? 0) + n; };
   const multiplier = () =>
     Math.min(STREAK_CAP, 1 + STREAK_STEP * streak);
 
   return {
     get biomass() { return biomass; },
     get starting() { return startBiomass; },
-    get ledger() { return { ...ledger }; },
+    get ledger() { return { ...ledger, bySource: { ...bySource }, byCategory: { ...byCategory }, spentBy: { ...spentBy } }; },
     get streak() { return streak; },
     get score() { return score; },
     multiplier,
     // a kill: streak grows FIRST, then bounty scales by the multiplier —
     // HK's onKill order exactly (award includes the kill's own streak step)
-    award(bounty, { ram = false } = {}) {
+    award(bounty, { ram = false, src = null } = {}) {
       streak++;
       const amount = Math.round(bounty * (ram ? RAM_PREMIUM : 1) * multiplier());
+      tally(bySource, ram ? 'ram' : src ?? 'other', amount);
       biomass += amount;
       score += amount;
       earned += amount; ledger.bounty += amount; if (biomass > peak) peak = biomass;
@@ -75,15 +80,15 @@ export function makeEconomy(opts = {}) {
     // an enemy reached the Heart: the streak dies with the moment
     leak() { streak = 0; },
     canAfford(cost) { return Number.isFinite(cost) && cost >= 0 && biomass >= cost; },
-    spend(cost) {
+    spend(cost, { category = 'other' } = {}) {
       if (!Number.isFinite(cost) || cost < 0 || biomass < cost) return false;
       biomass -= cost;
-      spent += cost;
+      spent += cost; tally(spentBy, category, cost);
       return true;
     },
     addBiomass(n, { category = 'grant' } = {}) {
       if (!Number.isFinite(n) || n < 0) throw new Error('Biomass credit must be finite and nonnegative');
-      biomass += n;
+      biomass += n; tally(byCategory, category, n);
       if (category === 'refund') ledger.refunds += n;
       else {
         earned += n; score += n;

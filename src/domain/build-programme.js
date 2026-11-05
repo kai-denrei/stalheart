@@ -4,14 +4,16 @@ import { STORY_PHASES } from './automation.js';
 
 // `standing(step)` says a step's pieces already stand (a static stage, or a jump past it): those count as printed from the start,
 // perks included, so a stage-8 base has every perk without a print
+// THE BUILD BOARD (round 6, 2026-11-05): a step marked `board` left the automatic programme; it is `due` only once bought (buy(st, id), the
+// board's pick, src/fx/build-board.js), and until then it neither blocks the steps behind it nor counts as owed. A standing one counts as bought.
 export function makeBuildProgramme(steps, { standing = () => false } = {}) {
-  const st = { steps: steps.slice(), done: new Set(), active: null, perks: new Set(), sector: 0, printed: [] };
+  const st = { steps: steps.slice(), done: new Set(), active: null, perks: new Set(), sector: 0, printed: [], bought: new Set() };
   for (const s of st.steps) if (standing(s)) { st.done.add(s.id); if (s.perk) st.perks.add(s.perk); }
   return st;
 }
 
-// does a step's `when` hold in this context?
-function holds(w, { phase, sector, waveActive, back, manned }) {
+// does a step's `when` hold in this context? (the build board asks it of the coming sector)
+export function whenHolds(w, { phase, sector, waveActive, back, manned }) {
   const at = STORY_PHASES.indexOf(phase);
   if (w.phase != null && !(at >= 0 && at >= STORY_PHASES.indexOf(w.phase))) return false;
   if (w.sector != null && !((sector ?? 0) >= w.sector)) return false;
@@ -31,14 +33,21 @@ export function due(st, ctx = {}) {
   if (st.active) return null;
   const { phase = null, sector = 0, waveActive = false, back = null, manned = 0 } = ctx;
   for (const s of st.steps) {
-    if (st.done.has(s.id)) continue;
-    if (holds(s.when ?? {}, { phase, sector, waveActive, back, manned })) return s;
+    if (st.done.has(s.id) || (s.board && !st.bought.has(s.id))) continue;
+    if (whenHolds(s.when ?? {}, { phase, sector, waveActive, back, manned })) return s;
     if (!s.passable) return null;
   }
   return null;
 }
 
 export function begin(st, step) { st.active = step.id; }
+
+// the board's purchase: true when `id` is a board step not yet bought or standing
+export function buy(st, id) {
+  const s = st.steps.find((x) => x.id === id);
+  if (!s?.board || st.bought.has(id) || st.done.has(id)) return false;
+  st.bought.add(id); return true;
+}
 
 // the step stands: returns its perk (or null)
 export function finish(st, step) {
@@ -80,5 +89,6 @@ export function sectorStarted(st, sector) {
 // once per new sector: true when the assembly line stands and a lost hull should be rebuilt at this sector's start
 export const rebuildDue = (st, sector) => sectorStarted(st, sector) && st.perks.has('rebuild');
 
-// `owed`: the steps not yet printed that the programme must still print in order (a passable step, waiting on the door or the player, is not owed)
-export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id))?.id ?? null, owed: st.steps.filter((s) => !st.done.has(s.id) && !s.passable).map((s) => s.id), perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });
+// `owed`: the steps not yet printed that the programme must still print in order (a passable step, waiting on the door or the player, is not
+// owed; nor is a board step nobody bought); `bought`: the board's purchases
+export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id))?.id ?? null, owed: st.steps.filter((s) => !st.done.has(s.id) && !s.passable && (!s.board || st.bought.has(s.id))).map((s) => s.id), bought: [...st.bought], perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });

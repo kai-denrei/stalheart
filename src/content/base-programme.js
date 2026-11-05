@@ -56,13 +56,17 @@ export const BASE_PROGRAMME = Object.freeze([
   // THE SCOREBOARD (owner, 2026-10-02: "Isao printing a literal scoreboard in the base, like Gimli and Legolas joking about who has the
   // more kills"; and "A flag showing the Rank"): a slab Isao prints first thing after the handover; the host raises the plaque and the rank
   // flag on it (src/fx/scoreboard.js) and feeds it the run's books. The first thing the player owns in the base: their count and their rank
-  { id: 'board', label: 'scoreboard', islands: ['board'], when: { sector: 1, idle: true }, seconds: 6, metres: 3, brief: 'build_board', perk: 'board' },
+  // THE BUILD BOARD (owner, 2026-11-05, round 6 note 2): the six steps from here on are `board: true`: they left the automatic programme and are
+  // printed only once the player buys them on the board between sectors (src/content/build-board.js prices, src/fx/build-board.js); their `when`
+  // still says when Isao prints one after the purchase. A skipped opening (?skip=defence&sector=N) stands in for the boards before it and buys
+  // those whose sector gate N has reached (src/domain/build-board.js jumpBought). The spine above stays automatic: the arc depends on it.
+  { id: 'board', label: 'scoreboard', islands: ['board'], board: true, when: { sector: 1, idle: true }, seconds: 6, metres: 3, brief: 'build_board', perk: 'board' },
   // THE GARAGE (owner, 2026-10-03): the A6 paint bay, printed straight after the board; its perk puts the purple PIMP MY RIDE pad in it
-  { id: 'garage', label: 'paint garage', islands: ['garage'], structures: ['garage'], when: { sector: 1, idle: true }, seconds: 10, metres: 6, brief: 'build_garage', perk: 'garage' },
-  { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory', 'ammo-a', 'ammo-b', 'ammo-c'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
-  { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
-  { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
-  { id: 'launcher', label: 'ARC-01 launcher', islands: ['launcher'], structures: ['launcher'], when: { sector: 4, idle: true, manned: 2 }, passable: true, seconds: 20, metres: 12, brief: 'build_launcher', perk: 'launcher' },
+  { id: 'garage', label: 'paint garage', islands: ['garage'], structures: ['garage'], board: true, when: { sector: 1, idle: true }, seconds: 10, metres: 6, brief: 'build_garage', perk: 'garage' },
+  { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory', 'ammo-a', 'ammo-b', 'ammo-c'], board: true, when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
+  { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], board: true, when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
+  { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], board: true, when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
+  { id: 'launcher', label: 'ARC-01 launcher', islands: ['launcher'], structures: ['launcher'], board: true, when: { sector: 4, idle: true, manned: 2 }, passable: true, seconds: 20, metres: 12, brief: 'build_launcher', perk: 'launcher' },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
 // ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the
