@@ -21,13 +21,12 @@ function world(log) {
   const gui = folder('gui');
   globalThis.localStorage = { getItem: () => JSON.stringify({ tower: 2 }), setItem: (k, v) => log.push(['ls', k, v]) };
   globalThis.matchMedia = () => ({ matches: true });
-  const soundBtn = { textContent: '', classList: { toggle: (c, on) => log.push(['btn', c, on]) }, addEventListener: (k, f) => callbacks.push(['btn.' + k, f]) };
   globalThis.document = { documentElement: {} };
   const rec = (n) => { const f = (...a) => { log.push([n, ...a.map((x) => (typeof x === 'object' ? 'obj' : x))]); }; named.set(f, n); return f; };
   const sfx = { levels: { master: 1, towers: 1, tank: 1, enemies: 1, ui: 1 }, muted: false, setMaster: rec('setMaster'), setBus: rec('setBus'), setMute: (v) => { sfx.muted = v; log.push(['setMute', v]); } };
   const postfx = { params: { enabled: true, strength: 1, radius: 0.5, threshold: 0.2 }, weights: Object.fromEntries(imp.BLOOM_GROUPS.map((g) => [g, 1])), setEnabled: rec('setEnabled'), setParams: rec('setParams') };
   const fixed = { params: { creature: 'x', look: 'y', view: 'third' }, DIRECTIVES: ['wander', 'ram'], HEART_LOOKS: { a: 1, b: 2 }, PLASMA: { size: 2 }, TYPE: {}, strikeTune: {}, postfx, sfx,
-    root: { querySelector: () => soundBtn }, applyCreature: rec('applyCreature'), applyLook: rec('applyLook'), applyTowerLook: rec('applyTowerLook'), regenerate: rec('regenerate'), setView: rec('setView'), syncCalloutMode: rec('syncCalloutMode'), syncDirectiveChip: rec('syncDirectiveChip') };
+    applyCreature: rec('applyCreature'), applyLook: rec('applyLook'), applyTowerLook: rec('applyTowerLook'), regenerate: rec('regenerate'), setView: rec('setView'), syncCalloutMode: rec('syncCalloutMode'), syncDirectiveChip: rec('syncDirectiveChip') };
   const st = { plasma: [{ pts: { material: { size: 0 } } }] };
   return { gui, fixed, st, callbacks };
 }
@@ -43,6 +42,7 @@ const vals = Object.keys(world([]).fixed);
 const newLog = run((w) => createDevPanel(w.gui, { ...w.fixed, plasma: () => w.st.plasma }));
 // THE ORIGINAL BLOCK's log on these fakes (src/td-tab.js before the refactor run's Task 5, run through new Function beside the module)
 // ...less the far-field rewards control, gone with the pickups on 2026-10-22 (refactor round 4): the hash was 2fe98c791a164a25 with it
-assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '92882b74a53d2eb4', 'the module behaves as the controller block did');
+// ...less the HUD's sound chip (round 7 note 3: its two syncs and its click were the only lines gone): 92882b74a53d2eb4 with it
+assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '32f1bfb978ae7e6c', 'the module behaves as the controller block did');
 assert.equal(newLog.filter((x) => x[1] === 'add').length, 79, 'seventy-nine bindings');
 print('Dev panel: the same bindings, labels and order, and the same callbacks, as the controller block did.');

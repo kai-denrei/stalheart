@@ -4104,7 +4104,6 @@ export function initTdTab(root) {
     strikeTune,
     postfx,
     sfx,
-    root,
     applyCreature,
     applyLook,
     applyTowerLook,
