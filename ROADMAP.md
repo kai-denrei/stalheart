@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 71 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 72 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Round 7 stream A: the HUD fades unless hovered (desktop), the HUD's sound chip goes, the build board's cards carry wireframe thumbnails
+
+`2026-11-05-round-7-stream-a-the-hud-fades-the-sound-chip-goes-the-board-s-wireframe-thumbnails` · change · **observed**
+
+Owner, 2026-11-05, notes 2-4 on b14ed61f (spec docs/superpowers/specs/2026-11-05-round-7-nine-notes-design.md, stream A): 2) fade every HUD element except the radar to 80 % transparency unless the mouse hovers on it, which brings it to 20 % for a few seconds; 3) remove the note icon for turning the sound off, the user can do that in their system; 4) the build board gets small wireframe thumbnails like the glossary's. Branch round-7-hud off overnight-2026-10-23 at 21eee83a, port 18181, unpushed.
 
 ### Round 6 stream C: the gunship facing the sky near the boss hole not reproduced headless (instrumented as state().camSky); the streak callouts step aside, left and right
 
