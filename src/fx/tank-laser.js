@@ -149,7 +149,7 @@ export function createTankLaser(host) {
     // auto holds the SAME trigger the player does, so there is one firing
     // path, one heat model and one overheat lockout — not a parallel copy
     const wantFire = (host.keys.laser || host.autoLaserWant()) && guns && !host.player.won && !host.playerDown()
-      && (!host.story() || host.laserOverheat() || host.eco().spend(TANK_PLASMA.kgPerSecond * dt) || host.plasmaDry());   // THE PLASMA COSTS BIOMASS (owner, 2026-10-02)
+      && (!host.story() || host.laserOverheat() || host.eco().spend(TANK_PLASMA.kgPerSecond * dt, { category: 'plasma' }) || host.plasmaDry());   // THE PLASMA COSTS BIOMASS (owner, 2026-10-02)
     // heat: build while firing, shed otherwise; overheat locks the trigger
     // until the tubes are fully cold (no feathering the cap)
     if (host.laserOverheat()) {

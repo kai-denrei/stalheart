@@ -2829,7 +2829,7 @@ export function initTdTab(root) {
     e.hp -= squadDamage(e, dmg, src); creatureEnemies.hit(e, src, dmg);   // the creature probe counts the sentries' work
     for (let k = shedSquad(e) + (e.hp <= 0); k > 0; k--) {   // each body pays, a squad's shed members too
       // any weapon's kill pays — but not the same
-      gunshipRig.feed(eco.award(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5)))));
+      gunshipRig.feed(eco.award(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5))), { src }));
       scoreKill(spec.bounty, { src, alive: enemies.filter((x) => x.alive).length });
       noteWaveKill(e.type, src); sectorRun?.kill(e, src, via);
       noteKillContext(e, src);
@@ -4994,7 +4994,7 @@ export function initTdTab(root) {
         runGen: runContext.generation,
         heart: heartHP,
         hulls: playerHP,
-        biomass: eco.biomass,
+        biomass: eco.biomass, ledger: eco.ledger,   // the ledger by source (round 6, --ledger)
         towers: towers.length,
         won: player.won,
         paused,
@@ -5115,7 +5115,7 @@ export function initTdTab(root) {
       sectorClearField: () => sectorRun?.test.clearField(), breachAt: (ci) => !!storyApi.breach(ci, {}),
       // THE PACING PROBE'S DEFENDER (--pacing): a body within r cells of a door dies there; it counts arrivals (not harmless
       // leftovers), not a player's kills
-      sectorCull: (r = 8) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { killCreature(e, false); if (!e.harmless) n++; } return n; },
+      sectorCull: (r = 8, pay = null) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { if (pay) damageEnemy(e, t, e.hp + 1, false, pay); else killCreature(e, false); if (!e.harmless) n++; } return n; },
       sectorContinue: () => sectorRun?.test.cont(),
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it

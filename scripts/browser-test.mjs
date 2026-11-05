@@ -2758,6 +2758,36 @@ try{
   if(process.env.PLAY){await evaluate(`${T}.sectorCull(999)`);if(await evaluate(`${T}.state().sector.debriefOpen`)){await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}   // PLAY=1: a player who clears the field and reads on
   await delay(2000);}
  console.log(rows.join('\n'));
+ } else if(args.includes('--ledger')) {
+ // THE LEDGER PROBE (round 6, THE BUILD BOARD, 2026-11-05; the economy plan's probe, docs/superpowers/specs/2026-10-26-economy-plan.md): a skipped
+ // opening plays sectors FROM..TO (1..5) with an ideal defender who EARNS (every live body within R cells of a door, 999: all, dies, paid as PAY's kill:
+ // tank (default) | tower | none), and at each debrief the books: income by source (eco.ledger: kill pay by who killed, credits by category),
+ // spend by kind, the bank at the sector's end, the share of fighting samples the bank could buy the cheapest sentry (45 kg). BOARD=pick takes
+ // the board's two cheapest affordable cards through the real CONTINUE (the build board, src/fx/build-board.js); else the harness continues
+ // past it with no pick. No assertions but a page error; the JSON goes to artifacts/browser/ledger(-TAG).json. MAX_S caps the wall time (2400).
+ const T='window.__stalheartTest',from=+process.env.FROM||1,to=+process.env.TO||5,pay=process.env.PAY??'tank',board=process.env.BOARD||'none',maxS=+process.env.MAX_S||2400,reach=+(process.env.R??999);
+ await go('ledger',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${from}#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===${from}`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ const rows=[],picks=[],samples={},t0=Date.now();let prev=null,lastN=0;
+ const books=()=>evaluate(`(()=>{const s=${T}.state();return {n:s.sector?.n,phase:s.sector?.phase,debrief:!!s.sector?.debriefOpen,board:s.board??null,bank:s.biomass,ledger:s.ledger,clock:s.shieldClock,report:s.sector?.debriefOpen?${T}.sectorReport():null,printed:s.programme?.printed??[],towers:s.towers};})()`);
+ while(Date.now()-t0<maxS*1000){
+  const b=await books();
+  if(b.phase==='fighting'){const k=samples[b.n]??={n:0,afford:0};k.n++;if(b.bank>=45)k.afford++;if(pay)await evaluate(`${T}.sectorCull(${reach},${JSON.stringify(pay)})`);}
+  await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();if(${T}.state().screenOpen)document.querySelector('#synthetic-modal [data-continue]')?.click();`);
+  if(b.phase==='lost'||b.phase==='lost-shown'){rows.push({n:b.n,lost:true});console.log(`LEDGER sector ${b.n} LOST`);break;}
+  if(b.debrief&&b.n!==lastN){lastN=b.n;const L=b.ledger,d=(o,p)=>Object.fromEntries(Object.entries(o??{}).map(([k,v])=>[k,Math.round(v-(p?.[k]??0))]).filter(([,v])=>v));
+   const row={n:b.n,clock:Math.round(b.clock),bank:b.bank,earned:b.report?.biomass?.earned,spent:b.report?.biomass?.spent,kills:b.report?.kills?.bySource,bySource:d(L.bySource,prev?.bySource),byCategory:d(L.byCategory,prev?.byCategory),spentBy:d(L.spentBy,prev?.spentBy),afford:samples[b.n]?+(samples[b.n].afford/samples[b.n].n).toFixed(2):null,towers:b.towers,printed:b.printed.slice()};
+   rows.push(row);prev=L;console.log(`LEDGER ${JSON.stringify(row)}`);
+   if(b.n>=to)break;
+   if(board==='pick'){await evaluate(`${T}.sectorContinue('continue')`);await until(`!!${T}.state().board?.open`,15000).catch(()=>console.log('LEDGER no board opened'));
+    const bd=await evaluate(`${T}.state().board`);if(bd?.open){const cards=bd.offers.filter(o=>o.price<=bd.bank).sort((x,y)=>x.price-y.price);let left=bd.bank;const take=[];for(const c of cards){if(take.length<2&&c.price<=left){take.push(c.id);left-=c.price;}}
+     for(const id of take)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);await evaluate(`${T}.board.confirm()`);picks.push({before:b.n+1,bank:bd.bank,offers:bd.offers.map(o=>`${o.id}:${o.price}`),took:take});console.log(`LEDGER board before ${b.n+1}: bank ${bd.bank}, offers ${bd.offers.map(o=>`${o.id} ${o.price}`).join(', ')}; took ${take.join(', ')||'none'}`);}}
+   else{await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}
+  await delay(2000);}
+ writeFileSync(join(output,`ledger${process.env.TAG?'-'+process.env.TAG:''}.json`),JSON.stringify({from,to,pay,board,wallSeconds:Math.round((Date.now()-t0)/1000),rows,picks},null,1));
+ console.log(`LEDGER BANK ${rows.map(r=>`S${r.n} ${r.bank}`).join(' · ')} (${Math.round((Date.now()-t0)/1000)} s wall)`);
+ current='ledger';await finish();
  } else if(args.includes('--voice-rate')) {
  // ISAO'S RATE (owner, 2026-10-13: "make him speak less often. Sometimes a line is triggered, sometimes it's silence"): a sector from its
  // start with the voice log. Every moment asked of him (src/fx/isao-voice.js isaoSay.asked) and every line said (isaoSay.log), against
