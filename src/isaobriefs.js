@@ -274,6 +274,10 @@ export const BRIEFS = {
     id: 'rover_flare', face: 'curious', title: 'COMMS · ISAO', once: true,
     lines: ['Drop a flare where the bodies lie, F. The rover comes.', 'It brings the biomass home to the pearls. Nothing else does now.'],
   },
+  rover_break: {
+    id: 'rover_break', face: 'glee', title: 'COMMS · ISAO', once: true,
+    lines: ['The rover brought the rest home during the break.', 'What you flagged is in the pearls. The rest still lies out there.'],
+  },
   storage_full: {
     id: 'storage_full', face: 'determined', title: 'COMMS · ISAO', once: true,
     lines: ['The pearls are full. The rover waits with its load.', 'Spend some, or buy me a fourth pearl.'],

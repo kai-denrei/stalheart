@@ -5,7 +5,7 @@
 // NO REAL LIGHT: a PointLight added in play changes the program of every lit material in the scene (a hitch, and the suites count programs);
 // the glow is drawn instead, an additive halo that faces the camera and a disc on the ground.
 // Unit-sphere host coordinates (the game draws the planet's floor at radius 1).
-//   createHullFlares(scene, { metres, cellSide, tune, reach }) -> { drop(point, cell, now) -> flare, tick(now, camera), live(), byId(id), alive(id), dispose() }
+//   createHullFlares(scene, { metres, cellSide, tune, reach }) -> { drop(point, cell, now) -> flare, tick(now, camera), live(), alive(id), clear(), dispose() }
 //     flare: { id, cell, point, at, until }
 import * as THREE from '../../vendor/three.module.js';
 import { makeSiteRing, disposeSiteRing } from './site-ring.js';
@@ -56,6 +56,7 @@ export function createHullFlares(scene, { metres, cellSide, tune, reach }) {
     },
     live: () => flares.map((f) => ({ id: f.id, cell: f.cell, point: f.point, at: f.at, until: f.until })),
     alive: (id) => flares.some((f) => f.id === id),
+    clear() { for (const f of flares.slice()) remove(f); },
     dispose() { for (const f of flares.slice()) remove(f); for (const o of owned) o.dispose?.(); },
   };
 }

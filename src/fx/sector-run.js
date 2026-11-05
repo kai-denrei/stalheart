@@ -314,6 +314,7 @@ export function createSectorRun(h) {
   }
 
   function finish(outcome) {
+    h.breakHome?.();   // THE ROVER FINISHES ITS RUN DURING THE BREAK (round 8, src/fx/rover-glue.js): banked before the report reads the bank
     const bests = loadBests();
     const r = sectorReport(stats, sector ?? makeSector(def, [], stats.t0), { t: now(), bank: h.bank(), ground: h.ground?.() ?? 0, outcome, bests, stamps: SECTOR_STAMPS, records: SECTOR_RECORDS });
     try { h.store?.setItem(SECTOR_BESTS_KEY, JSON.stringify(mergeBests(bests, r.records))); } catch { /* the store refused: the bests simply are not kept */ }

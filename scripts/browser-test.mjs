@@ -2954,7 +2954,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   if(b.phase==='lost'||b.phase==='lost-shown'){rows.push({n:b.n,lost:true});console.log(`LEDGER sector ${b.n} LOST`);break;}
   if(b.debrief&&b.n!==lastN){lastN=b.n;const L=b.ledger,d=(o,p)=>Object.fromEntries(Object.entries(o??{}).map(([k,v])=>[k,Math.round(v-(p?.[k]??0))]).filter(([,v])=>v));
    const rv=await evaluate(`${T}.rover?.state?.()??null`);
-   const row={n:b.n,clock:Math.round(b.clock),bank:b.bank,field:rv?.built?{ground:rv.field,rotted:rv.rotted,home:Math.round(b.ledger.harvested??0),trips:rv.trips,cap:rv.cap}:null,earned:b.report?.biomass?.earned,spent:b.report?.biomass?.spent,kills:b.report?.kills?.bySource,bySource:d(L.bySource,prev?.bySource),byCategory:d(L.byCategory,prev?.byCategory),spentBy:d(L.spentBy,prev?.spentBy),afford:samples[b.n]?+(samples[b.n].afford/samples[b.n].n).toFixed(2):null,towers:b.towers,printed:b.printed.slice()};
+   const row={n:b.n,clock:Math.round(b.clock),bank:b.bank,field:rv?.built?{ground:rv.field,rotted:rv.rotted,home:Math.round(b.ledger.harvested??0),trips:rv.trips,cap:rv.cap,break:rv.lastBreak}:null,earned:b.report?.biomass?.earned,spent:b.report?.biomass?.spent,kills:b.report?.kills?.bySource,bySource:d(L.bySource,prev?.bySource),byCategory:d(L.byCategory,prev?.byCategory),spentBy:d(L.spentBy,prev?.spentBy),afford:samples[b.n]?+(samples[b.n].afford/samples[b.n].n).toFixed(2):null,towers:b.towers,printed:b.printed.slice()};
    rows.push(row);prev=L;console.log(`LEDGER ${JSON.stringify(row)}`);
    if(b.n>=to)break;
    if(board==='pick'){await evaluate(`${T}.sectorContinue('continue')`);await until(`!!${T}.state().board?.open`,15000).catch(()=>console.log('LEDGER no board opened'));

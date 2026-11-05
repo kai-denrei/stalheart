@@ -9,6 +9,8 @@
 //                                score, the ledger by source, the gunship's feed take the same number) and, live, the kg lie on the kill's cell
 //   dropFlare()                  F: a flare under the hull, the rover's order (the newest while it is idle; one dropped while it works waits)
 //   tick(dt)                     once per unfrozen story frame (src/td-tab.js's build hook): the rot, the flares, the trip, the scene, the readouts
+//   breakHome()                  the sector's end (src/fx/sector-run.js finish, before the report): THE ROVER FINISHES ITS RUN DURING THE BREAK,
+//                                the hold and the flagged ground banked under the cap (src/domain/rover-run.js settleBreak), the flares gone
 //   hud()                        the HUD's FIELD number beside the bank; ground() the kg on the ground (the debrief's ON THE GROUND)
 //   test                         the acceptance harness's hands (window.__stalheartTest.rover): state(), flareAt(cell), collect(), fillPearls(), spend(kg)
 // THE SLAB UNDER THE ROVER: stream A of round 8 adds the story base's floorAt for things on slabs; until it lands, the depot island's own tangent
@@ -17,7 +19,7 @@
 //        playerHP(), pilotMode(), briefQ(), wire()
 import * as THREE from '../../vendor/three.module.js';
 import { createField } from '../domain/biomass-field.js';
-import { createRoverRun, dispatch, stepRover, roverWord } from '../domain/rover-run.js';
+import { createRoverRun, dispatch, stepRover, roverWord, settleBreak } from '../domain/rover-run.js';
 import { createPearls } from '../domain/bio-pearls.js';
 import { hasPerk } from '../domain/build-programme.js';
 import { ROVER, FIELD, PEARLS, PILE_LOOK, FLARE, ROVER_WORDS } from '../content/rover.js';
@@ -153,6 +155,13 @@ export function createRoverGlue(h) {
       S.pearlFx.tick(now, S.pearls.list(), S.run.mode === 'unload' ? (S.dockAt ?? -1) : -1);
       readouts(now);
     },
+    breakHome() {
+      if (!live() || !S?.built || S.story !== h.story()) return null;
+      const eco = h.eco(), out = settleBreak(S.run, h.t(), { ...host, flares: S.flares.live(), room: () => Math.max(0, eco.cap - eco.biomass) });
+      S.flares.clear(); S.pearls.settle(eco.biomass); S.dockAt = null; S.lastBreak = out;
+      if (out.cargo + out.field > 0) { h.showBrief?.(ROVER_WORDS.breakBrief); h.updateHud?.(); }
+      return out;
+    },
     hud: () => (live() && S?.built ? ` <span class="hud-field">${ROVER_WORDS.field} ${kgText(S.field.total())} kg</span>` : ''),
     ground: () => (S?.built ? Math.round(S.field.total()) : 0),
     test: {
@@ -162,7 +171,7 @@ export function createRoverGlue(h) {
         return { live: live(), built: true, mode: r.mode, word: roverWord(r), cargo: +r.cargo.toFixed(1), cell: r.cell, home: r.home, trips: r.trips, delivered: Math.round(r.delivered), harvested: Math.round(r.harvested),
           order: r.order?.id ?? null, queued: r.queued?.id ?? null, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
           field: Math.round(S.field.total()), piles: S.field.size(), rotted: Math.round(S.field.rotted()), drawn: S.piles.count(), pearls: S.pearls.list().map((v) => Math.round(v.stored)), cap: S.pearls.capacity(), bank: h.eco().biomass,
-          flares: S.flares.live(), scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
+          flares: S.flares.live(), lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
       },
       // a flare at a lattice cell, as F drops one under the hull (the suite's and the ledger's flagging hand)
       flareAt: (cell) => { if (!S?.built) return null; const f = S.flares.drop(centers()[cell], cell, h.t()); dispatch(S.run, { id: f.id, cell }); return f; },

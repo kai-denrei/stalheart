@@ -113,6 +113,32 @@ export function stepRover(run, dt, now, host) {
   return run;
 }
 
+// THE ROVER FINISHES ITS RUN DURING THE BREAK (round 8, 2026-11-06, the coordinator's pacing follow-up on --ledger: sector 1's 137 s on a ~470 m road
+// fit no trip, and the debrief and the board pause the game mid-trip, so the board before sector 2 saw 700-1,031 kg against round 6's ~6.3k bar).
+// When a sector ends, the work already ordered is banked as if the trip had been completed, in this order and under the cap: (1) the cargo aboard,
+// (2) every pile within `reach` of a STANDING flare (flagged, not yet raked), oldest flare first, nearest pile first. Unflagged piles stay on the
+// ground and keep rotting: the owner's "it is not automatic anymore" stands, the field must have been flagged. Cargo that does not fit stays aboard
+// (the rover waits home, STORAGE FULL); a pile that does not fit stays on the ground. The rover starts the next sector at home, its orders gone
+// (the caller clears the flares). host: { flares: [{ id, cell }], near(cell, reach), take(cell, kg), deposit(kg) -> fitted, room() -> kg that still fit }
+// -> { cargo, field, kept }: kg banked from the hold, from the flagged piles, and left aboard
+export function settleBreak(run, now, host) {
+  const T = run.tune, out = { cargo: 0, field: 0, kept: 0 };
+  if (run.cargo > 0) { const got = Math.max(0, Math.min(run.cargo, host.deposit(run.cargo))); run.cargo -= got; run.delivered += got; out.cargo = got; }
+  const seen = new Set();
+  for (const f of host.flares ?? []) for (const p of host.near(f.cell, T.reach)) {
+    if (seen.has(p.cell)) continue; seen.add(p.cell);
+    const ask = Math.floor(Math.min(p.kg, host.room())); if (ask < 1) continue;
+    const n = host.take(p.cell, ask), got = Math.max(0, host.deposit(n));
+    run.harvested += n; run.delivered += got; out.field += got;
+  }
+  if (out.cargo + out.field > 0) run.trips++;
+  out.kept = Math.round(run.cargo);
+  Object.assign(run, { mode: run.cargo > 0 ? 'full' : 'idle', cell: run.home, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null, rake: 0, pour: 0, note: '' });
+  run.skip.clear();
+  note(run, now, 'break', { banked: Math.round(out.cargo + out.field), kept: out.kept });
+  return out;
+}
+
 // what the readouts say: the mode's word and the kg aboard (the hull console's ROVER line)
 export function roverWord(run) {
   if (run.mode === 'full') return 'STORAGE FULL';

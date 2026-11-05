@@ -47,5 +47,5 @@ export const FLARE = Object.freeze({
 // THE WORDS: the hull console's line, the HUD's field number, Isao's first hint (src/isaobriefs.js rover_flare), the toasts
 export const ROVER_WORDS = Object.freeze({
   rover: 'ROVER', field: 'FIELD', full: 'STORAGE FULL', flare: 'FLARE', dispatched: 'ROVER DISPATCHED', queued: 'ROVER · NEXT FLARE QUEUED',
-  noDepot: 'NO ROVER YET', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full',
+  noDepot: 'NO ROVER YET', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
 });

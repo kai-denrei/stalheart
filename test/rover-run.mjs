@@ -1,6 +1,6 @@
 // THE ROVER'S RUN (round 8 note 7, src/domain/rover-run.js): out to the flare, the piles nearest first, home, into the pearls; a full pearl holds it.
 import assert from 'node:assert/strict';
-import { createRoverRun, dispatch, stepRover, roverWord } from '../src/domain/rover-run.js';
+import { createRoverRun, dispatch, stepRover, roverWord, settleBreak } from '../src/domain/rover-run.js';
 import { createField } from '../src/domain/biomass-field.js';
 import { createPearls } from '../src/domain/bio-pearls.js';
 import { ROVER } from '../src/content/rover.js';
@@ -52,5 +52,20 @@ function world({ capacity = 1000, room = 1e9, wall = null } = {}) {
   assert.equal(w.run.mode, 'idle'); assert.equal(roverWord(w.run), 'NO ROAD'); assert.equal(w.run.order, null); }
 { const w = world({ wall: 4 }); w.field.drop(3, 10, 0); w.field.drop(5, 50, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 2 });
   w.step(30); assert.equal(w.pearls.stored(), 10, 'cell 3 taken, cell 5 behind the wall skipped'); assert.equal(w.run.mode, 'idle'); assert.equal(w.run.trips, 1, 'no second trip for a pile it cannot reach'); }
+// THE BREAK: mid-trip at the sector's end the hold and the flagged ground come home at once, under the cap; the unflagged ground stays and rots
+{ const w = world({ room: 1000 }); w.field.drop(20, 300, 0); w.field.drop(21, 200, 0); w.field.drop(40, 700, 0); w.field.drop(60, 900, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 20 });
+  w.step(25); assert.equal(w.run.mode, 'harvest'); w.step(1.5); assert.ok(w.run.cargo > 0 && w.run.cargo < 500, `raking (${w.run.cargo})`);
+  const breakHost = (flares) => ({ ...w.host, flares, room: () => w.pearls.room() });
+  const aboard = w.run.cargo, out = settleBreak(w.run, w.now(), breakHost([{ id: 'f', cell: 20 }, { id: 'g', cell: 41 }]));
+  assert.equal(out.cargo, aboard, 'the hold first'); assert.equal(out.field, 1000 - aboard, 'then the flagged ground, up to the cap');
+  assert.equal(w.pearls.stored(), 1000); assert.equal(out.kept, 0);
+  assert.ok(w.field.piles().some((p) => p.cell === 60 && p.kg === 900), 'the unflagged pile stays on the ground');
+  assert.equal(w.field.total(), 1100, 'what did not fit stays on the ground (2,100 laid, 1,000 home)');
+  assert.equal(w.run.mode, 'idle'); assert.equal(w.run.cell, 0, 'home'); assert.equal(w.run.order, null); assert.equal(w.run.path, null); assert.equal(w.run.trips, 1); }
+{ const w = world({ room: 100 }); w.field.drop(5, 400, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 5 }); w.step(10); assert.ok(w.run.cargo > 100, `aboard (${w.run.cargo})`);
+  const aboard = w.run.cargo, out = settleBreak(w.run, w.now(), { ...w.host, flares: [], room: () => w.pearls.room() });
+  assert.equal(out.cargo, 100); assert.equal(out.kept, aboard - 100, 'the cargo that does not fit stays aboard'); assert.equal(w.run.mode, 'full', 'home, STORAGE FULL'); assert.equal(w.run.cell, 0); }
+{ const w = world(); w.field.drop(5, 400, 0); const out = settleBreak(w.run, 0, { ...w.host, flares: [], room: () => w.pearls.room() });
+  assert.deepEqual(out, { cargo: 0, field: 0, kept: 0 }, 'nothing flagged, nothing banked: not automatic'); assert.equal(w.field.total(), 400); assert.equal(w.run.trips, 0); }
 assert.equal(roverWord(createRoverRun(ROVER, 0)), 'HOME');
 console.log('Rover run: a full trip, the hold full and back, the queue, STORAGE FULL and no road hold.');
