@@ -14,7 +14,10 @@ export const DAY_42 = Object.freeze({
   // THE COMPANIONS IN THE CUT (owner, 2026-11-02, round 4 note 8): each printed companion (C-07, then RECKON K9) takes `petSecs` of the cut from
   // `petsAt` s, a close shot from `petEye` metres in its own frame (x right of its facing, y up, z its facing) on a point `petLook` m up it, the
   // near plane at `near` meanwhile; the cut grows to petsAt + petSecs x the printed (14 s with both) and stays `seconds` with none
-  shot: Object.freeze({ id: 'discoReveal', at: 1.5, seconds: 10, radius: 70, height: 28, easeIn: 1.2, petsAt: 6, petSecs: 4, petEye: Object.freeze([2.3, 1.1, 3.1]), petLook: 0.45, near: 0.00025 }),
+  // ONLY ESC SKIPS (owner, 2026-11-05, round 5 note 9: "driving the tank must not skip the party"): `skipKey` the one key that ends the cut,
+  // `passKeys` every other key reaches the tank (src/fx/camera-shot.js), `hint` the line shown through the cut
+  shot: Object.freeze({ id: 'discoReveal', at: 1.5, seconds: 10, radius: 70, height: 28, easeIn: 1.2, petsAt: 6, petSecs: 4, petEye: Object.freeze([2.3, 1.1, 3.1]), petLook: 0.45, near: 0.00025,
+    skipKey: 'Escape', passKeys: true, hint: 'ESC · SKIP', hintId: 'disco-skip-hint' }),
   hoist: 4, lower: 3, loop: 16,
   // THE REPLAY AT THE ENDING (owner, 2026-10-26, round 3 note 8: "we re-do a brief animation of the 42 days celebration, while the scoreboard also
   // displays"; src/fx/disco-party.js replay, src/fx/finale-diorama.js): `seconds` long (the ball up from the first frame, the klaxon `lower` s

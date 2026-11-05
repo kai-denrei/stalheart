@@ -4250,7 +4250,7 @@ export function initTdTab(root) {
     // the third — beat three IS the tank driving itself out of the berth
     // DEPLOY drives THROUGH a shot — that is how the cinematic's last frame
     // and DEPLOY's first frame meet — so the gate only stops free driving
-    const driveFrozen = shotActive() && shotId() !== 'breach';
+    const driveFrozen = shotActive() && !/^(breach|discoReveal)$/.test(shotId());   // the party's reveal drives too: only Esc skips it (round 5 note 9)
 
     bumpLeft = Math.max(0, bumpLeft - dt); ramJolt.tick(dt);
     recoilLeft = Math.max(0, recoilLeft - dt);
