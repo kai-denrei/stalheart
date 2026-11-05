@@ -448,3 +448,8 @@
 .director-lab .dl-tip { position: fixed; z-index: 50; max-width: 460px; padding: 8px 10px; background: #0b161b; border: 1px solid var(--cyan); color: var(--ink); pointer-events: none; font-size: 11px; box-shadow: 0 6px 24px rgba(0, 0, 0, .5); }
 .director-lab .dl-tip pre { margin: 4px 0; white-space: pre-wrap; color: var(--warn); }
 .director-lab .dl-tip ul { margin: 4px 0 0; padding: 0; list-style: none; color: var(--cyan); }
+/* THE HUD FADES UNLESS HOVERED (owner, 2026-11-05, round 7 note 2; src/fx/hud-dim.js tags the pieces, src/domain/hud-dim.js names them): a desktop's HUD
+   controls rest at .2 and come up to .8 under the pointer and for 3 s after it; opacity only (.hidden still hides); the ending's fade-out still wins */
+#tab-td.hud-dim [data-hud]{opacity:.2;transition:opacity .35s}
+#tab-td.hud-dim [data-hud].hud-lit{opacity:.8}
+body.td-victory #tab-td.hud-dim :is(#td-stats,#td-throttle,#td-launch,.tc-util,.tfire,#td-hint)[data-hud]{opacity:0;transition:opacity .7s ease-out}

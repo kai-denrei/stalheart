@@ -9,17 +9,20 @@
 //   createBuildBoard(c) -> { interlude(go, { n, via }), state(), test: { toggle(id), confirm(), skip() } }
 //   c: root, endShot(), eco(), story(), towers(), orders, placeError(ci), graph(), cellSide(), orderTower(key, ci, opts), orderUpgrade(tower),
 //      hull() -> { dents, max, hulls, maxHulls }, mendHull(), addHull(), shield() -> { rack, cap }, fillRack(), petLife(i) (a companion's life:
-//      'unborn' may be offered), printPet(i), callout(text, cls), sentryKeys(), manned() (SOL's manned passes: the launcher's gate)
+//      'unborn' may be offered), printPet(i), callout(text, cls), sentryKeys(), manned() (SOL's manned passes: the launcher's gate),
+//      spriteShot(key, build), towerLook() (the cards' wireframe thumbnails, round 7: src/fx/board-thumbs.js; none without spriteShot)
 import { BUILD_BOARD } from '../content/build-board.js';
 import { TOWER_BY_KEY, upgradeCost } from '../towers.js';
 import { boardOffers, toggle as togglePick, totalOf, emptiestLaneSite } from '../domain/build-board.js';
 import { buy, hasPerk } from '../domain/build-programme.js';
 import { COMPANIONS } from '../content/companions.js';
+import { createBoardThumbs } from './board-thumbs.js';
 
 export function createBuildBoard(c) {
   const W = BUILD_BOARD.words;
   let card = null, offers = [], picked = [], open = null, last = null;
   const history = [];
+  const thumbs = c.spriteShot ? createBoardThumbs({ spriteShot: c.spriteShot, towerLook: c.towerLook, towers: c.towers }) : null;
   const bank = () => Math.round(c.eco().biomass);
   // the socket Isao would print a sentry on (the plan's mounts, story.socketToward): the door whose lane holds the fewest sentries, its nearest free one
   function site() {
@@ -67,7 +70,7 @@ export function createBuildBoard(c) {
   }
   function close(took, labels = []) {
     const go = open?.go;
-    globalThis.removeEventListener?.('keydown', onKey, true); card?.remove(); card = null;
+    globalThis.removeEventListener?.('keydown', onKey, true); card?.remove(); card = null; thumbs?.close();
     last = { n: open?.n ?? null, bank: open?.bank ?? 0, offers: offers.map((o) => `${o.id}:${o.price}`), took, after: bank() }; history.push(last); open = null; offers = []; picked = [];
     c.callout?.(took.length ? `${W.ordered} · ${labels.join(' + ')}` : W.none, 'co-victory-sub');
     go?.();
@@ -102,7 +105,8 @@ export function createBuildBoard(c) {
     const grid = div('bb-grid');
     offers.forEach((o, i) => {
       const t = div(`bb-tile bb-${o.kind}`, null, 'button'); t.type = 'button'; t.dataset.offer = o.id;
-      t.append(div('bb-key', String(i + 1)), div('bb-name', o.label), div('bb-price', ''), div('bb-effect', o.effect));
+      const img = div('bb-thumb', null, 'img'); img.alt = '';
+      t.append(div('bb-key', String(i + 1)), img, div('bb-name', o.label), div('bb-price', ''), div('bb-effect', o.effect));
       t.addEventListener('click', () => pick(o.id)); grid.appendChild(t);
     });
     const row = div('bb-row');
@@ -110,6 +114,7 @@ export function createBuildBoard(c) {
     const ok = div('sdb-btn sdb-btn--go bb-go', W.go, 'button'); ok.type = 'button'; ok.addEventListener('click', confirm);
     row.append(sk, ok);
     card.append(head, grid, div('bb-hint', W.hint), row); c.root.appendChild(card);
+    if (thumbs) card.querySelectorAll('.bb-tile').forEach((el, i) => thumbs.fill(offers[i], el.querySelector('.bb-thumb')));   // a GLB's thumbnail lands later
     globalThis.addEventListener?.('keydown', onKey, true);
     render();
     return true;
@@ -120,7 +125,7 @@ export function createBuildBoard(c) {
       if (via !== 'continue' || n < 2 || !c.story()?.programme) return false;
       return show(n, go);
     },
-    state: () => ({ open: !!card, n: open?.n ?? null, bank: bank(), offers: offers.map((o) => ({ id: o.id, kind: o.kind, label: o.label, price: o.price })), picked: picked.slice(), last, boards: history.length,
+    state: () => ({ open: !!card, n: open?.n ?? null, bank: bank(), thumbs: card ? [...card.querySelectorAll('.bb-thumb')].filter((im) => im.src).length : 0, offers: offers.map((o) => ({ id: o.id, kind: o.kind, label: o.label, price: o.price })), picked: picked.slice(), last, boards: history.length,
       bought: [...(c.story()?.programme?.bought ?? [])] }),
     test: { toggle: (id) => pick(id), confirm, skip },
   };

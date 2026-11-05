@@ -3194,8 +3194,7 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
    (the phone has a mute switch); and while the tower radial is open the
    transient furniture (cards, console, chip, prompt) clears out. */
 @media (pointer: coarse), (max-width: 700px) {
-  /* the mode row: compact, and no mute */
-  #td-pad-sound { display: none; }
+  /* the mode row: compact */
   /* SIX buttons do not fit 390px in one line — TANK and ORBIT replaced a
      single cycling camera button, which is worth the width but not worth
      pushing the row off the screen (it pushed ORBIT and the mute clean off
@@ -3615,8 +3614,7 @@ body.mobile-shell.mob-build #mob-mode { background: rgba(134, 255, 158, 0.16); b
 body.mobile-shell #td-pad-left, body.mobile-shell #td-pad-right, body.mobile-shell #td-throttle,
 body.mobile-shell #td-hint,   /* key legend: there are no keys */
 body.mobile-shell #td-pad-dir, body.mobile-shell #td-pad-tank, body.mobile-shell #td-pad-orbit,
-body.mobile-shell #td-pad-map, body.mobile-shell #td-pad-ctrheart, body.mobile-shell #td-pad-ctrtank,
-body.mobile-shell #td-pad-sound { display: none !important; }
+body.mobile-shell #td-pad-map, body.mobile-shell #td-pad-ctrheart, body.mobile-shell #td-pad-ctrtank { display: none !important; }
 body.mobile-shell #td-pad-fire, body.mobile-shell #td-pad-laser { min-width: 64px; min-height: 64px; font-size: 22px; }
 
 body.mobile-shell #td-app { touch-action: none; }
@@ -4690,8 +4688,8 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 /* end sector debrief */
 
 /* THE STORY WORLD WEARS NO CAMPAIGN FURNITURE (2026-09-16): the centre/auto/orbit/map/tank chips and the old key hint do nothing a player
-   needs there; the strip names the views. The sound chip stays, alone. */
-#tab-td.story-world .tc-util button:not(#td-pad-sound), #tab-td.story-world #td-hint { display: none !important; }
+   needs there; the strip names the views. The sound chip that stayed alone went in round 7 (note 3): the row is empty there. */
+#tab-td.story-world .tc-util button, #tab-td.story-world #td-hint { display: none !important; }
 
 /* ==== THE TUTORIAL CARD (src/fx/tutorial-card.js): where the opening is (TUTORIAL 3/6 · FIRST WAVE and a pip a chapter), NEXT
    to the next chapter and SKIP ALL to the back door, from the landing until the first sector. Bottom right, above the pad, in the
@@ -5136,11 +5134,13 @@ body.seat-gliding #seat-vignette { display: none; }
 .build-board .bb-line { line-height: 1.45; margin-bottom: 6px; }
 .build-board .bb-bank { font-size: 12px; color: var(--bb-accent); letter-spacing: 0.1em; margin-bottom: 14px; }
 .build-board .bb-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
-.build-board .bb-tile { position: relative; display: grid; grid-template-rows: auto auto 1fr; gap: 6px; min-height: 112px; padding: 12px 12px 10px 34px; text-align: left; cursor: pointer;
+.build-board .bb-tile { position: relative; display: grid; grid-template-rows: 56px auto auto 1fr; gap: 6px; min-height: 168px; padding: 12px 12px 10px 34px; text-align: left; cursor: pointer;
   color: var(--bb-ink); background: rgba(53, 255, 208, 0.05); border: 1px solid var(--bb-line); border-radius: 0; font: inherit; }
 .build-board .bb-tile:hover:not(:disabled), .build-board .bb-tile:focus-visible { border-color: var(--bb-glow); background: rgba(53, 255, 208, 0.12); outline: none; }
 .build-board .bb-tile:disabled { cursor: default; opacity: 0.38; }
 .build-board .bb-tile.bb-on { border-color: var(--bb-accent); background: var(--bb-accent-soft); box-shadow: inset 0 0 0 1px var(--bb-accent); opacity: 1; }
+/* the card's wireframe thumbnail (round 7 note 4, src/fx/board-thumbs.js): the glossary's dark frame, empty until its model lands */
+.build-board .bb-thumb { display: block; width: 56px; height: 56px; box-sizing: border-box; background: #02080a; border: 1px solid var(--bb-line); object-fit: contain; }
 .build-board .bb-key { position: absolute; left: 10px; top: 11px; font-size: 12px; color: var(--bb-dim); }
 .build-board .bb-on .bb-key { color: var(--bb-accent); }
 .build-board .bb-name { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: var(--bb-hi); }

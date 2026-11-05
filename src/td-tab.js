@@ -51,7 +51,7 @@ import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from '.
 import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
-import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js';
+import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js'; import { createHudDim } from './fx/hud-dim.js';
 import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js'; import { REINFORCEMENTS } from './content/reinforcements.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
 import { createCompanions } from './fx/companions.js'; import { createPetPrint } from './fx/pet-print.js'; import { createAntennaPrint } from './fx/antenna-print.js';   // C-07 AND RECKON K9, THE BASE COMPANIONS (owner, 2026-10-27)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
@@ -522,6 +522,7 @@ export function initTdTab(root) {
   container.appendChild(radarEl);
   const radarCtx = radarEl.getContext('2d');
   const hullConsole = createHullConsole(container, { metres: () => METRES_PER_CELL / cellSide });   // the hull's armour, pace and mode over the radar (owner, 2026-10-15/16; src/fx/hull-console.js)
+  const hudDim = createHudDim(root, { mobile: mobileShell });   // the HUD fades unless hovered, desktop only (round 7 note 2, src/fx/hud-dim.js)
   let radarCss = 200;
 
   // even-ish lighting: the walker can be anywhere on the sphere, so no side
@@ -2034,27 +2035,7 @@ export function initTdTab(root) {
     else if (cl.contains('msg-back')) showBriefing();
   });
 
-  // card icons are the ACTUAL half-dotted representations: build the real
-  // object, render one frame through the sprite rig, snapshot to a data
-  // URL, dispose. Cached by key — each icon is rendered once per session.
-  const spriteCache = new Map();
-  function spriteShot(key, build) {
-    if (spriteCache.has(key)) return spriteCache.get(key);
-    const obj = build();
-    const kind = obj.userData.kind;
-    if (kind === 'cloud' || kind === 'orb' || kind === 'portal' || kind === 'triad' || kind === 'heart') {
-      obj.position.y = 0.32; // clouds center on the origin; lift into frame
-    }
-    if (obj.userData.tick) obj.userData.tick(1.3); // a lively mid-anim pose
-    obj.rotation.y += 0.6; // three-quarter view
-    waveScene.add(obj);
-    waveSpriteRenderer.render(waveScene, waveCam);
-    const url = waveSpriteRenderer.domElement.toDataURL();
-    waveScene.remove(obj);
-    disposeObj(obj);
-    spriteCache.set(key, url);
-    return url;
-  }
+  function spriteShot(key, build) { return waveCard.spriteShot(key, build); }   // src/fx/wave-card.js
 
   // the briefing card draws whatever is ACTUALLY at the pole, so the picture
   // can never disagree with the board — the same rule the hostiles glossary
@@ -4104,7 +4085,6 @@ export function initTdTab(root) {
     strikeTune,
     postfx,
     sfx,
-    root,
     applyCreature,
     applyLook,
     applyTowerLook,
@@ -4678,7 +4658,7 @@ export function initTdTab(root) {
   // THE BUILD BOARD (owner, 2026-11-05, round 6 note 2; src/fx/build-board.js): the sector loop's break, on the debrief's CONTINUE: six offers, two picks
   const buildBoard = createBuildBoard({ root, endShot, eco: () => eco, story: () => story, towers: () => towers, orders, placeError, graph: () => graph, cellSide: () => cellSide, orderTower, orderUpgrade, callout: (x, c) => showCallout(x, c), manned: () => laserStation.manned?.() ?? 0, petLife: (i) => companions?.life?.(i) ?? null, printPet: (i) => petPrint?.force(i),
     hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
-    shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) });
+    shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base), spriteShot, towerLook: () => params.towerLook });
   // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
   const endingHost = createEndingHost({
     storyBase: () => storyBase,
@@ -4986,7 +4966,7 @@ export function initTdTab(root) {
         runGen: runContext.generation,
         heart: heartHP,
         hulls: playerHP,
-        biomass: eco.biomass, ledger: eco.ledger, board: buildBoard.state(),   // the ledger by source and the build board (round 6, --ledger, --board)
+        biomass: eco.biomass, ledger: eco.ledger, board: buildBoard.state(), hudDim: hudDim.state(),   // the ledger by source, the build board (round 6, --ledger, --board), the HUD fade (--hud-dim)
         towers: towers.length,
         won: player.won,
         paused,

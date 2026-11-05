@@ -80,5 +80,25 @@ export function createWaveCard(host) {
     nextEl.innerHTML = `<div class="nx-head">NEXT WAVE ${n} · ${when}</div><div class="nx-row">${chips}</div>`;
     nextEl.classList.remove('hidden');
   }
-  return { waveSpriteRenderer, waveScene, waveCam, unit: () => waveUnit, announceWave, updateNextPreview };
+  // card icons are the ACTUAL half-dotted representations: build the real object, render one frame through the sprite rig, snapshot to a
+  // data URL, dispose. Cached by key: each icon is rendered once per session (moved here from src/td-tab.js unchanged, round 7).
+  const spriteCache = new Map();
+  function spriteShot(key, build) {
+    if (spriteCache.has(key)) return spriteCache.get(key);
+    const obj = build();
+    const kind = obj.userData.kind;
+    if (kind === 'cloud' || kind === 'orb' || kind === 'portal' || kind === 'triad' || kind === 'heart') {
+      obj.position.y = 0.32; // clouds center on the origin; lift into frame
+    }
+    if (obj.userData.tick) obj.userData.tick(1.3); // a lively mid-anim pose
+    obj.rotation.y += 0.6; // three-quarter view
+    waveScene.add(obj);
+    waveSpriteRenderer.render(waveScene, waveCam);
+    const url = waveSpriteRenderer.domElement.toDataURL();
+    waveScene.remove(obj);
+    host.disposeObj(obj);
+    spriteCache.set(key, url);
+    return url;
+  }
+  return { waveSpriteRenderer, waveScene, waveCam, unit: () => waveUnit, announceWave, updateNextPreview, spriteShot };
 }

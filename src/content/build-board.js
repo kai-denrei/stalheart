@@ -29,6 +29,9 @@ export const BUILD_BOARD = Object.freeze({
   spare: Object.freeze({ price: 4800, label: 'SPARE HULL', effect: 'one more hull in the bays' }),
   shield: Object.freeze({ price: 3000, label: 'SHIELD CHARGES', effect: 'the rack full of shield charges' }),
   pet: Object.freeze({ price: 1800, fromSector: 2 }),
+  // the cards' wireframe thumbnails (round 7 note 4, src/fx/board-thumbs.js): fitted to `frame` units on the largest side, centred at `centre`
+  // units up, where the sprite rig's camera looks (src/fx/wave-card.js); the dome stands for the shield charges (no model of its own)
+  thumb: Object.freeze({ frame: 1.45, centre: 0.3, dome: 0x9fdcff }),
   words: Object.freeze({
     who: 'COMMS · ISAO', title: 'THE BUILD BOARD',
     line: 'I can build two of these before the next sector. Choose.',

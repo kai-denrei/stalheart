@@ -2854,6 +2854,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const dom=await evaluate(`[...document.querySelectorAll('.build-board .bb-tile')].map(t=>({id:t.dataset.offer,name:t.querySelector('.bb-name').textContent,price:t.querySelector('.bb-price').textContent,effect:t.querySelector('.bb-effect').textContent,disabled:t.disabled}))`);
   assert.equal(dom.length,bd.offers.length,'a tile per offer');assert(dom.every(t=>t.name&&/\d+ kg/.test(t.price)&&t.effect),`every tile has a name, a price and an effect (${JSON.stringify(dom)})`);
   assert(dom.every(t=>t.disabled===(bd.offers.find(o=>o.id===t.id).price>bd.bank)),'a tile the bank cannot buy is disabled');}
+ // round 7 note 4: every tile carries its wireframe thumbnail (src/fx/board-thumbs.js), the GLBs' within 5 s
+ await until(`(()=>{const b=${T}.state().board;return b.thumbs===b.offers.length;})()`,5000).catch(async()=>assert.fail(`every tile has its thumbnail within 5 s (${(await st()).board.thumbs} of ${bd.offers.length})`));
+ {const th=await evaluate(`[...document.querySelectorAll('.build-board .bb-tile')].map(t=>{const i=t.querySelector('img.bb-thumb');return {id:t.dataset.offer,src:(i?.src||'').slice(0,22),w:i?.naturalWidth||0};})`);
+  console.log(`  thumbs: ${th.map(x=>`${x.id} ${x.w}px`).join(' · ')}`);assert(th.every(x=>x.src.startsWith('data:image/png')&&x.w>0),`every thumbnail is a drawn image (${JSON.stringify(th)})`);}
  current='board-open';await finish();if(shots){const sh=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'board-open.png'),Buffer.from(sh.data,'base64'));}
  // the pick: the armory and the cheapest other card, by their keys; a third key is refused
  const idx=(id)=>bd.offers.findIndex(o=>o.id===id)+1,other=bd.offers.filter(o=>o.id!=='build:armory').sort((x,y)=>x.price-y.price)[0];
@@ -2875,6 +2879,41 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`(()=>{const S=${T}.state().sector;for(const b of S.breaches)if(b.live)${T}.sectorClose(b.id,'gunship');${T}.sectorClearField();return S.debriefOpen;})()`,120000).catch(async()=>assert.fail(`sector 2 is held (${JSON.stringify((await st()).sector)})`));
  await delay(800);await evaluate(`${T}.sectorContinue()`);await until(`${T}.state().sector.n===3`,15000);assert.equal((await st()).board.open,false,'the harness continue opens no board');
  current='board-after';await finish();
+ } else if(args.includes('--hud-dim')) {
+ // THE HUD FADES UNLESS HOVERED (owner, 2026-11-05, round 7 note 2; src/fx/hud-dim.js, src/domain/hud-dim.js): sector 1 of a skipped opening on a desktop. Every
+ // dimmed piece rests at 0.2, the radar at 1; the pointer moved over #td-stats lights it to 0.8 within 0.5 s; moved off, it stays 0.8 through the 3 s hold and is
+ // back at 0.2 by 3.6 s; the radar stays at 1 throughout. On the phone shell (?mobile=1) nothing is tagged. SHOTS=<dir> keeps the rest and lit frames.
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
+ const op=(s)=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(s)});return e?+getComputedStyle(e).opacity:null;})()`);
+ const mv=(x,y)=>send('Input.dispatchMouseEvent',{type:'mouseMoved',x:Math.round(x),y:Math.round(y)});
+ const shot=async(n)=>{if(!shots)return;const sh=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,n+'.png'),Buffer.from(sh.data,'base64'));};
+ await go('hud-dim',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=1#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===1`,120000);
+ // a resting point: the first spot down the screen's left third that no tagged piece covers
+ const free=await evaluate(`(()=>{const B=[...document.querySelectorAll('[data-hud]')].map(e=>e.getBoundingClientRect());for(let y=200;y<innerHeight-100;y+=20)for(let x=300;x<innerWidth-300;x+=40)if(!B.some(b=>x>=b.left-4&&x<=b.right+4&&y>=b.top-4&&y<=b.bottom+4))return {x,y};return null;})()`);
+ assert(free,'a spot on the screen no HUD piece covers');await mv(free.x,free.y);await delay(900);
+ const h0=(await st()).hudDim,radar=[];console.log(`  hud dim: on ${h0.on}, ${h0.tagged} pieces; ${JSON.stringify(h0.opacity)}`);
+ assert(h0.on,'the fade is on, on a desktop');assert(h0.tagged>=8,`the pieces are tagged (${h0.tagged})`);
+ for(const [s,v] of Object.entries(h0.opacity))if(v!=null)assert(Math.abs(v-0.2)<0.01,`${s} rests at 0.2 (${v})`);
+ radar.push(await op('#tab-td .minimap'));await shot('hud-rest');
+ const box=await evaluate(`(()=>{const r=document.querySelector('#td-stats').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height};})()`);
+ assert(box.w>0&&box.h>0,`#td-stats is on screen (${JSON.stringify(box)})`);
+ await mv(box.x,box.y);const t0=Date.now();await until(`document.querySelector('#td-stats').classList.contains('hud-lit')`,500).catch(async()=>assert.fail(`#td-stats is lit within 0.5 s of the pointer (${await op('#td-stats')})`));
+ await until(`+getComputedStyle(document.querySelector('#td-stats')).opacity>0.79`,800).catch(async()=>assert.fail(`#td-stats reaches 0.8 by the end of its .35 s fade (${await op('#td-stats')})`));
+ const lit=Date.now()-t0;radar.push(await op('#tab-td .minimap'));await shot('hud-lit');
+ assert(Math.abs((await op('#td-wave'))-0.2)<0.01||(await op('#td-wave'))==null,'only the hovered piece lights');
+ await mv(free.x,free.y);const t1=Date.now();await delay(2600);const held=await op('#td-stats');radar.push(await op('#tab-td .minimap'));
+ assert(held>0.79,`still lit 2.6 s after the pointer left (${held})`);
+ await delay(Math.max(0,3600-(Date.now()-t1)));const back=await op('#td-stats');radar.push(await op('#tab-td .minimap'));
+ assert(Math.abs(back-0.2)<0.01,`back at 0.2 by 3.6 s (${back})`);
+ assert(radar.every(v=>v===1),`the radar stays at full throughout (${radar})`);
+ console.log(`HUD DIM: rest 0.2, lit in ${lit} ms, held ${held} at 2.6 s, back ${back} at 3.6 s; radar ${radar.join('/')}`);
+ current='hud-dim';await finish();
+ await go('hud-dim-phone',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=1&mobile=1#td`,844,390);
+ await until(`!!${T} && ${T}.state().sector?.n===1`,120000);
+ {const h=(await st()).hudDim,n=await evaluate(`document.querySelectorAll('[data-hud]').length`),c=await evaluate(`document.querySelector('#tab-td').classList.contains('hud-dim')`);
+  console.log(`  phone: on ${h.on}, tagged ${n}, class ${c}`);assert(!h.on&&n===0&&!c,'the phone shell keeps its HUD at full');}
+ current='hud-dim-phone';await finish();
  } else if(args.includes('--voice-rate')) {
  // ISAO'S RATE (owner, 2026-10-13: "make him speak less often. Sometimes a line is triggered, sometimes it's silence"): a sector from its
  // start with the voice log. Every moment asked of him (src/fx/isao-voice.js isaoSay.asked) and every line said (isaoSay.log), against

@@ -3,7 +3,7 @@
 // The controller creates the GUI (the vendor import stays there) and hands it in; this returns the three controls it refreshes
 // (viewCtrl, directiveCtrl, seedCtrl).
 // `host` hands in the controller's fixed objects and functions as values (params, DIRECTIVES, HEART_LOOKS, PLASMA, TYPE, strikeTune,
-// postfx, sfx, root, applyCreature, applyLook, applyTowerLook, regenerate, setView, syncCalloutMode, syncDirectiveChip) and the
+// postfx, sfx, applyCreature, applyLook, applyTowerLook, regenerate, setView, syncCalloutMode, syncDirectiveChip) and the
 // plasma plume it rebinds as a getter (plasma).
 import { UNIT_NAMES } from '../units.js';
 import { LOOK_NAMES } from '../looks.js';
@@ -140,25 +140,8 @@ export function createDevPanel(gui, host) {
   soundF.add(soundState, 'tank', 0, 1, 0.01).onChange((v) => host.sfx.setBus('tank', v));
   soundF.add(soundState, 'enemies', 0, 1, 0.01).onChange((v) => host.sfx.setBus('enemies', v));
   soundF.add(soundState, 'ui', 0, 1, 0.01).onChange((v) => host.sfx.setBus('ui', v));
-  const muteCtrl = soundF.add(soundState, 'mute').onChange((v) => { host.sfx.setMute(v); syncSoundChip(); });
-
-  // the pad button and the panel toggle are one state, two surfaces
-  const soundBtn = host.root.querySelector('#td-pad-sound');
-  function syncSoundChip() {
-    if (soundBtn) {
-      soundBtn.textContent = host.sfx.muted ? '\u2298' : '\u266A';   // off / on, monochrome
-      soundBtn.classList.toggle('on', !host.sfx.muted);
-    }
-  }
-  if (soundBtn) {
-    soundBtn.addEventListener('click', () => {
-      host.sfx.setMute(!host.sfx.muted);
-      soundState.mute = host.sfx.muted;
-      muteCtrl.updateDisplay();
-      syncSoundChip();
-    });
-  }
-  syncSoundChip();
+  // the mute lives here only: the HUD's sound chip went in round 7 (owner: "the user can do that in their system")
+  soundF.add(soundState, 'mute').onChange((v) => host.sfx.setMute(v));
 
   // phones: start with the panel folded so the maze isn't buried
   if (matchMedia('(pointer: coarse), (max-width: 700px)').matches) gui.close();
