@@ -36,7 +36,7 @@ import { createGameSeat } from './boss/game-seat.js';
 import { createGameCam } from './boss/game-cam.js';
 import { createLabHandle } from './boss/handle.js';
 import { createWave } from './boss/wave.js';
-import { createRemains } from './boss/remains.js';
+import { createRemains } from '../fx/boss-carcass/remains.js';
 import { createLabSinkhole } from './boss/sinkhole.js';
 import { createCutisScenario } from './boss/cutis-scenario.js';
 import { settingsBlock, folderGroups } from './boss/settings-copy.js';
@@ -389,7 +389,7 @@ export function initBossTab(root) {
   }
   const round = createRound(stage, {
     tune: () => fightTune, fight: () => fight, on: () => fightOn.fight, cardExtra: () => bait.cardText(), wave: () => (waving() ? wave.bar() : null),
-    remains: () => remains.stage(),   // the dead boss's carcass's stage after KILLED (./boss/remains.js)
+    remains: () => remains.stage(),   // the dead boss's carcass's stage after KILLED (src/fx/boss-carcass/remains.js)
     onKilled: () => (CUTIS ? wave.killed() : dieV1()), onLost: () => {}, onReset: () => { resetDue = 0; },
   });
   // THE BAIT MODE (./boss/bait.js, the rules in src/domain/boss-bait.js): Isao flies low on autopilot with the creature after him, a bar under
@@ -444,7 +444,7 @@ export function initBossTab(root) {
     camera: () => cam, extentOf: nativeExtent, onError: (m) => { frameError = m; frameErrorAt = t; },
     gate: () => sinkhole.who() === 'reeds' && sinkhole.ready(), hole: () => sinkhole.radius(), hot: () => seat.thermal(), local: sphereLocal,
   });
-  // THE BOSS'S CARCASS (./boss/remains.js; owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass ... 'stages of
+  // THE BOSS'S CARCASS (src/fx/boss-carcass/remains.js; owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass ... 'stages of
   // destruction' for the dead boss? limbs getting cut, parts disappearing in explosion"): in the bait mode, `bossCarcass.settle` s after KILLED the collapsed body
   // becomes a tentacle carcass the seat's rounds take apart (the skin fades out, its solver stops); R gives the living boss back
   const remains = createRemains({ group: sphere, tune: () => fightTune, now: () => t, hot: () => seat.thermal(), ground: (x, z) => tankWorld(x, z), local: sphereLocal });

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 // THE NIH-DAIRIA FAMILY'S BODIES (src/fx/creature-reed.js) on the real kit and cage, in Node: made a batch a frame once the cage is in, a body
 // in a frame of its own following its record across re-anchors, drawn on the sphere under it whatever the bodies' root's transform, re-placed
-// past the leash, the v1 death (collapse, then sink and fade, then gone), the 120 Hz switch, the budget's slow-down (off for the probe)
+// past the leash, the v1 death (collapse, then sink and fade, then gone; the led mother's carcass instead, 2026-11-05), the 120 Hz switch, the budget's slow-down (off for the probe)
 const root = new URL('../', import.meta.url);
 globalThis.document ??= { baseURI: root.href };
 const realFetch = globalThis.fetch;
@@ -15,6 +15,7 @@ globalThis.fetch = async (u) => {
 const THREE = await import('../vendor/three.module.js');
 const { createReedFamily } = await import('../src/fx/creature-reed.js');
 const { CREATURE_TIERS, CREATURE_FOLLOW, CREATURE_REED } = await import('../src/content/creature-enemies.js');
+const { BOSS_FIGHT } = await import('../src/content/boss-fight.js');
 const { surfaceFrame, fromPlane, toPlane } = await import('../src/domain/surface-projection.js');
 
 const R = 753, f0 = surfaceFrame([0.3, 0.9, 0.1]), tick = () => new Promise((r) => setTimeout(r, 5));
@@ -141,6 +142,31 @@ two.forEach((h) => tight.free(h)); tight.dispose();
   for (let k = 0; k < 120; k++) { famL.track(boss, { pos: far, apos: at(...prey), lift: 0, dt: 1 / 60, led: true }); famL.step(1 / 60); }
   const s1 = local(famL.body(boss).point); assert.ok(Math.hypot(s1[0] - s0[0], s1[1] - s0[1]) < mean, `stunned, it does not walk on (${Math.hypot(s1[0] - s0[0], s1[1] - s0[1]).toFixed(2)} m in 2 s)`);
   famL.kill(boss); assert.equal(famL.body(boss), null, 'dead: none');
-  famL.dispose(); }
+  // THE MOTHER'S CARCASS (owner, 2026-11-05, round 5 note 7: "leave its corpse for longer: intact, with only one leg cut"; CREATURE_REED.remains): the led body,
+  // collapsed, is laid as the lab's carcass where it fell, ONE leg cut at its root (the stump kept), the skin faded out and the kit gone, then it lies: no sink, no
+  // fade, no crumble, however long; its warmth in the gunship's thermal its own (ownHeat) and cooling
+  assert.equal(famL.carcass(), null, 'no carcass while she collapses');
+  const RM = CREATURE_REED.remains, BC = BOSS_FIGHT.bossCarcass;
+  for (let k = 0; k < Math.ceil(60 * CREATURE_REED.collapse) + 1; k++) famL.step(1 / 60);
+  const rm = famL.carcass(); assert.ok(rm, `laid once collapsed (${CREATURE_REED.collapse} s)`);
+  let cs = rm.state(); const legs = cs.limbs, segs = cs.pieces.filter((p) => p.kind === 'segment'), perLimb = segs.filter((p) => p.limb === segs[0].limb).length;
+  assert.ok(legs >= 4, `the mother's limbs (${legs})`); assert.equal(cs.cut, 1, `one leg cut (${cs.cut})`); assert.equal(cs.severed.length, 1, 'one piece cut off');
+  const cutLimb = cs.severed[0].limb, onLeg = segs.filter((p) => p.limb === cutLimb);
+  assert.deepEqual(cs.severed[0].js, onLeg.slice(1).map((p) => p.j), 'cut at its root: every segment but the first');
+  assert.equal(onLeg[0].state, 'whole', 'the stump stays on the body'); assert.ok(segs.filter((p) => p.limb !== cutLimb).every((p) => p.state === 'whole'), 'every other leg whole');
+  assert.equal(cs.queued, 0, 'the cut piece never crumbles'); assert.equal(cs.label, 'LIMBS SEVERED 1/' + legs);
+  assert.equal(rm.handoff().tone, RM.tone, 'one grey, the dead grey'); assert.equal(rm.handoff().moved.length, 1, 'the cut piece\'s resting place in the handoff');
+  for (let k = 0; k < Math.ceil(60 * (BC.fade + BOSS_FIGHT.bossCarcass.sever.time)) + 2; k++) famL.step(1 / 60);
+  cs = rm.state(); assert.ok(cs.faded && !cs.skin && cs.opacity === 1, `the skin faded out, the carcass whole (${JSON.stringify({ faded: cs.faded, skin: cs.skin, opacity: cs.opacity })})`);
+  assert.equal(famL.view(boss).gone, true, 'her kit gone (no solver, no skin)'); assert.equal(cs.hops, 0, 'the cut piece landed');
+  const landed = JSON.stringify(cs.pieces.map((p) => p.own)), mat = rm.handoff().toWorld.join();
+  famL.thermal(true); famL.step(1 / 60); const warm0 = famL.roots()[0].getObjectByName('Nih-Dairia carcass').material;
+  assert.ok(warm0.userData.ownHeat && warm0.emissive.r > 0, 'warm in the thermal, its own heat');
+  for (let k = 0; k < 60 * 130; k += 6) famL.step(6 / 60);
+  cs = rm.state(); assert.ok(famL.carcass(), 'still lying after 130 s'); assert.ok(warm0.emissive.r < 1e-3, `cooled over ${BC.cool} s (${warm0.emissive.r})`);
+  assert.ok(cs.opacity === 1 && cs.pieces.every((p) => p.kind === 'chunk' || p.state === 'whole' || p.state === 'severed'), 'no fade, nothing gone');
+  assert.equal(JSON.stringify(cs.pieces.map((p) => p.own)), landed, 'nothing moved'); assert.equal(rm.handoff().toWorld.join(), mat, 'no sink');
+  console.log(`  the mother's carcass: ${legs} legs of ${perLimb} pieces, leg ${cutLimb} cut at its root (${cs.severed[0].js.length} pieces off), ${cs.tris} triangles, lying after 130 s`);
+  famL.dispose(); assert.equal(famL.carcass(), null, 'gone with the family'); }
 globalThis.fetch = realFetch;
 console.log('Creature Reeds: made a batch a frame, each in a frame of its own following its record across re-anchors, drawn on the sphere, re-placed past the leash, the v1 death, 120 Hz when many, the budget.');

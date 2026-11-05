@@ -1,5 +1,5 @@
 // A dead Reed's carcass as a pure rule (owner, 2026-10-10: "the low-poly reeds carcasses are too low poly, they look blocky. can we have them more simple
-// renditions of tentacles? barebone tentacles, and they disintegrate with further explosions or time"). The lab (src/labs/boss/carcass.js) draws each limb as a
+// renditions of tentacles? barebone tentacles, and they disintegrate with further explosions or time"). The lab (src/labs/boss/carcass.js, its tubes src/fx/boss-carcass/tube.js) draws each limb as a
 // tapered tube in `segments` pieces along a curve through the limb's node rings, with a core blob where the limbs join; these rules say which nodes make which
 // ring, when each piece crumbles with time, which pieces an impact breaks and how a broken piece flies.
 //
@@ -11,13 +11,13 @@
 // falling and tumbling, whole a while and then shrinking to nothing by `fling.time` s. `carcassLook`: the whole carcass by its age, darkened, sunk and cooled over `decay` s, then gone.
 // THE BOSS'S CARCASS (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass, what would it take to create 'stages of
 // destruction' for the dead boss? limbs getting cut, parts disappearing in explosion, etc."; option A: the Reeds' carcass scaled up, with a severing rule and
-// multi-hit stages; the lab src/labs/boss/remains.js). `carcassDamage`: what a round does to it (`bossCarcass.damage[kind]`: a radius, a cap and hit points a
+// multi-hit stages; the lab src/fx/boss-carcass/remains.js). `carcassDamage`: what a round does to it (`bossCarcass.damage[kind]`: a radius, a cap and hit points a
 // target, 0 the destroying MK-9). `blastBreaks` with `reach` (each target's own radius on the plane: the core is metres wide) gives the targets a round reaches.
 // `severance`: a limb's segments root to tip, some breaking now: every segment still whole beyond the first break is cut off, in runs (a whole segment between two
 // breaks is its own piece). `hopOf` / `hopPose`: a severed piece (or a chunk of the cracked core) hops and slides away from the cut and settles where it lands,
 // turned about the up axis and rocked on the way. `coreChunks`: the cracked core's chunks (3-5, seeded). `severedCrumble`: a severed piece's segments crumble
 // tip first across `crumble.span` s. `charOf`: a hurt target's share toward char. `carcassStage` / `stageLabel`: the carcass's stage, INTACT, LIMBS SEVERED
-// n/N, CORE CRACKED, SCORCHED, never going back.
+// n/N, CORE CRACKED, SCORCHED, never going back. `legToCut`: the leg the game's carcass loses at the lay (note 7, 2026-11-05).
 // Local metres on the frame's plane [x, z] for the impacts and the centres; the rest positions are the kit's native units. Imports nothing.
 
 // a small seeded generator (mulberry32): a function giving numbers in [0, 1)
@@ -187,3 +187,15 @@ export function carcassStage(prev, f) {
 }
 // the stage as the bar row reads it: LIMBS SEVERED with the limbs cut of all (`f.cut`, `f.limbs`)
 export const stageLabel = (stage, f) => (stage === 1 ? `${STAGES[1]} ${f.cut}/${f.limbs}` : STAGES[stage]);
+
+// THE ONE LEG CUT (owner, 2026-11-05, round 5 note 7: "leave its corpse for longer: intact, with only one leg cut"; src/fx/boss-carcass/remains.js cutLeg): the
+// leg the game cuts at the lay, from the carcass's chain ({ core [x, y, z], limbs: [{ limb, points [[x, y, z]] }] }, native units): the one lying furthest out (its
+// tip's distance from the core on the ground plane), so the cut reads; -1 for a chain with no limb
+export function legToCut(chain) {
+  let best = -1, far = -1;
+  for (const { limb, points } of chain?.limbs ?? []) {
+    const tip = points[points.length - 1], d = Math.hypot(tip[0] - chain.core[0], tip[2] - chain.core[2]);
+    if (d > far) { far = d; best = limb; }
+  }
+  return best;
+}

@@ -1,12 +1,12 @@
 // boss-carcass-stages.mjs — the dead boss's carcass taken apart in stages (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at
 // its carcass ... 'stages of destruction' for the dead boss? limbs getting cut, parts disappearing in explosion, etc."; src/domain/boss-carcass.js, the lab
-// src/labs/boss/remains.js): the boss's own limbs by the kit's rule, each gun's harm, the segments a break cuts off, the hop of a cut-off piece and of the core's
+// src/fx/boss-carcass/remains.js): the boss's own limbs by the kit's rule, each gun's harm, the segments a break cuts off, the hop of a cut-off piece and of the core's
 // chunks, a severed piece's crumble, the char and the stage machine; then a carcass of six limbs played through by the rules alone: three 40 mm landings on one
 // limb's middle cut it, an MK-9 on the core cracks it, fire on what is left reaches SCORCHED.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
-import { limbRings, blastBreaks, carcassDamage, severance, hopOf, hopPose, coreChunks, severedCrumble, charOf, carcassStage, stageLabel, STAGES } from '../src/domain/boss-carcass.js';
+import { limbRings, blastBreaks, carcassDamage, severance, hopOf, hopPose, coreChunks, severedCrumble, charOf, carcassStage, stageLabel, STAGES, legToCut } from '../src/domain/boss-carcass.js';
 
 const B = T.bossCarcass, K = B.chain.segments;
 const MIN_SEGS = 12, MAX_SEGS = 14;   // the owner's brief: "more segments per limb for its size, e.g. 12-14"
@@ -55,6 +55,11 @@ let limbsLine = '';
   assert.deepEqual(severance(W(8), new Set([2, 5])), [[3, 4], [6, 7]], 'two breaks: two pieces');
   assert.deepEqual(severance(['whole', 'whole', 'gone', 'severed', 'severed'], new Set([1])), [], 'what is already off is not cut again');
   assert.deepEqual(severance(['whole', 'severed', 'severed'], new Set([1])), [], 'a break on a severed piece cuts nothing');
+  // THE ONE LEG CUT (2026-11-05, note 7): at the root, everything beyond the first segment; the leg cut is the one lying furthest out
+  assert.deepEqual(severance(W(13), new Set([0])), [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]], 'cut at the root: the whole leg but the stump');
+  const leg = (limb, tip) => ({ limb, points: [[0, 0, 0], tip] });
+  assert.equal(legToCut({ core: [1, 0, 1], limbs: [leg(0, [3, 0, 1]), leg(2, [1, 9, -4]), leg(5, [-2, 0, 1])] }), 2, 'the leg lying furthest out on the ground plane (height ignored)');
+  assert.equal(legToCut({ core: [0, 0, 0], limbs: [] }), -1, 'no leg: none');
 }
 
 // the hop: away from the cut, up and down again, turned, settled; a chunk ends on the ground

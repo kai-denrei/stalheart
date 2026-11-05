@@ -1765,6 +1765,44 @@ try{
   assert.deepEqual(s.sector.nest,{cell:s.arena.cell,open:true},`the arena's hole open after another opening (${JSON.stringify(s.sector.nest)})`);assert.equal(s.breachRubble?.caps??0,caps0,'no rubble cap laid');
   assert.ok(!(await evaluate('document.querySelector("#td-callouts")?.textContent||""')).includes('THE OLD BREACH CAVES IN'),'no "THE OLD BREACH CAVES IN"');}
  current='arena-nest-open';await finish();
+ } else if(args.includes('--arena-carcass')) {
+ // THE MOTHER'S CARCASS (owner, 2026-11-05, round 5 note 7: "when we kill Nih-Dairia, leave its corpse for longer: intact, with only one leg cut"; CREATURE_REED.remains,
+ // src/fx/boss-carcass/remains.js): THE ARENA on at once (?boss=1), the mother up, the gun taken, killed through the damage path; once collapsed she lies as the
+ // lab's carcass where she fell, ONE leg cut at its root, the skin faded out; a frame of her about 10 s after the lay and about 60 s after it (past the debrief, on
+ // BOTH WALLS: the carcass's own clock), the same carcass in both: nothing gone, nothing moved, no sink
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {SECTOR_DOOR}=await import('../src/content/sectors.js'), {CREATURE_REED}=await import('../src/content/creature-enemies.js'), {BOSS_FIGHT}=await import('../src/content/boss-fight.js');
+ const C=`${T}.creatures.carcass()`, look=(cell)=>evaluate(`(document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>"),${T}.showcase.ground(${cell},10,12))`);
+ await go('arena-carcass-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().boss.on && ${T}.state().boss.phase==='beacon'`,60000).catch(async()=>assert.fail(`the beacon phase (${JSON.stringify((await st()).boss)})`));
+ await evaluate(`${T}.arenaNow()`);
+ await until(`${T}.state().boss.card`,90000).catch(async()=>assert.fail(`THE MOTHER's card (${JSON.stringify((await st()).boss)})`));
+ await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');
+ await until(`!${T}.state().boss.card&&!${T}.state().paused`,10000);
+ const cell=await evaluate(`(${T}.aliveBodies().find(e=>e.tier==='huge')||{}).cur??-1`);assert.ok(cell>=0,`her record's cell (${cell})`);
+ assert.equal(await evaluate(C),null,'no carcass before her death');
+ assert.ok(await evaluate(`${T}.damageBoss(999)`)!=null,'the boss hit through damageEnemy');
+ await until(`!!${C}`,(CREATURE_REED.collapse+10)*1000).catch(async()=>assert.fail(`her carcass laid once she has collapsed (${JSON.stringify((await st()).creatureProbe?.bodies?.families?.reed?.huge)})`));
+ await until(`${C}.faded&&${C}.hops===0`,15000).catch(async()=>assert.fail(`the skin faded out and the cut leg landed (${JSON.stringify(await evaluate(C))})`));
+ const c0=await evaluate(C),segs=c0.pieces.filter(p=>p.kind==='segment'),cutLimb=c0.severed[0]?.limb,huge=(await st()).creatureProbe?.bodies?.families?.reed?.huge;
+ console.log(`  laid: ${c0.limbs} legs, ${c0.label}, leg ${cutLimb} cut (${c0.severed[0]?.js.length} pieces off), ${c0.tris} triangles, age ${c0.age.toFixed(1)} s; the family's books ${JSON.stringify({made:huge?.made,dying:huge?.dying,deaths:huge?.deaths})}`);
+ assert.equal(c0.cut,1,'one leg cut');assert.equal(c0.severed.length,1,'one piece cut off');assert.equal(c0.queued,0,'it never crumbles');
+ assert.ok(segs.filter(p=>p.limb!==cutLimb).every(p=>p.state==='whole')&&segs.find(p=>p.limb===cutLimb&&p.j===0)?.state==='whole','every other leg whole, the stump on the body');
+ assert.ok(c0.faded&&!c0.skin&&c0.opacity===1,'the skin gone, the carcass whole');assert.equal(huge?.made??0,0,'her kit gone');assert.equal(huge?.dying??0,0,'nothing left dying: no sink, no fade');
+ // the frames through the showcase's ground shot, which holds the story still while it is up: taken, then let go (the carcass's clock is the family's)
+ await until(`${C}.age>=10`,40000).catch(async()=>assert.fail(`the carcass's clock runs (${JSON.stringify(await evaluate(`(c=>c&&{age:c.age})(${C})`))})`));
+ await look(cell);await delay(1500);
+ {const c=await evaluate(C);console.log(`  frame at ${c.age.toFixed(1)} s after the lay`);current='arena-carcass-10s';await finish();}
+ await evaluate(`${T}.showcase.follow()`);
+ // on to BOTH WALLS past the debrief: the carcass's clock runs with the game's
+ await until(`${T}.state().sector.debriefOpen||['debrief','finale','campaign'].includes(${T}.state().sector.phase)`,90000).catch(()=>console.log('  (no debrief seen within 90 s)'));
+ await evaluate(`${T}.sectorContinue()`);
+ await until(`${T}.state().sector.n===${SECTOR_DOOR.earliest+2}`,30000).catch(async()=>assert.fail(`BOTH WALLS begins (${JSON.stringify((await st()).sector)})`));
+ await until(`${C}?.age>=60`,120000).catch(async()=>assert.fail(`the carcass is still there 60 s after the lay (${JSON.stringify(await evaluate(`(c=>c&&{age:c.age})(${C})`))})`));
+ await look(cell);await delay(2000);
+ {const c=await evaluate(C);console.log(`  on BOTH WALLS, ${c.age.toFixed(1)} s after the lay: ${c.label}, opacity ${c.opacity}`);
+  assert.equal(JSON.stringify(c.pieces.map(p=>[p.state,p.own])),JSON.stringify(c0.pieces.map(p=>[p.state,p.own])),'the same carcass: nothing gone, nothing moved');assert.equal(c.opacity,1,'no fade');
+  current='arena-carcass-60s';await finish();}
  } else if(args.includes('--arena-fight')) {
  // THE ARENA FIGHT ON THE LAB'S ENGINE (owner, 2026-10-23: "the Nih-Dairia fight; there is a well-tuned version in the lab and we keep reproducing something that does
  // not work. a) not enough nukes on the gunship, b) nih-dairia aggro is different, c) the whole idea is the monster aggro on the tank, acting as a lure, and it leaves
@@ -4351,7 +4389,7 @@ const killReal=(Date.now()-t0)/1000;
    firedInKill:k.seat.shots.rotary-r0,firingSeconds:+((k.seat.shots.rotary-r0)/GUNSHIP_GUNS.rotary.rate).toFixed(1),hpPerFiringSecond:+(k.max/((k.seat.shots.rotary-r0)/GUNSHIP_GUNS.rotary.rate)).toFixed(2),nominalDps:BOSS_FIGHT.rotary.dps,
    hitShare:+(k.max/((k.seat.shots.rotary-r0)*GUNSHIP_GUNS.rotary.damage)).toFixed(2)}));
  // the KILLED card holds five seconds, with Isao's hit points on it; the trigger is still held: it fires nothing while the body collapses, and again once its carcass lies
- // (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass"; src/labs/boss/remains.js, --boss-carcass)
+ // (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass"; src/fx/boss-carcass/remains.js, --boss-carcass)
  const h0=Date.now();let held=0,heldSeat=true;const fired0=(await evaluate(S)).seat.shots.rotary;let fired1=fired0,lying=false;
  while(Date.now()-h0<5000){const s=await evaluate(S);heldSeat=heldSeat&&s.seat.held;assert.equal(s.phase,'killed','the creature stays dead');if(!lying&&await evaluate(`!!${B}.remains()`)){lying=true;fired1=s.seat.shots.rotary;}assert(/KILLED/.test(s.card??'')&&/Isao (\d+\/\d+|down)/.test(s.card),`the KILLED card holds, Isao on it (${s.card})`);held++;await delay(250);}
  const fired2=(await evaluate(S)).seat.shots.rotary;
@@ -4946,7 +4984,7 @@ const killReal=(Date.now()-t0)/1000;
  } else if(args.includes('--boss-carcass')) {
  // THE DEAD BOSS'S CARCASS IN STAGES (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass, what would it take to
  // create 'stages of destruction' for the dead boss? limbs getting cut, parts disappearing in explosion, etc."; option A: the Reeds' carcass scaled up;
- // src/labs/boss/remains.js, src/domain/boss-carcass.js). The bait mode with no wave (the boss at once), killed through the handle: nothing for `settle` s while it
+ // src/fx/boss-carcass/remains.js, src/domain/boss-carcass.js). The bait mode with no wave (the boss at once), killed through the handle: nothing for `settle` s while it
  // collapses, then the carcass is laid (six limbs of `chain.segments` pieces round a core) while the skin fades out over `fade` s and is hidden, the solver
  // stopped; the bar row reads INTACT. Three 40 mm landings or more on one limb's middle: nothing breaks before the third (each segment `segmentHp`), then the
  // limb is cut and its outer piece hops away (its pieces 2 m or more from where they lay) and lies, LIMBS SEVERED n/6. An MK-9 on the core cracks it into 3-5

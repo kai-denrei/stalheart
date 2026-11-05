@@ -29,7 +29,12 @@
 // every body's clock runs slower alike, the lab's wave budget); the probe passes `budget: null` and measures the true cost.
 //
 // THE DEATH (the v1 death, the boss lab's): its motion off, the gravity up, it collapses `collapse` s; then its solver stops and it sinks
-// and fades over `fade` s, and its body goes. No carcasses in the game for now.
+// and fades over `fade` s, and its body goes. THE MOTHER'S CARCASS (owner, 2026-11-05, round 5 note 7: "when we kill Nih-Dairia, leave its corpse for longer:
+// intact, with only one leg cut"; CREATURE_REED.remains): a body-led one (THE ARENA's boss) collapsed is laid as the boss lab's carcass instead
+// (src/fx/boss-carcass/remains.js, from its collapsed nodes, in the family's group: the scene's own coordinates, so nothing re-anchors it), one grey, ONE leg cut at
+// its root (src/domain/boss-carcass.js legToCut: the one lying furthest out), its skin cross-fading out over the lab's `fade`; then the kit goes (no solver, no
+// skin) and the carcass lies until the family is disposed. One mesh, no collider: the hull's road is never blocked by it. `carcass()` hands it out (the
+// harness, THE DESCENT's handoff); `thermal(on)` cools it in the gunship's thermal as the lab's.
 import * as THREE from '../../vendor/three.module.js';
 import { createNihDairia, loadMonsterCage } from './nih-dairia/creature.js';
 import { PHYS } from './nih-dairia/constants.js';
@@ -39,6 +44,9 @@ import { CREATURE_REED } from '../content/creature-enemies.js';
 import { surfaceFrame, carryFrame, toPlane, fromPlane } from '../domain/surface-projection.js';
 import { waveStep } from '../domain/boss-wave.js';
 import { cageCopy, shiftKit } from './nih-dairia-kit.js';
+import { createRemains } from './boss-carcass/remains.js';
+import { legToCut } from '../domain/boss-carcass.js';
+import { BOSS_FIGHT } from '../content/boss-fight.js';
 
 const STEP = PHYS.step;   // the kit's fixed step (1/240 s): its stepper counts in these
 const COST0 = 0.6;        // ms a body's step costs before one is measured (the boss lab's)
@@ -69,6 +77,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
   const target = new THREE.Vector3(), basis = new THREE.Matrix4(), ex = new THREE.Vector3(), ey = new THREE.Vector3(), ez = new THREE.Vector3();
   let R = 0, clock = 0, cost = COST0, rate = STEP, timeScale = 1, solverMs = 0, stepsNow = 0, stepped = 0, perBody = 0, meanMs = 0;
   let switches = 0, reanchors = 0, errors = 0, lastError = null, disposed = false;
+  let remains = null, hot = false;   // THE MOTHER'S CARCASS (made at the first lay), the gunship's thermal on
 
   function book(key) {
     let b = books.get(key);
@@ -166,6 +175,15 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     drop(h);
   }
 
+  // THE MOTHER'S CARCASS: laid from the collapsed nodes where she is drawn (her outer and inner groups in one matrix), one leg cut
+  function lay(h) {
+    remains ??= createRemains({ group, tune: () => BOSS_FIGHT, now: () => clock, hot: () => hot, ground: null });
+    h.outer.updateMatrix(); h.inner.updateMatrix();
+    remains.lay(h.kit, h.outer.matrix.clone().multiply(h.inner.matrix), h.s, 1, h.deadAt, { tone: K.remains.tone });
+    remains.cutLeg(legToCut(remains.handoff().chain), { crumble: K.remains.crumble });
+    h.laid = true; h.kit.mesh.castShadow = false;
+  }
+
   // drawn through its own frame on the sphere under its centre (see A FRAME OF ITS OWN), lowered by the record's lift and the death's sink
   function place(h) {
     const c = h.kit.motion.center, p = fromPlane(h.frame, c.x * h.s, c.z * h.s, R), tf = carryFrame(h.frame, p);
@@ -198,6 +216,8 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     timeScale = budget && need > budget ? budget / need : 1;
     let ms = 0, steps = 0, n = 0;
     for (const h of [...bodies]) {
+      if (h.dead && h.led && K.remains?.on && !h.laid && clock - h.deadAt >= K.collapse) lay(h);   // the mother collapsed: her carcass, the solver stopped
+      if (h.laid) { if (remains?.state()?.faded) { remains.release(); drop(h); } continue; }   // her skin faded out: the kit goes, the carcass stays
       if (h.dead && !h.fading && clock - h.deadAt >= K.collapse) {   // collapsed: the solver stops, it sinks and fades
         h.fading = true; h.kit.mesh.castShadow = false;
         const mat = h.kit.mesh.material; mat.transparent = true; mat.depthWrite = false; mat.needsUpdate = true;
@@ -223,6 +243,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
       }
       place(h);
     }
+    remains?.step();
     if (steps > 0) cost = cost * 0.9 + (ms / steps) * 0.1;
     solverMs = ms; stepsNow = steps; stepped = n;
     meanMs = meanMs * 0.9 + ms * 0.1;
@@ -272,6 +293,9 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
       return { tier: h.key, variant: h.def.variant, point: made ? fromPlane(h.frame, c.x * h.s, c.z * h.s, R) : h.pos, radius: h.r0, made, active: made && !h.dead, dead: h.dead, gone: h.gone,
         deflate: h.dead ? clamp01(k / K.collapse) : 0, opacity: h.fading ? 1 - clamp01((k - K.collapse) / K.fade) : 1, lift: h.lift, stage: made ? h.kit.motion.state : 'making', hz: hzOf(h.def) };
     },
-    dispose() { disposed = true; for (const h of [...bodies, ...pending]) drop(h); pending.length = 0; parent.remove(group); },
+    // THE MOTHER'S CARCASS (2026-11-05): the remains (src/fx/boss-carcass/remains.js: state(), handoff()) while one lies, else null; the gunship's thermal
+    carcass: () => (remains?.present() ? remains : null),
+    thermal(on) { hot = !!on; },
+    dispose() { disposed = true; for (const h of [...bodies, ...pending]) drop(h); pending.length = 0; remains?.clear(); parent.remove(group); },
   };
 }

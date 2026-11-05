@@ -178,7 +178,7 @@ export const BOSS_FIGHT = freeze({
       blast: { rotary: { radius: 3, cap: 3 }, bofors: { radius: 8, cap: 0 }, nuke: { radius: 0, cap: 0 } },
       fling: { time: 0.8, whole: 0.4, speed: 18, up: 12, gravity: 30, spin: 9 } } },
   // THE BOSS'S CARCASS (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass ... 'stages of destruction' for the dead
-  // boss? limbs getting cut, parts disappearing in explosion, etc."; option A, the Reeds' carcass scaled up; src/domain/boss-carcass.js, src/labs/boss/remains.js):
+  // boss? limbs getting cut, parts disappearing in explosion, etc."; option A, the Reeds' carcass scaled up; src/domain/boss-carcass.js, src/fx/boss-carcass/remains.js):
   // in the bait mode the dead boss collapses `settle` s, then its skin fades out over `fade` s while the carcass fades in, built as a Reed's (`wave.carcass.chain`)
   // with `chain` over it: more pieces a limb, thicker tubes, a fuller core. No time decay: it lies until R, only fire takes it apart; its warmth in the thermal
   // cools over `cool` s. Each limb segment has `segmentHp`, the core `coreHp`, each of its chunks `chunkHp`; a round (`damage[kind]`: `radius` m, 0 the round's own;

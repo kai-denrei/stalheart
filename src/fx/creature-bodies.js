@@ -243,6 +243,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     // THE BODY OWNS HER POSITION (2026-10-23): a record's body as its family hands it ({ kit, point, radius, shape(toLocal) }; src/fx/creature-reed.js body), else null
     body: (e) => { const b = live.get(e); return b ? adapters.get(b.family).body?.(b.h) ?? null : null; },
     thermal: (on) => { for (const a of adapters.values()) a.thermal?.(on); },   // the gunship's thermal view (2026-10-16)
+    // THE MOTHER'S CARCASS (2026-11-05, src/fx/creature-reed.js): the remains a family keeps (state(), handoff()), null while none lies
+    carcass: () => { for (const a of adapters.values()) { const c = a.carcass?.(); if (c) return c; } return null; },
     // a family's bodies made ready before the first record (its adapter, and what it makes ahead: the Pearl tiers' swarms)
     prepare: (family, ids) => adapter(family)?.prepare?.(ids),
     room: (family, tier) => adapter(family)?.room?.(tier) ?? Infinity,   // slots a family's tier still has (Infinity when it does not count)

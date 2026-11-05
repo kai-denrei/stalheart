@@ -11,7 +11,7 @@
 //
 // `cardExtra()` is text the KILLED card adds after the hits (the bait mode's ` · Isao 9/12`; none in the tank mode). `wave()` is the bait mode's first wave while it
 // holds the boss back ({ alive, count }, else null): the row reads `WAVE 1 · REED <alive>/<count>`, its fill the share still standing (./wave.js).
-// `stage()` the dead boss's carcass's stage once KILLED (./remains.js: `INTACT`, `LIMBS SEVERED n/N`, `CORE CRACKED`, `SCORCHED`; null before it lies): the row reads it after the hits.
+// `stage()` the dead boss's carcass's stage once KILLED (src/fx/boss-carcass/remains.js: `INTACT`, `LIMBS SEVERED n/N`, `CORE CRACKED`, `SCORCHED`; null before it lies): the row reads it after the hits.
 // THE BAR is the integrity HUD's gate row (src/fx/integrity-hud.js: `ih-lbl`, `ih-bar > i`, `ih-num`, `ih-low` at a quarter)
 // in the stage's `.sw-hud`, with the fight's clock `m:ss.t` and `hits <n>`; hidden while `on()` is false (the fight switch off).
 import { kill, tick as tickFight } from '../../domain/boss-fight.js';

@@ -1,7 +1,12 @@
-// remains.js — the dead boss's carcass in the bait mode, taken apart by fire in stages (owner, 2026-10-10: "after the boss is dead, the user should still be able
+// remains.js — the dead boss's carcass, in the bait mode taken apart by fire in stages (owner, 2026-10-10: "after the boss is dead, the user should still be able
 // to shoot at its carcass, what would it take to create 'stages of destruction' for the dead boss? limbs getting cut, parts disappearing in explosion, etc."; he
 // chose option A: the Reeds' carcass (./carcass.js) scaled up, with a severing rule and multi-hit stages, and a cross-fade from the skin into it). The rules are
-// src/domain/boss-carcass.js, the numbers the fight's `bossCarcass`.
+// src/domain/boss-carcass.js, the numbers the fight's `bossCarcass`. Moved here from src/labs/boss/ (owner, 2026-11-05, round 5 note 7: "when we kill
+// Nih-Dairia, leave its corpse for longer: intact, with only one leg cut"): THE ARENA's boss lies as this carcass too (src/fx/creature-reed.js, CREATURE_REED.remains):
+// laid where she collapsed, in one grey (`lay`'s `tone`), ONE leg cut at its root at the lay (`cutLeg`: the domain's severance at the limb's first segment, the
+// stump kept, the rest hopping off as a fire-cut piece does and lying there, never crumbling), cooling in the gunship's thermal as here (`hot()`; its material
+// heats itself, `userData.ownHeat`, so the base's thermal leaves it alone), no timer. `handoff()`: the carcass as plain numbers for BELOW (note 10: the cave
+// builds the same body over the hole's lip, src/fx/descent-host.js).
 //
 // THE CONVERSION. `settle` s after the kill (the lab's: the v1 collapse) `lay` builds the carcass from the boss's own limbs as a Reed's is built (the kit's limb rule
 // on its rest nodes, a tapered tube in `chain.segments` pieces a limb through its rings in the collapsed pose, a core on the torso; ./carcass.js `build`), with the
@@ -24,8 +29,8 @@
 // crumbling or hopping, the index only when a piece comes or goes.
 import * as THREE from '../../../vendor/three.module.js';
 import { carcassDamage, blastBreaks, severance, hopOf, hopPose, coreChunks, severedCrumble, charOf, carcassStage, stageLabel, STAGES, flingOf, flingPose, crumblePose } from '../../domain/boss-carcass.js';
-import { HEAT } from '../../fx/thermal-heat.js';
-import { build, tissueOf } from './carcass.js';
+import { HEAT } from '../thermal-heat.js';
+import { build, tissueOf } from './geometry.js';
 
 const CHAR = new THREE.Color(0x16110e);   // a hurt target darkens toward this
 const BLACK = new THREE.Color(0, 0, 0), WHITE_HEAT = new THREE.Color(1, 1, 1);
@@ -45,17 +50,21 @@ export function createRemains({ group, tune, now, hot = () => false, ground, loc
     if (m.alphaHash || m.opacity !== 1) { m.alphaHash = false; m.opacity = 1; m.needsUpdate = true; }
   }
 
-  // THE CONVERSION: the boss's carcass from `creature` (its body as it collapsed, its skin mesh) drawn in `rig` (the frame's group, native units at `scale`); `diedAt` the lab clock of the kill
-  function lay(creature, rig, scale, seed, diedAt = now()) {
+  // THE CONVERSION: the boss's carcass from `creature` (its body as it collapsed, its skin mesh) drawn in `rig` (the frame's group, or its matrix in `group`'s
+  // space: the game's, its body's outer and inner groups in one; native units at `scale`); `diedAt` the lab clock of the kill; `tone` one grey for the whole body
+  // (the game's dead grey) instead of the skin's mean tissue colour
+  function lay(creature, rig, scale, seed, diedAt = now(), { tone = null } = {}) {
     clear();
     const B = tune().bossCarcass, C = { chain: { ...tune().wave.carcass.chain, ...B.chain } };
     const chunks = coreChunks(B.chunks, seed * 977 + 5);
     const b = build(creature.body, C, { colors: true, chunks, chunkSize: B.chunks.size });
-    const base = tissueOf(creature.mesh).clone();
+    const base = tone != null ? new THREE.Color(tone, tone, tone) : tissueOf(creature.mesh).clone();
     const material = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.85, metalness: 0, emissive: 0x000000, alphaHash: true, opacity: 0 });
+    material.userData.ownHeat = true;   // its warmth is this module's (step): the base's thermal pass leaves it alone (src/fx/thermal-heat.js heatMaterial)
     const mesh = new THREE.Mesh(b.geometry, material); mesh.name = 'Nih-Dairia carcass'; mesh.frustumCulled = false;
     const outer = new THREE.Group(); outer.name = 'Nih-Dairia remains';
-    rig.updateMatrix(); outer.position.copy(rig.position); outer.quaternion.copy(rig.quaternion); outer.scale.copy(rig.scale);
+    if (rig.isMatrix4) rig.decompose(outer.position, outer.quaternion, outer.scale);
+    else { rig.updateMatrix(); outer.position.copy(rig.position); outer.quaternion.copy(rig.quaternion); outer.scale.copy(rig.scale); }
     outer.add(mesh); group.add(outer); outer.updateMatrix(); outer.updateMatrixWorld(true);
     const toSphere = outer.matrix.clone(), fromSphere = toSphere.clone().invert();
     const pieces = b.pieces.map((pc) => {
@@ -70,7 +79,7 @@ export function createRemains({ group, tune, now, hot = () => false, ground, loc
     skin.material.alphaHash = true; skin.material.needsUpdate = true;   // the skin dithers out (its program once; R gives it back)
     st = { outer, mesh, material, skin, base, s: scale, pieces, home: b.home, homeNormals: b.homeNormals, full: b.full, toSphere, fromSphere, born: now(), diedAt, faded: false,
       moving: new Set(), hops: new Set(), queue: [], stage: 0, cracked: false, limbs: new Set(pieces.filter((pc) => pc.kind === 'segment').map((pc) => pc.limb)).size,
-      seed, blasts: [], severed: [], warm: -1 };
+      seed, blasts: [], severed: [], warm: -1, chain: b.chain, C, tone, moved: [] };
     reindex();
     laid++;
     return true;
@@ -129,6 +138,11 @@ export function createRemains({ group, tune, now, hot = () => false, ground, loc
     const h = { members, pivot, hop: hopOf(cut, [pivot.x * st.s, pivot.z * st.s], H, seed, drop), t0: now() };
     for (const pc of members) pc.hop = h;
     st.hops.add(h);
+    // where it ends (native, the pose of hopPose at its end as poseGroup applies it): the handoff's, whether or not it has landed yet
+    const f = hopPose(h.hop, h.hop.time), s = st.s, o = pivot;
+    q.setFromAxisAngle(UP, f.yaw).multiply(qt.setFromAxisAngle(axis.set(-h.hop.dir[1], 0, h.hop.dir[0]), f.tilt));
+    const m = new THREE.Matrix4().makeTranslation(o.x + f.offset[0] / s, o.y + f.offset[1] / s, o.z + f.offset[2] / s).multiply(new THREE.Matrix4().makeRotationFromQuaternion(q)).multiply(new THREE.Matrix4().makeTranslation(-o.x, -o.y, -o.z));
+    st.moved.push({ pieces: members.map((pc) => st.pieces.indexOf(pc)), matrix: m.toArray() });
     return h;
   }
 
@@ -137,8 +151,8 @@ export function createRemains({ group, tune, now, hot = () => false, ground, loc
     const a = performance.now(), B = tune().bossCarcass, t = now(), age = t - st.born;
     if (!st.faded) {   // the cross-fade: the skin out, the carcass in
       const k = Math.min(1, age / B.fade);
-      st.material.opacity = k; st.skin.material.opacity = 1 - k;
-      if (k >= 1) { st.faded = true; st.skin.visible = false; }
+      st.material.opacity = k; if (st.skin) st.skin.material.opacity = 1 - k;
+      if (k >= 1) { st.faded = true; if (st.skin) st.skin.visible = false; }
     }
     const c = Math.max(0, 1 - age / B.cool), warm = hot() ? HEAT.warm * c * c : 0;
     if (Math.abs(warm - st.warm) > 1e-3) { st.warm = warm; st.material.emissive.copy(BLACK).lerp(WHITE_HEAT, warm); }
@@ -167,7 +181,7 @@ export function createRemains({ group, tune, now, hot = () => false, ground, loc
     const cut = new Set();
     let standing = 0;
     for (const pc of st.pieces) {
-      if (pc.kind === 'segment' && pc.by === 'blast') cut.add(pc.limb);
+      if (pc.kind === 'segment' && (pc.by === 'blast' || pc.by === 'cut')) cut.add(pc.limb);
       if (pc.state === 'whole') standing++;
     }
     return { limbs: st.limbs, cut: cut.size, cracked: st.cracked, standing };
@@ -216,6 +230,39 @@ export function createRemains({ group, tune, now, hot = () => false, ground, loc
     return hit.length;
   }
 
+  // ONE LEG CUT (the game's, 2026-11-05 note 7): limb `limb` cut at its root (the domain's severance with its first segment breaking, that stump kept on the
+  // body): the rest hops off as a fire-cut run does and lies there, scorched at the cut's share; `crumble` false: it never crumbles (it lies as long as the body).
+  // -> the segments cut off (0 for a limb that is not there)
+  function cutLeg(limb, { crumble = true, seed = 0 } = {}) {
+    if (!st) return 0;
+    const B = tune().bossCarcass, t = now(), chain = st.pieces.filter((pc) => pc.kind === 'segment' && pc.limb === limb).sort((x, z) => x.j - z.j);
+    if (chain.length < 2) return 0;
+    const runs = severance(chain.map((pc) => pc.state), new Set([0]));
+    chain[0].char = Math.max(chain[0].char, B.sever.char); chain[0].by = 'cut'; paint(chain[0]);   // the stump, scorched
+    let n = 0;
+    for (const run of runs) {
+      const members = run.map((j) => chain[j]), h = hop(members, chain[run[0] - 1].own, B.sever, st.seed * 31 + limb * 7 + seed);
+      const times = crumble ? severedCrumble(run, B.crumble, st.seed + limb * 13) : null;
+      members.forEach((pc, k) => { pc.state = 'severed'; pc.by = 'cut'; pc.char = Math.max(pc.char, B.sever.char); paint(pc); if (times) { pc.at = t + h.hop.time + times[k]; st.queue.push(pc); } });
+      st.severed.push({ limb, js: run.slice(), at: t, from: members.map((pc) => [...pc.own]) });
+      n += members.length;
+    }
+    if (crumble) st.queue.sort((x, z) => x.at - z.at);
+    st.stage = carcassStage(st.stage, facts());
+    return n;
+  }
+
+  // THE HANDOFF (note 10): the carcass as plain numbers, in `group`'s space: { chain (./geometry.js), C (its chain numbers), toWorld (16, column-major: native
+  // to `group`'s space), tone, moved: [{ pieces (indices into the built pieces), matrix (16, native: where that run lies) }], char: [[piece, share]] (the
+  // scorched ones), gone: [pieces not drawn] }; null without a carcass
+  function handoff() {
+    if (!st) return null;
+    st.outer.updateMatrix();
+    const char = [], gone = [];
+    st.pieces.forEach((pc, i) => { if (pc.char > 0) char.push([i, pc.char]); if (pc.kind !== 'chunk' && (pc.state === 'gone' || pc.state === 'flying' || pc.state === 'crumbling')) gone.push(i); });
+    return { chain: st.chain, C: { chain: { ...st.C.chain } }, toWorld: st.outer.matrix.toArray(), tone: st.tone ?? +((st.base.r + st.base.g + st.base.b) / 3).toFixed(4), moved: st.moved.map((m) => ({ pieces: m.pieces.slice(), matrix: m.matrix.slice() })), char, gone };
+  }
+
   // the core cracks: it goes, its chunks hop out of it onto the ground
   function crack(core) {
     const B = tune().bossCarcass;
@@ -235,22 +282,24 @@ export function createRemains({ group, tune, now, hot = () => false, ground, loc
   }
 
   return {
-    lay, step, blast, clear,
+    lay, step, blast, clear, cutLeg, handoff,
+    // the game's kit is disposed once the skin has faded out: the carcass forgets it (nothing to give back on clear)
+    release() { if (st) st.skin = null; },
     present: () => !!st,
     laid: () => laid,
     // the bar row's: the stage as it reads (null without a carcass)
     stage: () => (st ? stageLabel(st.stage, facts()) : null),
     stats: () => ({ present: !!st, ms, broke, moving: st ? st.moving.size : 0, hops: st ? st.hops.size : 0 }),
-    // the handle's: { stage (index), label, born and diedAt (the lab clock it was laid and the boss died), limbs, cut, cracked, standing, faded, skin (shown), opacity, tris, pieces: [{ kind, limb, j, state, hp, max, by, own (its own
+    // the handle's: { stage (index), label, born and diedAt (the lab clock it was laid and the boss died), age (the clock since the lay), limbs, cut, cracked, standing, faded, skin (shown), opacity, tris, pieces: [{ kind, limb, j, state, hp, max, by, own (its own
     // plane metres), plane (local now), hopping }], severed: [{ limb, js, at, from }], blasts }, null without a carcass
     state: () => {
       if (!st) return null;
       const f = facts();
-      return { stage: st.stage, name: STAGES[st.stage], label: stageLabel(st.stage, f), ...f, born: st.born, diedAt: st.diedAt, faded: st.faded, skin: st.skin.visible, opacity: st.material.opacity,
+      return { stage: st.stage, name: STAGES[st.stage], label: stageLabel(st.stage, f), ...f, born: st.born, age: now() - st.born, diedAt: st.diedAt, faded: st.faded, skin: !!st.skin?.visible, opacity: st.material.opacity,
         tris: st.mesh.geometry.drawRange.count === Infinity ? st.full.length / 3 : st.mesh.geometry.drawRange.count / 3,
         pieces: st.pieces.map((pc) => ({ kind: pc.kind, limb: pc.limb, j: pc.j, state: pc.state, hp: pc.hp, max: pc.max, by: pc.by, own: [...pc.own], hopping: !!pc.hop,
           plane: local ? local(pc.centre.clone().applyMatrix4(st.toSphere).toArray()) : [...pc.own] })),
-        severed: st.severed.map((x) => ({ ...x })), blasts: st.blasts.map((x) => ({ ...x })) };
+        severed: st.severed.map((x) => ({ ...x })), blasts: st.blasts.map((x) => ({ ...x })), queued: st.queue.length, hops: st.hops.size };
     },
     // the free orbit's look at it: its core's centre (sphere space) and its group (the frame's up and east)
     frame: () => (st ? { centre: st.pieces.find((pc) => pc.kind === 'core').centre.clone().applyMatrix4(st.toSphere), outer: st.outer } : null),
