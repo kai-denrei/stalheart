@@ -2589,7 +2589,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // the median of SAMPLES half-second samples), then the hull set down at each spot below with the chase camera behind it, a still each, and
  // whether that eye stands inside a dome (its glass shell is 13.2 m high, its sentry mast 2.2 m across to the 32 m platform) or over one. A spot is frame metres (x, z) and a heading; a hull 22 m out of a
  // dome facing away from it puts the chase camera between the two, the worst case for the camera's clip
- const T='window.__stalheartTest',tag=process.env.BASE||'classic',n=+process.env.SAMPLES||12;
+ const T='window.__stalheartTest',tag=process.env.BASE||'dome',n=+process.env.SAMPLES||12;
  await go(`dome-look-${tag}`,'index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&fps=1#td');
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(6000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');

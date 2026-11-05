@@ -3,18 +3,17 @@
 // rule for the classic islands moved between them, and a hull that can still drive to every one of them.
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { ISLANDS, STRUCTURES, SOLID_STRUCTURES, BASE_LAYOUT_MODES, withBaseLayout, baseLayoutMode } from '../src/content/base-layout.js';
+import { ISLANDS, STRUCTURES, SOLID_STRUCTURES, BASE_LAYOUT_MODES, BASE_LAYOUT_DEFAULT, withBaseLayout, baseLayoutMode } from '../src/content/base-layout.js';
 import { DOME_ISLANDS, DOME_STRUCTURES, DOME_PLACEMENT, DOME_SOLIDS, BRIDGE_PLOT } from '../src/content/dome-city.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
 import { buildStoryPlanet } from '../src/domain/story-planet.js';
 import { planBase } from '../src/domain/base-plan.js';
 import { KIT, STAGES } from '../src/content/base-layout.js';
 
-// the switch: one parser, classic unless the page asks for the dome city
-assert.deepEqual(BASE_LAYOUT_MODES, ['classic', 'dome']);
-assert.equal(baseLayoutMode('?base=dome'), 'dome');
-assert.equal(baseLayoutMode('?stage=8&base=dome&creatures=dots'), 'dome');
-for (const q of ['', null, undefined, '?base=classic', '?base=DOME', '?base=', '?stage=8']) assert.equal(baseLayoutMode(q), 'classic', `${JSON.stringify(q)} reads classic`);
+// the switch: one parser, the dome city by default (round 8 stream C's last commit), the classic base when the page asks for it
+assert.deepEqual(BASE_LAYOUT_MODES, ['classic', 'dome']); assert.equal(BASE_LAYOUT_DEFAULT, 'dome');
+assert.equal(baseLayoutMode('?base=classic'), 'classic'); assert.equal(baseLayoutMode('?stage=8&base=classic&creatures=dots'), 'classic');
+for (const q of ['', null, undefined, '?base=dome', '?base=DOME', '?base=', '?base=nonsense', '?stage=8']) assert.equal(baseLayoutMode(q), 'dome', `${JSON.stringify(q)} reads dome`);
 // classic is the arrays themselves, not copies; an unknown mode is classic
 for (const mode of ['classic', 'nonsense', undefined]) { const r = withBaseLayout(ISLANDS, STRUCTURES, mode); assert.equal(r.islands, ISLANDS); assert.equal(r.structures, STRUCTURES); }
 

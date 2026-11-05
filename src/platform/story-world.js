@@ -14,7 +14,7 @@ import { LASER_AUDIO } from '../content/orbital-laser.js';
 // the story world's cues, with SOL-82's burning ground once the orbital laser is in the arsenal (src/fx/laser-arsenal.js)
 const STORY_WORLD_SOUNDS = Object.freeze({ ...STORY_SOUNDS, ...LASER_AUDIO, ...voiceSounds() });   // Isao's lines, lazy (src/fx/isao-voice.js)
 export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
-import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode, withBaseLayout, baseLayoutMode } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode, withBaseLayout, baseLayoutMode, BASE_LAYOUT_DEFAULT } from '../content/base-layout.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
 import { createStoryBase, basisAt } from '../fx/story-base.js';
 import { createArrival } from '../fx/arrival.js';
@@ -67,7 +67,7 @@ export function readStoryQuery(search) {
     threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short && deepLink && !chapter ? 0.35 : 1))),
     stage: skip ? STORY_SKIP.stage : chapter ? 1 : Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
-    base: baseLayoutMode(search),   // ?base=dome: THE DOME CITY (round 8 note 6); ?base=classic the base as it stood
+    base: baseLayoutMode(search),   // THE DOME CITY by default (round 8 note 6); ?base=classic the base as it stood
     phase: skip ? STORY_SKIP.phase : chapter ? chapter.from : (STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null),   // ?phase=expedition: a jump past the handover starts the beats there
     // ISAO GROWS THE BASE IN PLAY: ?grow=1, and a bare story page that names no stage; an explicit stage=N stays the static base
     // the sector the run opens on: SKIP TUTORIAL's (sector 1), or ?sector=N beside it, which a harness or the drawer's BACK DOOR jump
@@ -124,7 +124,7 @@ function laneBerth(planet, dungeon, from, to, [a, b]) {
   return ci === exit || dungeon.tags[ci] === BLOCKED || dungeon.tags[exit] === BLOCKED ? null : { ci, exit, pos, out };
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', base: baseMode = 'classic', phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', base: baseMode = BASE_LAYOUT_DEFAULT, phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;

@@ -140,6 +140,9 @@ export function landmarkTierMode(search) {
 // their island; a `heading` there turns those structures). This is the ONE place a layout becomes the islands and structures, like
 // withLandmarkTiers: the game world, the labs and the tests call it before planBase. Anything but 'dome' hands back the arrays unchanged.
 export const BASE_LAYOUT_MODES = ['classic', 'dome'];
+// THE DOME CITY IS THE DEFAULT (round 8 stream C, 2026-11-06: the suite chain green on ?base=dome but --gunship, red the same way on classic;
+// entry 2026-11-06-round-8-stream-c-the-dome-city-a-second-layout-of-the-base-default-dome). ?base=classic always stays
+export const BASE_LAYOUT_DEFAULT = 'dome';
 export function withBaseLayout(islands, structures, mode = 'classic', { domes = DOME_ISLANDS, buildings = DOME_STRUCTURES, placement = DOME_PLACEMENT } = {}) {
   if (mode !== 'dome') return { islands, structures };
   // an id the table names but this tree has not got is skipped, not invented (stream D's `depot` arrives by merge)
@@ -147,9 +150,11 @@ export function withBaseLayout(islands, structures, mode = 'classic', { domes = 
   const turned = structures.map((s) => (s.island && placement[s.island]?.heading ? { ...s, heading: placement[s.island].heading } : s));
   return { islands: [...moved, ...domes], structures: [...turned, ...buildings] };
 }
-// ONE PARSER FOR THE SWITCH, beside landmarkTierMode: ?base=dome is the dome city, anything else (or nothing) the classic base. Pure.
+// ONE PARSER FOR THE SWITCH, beside landmarkTierMode: ?base=classic is the base as it stood, anything else (or nothing) the default, the dome
+// city. Pure.
 export function baseLayoutMode(search) {
-  return new URLSearchParams(search || '').get('base') === 'dome' ? 'dome' : 'classic';
+  const q = new URLSearchParams(search || '').get('base');
+  return BASE_LAYOUT_MODES.includes(q) ? q : BASE_LAYOUT_DEFAULT;
 }
 
 // THE BUILDINGS THAT STOP THE HULL (owner, 2026-10-03: "they should feel solid (except those where the tank can go under like the

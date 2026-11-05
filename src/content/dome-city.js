@@ -1,6 +1,7 @@
 // THE DOME CITY (owner, 2026-11-05, round 8 note 6: "we introduce a new layout for the main base: the dome city, which includes our existing
 // elements in between"; note 5: "we import new models: dome-city ..."). A second layout of the same base, chosen by ?base=dome|classic
-// (src/content/base-layout.js baseLayoutMode, withBaseLayout); the classic base is untouched and always one flag away. Pure data.
+// (src/content/base-layout.js baseLayoutMode, withBaseLayout), THE DEFAULT since round 8 stream C; the classic base is untouched and always
+// one flag away (?base=classic). Pure data.
 //
 // THE AUTHOR'S CITY AND THIS READING OF IT. SentryTowers_A6 assets/dome-city/layout.json (upstream 40c23fa4, kept in the vault) is nine domes
 // on an 80 m grid, x and z in {-80, 0, 80}, twelve 52 m bridges between neighbours and four courts between them, status
