@@ -20,6 +20,22 @@ Evidence:
 - node scripts/browser-test.mjs --gunship: red at the program count 106 -> 119 on both trees (stashed fix, then restored)
 - src/fx/thermal-heat.js heatMaterial (userData.ownHeat), src/fx/creature-pearl.js heatPool/thermal, src/fx/cutis-maku/shaders.js MEMBRANE_FRAG's heat mix, src/td-tab.js pilotHost.thermal
 
+## 2026-11-05 — Round 5, stream B: the Stålheart's pad under its rails, every printed structure as a wireframe first then its skin, DAY 42's reveal skipped by Escape only
+
+decision · accepted · 2026-11-05-round-5-stream-b-pad-structure-print-day42-esc
+
+The owner's notes of 2026-11-05 on 00163b90 (spec docs/superpowers/specs/2026-11-05-round-5-ten-notes-design.md, stream B): 2) the Stålheart's base is not under it, half the rails are off; 4) and 5) the radar prints as a wireframe first and the texture after, and anything printed does; 9) driving the tank must not skip DAY 42's party, only Esc skips.
+
+Commits on round-5-base: 03c19e8f (note 9), d9e5d72f (notes 4+5), 782f5d64 (note 2), 6282cfb7 (notes 4+5 fix: a mounted tier's userData holds its AnimationMixer, and Object3D.copy deep-copies userData through JSON, so the first clone threw in the game; --antenna-print found it). Measured: note 2, ground parts of the game and far GLBs (accessor bounds, y <= 1.5 m) x -3.39..+32.39 in the pad frame against a -24..+24 slab before (8.4 m of the +X rail off the pad, z inside), 0.61 m of slab past them after; story-lab frames from +X, -X, above and low before and after. Note 4+5: before, a Y scale of the solid from 2 % to 100 %; after, in --antenna-print, the radar's print reads ghost/no solid at k .25 and .66, skinning at 1, then the ghost gone and the solid standing. Note 9: before, a W keydown ended the reveal and was eaten (the base modules); after, in --day-42, W held 1.2 s leaves the cut running and moves the hull, the hint reads ESC · SKIP, Escape ends the cut and the game is not paused.
+
+Alternatives: Move the model back onto the pad's centre: it would move what frames it (the disco ball's hang, the close shots, Isao's print positions); growing the slab keeps everything where it stood.; A symmetric pad (w 66 at x 0): it would come within 4 m of the farm and add 21 m of empty slab on -X; the -X apron already has 20.8 m.; The structure's wire swapped onto the solid's own materials instead of a clone: the skin needs the wire and the solid drawn at once while the wire fades.; skinIn run off the ghost's draw, as the sentries do: a structure printed off screen would keep its clipped materials until looked at; the base's tick drives it.; Escape plus any driving key ends the reveal only after a lock: the owner asked for Escape alone; the drop's and the print close-ups' Space rule is unchanged.
+
+Evidence:
+
+- npm test (318 programs), npm run check, npm run architecture green at each commit; new test/disco-reveal-keys.mjs, test/structure-print.mjs, test/stalheart-pad.mjs (red on fbe323c0: -3.39..32.39 on -24..24).
+- Browser on port 18182 under the lock, on git-archive snapshots of the commits: --day-42 PASS (03c19e8f's tree); --antenna-print FAIL on d9e5d72f (the clone threw, the radar solid through the replay), PASS on 6282cfb7 with the wire and skin checks; --story-world PASS; story-lab frames scratch pad-before-*.png / pad-after-*.png; --grow red at 'Isao said gunship_overhead' after grow-settled on the stream's tree and identically on fbe323c0 (base red, a different step from the assembly print timeout the spec names; grow-stalheart-rising passes with the wire).
+- Open: the story lab shows the planet's ground poking through the Stålheart slab near its tangent point (present on fbe323c0 too, moved 4.5 m with the island centre); not touched.
+
 ## 2026-11-05 — Owner: CUTIS-CORE AMETHYST looks fine in the Quiver's seeker view but a plain white mass with a hint of purple in the nest and the waves (next to do)
 
 issue · observed · 2026-11-05-owner-the-amethyst-reads-white-in-the-nest-and-the-waves-fine-in-the-quiver-s-seeker
