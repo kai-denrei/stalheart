@@ -1421,6 +1421,9 @@ try{
  await until(`${T}.state().programme.colony.calibrated`,5000).catch(async()=>assert.fail('Isao has his calibration after two manned passes'));
  // 4. THE ARC-01 prints once the calibration is in, then launches SOL-88 over 30 s; SOL is automated from the insertion stage
  await until(`${T}.state().programme.printed.includes("launcher")`,120000).catch(async()=>assert.fail(`the ARC-01 prints (${JSON.stringify(await prog())})`));
+ // THE MAGNETS LIGHT WITH THE PAYLOAD (owner, 2026-11-05, round 7, note 6; src/fx/arc-launch.js magnetGlow): every frame of the launch, the levels and the
+ // materials' glow; dark through the loading and the charge (the breech at most LAUNCHER_LIGHTS.breech), a wave on the sled's arc index, dark 2 s after the release
+ await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__launchLog=[];const tick=()=>{const s=T.showcase.launch();if(s)L.push(s);if((s||!L.length)&&L.length<20000)requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
  await until(`${T}.state().shot==='sol88Launch'`,15000).catch(async()=>assert.fail(`the first launch is a cinematic (${(await st()).shot})`));
  await delay(6500);current='colony-launch-shot';await finish();
  await delay(4500);current='colony-launch-shot-away';await finish();
@@ -1428,6 +1431,17 @@ try{
  await until(`${T}.state().programme.colony.launch.phase==="released" || ${T}.state().programme.colony.launch.phase==="unfolding"`,20000);
  current='colony-launch';await finish();
  await until(`${T}.state().programme.colony.sol88`,LAUNCH.duration*1000+15000).catch(async()=>assert.fail(`the launch completes and SOL-88 is up (${JSON.stringify((await prog()).colony)})`));
+ {const L=await evaluate('window.__launchLog'),{LAUNCHER_LIGHTS}=await import('../src/content/orbital-works.js'),R=LAUNCH.start+LAUNCH.seconds,max=(x)=>Math.max(...x.glow.flat());
+  const pre=L.filter(x=>x.t<LAUNCH.start),acc=L.filter(x=>x.phase==='accelerating'),post=L.filter(x=>x.t>=R+2.05);
+  console.log(`  colony: launch lights over ${L.length} frames (split worn ${L.filter(x=>x.split?.every(Boolean)).length}): before the sled moves max glow ${Math.max(0,...pre.map(max))}; accelerating ${acc.map(x=>`${x.t}s:${x.lit.filter(v=>v>=0.9).length}full/${x.lit.findIndex(v=>v>=0.9)}`).join(' ')}; after the release +2 s max ${Math.max(0,...post.map(max))} over ${post.length}`);
+  assert.ok(pre.length>0&&pre.every(x=>max(x)<=LAUNCHER_LIGHTS.breech+1e-6),`the magnets are dark until the sled moves, the breech at most ${LAUNCHER_LIGHTS.breech} (${JSON.stringify(pre.filter(x=>max(x)>LAUNCHER_LIGHTS.breech).slice(0,2))})`);
+  assert.ok(pre.filter(x=>x.t<LAUNCH.chargeAt).every(x=>max(x)===LAUNCHER_LIGHTS.idle),'dark through the loading');
+  assert.ok(acc.length>0,`frames caught while the sled runs the rail (${L.map(x=>x.t).slice(0,40)})`);
+  assert.ok(acc.every(x=>x.glow.every(m=>m.length===LAUNCHER_LIGHTS.magnets&&m.filter(v=>v>=0.9*LAUNCHER_LIGHTS.peak).length===x.lit.filter(v=>v>=0.9).length)),`the materials wear the wave, one per magnet: the split is on while the sled runs (${JSON.stringify(acc.slice(0,2).map(x=>x.glow))})`);
+  assert.ok(pre.some(x=>max(x)>0),'the breech glows faintly over the charge (the split is on before the sled moves)');
+  for(const x of acc){const full=x.lit.filter(v=>v>=0.9).length,head=x.lit.findIndex(v=>v>=0.9);assert.ok(full>=1&&full<=3&&(head>=13||full===3),`a wave of three at the sled (${x.t} s: ${x.lit})`);if(head>=6)assert.ok(x.lit.slice(0,3).every(v=>v<0.3),`the breech dark again behind the sled (${x.t} s: ${x.lit})`);}
+  assert.ok(post.length>0&&post.every(x=>max(x)===0),`all dark 2 s after the release (${JSON.stringify(post.filter(x=>max(x)>0).slice(0,2))})`);
+  const standing=await evaluate(`${T}.showcase.magnets()`);assert.ok(standing&&standing.flat().length>0&&standing.flat().every(v=>v===0),`the standing launcher's magnets are dark between launches (${JSON.stringify(standing)})`);}
  {const s=await st();assert.equal(s.laser.auto,true,'SOL fires on its own now');assert.equal(s.laser.platform,'sol88','SOL-88 is the platform overhead');
   await until('/^SOL-88/.test(document.querySelector("#story-views [data-view=laser]").textContent)',5000).catch(async()=>assert.fail(`the strip names SOL-88 (${await evaluate('[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent+"/"+b.hidden).join("|")')} nav=${await evaluate('document.querySelectorAll("#story-views").length')} laser=${JSON.stringify(((l)=>({auto:l.auto,platform:l.platform,strip:l.strip,phase:l.phase}))((await st()).laser))})`));}
  // 5. AN AUTOMATED PASS: bodies out of a breach, the pass overhead, nobody seated, and the beam burns them on its own

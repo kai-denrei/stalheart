@@ -159,6 +159,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations) : cloneSkinned(gltf.scene);
       own(root); root.name = s.id;
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
+      for (const name of s.dark ?? []) { const n = root.getObjectByName(name); if (n?.material?.emissive) { n.material = n.material.clone(); n.material.emissiveIntensity = 0; owned.add(n.material); } }   // its own copy, dark: the cached glTF's material is shared
       holder.add(root); root.position.set(...s.offset);
       const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null, held = {};
       if (mixer) {
