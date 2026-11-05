@@ -9,6 +9,7 @@ import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
 import { cloneSkinned } from './skinned-clone.js';
 import { createStructurePrints } from './structure-print.js';
+import { plateFloor } from '../domain/slab-floor.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = new Map();
@@ -60,7 +61,7 @@ export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => 
 // 55 ms + 32 ms of links otherwise, and a tier shown on the frame it linked still paid 53-72 ms. The far tier stands a
 // few frames longer; the swap itself is unchanged.
 export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null, solid = new Set(), footCell = 0.5, footLip = 0.5 }) {
-  const solidV = new THREE.Vector3(), slabInv = new Map();
+  const solidV = new THREE.Vector3(), slabInv = new Map(), slabPlates = new Map();
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
@@ -334,6 +335,23 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
         if (Math.abs(q.x) / metres <= i.w / 2 + padM && Math.abs(q.z) / metres <= i.d / 2 + padM) top = Math.max(top ?? -Infinity, i.top ?? 0);
       });
       return top;
+    },
+    // THE FLOOR UNDER A POINT (owner, 2026-11-05, round 8 note 2: the pets "clip through the ground, at least through the base under the
+    // Stalheart, they should be above"): the factor that lifts unit point p along its radius onto the top of the highest grown island whose
+    // plot holds it (src/domain/slab-floor.js), 1 on the bare ground. The plates are the drawn slabs' own frames, built once an island
+    floorAt(p) {
+      const plates = [];
+      plan.islands.forEach((i, n) => {
+        if (kOf(grown.islands, n, i) <= 0) return;
+        let q = slabPlates.get(n);
+        if (!q) {
+          const b = basisAt(placer, i.x, i.z, i.heading).multiply(new THREE.Matrix4().makeTranslation(0, (i.top ?? 0) * metres, 0)), e = b.elements;
+          const unit = (k) => { const l = Math.hypot(e[k], e[k + 1], e[k + 2]) || 1; return [e[k] / l, e[k + 1] / l, e[k + 2] / l]; };
+          slabPlates.set(n, q = { o: [e[12], e[13], e[14]], ax: unit(0), n: unit(4), az: unit(8), hw: (i.w / 2) * metres, hd: (i.d / 2) * metres });
+        }
+        plates.push(q);
+      });
+      return plateFloor(p, plates);
     },
     inside(id, p, pad = 0) {
       const st = plan.structures.find((s) => s.id === id), r = st && records.get(id), root = r && (r.near ?? r.far);

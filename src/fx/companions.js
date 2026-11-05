@@ -17,7 +17,8 @@
 // OUT OF THE TANK'S WAY (owner, 2026-11-02, round 4 note 5): the hull's velocity from its point frame to frame (smoothed over HULL_TAU s; a
 // placement jump of more than HULL_JUMP m in a frame resets it) gives the play each unit's hullMotion; 'fromHull' resolves to the roam cell off
 // the hull's line of travel, ahead of the unit's own side of it, best by distance from that line.
-//   host: scene, metres(), cellSide(), graph(), dungeon(), inside(ci) (the clearing), solidAt(p, pad), hull() (the hull's unit point or null),
+//   host: scene, metres(), cellSide(), graph(), dungeon(), inside(ci) (the clearing), solidAt(p, pad), floorAt(p) (round 8: the factor lifting unit
+//         point p onto the island slab under it, 1 on the bare ground), hull() (the hull's unit point or null), hullDir() (round 8: its facing, a unit vector, or null),
 //         eye(), wire() (the wireframe options or null), seed, born (true: both born at once), party() (round 4: DAY 42's dance floor, the
 //         ground point under the ball while the party is on, else null: src/fx/disco-party.js floor)
 //   createCompanions(host) -> { tick(dt, t), state(), contacts(), roots(), frameOf(i, pos, quat), spots(cells, padM), print(i, ci), wake(i), birth(i),
@@ -29,6 +30,7 @@ import { BLOCKED } from '../dungeon.js';
 import { loadModelFixture, cloneFixture, modelClips, setWireframe, wireCount } from './model-fixture.js';
 import { createMechPoser } from './mech-pose.js';
 import { motionOf } from '../domain/mech-pose.js';
+import { pushOut, inHull } from '../domain/friendly-push.js';
 
 export function createCompanions(h) {
   const K = COMPANIONS, units = [], play = createPlay(K.play, K.units.length);
@@ -66,7 +68,7 @@ export function createCompanions(h) {
   K.units.forEach((def, i) => {
     const cell = starts.length ? starts[Math.floor(rand() * starts.length) % starts.length] : roam[i] ?? dg.heart;
     const wrap = new THREE.Group(); wrap.name = `COMPANION_${def.id}`; wrap.visible = false; h.scene.add(wrap);
-    const u = { life: h.born === true ? 'born' : 'unborn', still: false, def, i, wrap, root: null, farRoot: null, mixer: null, actions: new Map(), cur: null, oneShot: null, cell, pos: new THREE.Vector3().fromArray(centre(cell)).normalize(), heading: new THREE.Vector3(), goal: new THREE.Vector3(), goalToken: null, speed: 0, clip: null, rate: 0, blocked: false, isFar: false, failed: false, loaded: false };
+    const u = { life: h.born === true ? 'born' : 'unborn', still: false, def, i, wrap, root: null, farRoot: null, mixer: null, actions: new Map(), cur: null, oneShot: null, cell, pos: new THREE.Vector3().fromArray(centre(cell)).normalize(), heading: new THREE.Vector3(), goal: new THREE.Vector3(), goalToken: null, speed: 0, clip: null, rate: 0, blocked: false, isFar: false, failed: false, loaded: false, pushes: 0, inHullFrames: 0, inHullMax: 0 };
     up.copy(u.pos); x.set(rand() - 0.5, rand() - 0.5, rand() - 0.5).cross(up); u.heading.copy(x.lengthSq() > 1e-9 ? x.normalize() : new THREE.Vector3(0, 0, 1).cross(up).normalize());
     u.goal.copy(u.pos);
     units.push(u);
@@ -127,10 +129,16 @@ export function createCompanions(h) {
     up.copy(u.pos); w.fromArray(centre(dg.heart)).sub(u.pos); w.addScaledVector(up, -w.dot(up));
     if (w.lengthSq() > 1e-14) u.heading.copy(w.normalize());
   }
+  // ON THE SLAB, NOT IN IT (owner, 2026-11-05, round 8 note 2: "cheetah and other pets clip through the ground, at least through the base under
+  // the Stalheart, they should be above"): the body's point stays on the sphere (the roam, the play's distances, the hull's), the drawn body is
+  // lifted along its radius onto the top of the island under it (src/fx/story-base.js floorAt). Measured 2026-11-06 over 75 game s of ?pets=born,
+  // two runs: C-07 and K0-TECH up to 0.96 m inside the slabs, RECKON K9 0.6, the mech 0.23, under in 21-81 % of the samples; after, 0 for all four
+  // in 277 samples each. The bare ground is the sphere itself
+  const seat = (u) => u.wrap.position.copy(u.pos).multiplyScalar(h.floorAt?.(u.pos.toArray()) ?? 1);
   function place(u) {
     up.copy(u.pos); u.heading.addScaledVector(up, -u.heading.dot(up)).normalize();
     x.crossVectors(up, u.heading).normalize(); m4.makeBasis(x, up, u.heading);
-    u.wrap.position.copy(u.pos); u.wrap.quaternion.setFromRotationMatrix(m4); u.wrap.scale.setScalar(K.scale * h.metres());
+    seat(u); u.wrap.quaternion.setFromRotationMatrix(m4); u.wrap.scale.setScalar(K.scale * h.metres());
   }
   // THE BED (2026-10-30): the candidate cells `cells` to `cells + 2` hops from the heart, clear of the solid structures by padM metres and off the
   // hull's keep-off, best first (the farther from the hull, up to 30 m, with a seeded jitter); the print picks among them (src/fx/pet-print.js)
@@ -171,11 +179,11 @@ export function createCompanions(h) {
       v.copy(u.pos).addScaledVector(u.heading, u.speed * m * dt).normalize();
       const cell = nearestFrom(u.cell, v), hull = p.mode === 'greet' || p.mode === 'greeted' ? null : h.hull();
       const keep = (def.keepFromHull ?? K.keepFromHull) * m, offHull = hull && Math.hypot(v.x - hull[0], v.y - hull[1], v.z - hull[2]) < keep && Math.hypot(v.x - hull[0], v.y - hull[1], v.z - hull[2]) < Math.hypot(u.pos.x - hull[0], u.pos.y - hull[1], u.pos.z - hull[2]);
-      if (!roamSet.has(cell) || offHull || h.solidAt(v.toArray(), padOf(u)) || heavyIn(u, v)) { u.blocked = true; u.speed = 0; }
+      if ((!roamSet.has(cell) && roamSet.has(u.cell)) || offHull || h.solidAt(v.toArray(), padOf(u)) || heavyIn(u, v)) { u.blocked = true; u.speed = 0; }
       else { u.pos.copy(v); u.cell = cell; }
     }
     x.crossVectors(up, u.heading).normalize(); m4.makeBasis(x, up, u.heading);
-    u.wrap.position.copy(u.pos); u.wrap.quaternion.setFromRotationMatrix(m4); u.wrap.scale.setScalar(K.scale * m);
+    seat(u); u.wrap.quaternion.setFromRotationMatrix(m4); u.wrap.scale.setScalar(K.scale * m);
     // the far tier past lodMetres (a view decision, taken on frozen frames too)
     if (u.farRoot && u.root) { const lod = def.lodMetres ?? K.lodMetres, d = u.wrap.position.distanceTo(h.eye()) / m, far = u.isFar ? d > lod - K.fade : d > lod; u.isFar = far; u.farRoot.visible = far; u.root.visible = !far; }
     // the clip: a one-shot in place, else the gait the ground speed asks for at its rate, else the idle
@@ -210,13 +218,38 @@ export function createCompanions(h) {
     last = t; ctx.now = t; trackHull(dt);
     if (dt > 0) stepPlay(play, dt, ctx);
     for (let i = 0; i < units.length; i++) stepUnit(units[i], play.units[i], dt);
+    for (const u of units) { pushFromHull(u); measureHull(u); }
+  }
+  // THE HULL PUSHES THEM ASIDE (owner, 2026-11-05, round 8 note 3: "the tank bumping into mechs, cheetah, etc. should push them aside"): after its own
+  // step, a born unit inside the hull's box (COMPANIONS.hull, grown by its pad: a pet's 0.8 m, the mech's padM) is moved out of it the least way
+  // (src/domain/friendly-push.js), onto the roam and off the buildings when one of the box's sides allows it; a greeting or sitting cat is shoved too,
+  // and the hull is never slowed or turned by it. Measured 2026-11-06 (scratch probe: the hull put on each pet's cell for 2 s, then driven at each
+  // for 5 s; the before run's box 5 x 2.5 m, the drawn hull's 4.4 x 2.19 read later): before, C-07 19 frames inside it, the mech 81 parked and 32
+  // driven (5.8 m deep), K0-TECH 13 driven and 60 by the parked hull at the start; after, 0 frames for all four (C-07 shoved 51 times by the drive)
+  function hullBox() { const p = h.hull(), d = h.hullDir?.(); return p && d ? { pos: p, dir: d } : null; }
+  const hullPad = (u) => (u.def.kind === 'heavy' ? u.def.padM : K.hull.pad);
+  function pushFromHull(u) {
+    if (u.life !== 'born' || !u.loaded) return;
+    const b = hullBox(); if (!b) return; const m = h.metres(), pu = padOf(u);
+    const free = (q) => roamSet.has(nearestFrom(u.cell, v.fromArray(q))) && !h.solidAt(q, pu);
+    const o = pushOut(u.pos.toArray(), b, { halfLength: K.hull.halfLength * m, halfWidth: K.hull.halfWidth * m, pad: hullPad(u) * m, free });
+    if (!o) return;
+    u.pos.fromArray(o.pos); u.cell = nearestFrom(u.cell, u.pos); u.pushes++;
+    seat(u);   // pushed off the roam only when no side of the box was free: its next steps are allowed back onto it (stepUnit)
+  }
+  // the harness's measure (round 8 note 3): frames a drawn unit stood inside the hull's box, after the push, and how deep (metres)
+  function measureHull(u) {
+    if (u.life !== 'born' || !u.loaded) return;
+    const b = hullBox(); if (!b) return; const m = h.metres();
+    const d = inHull(u.pos.toArray(), b, { halfLength: K.hull.halfLength * m, halfWidth: K.hull.halfWidth * m, pad: hullPad(u) * m }) / m;
+    if (d > 1e-3) { u.inHullFrames++; u.inHullMax = Math.max(u.inHullMax, d); }
   }
   return {
     tick,
     state: () => ({
       loaded: units.every((u) => u.loaded), failed: units.some((u) => u.failed), roam: roam.length, t: +last.toFixed(2), dist: +ctx.dist(...play.game.pair).toFixed(2),
       game: { on: play.game.on, pair: play.game.pair.slice(), chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) }, dodges: play.dodges, hullMps: +(hullV.length() / h.metres()).toFixed(2),
-      units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, hullM: hullSeen ? +(u.pos.distanceTo(hullP) / h.metres()).toFixed(2) : null, far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pose: u.poser?.state() ?? null, pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
+      units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, hullM: hullSeen ? +(u.pos.distanceTo(hullP) / h.metres()).toFixed(2) : null, inHullFrames: u.inHullFrames, inHullMax: +u.inHullMax.toFixed(3), pushes: u.pushes, underM: +((u.pos.length() * (h.floorAt?.(u.pos.toArray()) ?? 1) - u.wrap.position.length()) / h.metres()).toFixed(3), far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pose: u.poser?.state() ?? null, pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
     }),
     contacts: () => units.filter((u) => u.loaded && u.life !== 'unborn').map((u) => ({ pos: u.wrap.position.toArray() })),
     roots: () => units.map((u) => u.root),

@@ -1520,7 +1520,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await K('keyUp','w','KeyW',87);const c=C(await st());
   console.log(`  drive: closest ${min} m, hull top ${top} m/s, dodges ${c.dodges-d0}; ${log.filter((_,k)=>k%5===0).join(' ')}`);
   assert.ok(top>2,`the hull drove (${top} m/s)`);assert.ok(c.dodges>d0,`${pick.id} dodged`);assert.ok(min>2.5,`the hull never within 2.5 m of ${pick.id} (closest ${min} m)`);
-  if(!shot){current='companions-dodge';await finish();}}
+  if(!shot){current='companions-dodge';await finish();}
+  // ROUND 8 (owner, 2026-11-05, notes 2 and 3): no unit drawn inside a slab (underM, the metres its wrap sits under the floor) and none ever inside the
+  // hull's box (inHullFrames, counted every frame after the push since the load, the drive included)
+  {const u=C(await st()).units;console.log(`  round 8: underM ${JSON.stringify(u.map(x=>[x.id,x.underM]))}, in the hull ${JSON.stringify(u.map(x=>[x.id,x.inHullFrames,x.pushes]))}`);
+   for(const x of u){assert.ok(x.underM<0.01,`${x.id} on the floor, not in a slab (${x.underM} m)`);assert.equal(x.inHullFrames,0,`${x.id} never inside the hull's box`);}}}
  } else if(args.includes('--antenna-print')) {
  // THE ANTENNA, PRINTED ON SCREEN (owner, 2026-11-02, round 4 note 4): the grown base of sector 4 has its radar standing and the call made at the load,
  // due eight days on; the harness replays the radar's print under the close-up (antennaPrint(): the real path is the radar step at sector 2, --grow):
@@ -6363,7 +6367,7 @@ const killReal=(Date.now()-t0)/1000;
  await evaluate('window.__stalheartTest.laserHold(true)');
  for(let i=0;i<16;i++){const s=await laser();if(s.burned.rocks>0||s.energy<=0)break;await delay(250);}
  await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer(null)');
- {const s=await laser();console.log(`  laser-game: rock ${s.burned.rocks}, the slowest break ${s.breakMs} ms, ${s.energy} s left`);}
+ {const s=await laser();console.log(`  laser-game: rock ${s.burned.rocks}, the slowest break ${s.breakMs} ms, ${s.energy} s left, ${s.reseated} scorch stamps laid again on the floor (round 8 note 1)`);}
  await delay(1500);
  current='laser-game-sealed';await finish();
  // TANK leaves: the seat goes, and the tank's third person comes back through its own 68 degree lens

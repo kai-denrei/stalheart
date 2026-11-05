@@ -20,7 +20,7 @@
 // draws times the frame's passes, and 36 of the 38 are separately animated parts, so merging by material saves nothing): after the adoption each of the 38
 // meshes is drawn by one InstancedMesh holding the four mechs' copies of it (their own meshes stay in the tree, hidden, posed by the gait as before, and
 // lend their world matrices every frame); a mech on its far tier is a zero instance, and the parts hide when all four are far.
-//   host: scene, metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
+//   host: scene, metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), hullDir() (round 8: its facing, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
 //   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), contacts(), frameOf(i, pos, quat), show(on), restore() }
 import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
@@ -28,6 +28,8 @@ import { ARENA } from '../content/sectors.js';
 import { MAX_TIER } from '../towers.js';
 import { nextCell, parkCell, batteryDef } from '../domain/mech-roles.js';
 import { arenaFloor } from '../domain/arena.js';
+import { pushOut } from '../domain/friendly-push.js';
+import { COMPANIONS } from '../content/companions.js';
 import { BLOCKED } from '../dungeon.js';
 import { createGait, rigOf, applyGait, gaitRate } from './mech-gait.js';
 import { setWireframe } from './model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the four as wireframes once they are the squad's
@@ -118,6 +120,17 @@ export function createMechSquad(h) {
     if (far !== mc.isFar) mc.isFar = far;
     mc.farRoot.visible = far && !hidden; mc.root.visible = !far;
   }
+  // THE HULL PUSHES THEM ASIDE (owner, 2026-11-05, round 8 note 3: "the tank bumping into mechs, cheetah, etc. should push them aside"): a Ridgeback
+  // inside the hull's box (COMPANIONS.hull, the drawn tank's half sizes) grown by REINFORCEMENTS.hullPadM is moved out of it the least way
+  // (src/domain/friendly-push.js) and its walk goes on from there: a segment under way is re-laid from the pushed point to the same next cell; a parked
+  // one stays where it was put until its next decision walks it from there. Its cells and records are untouched (they follow cur/next as before)
+  function pushFromHull(mc) {
+    const p = h.hull(), d = h.hullDir?.(); if (!p || !d) return;
+    const m = h.metres(), o = pushOut(mc.wrap.position.toArray(), { pos: p, dir: d }, { halfLength: COMPANIONS.hull.halfLength * m, halfWidth: COMPANIONS.hull.halfWidth * m, pad: REINFORCEMENTS.hullPadM * m });
+    if (!o) return;
+    mc.wrap.position.fromArray(o.pos); mc.pushes = (mc.pushes ?? 0) + 1;
+    if (mc.prog < 1) { mc.from.copy(mc.wrap.position); mc.seg = Math.max(1e-6, mc.from.distanceTo(v.fromArray(centre(mc.next)))); mc.prog = 0; }
+  }
   function stepMech(mc, dt) {
     const m = h.metres(), cs = h.cellSide(), speed = REINFORCEMENTS.pace * cs;   // world units a second along the chord
     mc.wait -= dt;
@@ -129,6 +142,7 @@ export function createMechSquad(h) {
     }
     const moving = mc.prog < 1;
     if (moving) { mc.prog = Math.min(1, mc.prog + speed * dt / mc.seg); v.fromArray(centre(mc.next)); mc.wrap.position.lerpVectors(mc.from, v, mc.prog).normalize(); }   // on the floor: the unit sphere
+    pushFromHull(mc);
     // the gait's rate: the ground speed in metres a second over the demo's walk at the cargo scale
     const rate = moving ? gaitRate(speed / m, REINFORCEMENTS.scale) : 0;
     mc.walking = moving; mc.rate = rate;
@@ -171,7 +185,7 @@ export function createMechSquad(h) {
     towers: () => records,
     state: () => mechs.map((mc) => {
       const shots = mc.recs.reduce((n, r) => n + (r.shots ?? 0), 0), fired = Math.max(...mc.recs.map((r) => r.firedAt ?? -1e9));
-      return { role: mc.role, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), gait: { rate: +(mc.rate ?? 0).toFixed(3), contacts: mc.contacts, speed: +mc.speed.toFixed(3), mode: mc.gait.mode }, heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
+      return { role: mc.role, pushes: mc.pushes ?? 0, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), gait: { rate: +(mc.rate ?? 0).toFixed(3), contacts: mc.contacts, speed: +mc.speed.toFixed(3), mode: mc.gait.mode }, heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
         onPlain: plain ? plain.has(mc.cur) : null, park, parkDist: park >= 0 ? h.dungeon().distToHeart[park] : null, far: mc.isFar, eyeM: Math.round(mc.wrap.position.distanceTo(h.eye()) / h.metres()), t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, byWeapon: mc.recs.map((r) => r.shots ?? 0), frames: mc.frames, aimed: mc.aimed, quarry: mc.quarry, herCells: herCells(mc), firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },

@@ -80,6 +80,8 @@ void main(){
   mesh.renderOrder = 8;
   group.add(mesh);
   const dummy = new THREE.Object3D();
+  /* each slot's ground point (before the lift) and its normal, so a stamp can be laid again where the ground went (reseat) */
+  const points = new Float32Array(CAP * 3), normals = new Float32Array(CAP * 3);
   let next = 0, written = 0;
   return {
     mesh,
@@ -92,6 +94,8 @@ void main(){
       dummy.scale.set(k, 1, k);
       dummy.updateMatrix();
       mesh.setMatrixAt(next, dummy.matrix);
+      points[next * 3] = point.x; points[next * 3 + 1] = point.y; points[next * 3 + 2] = point.z;
+      normals[next * 3] = normal.x; normals[next * 3 + 1] = normal.y; normals[next * 3 + 2] = normal.z;
       ages[next] = 0;
       seeds[next] = Math.random();
       next = (next + 1) % CAP;
@@ -100,6 +104,26 @@ void main(){
       mesh.instanceMatrix.needsUpdate = true;
       ageAttr.needsUpdate = true;
       seedAttr.needsUpdate = true;
+    },
+    // THE MARKS LIE ON THE GROUND, NOT WHERE THE ROCK WAS (owner, 2026-11-05: "when SOL burns with the laser, the burned marks that
+    // remain for a few seconds should be on the ground level; currently they hover at the higher level of where the rocks used to
+    // be"). A stamp is written once, at the ground its contact stood on; when that ground drops (a rock burned through), every live
+    // stamp is laid again at `groundAt(point)` ([x, y, z] -> [x, y, z], the caller's own ground) plus the same lift along its own
+    // normal. Only the matrix's translation moves: the stamp's turn, size, age and seed stay, so the ember keeps cooling where it
+    // was. A stamp whose ground did not move is not touched. Returns how many moved
+    reseat(groundAt) {
+      const m = mesh.instanceMatrix.array;
+      let moved = 0;
+      for (let i = 0; i < written; i++) {
+        if (ages[i] >= life) continue;
+        const j = i * 3, g = groundAt([points[j], points[j + 1], points[j + 2]]);
+        if (!g || (Math.abs(g[0] - points[j]) < 1e-6 && Math.abs(g[1] - points[j + 1]) < 1e-6 && Math.abs(g[2] - points[j + 2]) < 1e-6)) continue;
+        points[j] = g[0]; points[j + 1] = g[1]; points[j + 2] = g[2];
+        m[i * 16 + 12] = g[0] + normals[j] * lift; m[i * 16 + 13] = g[1] + normals[j + 1] * lift; m[i * 16 + 14] = g[2] + normals[j + 2] * lift;
+        moved++;
+      }
+      if (moved) mesh.instanceMatrix.needsUpdate = true;
+      return moved;
     },
     tick(dt) { if (!written) return; for (let i = 0; i < written; i++) ages[i] += dt; ageAttr.needsUpdate = true; },
     clear() { ages.fill(life); ageAttr.needsUpdate = true; mesh.count = written = next = 0; },
