@@ -2,10 +2,10 @@ import * as THREE from '../vendor/three.module.js';
 import { createWorld } from './world.js';
 import { createAudio } from './audio.js';
 import {impactCue} from './audio-cues.js';
-import {createFlight,fly} from './flight.js';
+import {createFlight,fly,chasePitch} from './flight.js';
 import { parseMode, endingAction, postOutcome, postReady, isShow, briefingIdle, askHandoff, handoffOf, postShown, poseToCave, poseToHole } from './handoff.js';
 import { DOOR, tiltAt, climbAt } from './door.js';
-import { center, confine, closeToQueen, createMission, tickMission, clamp, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE, START_CARD, startCard, HOLE_SCALE } from './mission.js';
+import { center, confine, closeToQueen, createMission, tickMission, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE, START_CARD, startCard, HOLE_SCALE } from './mission.js';
 import { BEACON } from './flares.js';
 
 const $=id=>document.getElementById(id);
@@ -13,7 +13,7 @@ const stalheart=parseMode(location.search);   // the campaign's last mission ins
 const audio=createAudio();
 const keys=new Set(),velocity=new THREE.Vector3();
 let world,mission=createMission(),flight=createFlight(START),mode='briefing',resumeMode='playing',detonationAt=0,yaw=0,pitch=-.43,dragging=false,hadLock=false;
-let simulationTime=0,lastTime=performance.now(),lastScan=-10,lastHit=-10,alertUntil=0,commsUntil=0,impact=0,lookDelta=0,cardUntil=0;
+let simulationTime=0,lastTime=performance.now(),lastScan=-10,lastHit=-10,alertUntil=0,commsUntil=0,impact=0,cardUntil=0;
 let dialogueQueue=[],seen=new Set(),frameTimes=[];
 let climbing=null,skyFade=null;   // the climb out of the arena's hole (src/door.js): its seconds, and the sky's fade over the page
 // ONE PLACE (Stålheart's round 5, note 10; src/handoff.js): the game's handoff (asked before the world is built), its dive's last pose in the cave's metres, and the
@@ -130,9 +130,9 @@ function step(dt){
     return;
   }
   // A DRONE'S HANDS (the owner, 2026-10-16: "Isao control should be like a drone; WS for front back, and AD for rotation. Forcing a rotate then forward
-  // control style. Then up and down separate"): A and D turn the airframe (the arrows still look), W and S fly it where it faces; no strafe
+  // control style. Then up and down separate"): A and D (and ← →) turn the airframe, ↑ ↓ tilt the camera, W and S fly it where it faces; no strafe
   const turn=(Number(keys.has('ArrowLeft'))-Number(keys.has('ArrowRight'))+Number(keys.has('KeyA'))-Number(keys.has('KeyD')))*dt*1.3;
-  yaw+=turn;pitch=clamp(pitch+(Number(keys.has('ArrowUp'))-Number(keys.has('ArrowDown')))*dt,-1.565,1.565);
+  yaw+=turn;pitch=chasePitch(pitch+(Number(keys.has('ArrowUp'))-Number(keys.has('ArrowDown')))*dt);   // the camera's pitch, never under ISAO (flight.js CHASE, round 6)
   const forward=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),side=0;
   const vertical=Number(keys.has('Space'))-Number(keys.has('ShiftLeft')||keys.has('ShiftRight'));
   fly(flight,dt,{forward,right:side,vertical},yaw,mission.payload);
@@ -190,7 +190,7 @@ function climbStep(dt){
 }
 function updateHUD(){
   const cinematic=mode==='surface'||mode==='detonation';
-  {const on=!cinematic&&simulationTime<cardUntil;$('mission-card').hidden=!on;if(on){const [line,keys]=startCard(mission);$('mission-line').textContent=line;$('mission-keys').textContent=keys;}}
+  {const on=!cinematic&&simulationTime<cardUntil;$('mission-card').hidden=!on;if(on){const [line,flight,keys]=startCard(mission);$('mission-line').textContent=line;$('mission-flight').textContent=flight;$('mission-keys').textContent=keys;}}
   $('reticle').hidden=cinematic;
   document.querySelector('.controls').hidden=cinematic;
   if(!mission.payload&&!mission.detonated&&mission.fuse<=4.2226&&mission.fuse>0&&!seen.has('spoken-countdown')){
@@ -240,7 +240,7 @@ document.addEventListener('keydown',e=>{
   if(mode==='playing'){keys.add(e.code);if(e.code==='KeyQ')scan();if(e.code==='KeyF')dropFlare();if(['Digit1','Digit2','Digit3'].includes(e.code))selectView(Number(e.code.slice(-1))-1);if(e.code==='KeyV')selectView('optical');}
 });
 document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.key==='Meta'||e.key==='Control')keys.clear();});
-document.addEventListener('mousemove',e=>{if(mode!=='playing'||(!document.pointerLockElement&&!dragging))return;yaw-=e.movementX*.002;pitch=clamp(pitch-e.movementY*.002,-1.565,1.565);lookDelta=clamp(e.movementX*.03,-1,1);});
+document.addEventListener('mousemove',e=>{if(mode!=='playing'||(!document.pointerLockElement&&!dragging))return;yaw-=e.movementX*.002;pitch=chasePitch(pitch-e.movementY*.002);});   // x turns ISAO (no bank: flight.js TILT), y only the chase camera's pitch (flight.js CHASE)
 $('view').addEventListener('mousedown',()=>{if(mode==='playing'){dragging=true;if(!document.pointerLockElement)lock();}});
 document.addEventListener('mouseup',()=>dragging=false);
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement){hadLock=true;}else if(hadLock){hadLock=false;if(mode==='playing')pause();}});
@@ -286,7 +286,7 @@ try{
   if(new URLSearchParams(location.search).has('test'))window.__below={
     snapshot:()=>({mode,mission:{...mission},position:world.player.toArray(),cameraPosition:world.camera.position.toArray(),velocity:velocity.toArray(),attitude:{roll:flight.roll,pitch:flight.pitch},yaw,pitch,drawCalls:world.renderer.info.render.calls,points:world.renderer.info.render.points,meanFrameMs:frameTimes.reduce((a,b)=>a+b,0)/frameTimes.length*1000,...world.stats(),audio:audio.stats(),mother:'ovum-spider-v3',route:nearestRoute(world.player).s}),
     place:(s,dx=0,dy=0)=>{const c=center(s);world.player.set(c.x+dx,c.y+dy,c.z);velocity.set(0,0,0);},
-    look:(y,p)=>{yaw=y;pitch=p;},
+    look:(y,p)=>{yaw=y;pitch=chasePitch(p);},   // the player's own range: the harness shows no view the mouse cannot reach
     advance:(seconds)=>{for(let t=0;t<seconds;t+=1/60)step(Math.min(1/60,seconds-t));},
     contactSamples:world.contactSamples,
     blastFrame:(age)=>{world.startDetonation(simulationTime);mission.payload=false;mission.detonated=true;mission.outcome='sacrifice';mode='detonation';detonationAt=simulationTime;world.update(simulationTime+age,mission,false,{flight,dt:0,yaw,pitch,cinematic:true,reducedMotion});updateHUD();mode='paused';resumeMode='detonation';audio.pause(true);world.render();},

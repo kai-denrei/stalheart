@@ -1627,6 +1627,7 @@ try{
  current='descent-carcass-in';await finish();
  // its own buttons: TAKE THE FEED, then the ending (the charge placed and blown: the probe's frame) and RETURN TO THE SURFACE: the climb up the throat
  await until(`!${F}.contentDocument.getElementById('begin').disabled`,30000);await evaluate(`${F}.contentDocument.getElementById('begin').click()`);await delay(2500);await shoot('feed-2500');
+ {const {FLIGHT_KEYS}=await import('../below/src/mission.js'),card=await evaluate(`(d=>!d.getElementById('mission-card').hidden&&d.getElementById('mission-flight').textContent)(${F}.contentDocument)`);assert.equal(card,FLIGHT_KEYS,'the start card says the quadcopter keys (round 6, note 5)');}
  await evaluate(`(b=>{b.blastFrame(0);b.end('sacrifice');})(${B})`);await delay(200);await evaluate(`${F}.contentDocument.getElementById('restart').click()`);
  await delay(1800);await shoot('climb-end');
  await until(`!${F}`,15000).catch(async()=>assert.fail(`the climb's outcome closed the frame (${JSON.stringify((await st()).descent)})`));

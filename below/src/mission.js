@@ -138,7 +138,9 @@ export const MAX_HP=12;
 // entrance/exit; Q for the radar/LiDAR 'but it's not ready yet')"): over the first START_CARD.seconds of a flight, in both modes; the Q part reads
 // plain once the LiDAR is processed (PRESS Q takes the alert line then)
 export const START_CARD=Object.freeze({seconds:8});
-export function startCard(m){return ['MISSION · PLACE THE CHARGE BY THE QUEEN · GET BACK OUT',`F · FLARE   GREEN FLARE · THE WAY OUT   Q · LIDAR${m.lidarAvailable?'':' (NOT READY YET)'}`];}
+// its second line the flight keys (Stålheart round 6, note 5: the quadcopter scheme said on the card: fly where he faces, turn in place, rise and lower apart)
+export const FLIGHT_KEYS='W S FLY · A D TURN · SPACE SHIFT UP DOWN · MOUSE LOOK';
+export function startCard(m){return ['MISSION · PLACE THE CHARGE BY THE QUEEN · GET BACK OUT',FLIGHT_KEYS,`F · FLARE   GREEN FLARE · THE WAY OUT   Q · LIDAR${m.lidarAvailable?'':' (NOT READY YET)'}`];}
 export function createMission(){return {phase:'descent',integrity:MAX_HP,hits:0,lampState:'working',lidarAvailable:false,lidarProcessingAt:0,lidar:false,lidarMode:0,payload:true,armProgress:0,bombPosition:null,fuse:FUSE,time:0,nursery:false,shaftSeen:false,deadEndSeen:false,flares:FLARE_COUNT,extracted:false,rush:false,signalLost:false,detonated:false,outcome:null};}
 export function recordImpact(m){
   if(m.outcome||m.extracted||m.signalLost||m.integrity<=0)return [];
