@@ -259,7 +259,7 @@ function waitHandoff(ms){
 try{
   if(stalheart&&framed)handoff=await waitHandoff(HANDOFF_WAIT);
   handoffPose=handoff?poseToCave(handoff.pose,HOLE_SCALE):null;
-  world=await createWorld($('view'),{carcass:stalheart,sky:handoff?.sky??null});
+  world=await createWorld($('view'),{carcass:stalheart,sky:handoff?.sky??null,remains:handoff?.carcass??null});
   if(handoffPose)world.showDoor(true);   // the throat's foot under the game's last view: its rubble, the green flare's place
   $('begin').disabled=false;$('begin-label').textContent=stalheart?'TAKE THE FEED':'TAKE CONTROL OF ISAO';
   if(stalheart){const w=document.querySelector('.wordmark');if(w)w.style.visibility='hidden';const c=document.querySelector('.brief-copy');if(c)c.innerHTML='The arena’s sinkhole is the way down to the nest.<br>MÖRK is too big for it.<br>ISAO takes the bomb to their Queen.';}   // Stålheart's own card: no link out, the campaign's words (2026-10-18: the arena's hole, as Isao's brief over the game says it; that brief sits under this frame)

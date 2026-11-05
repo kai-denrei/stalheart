@@ -7,7 +7,7 @@ import {createIsao} from './isao.js';
 import {createTunnelCreatures} from './creatures.js';
 import {createDetonation} from './detonation.js';
 import {createFlares} from './flares.js';
-import {createDoor,carcassGeometry} from './door.js';
+import {createDoor,carcassGeometry,handoffCarcass} from './door.js';
 import {surveyGLSL} from './lidar.js';
 import {MAIN_TENTACLES,LEFT_TENTACLES,BLIND_TENTACLES,colonyPresence,colonyDistance} from './cave-pacing.js';
 
@@ -16,7 +16,9 @@ function random(seed=9317){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)
 const rand=random();
 const vec=(p)=>new THREE.Vector3(p.x,p.y,p.z);
 
-export async function createWorld(canvas,{carcass=false,sky=null}={}){   // carcass: Nih-Dairia's body by the hole (Stålheart's page, src/door.js); sky: the game's at the handoff (src/handoff.js)
+// carcass: Nih-Dairia's body by the hole (Stålheart's page, src/door.js); sky: the game's at the handoff (src/handoff.js); remains: THE carcass from Stålheart's handoff
+// (src/door.js handoffCarcass), else the Reed (named so: `body` below is this world's mesh maker)
+export async function createWorld(canvas,{carcass=false,sky=null,remains=null}={}){
   const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
   renderer.setSize(innerWidth,innerHeight);
@@ -107,7 +109,9 @@ float bioVein=pow(.5+.5*sin(vFlareWorld.x*7.+sin(vFlareWorld.z*9.)*2.+vFlareWorl
   const network=createCaveNetwork({body,stone,scene});
   const nursery=await createNursery({scene,body,points,sample,stone,flesh,rand});
   const door=createDoor(scene);   // the arena's hole as the way in and out, in Stålheart's page only (src/door.js)
-  if(carcass){const [m,b]=await Promise.all([fetch('./assets/models/reed.json').then(r=>r.json()),fetch('./assets/models/reed.bin').then(r=>r.arrayBuffer())]);door.addCarcass(carcassGeometry(b,m));}   // the cave's Reed, dead by the hole (note 13)
+  const handed=carcass&&remains?handoffCarcass(remains):null;   // THE body from the arena (Stålheart's round 5, note 10)
+  if(handed)door.addCarcass(null,handed);
+  else if(carcass){const [m,b]=await Promise.all([fetch('./assets/models/reed.json').then(r=>r.json()),fetch('./assets/models/reed.bin').then(r=>r.arrayBuffer())]);door.addCarcass(carcassGeometry(b,m));}   // the cave's Reed, dead by the hole (note 13): the fallback
   const flares=createFlares(scene,uniforms,door.clearance);   // flares land on the door's rubble too
   const isao=await createIsao(scene,camera);
   const creatures=await createTunnelCreatures({scene,body,points,material,uniforms,camera});

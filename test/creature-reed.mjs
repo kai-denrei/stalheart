@@ -141,6 +141,7 @@ two.forEach((h) => tight.free(h)); tight.dispose();
   bd.kit.motion.active = false; const s0 = local(famL.body(boss).point);
   for (let k = 0; k < 120; k++) { famL.track(boss, { pos: far, apos: at(...prey), lift: 0, dt: 1 / 60, led: true }); famL.step(1 / 60); }
   const s1 = local(famL.body(boss).point); assert.ok(Math.hypot(s1[0] - s0[0], s1[1] - s0[1]) < mean, `stunned, it does not walk on (${Math.hypot(s1[0] - s0[0], s1[1] - s0[1]).toFixed(2)} m in 2 s)`);
+  famL.track(boss, { pos: far, apos: at(...prey), lift: -60, dt: 1 / 60, led: true }); famL.step(1 / 60);   // killed while still rising out of the hole: drawn 60 m down
   famL.kill(boss); assert.equal(famL.body(boss), null, 'dead: none');
   // THE MOTHER'S CARCASS (owner, 2026-11-05, round 5 note 7: "leave its corpse for longer: intact, with only one leg cut"; CREATURE_REED.remains): the led body,
   // collapsed, is laid as the lab's carcass where it fell, ONE leg cut at its root (the stump kept), the skin faded out and the kit gone, then it lies: no sink, no
@@ -160,6 +161,8 @@ two.forEach((h) => tight.free(h)); tight.dispose();
   cs = rm.state(); assert.ok(cs.faded && !cs.skin && cs.opacity === 1, `the skin faded out, the carcass whole (${JSON.stringify({ faded: cs.faded, skin: cs.skin, opacity: cs.opacity })})`);
   assert.equal(famL.view(boss).gone, true, 'her kit gone (no solver, no skin)'); assert.equal(cs.hops, 0, 'the cut piece landed');
   const landed = JSON.stringify(cs.pieces.map((p) => p.own)), mat = rm.handoff().toWorld.join();
+  { const hd = rm.handoff(), core = new THREE.Vector3(...hd.chain.core).applyMatrix4(new THREE.Matrix4().fromArray(hd.toWorld)), up = (core.length() - 1) * R;
+    console.log(`  her core ${up.toFixed(2)} m over the ground`); assert.ok(Math.abs(up) < tiers.huge.r0, `she lies on the ground where she fell (core ${up.toFixed(2)} m)`); }
   famL.thermal(true); famL.step(1 / 60); const warm0 = famL.roots()[0].getObjectByName('Nih-Dairia carcass').material;
   assert.ok(warm0.userData.ownHeat && warm0.emissive.r > 0, 'warm in the thermal, its own heat');
   for (let k = 0; k < 60 * 130; k += 6) famL.step(6 / 60);

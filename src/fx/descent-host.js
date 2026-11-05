@@ -26,7 +26,7 @@
 // Isao's panel or waiting for it, null when quiet: the cave waits for it, the descent's own brief up DESCENT.briefCap game seconds at most, 2026-10-18).
 import { DESCENT } from '../content/descent.js';
 import { descentDue, descentResult, descentNext, descentOpenDue, descentLoadDone } from '../domain/descent.js';
-import { outcomePose } from '../domain/descent-handoff.js';
+import { outcomePose, apply4 } from '../domain/descent-handoff.js';
 
 // a cover over the page (the descent's cross-fades): a canvas copy of `source` (a canvas drawn this task) or an image; `fades` the harness's log
 function cover(root, source, fades, kind) {
@@ -128,7 +128,7 @@ export function createDescentHost(root, c) {
     report: (outcome) => take({ below: outcome }),
     state: () => ({ open: !!frame, shown: !!frame && !frame.hidden, phase, readyAt, loadedIn, openedAt, src: frame?.src ?? null, outcome: c.story()?.descent?.outcome ?? null, said: said.slice(), hole, diveAt, door: hole >= 0 ? c.door?.(hole) ?? null : null,
       // ONE PLACE: the handoff answered (its pose, sky and whether it carried the carcass), the cross-fades, the cave's pose the rise started from
-      handoff: sent ? { pose: sent.pose, sky: sent.sky, carcass: sent.carcass ? { limbs: sent.carcass.chain.limbs.length, moved: sent.carcass.moved.length, toHole: sent.carcass.toHole } : null, radius: sent.radius } : null,
+      handoff: sent ? { pose: sent.pose, sky: sent.sky, carcass: sent.carcass ? { limbs: sent.carcass.chain.limbs.length, moved: sent.carcass.moved.length, toHole: sent.carcass.toHole, core: apply4(sent.carcass.toHole, sent.carcass.chain.core) } : null, radius: sent.radius } : null,
       fades: fades.map((x) => ({ ...x })), risenFrom }),
     dispose() { cleanup(); for (const el of root.querySelectorAll?.('.descent-fade') ?? []) el.remove(); coverIn = null; },
   };

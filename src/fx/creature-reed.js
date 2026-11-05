@@ -178,8 +178,10 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
   // THE MOTHER'S CARCASS: laid from the collapsed nodes where she is drawn (her outer and inner groups in one matrix), one leg cut
   function lay(h) {
     remains ??= createRemains({ group, tune: () => BOSS_FIGHT, now: () => clock, hot: () => hot, ground: null });
-    h.outer.updateMatrix(); h.inner.updateMatrix();
-    remains.lay(h.kit, h.outer.matrix.clone().multiply(h.inner.matrix), h.s, 1, h.deadAt, { tone: K.remains.tone });
+    // on the ground where she fell: her inner group's shift without the record's lift (killed while still rising out of the hole, she was drawn 60 m down,
+    // emergeRadii x r0: measured on --descent-carcass, 2026-11-05) or the sink
+    h.outer.updateMatrix(); const ip = h.inner.position;
+    remains.lay(h.kit, h.outer.matrix.clone().multiply(new THREE.Matrix4().makeTranslation(ip.x, 0, ip.z)), h.s, 1, h.deadAt, { tone: K.remains.tone });
     remains.cutLeg(legToCut(remains.handoff().chain), { crumble: K.remains.crumble });
     h.laid = true; h.kit.mesh.castShadow = false;
   }

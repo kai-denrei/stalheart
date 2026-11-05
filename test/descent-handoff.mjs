@@ -2,6 +2,7 @@
 // it (the same axes Three.js composes there), world points and camera poses into hole units and back, the world-to-hole matrix, the handoff BELOW is answered with
 // (the dive's last pose half a hole radius down, the carcass taken to hole units), and the outcome's pose
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from '../vendor/three.module.js';
 import { HOLE_TURN, holeFrame, toHole, fromHole, poseToHole, poseFromHole, holeMatrix, mul4, apply4, handoffOf, outcomePose } from '../src/domain/descent-handoff.js';
 import { DESCENT } from '../src/content/descent.js';
@@ -48,4 +49,8 @@ assert.equal(handoffOf({ pose }, f).carcass, null, 'no carcass: null');
 // the cave's outcome: its climb's last pose, or nothing
 assert.equal(outcomePose({ below: 'rescued' }), null); assert.equal(outcomePose({ below: 'rescued', pose: { pos: [0, 1], fwd: [0, 1, 0], up: [0, 0, -1] } }), null);
 assert.deepEqual(outcomePose({ below: 'rescued', pose: { pos: [0, -0.55, 0], fwd: [0, 1, 0], up: [0, 0, -1], fov: 72 } }).pos, [0, -0.55, 0]);
+// THE SAME BODY (note 10b): BELOW builds the carcass with this game's tube builder, vendored as below/src/stalheart/carcass-tube.js: the same file but its three.js import
+{ const ours = readFileSync(new URL('../src/fx/boss-carcass/tube.js', import.meta.url), 'utf8').split('\n'), theirs = readFileSync(new URL('../below/src/stalheart/carcass-tube.js', import.meta.url), 'utf8').split('\n');
+  const differ = ours.map((l, i) => (l === theirs[i] ? null : i)).filter((i) => i != null);
+  assert.equal(ours.length, theirs.length, 'the vendored tube builder has the same lines'); assert.deepEqual(differ.map((i) => /^import \* as THREE from /.test(ours[i]) && /^import \* as THREE from /.test(theirs[i])), differ.map(() => true), `only the three.js import differs (lines ${differ})`); }
 console.log(`descent-handoff.mjs: the breach's frame (Three.js agrees to 1e-12), poses and the matrix round-trip; the dive ends ${(DESCENT.door.under / ARENA.craterCells).toFixed(2)} hole radii down; the carcass in hole units`);

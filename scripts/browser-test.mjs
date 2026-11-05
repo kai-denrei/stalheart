@@ -1588,6 +1588,46 @@ try{
  const w=(await st()).wire;console.log('  landed: '+JSON.stringify(w)+' sector '+JSON.stringify((await st()).sector?.name));
  assert.equal(w.hull[0],w.hull[1],'every hull mesh wireframed');assert.equal(w.towers[0],w.towers[1],'every sentry mesh wireframed');assert.equal(w.mechs[0],w.mechs[1],'every Ridgeback part wireframed');assert.ok(w.hull[1]>0&&w.towers[1]>0&&w.mechs[1]>0,'something to draw');
  await delay(2000);current='wire';await finish();
+ } else if(args.includes('--descent-carcass')) {
+ // THE SAME BODY AND THE SAME PLACE (owner, 2026-11-05, round 5 note 10: "it should feel like exactly the entrance where the boss fight was; the cave's carcass is
+ // a Reed, it should be the Nih-Dairia from the chapter before"): the real road to the cave: THE ARENA on at once (?boss=1), the mother killed and laid (note 7),
+ // on to BOTH WALLS, then the descent: the handoff carries her carcass in hole units, the cave builds THE body from it (its ?test door read through the frame), its
+ // first frame from the dive's last pose; frames either side of both cuts (artifacts/browser/descent-carcass-*.png); the cave's climb (its own buttons) and the rise
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), {SECTOR_DOOR}=await import('../src/content/sectors.js'), {DESCENT}=await import('../src/content/descent.js'), C=`${T}.creatures.carcass()`;
+ const shoot=async(f)=>{const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(output,`descent-carcass-${f}.png`),Buffer.from(p.data,'base64'));};
+ const F='document.querySelector("iframe.descent-frame")',B=`${F}?.contentWindow?.__below`;
+ await go('descent-carcass-load',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().boss.on && ${T}.state().boss.phase==='beacon'`,60000);
+ await evaluate(`${T}.arenaNow()`);await until(`${T}.state().boss.card`,90000);
+ await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');await until(`!${T}.state().boss.card&&!${T}.state().paused`,10000);
+ await until(`${T}.state().boss.led&&(${T}.state().creatureProbe?.bodies?.families?.reed?.huge?.made??0)===1`,30000).catch(async()=>assert.fail(`her body made and leading before the kill (${JSON.stringify((await st()).boss)})`));
+ assert.ok(await evaluate(`${T}.damageBoss(999)`)!=null,'the boss hit');await until(`${C}?.faded&&${C}.hops===0`,30000).catch(async()=>assert.fail(`her carcass laid (${JSON.stringify(await evaluate(C))})`));
+ await until(`${T}.state().sector.debriefOpen||['debrief','finale','campaign'].includes(${T}.state().sector.phase)`,90000).catch(()=>{});
+ await evaluate(`${T}.sectorContinue()`);await until(`${T}.state().sector.n===${SECTOR_DOOR.earliest+2}`,30000);
+ {const s=await st();assert.ok(s.sector.breaches.some(b=>b.side==='arena'&&b.hole)||s.sector.nest?.open,`the arena's hole open on BOTH WALLS (${JSON.stringify(s.sector.nest)})`);}
+ await evaluate(`(()=>{const d=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'src');Object.defineProperty(HTMLIFrameElement.prototype,'src',{configurable:true,get(){return d.get.call(this);},set(v){d.set.call(this,String(v).includes('below/')?v+'&test=1':v);}});})()`);
+ await evaluate(`${T}.descentNow()`);
+ await until(`${T}.state().descent.phase==='dive'`,(DESCENT.briefCap+DESCENT.readyCap+30)*1000);
+ await until(`${T}.state().descent.phase==='shown'`,30000);
+ await shoot('in-0');await delay(250);await shoot('in-250');await delay(750);await shoot('in-1000');
+ const d=(await st()).descent,h=d.handoff;
+ assert.ok(h?.carcass&&h.carcass.limbs>=4&&h.carcass.moved===1,`the handoff carries her carcass, the cut leg's piece with it (${JSON.stringify(h?.carcass&&{limbs:h.carcass.limbs,moved:h.carcass.moved})})`);
+ const at=h.carcass.core,lay=await evaluate(`(c=>c&&{label:c.label,pieces:c.pieces.length})(${C})`);console.log(`  her carcass's core in hole units ${JSON.stringify(at.map(v=>+v.toFixed(3)))} (${Math.hypot(at[0],at[2]).toFixed(2)} hole radii from the centre, ${(at[1]*h.radius).toFixed(1)} m up); ${JSON.stringify(lay)}; the dive's last pose ${JSON.stringify(h.pose.pos.map(v=>+v.toFixed(3)))}; the hand-over ${JSON.stringify(d.door)}`);
+ await until(`!!${B}`,30000);
+ {const c=await evaluate(`(b=>{const s=b.snapshot();return {mode:s.mode,from:s.door.carcassFrom,pose:b.cameraPose()};})(${B})`);console.log(`  the cave: ${JSON.stringify(c)}`);
+  assert.equal(c.from,'handoff','the cave built THE body from the handoff, not its Reed');
+  assert.ok(c.pose.pos.every((v,i)=>Math.abs(v-h.pose.pos[i]*24)<1e-6)&&c.pose.fwd.every((v,i)=>Math.abs(v-h.pose.fwd[i])<1e-9),`its camera where the game's dive ended (${JSON.stringify(c.pose)})`);}
+ current='descent-carcass-in';await finish();
+ // its own buttons: TAKE THE FEED, then the ending (the charge placed and blown: the probe's frame) and RETURN TO THE SURFACE: the climb up the throat
+ await until(`!${F}.contentDocument.getElementById('begin').disabled`,30000);await evaluate(`${F}.contentDocument.getElementById('begin').click()`);await delay(2500);await shoot('feed-2500');
+ await evaluate(`(b=>{b.blastFrame(0);b.end('sacrifice');})(${B})`);await delay(200);await evaluate(`${F}.contentDocument.getElementById('restart').click()`);
+ await delay(1800);await shoot('climb-end');
+ await until(`!${F}`,15000).catch(async()=>assert.fail(`the climb's outcome closed the frame (${JSON.stringify((await st()).descent)})`));
+ await shoot('out-0');await delay(250);await shoot('out-250');
+ {const s=(await st()).descent;console.log(`  out: risen from ${JSON.stringify(s.risenFrom)}, the camera ${JSON.stringify(s.door)}, fades ${JSON.stringify(s.fades.map(f=>({kind:f.kind,up:f.fading&&+((f.fading-f.at)/1000).toFixed(2),gone:f.gone&&+((f.gone-f.at)/1000).toFixed(2)})))}`);
+  assert.ok(s.risenFrom&&Math.abs(s.risenFrom.pos[1]+0.55)<1e-6&&s.risenFrom.fwd[1]>0.999,'the rise from the climb\'s end at the throat\'s mouth, looking up');assert.equal(s.outcome,'sacrifice');}
+ await delay(1000);await shoot('out-1250');current='descent-carcass-out';await finish();
  } else if(args.includes('--descent')) {
  // THE DESCENT (owner, 2026-10-15; spec docs/superpowers/specs/2026-10-15-descent-mission-design.md): the cave game in an iframe over the paused game
  // after the final sector, its outcome posted back: the harness forces the hook on BOTH WALLS, sees the frame with the cave's page and the game paused,
@@ -1796,6 +1836,7 @@ try{
  await until(`!${T}.state().boss.card&&!${T}.state().paused`,10000);
  const cell=await evaluate(`(${T}.aliveBodies().find(e=>e.tier==='huge')||{}).cur??-1`);assert.ok(cell>=0,`her record's cell (${cell})`);
  assert.equal(await evaluate(C),null,'no carcass before her death');
+ await until(`${T}.state().boss.led&&(${T}.state().creatureProbe?.bodies?.families?.reed?.huge?.made??0)===1`,30000).catch(async()=>assert.fail(`her body made and leading before the kill (${JSON.stringify((await st()).boss)})`));
  assert.ok(await evaluate(`${T}.damageBoss(999)`)!=null,'the boss hit through damageEnemy');
  await until(`!!${C}`,(CREATURE_REED.collapse+10)*1000).catch(async()=>assert.fail(`her carcass laid once she has collapsed (${JSON.stringify((await st()).creatureProbe?.bodies?.families?.reed?.huge)})`));
  await until(`${C}.faded&&${C}.hops===0`,15000).catch(async()=>assert.fail(`the skin faded out and the cut leg landed (${JSON.stringify(await evaluate(C))})`));
