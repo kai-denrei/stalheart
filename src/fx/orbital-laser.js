@@ -251,6 +251,16 @@ void main(){
 
     hideGuide() { guide.visible = dot.visible = false; },
 
+    // THE GROUND DROPPED UNDER THE SCORCH (owner, 2026-11-05: the burned marks "hover at the higher level of where the rocks used to
+    // be"): the ribbon's live stamps laid again on `groundAt` (src/fx/scorch-trail.js reseat), and the last stamp's point with them, or
+    // the next aim fills the gap from the rock's old top down to the floor with a ramp of stamps in the air (measured 2026-11-06: one
+    // rock burn left 2 stamps at the rock top and 4 on that ramp, 0.8 to 4 m up; after, all on the floor). Returns how many stamps moved
+    reseat(groundAt) {
+      const moved = scorch.reseat(groundAt), g = groundAt(last.toArray());
+      if (g) last.fromArray(g);
+      return moved;
+    },
+
     // the player let go, or the energy ran out: the column goes, the scorch stays
     lift() {
       beam.mesh.visible = false;

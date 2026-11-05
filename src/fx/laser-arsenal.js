@@ -38,6 +38,7 @@ export function createLaserArsenal(scene, host) {
   let energyBonus = 0;   // THE ORBITAL WORKS: seconds of beam the collectors in orbit add to every ordinary pass
   const normalPass = () => { orbit.overhead = LASER_GAME.pass.overhead; Object.assign(beam, { energy: LASER_GAME.pass.energy + energyBonus, radius: LASER_GAME.pass.radius, slew: LASER_BEAM.slew }); laser?.tune({ radius: beam.radius }); };
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
+  let reseated = 0;   // stamps laid again on the floor after their rock burned (the harness's count, note 1 of round 8)
   let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, roadTarget = null, lastHeld = false, friendsAt = -Infinity, anchors = null, breakMs = 0;   // roadTarget: THE ROAD SOL CUTS (2026-10-16): a ground point the unseated beam holds on, as an automated aim would, never over a friend
   // SOL AUTOMATED (src/domain/laser-auto.js): `manned` counts the passes the player sat in and burned; once the ARC-01 has put SOL-88
   // up (setAuto), a pass nobody is seated for aims itself at the densest pile every LASER_AUTO.retarget seconds and holds the beam
@@ -249,7 +250,7 @@ export function createLaserArsenal(scene, host) {
     for (const t of things) { under[t.kind]++; if (t.label) underNames.push(t.label); }
     const cells = [];
     for (const entry of burnContacts(st, things, dt, LASER_BURN)) destroy(entry, cells);
-    if (cells.length) { const t0 = performance.now(); host.breakCells(cells); breakMs = Math.max(breakMs, performance.now() - t0); }
+    if (cells.length) { const t0 = performance.now(); host.breakCells(cells); breakMs = Math.max(breakMs, performance.now() - t0); reseated += laser.reseat(groundAt); }   // the rock is gone: its scorch lies on the floor now (owner, 2026-11-05, src/fx/orbital-laser.js reseat)
   }
 
   // the nearest breakable rock cell to a point (the harness aims at one to time the break): a walk out through the adjacency
@@ -311,7 +312,7 @@ export function createLaserArsenal(scene, host) {
       laser?.clear();
       special = null; normalPass();
       Object.assign(st, makeLaser(orbit, beam));
-      passes = burnSeconds = aimArc = breakMs = 0; manned = 0; mannedThisPass = false; auto = false; autoAim = null; platform = LASER_PLATFORMS.sol82; periodScale = 1; energyBonus = 0; normalPass();
+      passes = burnSeconds = aimArc = breakMs = reseated = 0; manned = 0; mannedThisPass = false; auto = false; autoAim = null; platform = LASER_PLATFORMS.sol82; periodScale = 1; energyBonus = 0; normalPass();
       for (const k of Object.keys(burned)) burned[k] = 0;
       testTarget = null; testHeld = false; roadTarget = null; anchors = null;
       online = !!host.online;
@@ -364,7 +365,7 @@ export function createLaserArsenal(scene, host) {
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2), special: !!special, radius: beam.radius,
       burning: st.burning, road: !!roadTarget, held: lastHeld, friendM: cNowFriendM(), contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, strip: laserStrip(st, online, beam, LASER_GAME.lowEnergy, platform.name).text, period: +orbit.period.toFixed(1), energyBonus, passEnergy: beam.energy,
-      source: laser?.sourceAt?.() ?? null, under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
+      source: laser?.sourceAt?.() ?? null, under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, reseated, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(), bp = bodyGround(e); return Math.hypot(bp[0] * R - st.contact[0], bp[1] * R - st.contact[1], bp[2] * R - st.contact[2]); })).toFixed(1) : null,
     }),

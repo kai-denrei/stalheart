@@ -6363,7 +6363,7 @@ const killReal=(Date.now()-t0)/1000;
  await evaluate('window.__stalheartTest.laserHold(true)');
  for(let i=0;i<16;i++){const s=await laser();if(s.burned.rocks>0||s.energy<=0)break;await delay(250);}
  await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer(null)');
- {const s=await laser();console.log(`  laser-game: rock ${s.burned.rocks}, the slowest break ${s.breakMs} ms, ${s.energy} s left`);}
+ {const s=await laser();console.log(`  laser-game: rock ${s.burned.rocks}, the slowest break ${s.breakMs} ms, ${s.energy} s left, ${s.reseated} scorch stamps laid again on the floor (round 8 note 1)`);}
  await delay(1500);
  current='laser-game-sealed';await finish();
  // TANK leaves: the seat goes, and the tank's third person comes back through its own 68 degree lens
