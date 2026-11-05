@@ -1,0 +1,205 @@
+{
+ "schema": 1,
+ "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+ "revision": "40c23fa4c732178efd7c36c6557216ea76b3ccb7",
+ "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/40c23fa4c732178efd7c36c6557216ea76b3ccb7/",
+ "credit": "Models by jelaludo (the owner's own; https://jelaludo.github.io/SentryTowers_A6/): the Dome Colony modules the Dome City is composed of (six dome roles and the 52 m long bridge; the city's placement is assets/dome-city/layout.json upstream, read into src/content/dome-city.js), the YushiRover biomass recovery rover, the SAI-92 mining hopper and its service bay, and the Yushi045 Bio-Pearl binder container, at `revision` (2026-11-05). D0 only (the author lists D1-D3 as pending), game tier LOD1 and static distance tier LOD2, plain GLB (the build meshopt-packs them). `clips: []` pins a model with no baked clips (the rover, the hopper and the pearl are engine-driven through named nodes; their runtime.js adapters are kept as the reference, dependency-injected with the game's Three). The Yushi045's fill level is a custom `_YUSHI` vertex attribute: the build must keep it (gltfpack -kv) or the capacity shader throws. Hashes are the author's manifests'; scripts/assets.mjs verifies them on fetch.",
+ "files": [
+  {
+   "path": "assets/models/dome-colony/biosphere_d0_lod1.glb",
+   "sourcePath": "assets/dome-colony/biosphere_d0_lod1.glb",
+   "sha256": "476635f5033d6da590e1676c22a39f897a0e5956e17950b298c43f41613513a9",
+   "bytes": 362524,
+   "triangles": 6344,
+   "draws": 8
+  },
+  {
+   "path": "assets/models/dome-colony/biosphere_d0_lod2.glb",
+   "sourcePath": "assets/dome-colony/biosphere_d0_lod2.glb",
+   "sha256": "bbcd122c25617303de08619339bf87b22953722f8b5b5f1415a44c562761601f",
+   "bytes": 110316,
+   "triangles": 2192,
+   "draws": 1
+  },
+  {
+   "path": "assets/models/dome-colony/fabrication_d0_lod1.glb",
+   "sourcePath": "assets/dome-colony/fabrication_d0_lod1.glb",
+   "sha256": "c9b6684660ec330e9f5b01c0f32b18d984edde57495793216673637e67d1cc79",
+   "bytes": 289352,
+   "triangles": 5704,
+   "draws": 8
+  },
+  {
+   "path": "assets/models/dome-colony/fabrication_d0_lod2.glb",
+   "sourcePath": "assets/dome-colony/fabrication_d0_lod2.glb",
+   "sha256": "ec933e0ca30f0bdc6a883267dc0e63fd49a77c56ffa2e5ae05dcdb49857da650",
+   "bytes": 110316,
+   "triangles": 2192,
+   "draws": 1
+  },
+  {
+   "path": "assets/models/dome-colony/habitat_d0_lod1.glb",
+   "sourcePath": "assets/dome-colony/habitat_d0_lod1.glb",
+   "sha256": "7b8e231fea26d39e6df62eb1dd5c7dbf89908253330af34497caaa9fbaeb18fc",
+   "bytes": 298756,
+   "triangles": 5880,
+   "draws": 8
+  },
+  {
+   "path": "assets/models/dome-colony/habitat_d0_lod2.glb",
+   "sourcePath": "assets/dome-colony/habitat_d0_lod2.glb",
+   "sha256": "9d2bd16e978dbcb95236b2ebe90fbe17ef634af347a5b217259901c4fe6a4372",
+   "bytes": 116820,
+   "triangles": 2304,
+   "draws": 1
+  },
+  {
+   "path": "assets/models/dome-colony/research_d0_lod1.glb",
+   "sourcePath": "assets/dome-colony/research_d0_lod1.glb",
+   "sha256": "8084a012971e5c5c6b39a35a34e84a344d889f26170aa35c2c2b63b06d89f8ee",
+   "bytes": 304036,
+   "triangles": 6232,
+   "draws": 8
+  },
+  {
+   "path": "assets/models/dome-colony/research_d0_lod2.glb",
+   "sourcePath": "assets/dome-colony/research_d0_lod2.glb",
+   "sha256": "e0e50d2bd7610e9521efa533474080f04911c3cac94591963085b0d4bf711293",
+   "bytes": 116820,
+   "triangles": 2304,
+   "draws": 1
+  },
+  {
+   "path": "assets/models/dome-colony/power_d0_lod1.glb",
+   "sourcePath": "assets/dome-colony/power_d0_lod1.glb",
+   "sha256": "0b014c0fab356bdf2e49ad71a35557ff13805b93b8ecb4b805e8a2d790a6351b",
+   "bytes": 309384,
+   "triangles": 6248,
+   "draws": 8
+  },
+  {
+   "path": "assets/models/dome-colony/power_d0_lod2.glb",
+   "sourcePath": "assets/dome-colony/power_d0_lod2.glb",
+   "sha256": "7055ac81f30f10cd448629d4fe00787dbec326ccff0dea9c8f3ee4d465b0f520",
+   "bytes": 116816,
+   "triangles": 2304,
+   "draws": 1
+  },
+  {
+   "path": "assets/models/dome-colony/logistics_d0_lod1.glb",
+   "sourcePath": "assets/dome-colony/logistics_d0_lod1.glb",
+   "sha256": "172ae45d92ff111c5b7b4ac093cadeb60dcf47693c75515b1f39754d8b7e3b39",
+   "bytes": 321004,
+   "triangles": 6168,
+   "draws": 8
+  },
+  {
+   "path": "assets/models/dome-colony/logistics_d0_lod2.glb",
+   "sourcePath": "assets/dome-colony/logistics_d0_lod2.glb",
+   "sha256": "993a712d48d74cd5c189b428a5a424acbde08c906de0d03d0c444160330aa07b",
+   "bytes": 116820,
+   "triangles": 2304,
+   "draws": 1
+  },
+  {
+   "path": "assets/models/dome-colony/bridge_long_d0_lod1.glb",
+   "sourcePath": "assets/dome-colony/bridge_long_d0_lod1.glb",
+   "sha256": "6f136c45bc1b6bb2004231e72efe1e36a6a1688fb8ddda1f67775b5047395759",
+   "bytes": 53892,
+   "triangles": 1060,
+   "draws": 2
+  },
+  {
+   "path": "assets/models/dome-colony/bridge_long_d0_lod2.glb",
+   "sourcePath": "assets/dome-colony/bridge_long_d0_lod2.glb",
+   "sha256": "e0ca7a4e0d964037d19b4b2a61dcb0d9d9f51e59ed8af7a9632829a022fe1d04",
+   "bytes": 51448,
+   "triangles": 1044,
+   "draws": 1
+  },
+  {
+   "path": "assets/models/yushi-rover/yushirover_d0_lod1.glb",
+   "sourcePath": "assets/yushi-rover/yushirover_d0_lod1.glb",
+   "sha256": "cc13e77b66e82b18931dc1b7805ead45237f7838952cd1ec8259f532610918a0",
+   "bytes": 677544,
+   "triangles": 21036,
+   "draws": 61,
+   "clips": []
+  },
+  {
+   "path": "assets/models/yushi-rover/yushirover_d0_lod2.glb",
+   "sourcePath": "assets/yushi-rover/yushirover_d0_lod2.glb",
+   "sha256": "a39de1131b9d6f2c0682902c012917bdf6e740ada0fd9167c8a5e4e34627f880",
+   "bytes": 219648,
+   "triangles": 2497,
+   "draws": 1,
+   "clips": []
+  },
+  {
+   "path": "assets/models/yushi-rover/runtime.js",
+   "sourcePath": "assets/yushi-rover/runtime.js",
+   "sha256": "f1fd2707f4fef17a972e06e53c6f82019f9df37a6fcbbbd7e14331943691078b",
+   "bytes": 4357
+  },
+  {
+   "path": "assets/models/sai92/sai92_unit_d0_lod1.glb",
+   "sourcePath": "assets/sai92/sai92_unit_d0_lod1.glb",
+   "sha256": "71764390537a05b01a3d0bde48fb51d1a8d26101a39dbe4aad6d1e7fd78f7031",
+   "bytes": 641160,
+   "triangles": 18992,
+   "draws": 42,
+   "clips": []
+  },
+  {
+   "path": "assets/models/sai92/sai92_unit_d0_lod2.glb",
+   "sourcePath": "assets/sai92/sai92_unit_d0_lod2.glb",
+   "sha256": "62d0d9636b313c8ac6f00e988a37c9e18b339c07a2928357a3f1cebda66f8e10",
+   "bytes": 203320,
+   "triangles": 2500,
+   "draws": 1,
+   "clips": []
+  },
+  {
+   "path": "assets/models/sai92/sai92_bay_d0_lod1.glb",
+   "sourcePath": "assets/sai92/sai92_bay_d0_lod1.glb",
+   "sha256": "efa93366d61ef020100378bcd24c68ed4f038e4fcb33fd45f70052b1cb31b8a2",
+   "bytes": 246664,
+   "triangles": 3928,
+   "draws": 5,
+   "clips": []
+  },
+  {
+   "path": "assets/models/sai92/sai92_bay_d0_lod2.glb",
+   "sourcePath": "assets/sai92/sai92_bay_d0_lod2.glb",
+   "sha256": "e14543456c2c2dafffbb41d56b69a171ebfd405a8501a2f322d79a72b8a3d023",
+   "bytes": 138692,
+   "triangles": 2000,
+   "draws": 1,
+   "clips": []
+  },
+  {
+   "path": "assets/models/yushi045/yushi045_container_d0_lod1.glb",
+   "sourcePath": "assets/yushi045/lod1/yushi045_container_d0_lod1.glb",
+   "sha256": "9d8810e5450149d863a160e5e6ea6276bd29f92a89062e2640d7f10325a67757",
+   "bytes": 62924,
+   "triangles": 1208,
+   "draws": 3,
+   "clips": []
+  },
+  {
+   "path": "assets/models/yushi045/yushi045_container_d0_lod2.glb",
+   "sourcePath": "assets/yushi045/lod2/yushi045_container_d0_lod2.glb",
+   "sha256": "d83d386ab772d7069c20ffe2055046a5aa9e58fdc7f0bc010950604ee60de3d5",
+   "bytes": 27200,
+   "triangles": 400,
+   "draws": 1,
+   "clips": []
+  },
+  {
+   "path": "assets/models/yushi045/runtime.js",
+   "sourcePath": "assets/yushi045/runtime.js",
+   "sha256": "fff10f499d3abcefcf4355762d64bbccce22c0572fb679e59cc64be29d3276c6",
+   "bytes": 4025
+  }
+ ]
+}
