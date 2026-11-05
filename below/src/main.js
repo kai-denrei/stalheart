@@ -12,7 +12,7 @@ const $=id=>document.getElementById(id);
 const stalheart=parseMode(location.search);   // the campaign's last mission inside Stålheart's page (src/handoff.js)
 const audio=createAudio();
 const keys=new Set(),velocity=new THREE.Vector3();
-let world,mission=createMission(),flight=createFlight(START),mode='briefing',resumeMode='playing',detonationAt=0,yaw=0,pitch=-.43,dragging=false,hadLock=false;
+let world,mission=createMission(),flight=createFlight(START),mode='briefing',resumeMode='playing',detonationAt=0,yaw=0,pitch=-.43;
 let simulationTime=0,lastTime=performance.now(),lastScan=-10,lastHit=-10,alertUntil=0,commsUntil=0,impact=0,cardUntil=0;
 let dialogueQueue=[],seen=new Set(),frameTimes=[];
 let climbing=null,skyFade=null;   // the climb out of the arena's hole (src/door.js): its seconds, and the sky's fade over the page
@@ -32,9 +32,6 @@ function say(text,duration=6,speaker='ISAO',delay=0){
 // until the LiDAR is first used (Q, or a view key, which sends the first sweep through scan()), and only while the bomb is carried: extraction clears it
 const LIDAR_HINT='PRESS Q · LIDAR';
 function alert(text,duration=4){$('alert').textContent=text;alertUntil=simulationTime+duration;}
-function lock(){
-  try{const promise=$('view').requestPointerLock();promise?.catch(()=>{alert('DRAG TO LOOK · ARROW KEYS ALSO AVAILABLE',5);});}catch{alert('DRAG TO LOOK · ARROW KEYS ALSO AVAILABLE',5);}
-}
 function start(){
   mission=createMission();world.reset();simulationTime=0;lastScan=-10;lastHit=-10;impact=0;dialogueQueue=[];seen=new Set();keys.clear();velocity.set(0,0,0);
   // THE DOOR (2026-10-26, src/door.js): in Stålheart's page ISAO starts at the foot of the arena's hole, on its rubble, under its mouth of sky
@@ -44,13 +41,13 @@ function start(){
   cardUntil=START_CARD.seconds;   // the start card (mission.js startCard)
   yaw=0;pitch=-.43;world.player.copy(from);flight=createFlight(from);flight.position=world.player;flight.velocity=velocity;
   $('briefing').hidden=true;$('pause').hidden=true;$('ending').hidden=true;$('hud').hidden=false;$('countdown').hidden=true;$('interaction').hidden=true;$('isao-face').classList.remove('worried');
-  $('alert').textContent='';alertUntil=0;mode='playing';audio.reset();audio.pause(false);audio.init().catch(()=>{});updateSoundLabel();lock();
+  $('alert').textContent='';alertUntil=0;mode='playing';audio.reset();audio.pause(false);audio.init().catch(()=>{});updateSoundLabel();
   say('Work light’s on. Keep me clear of the walls.',6);
   say('Fifteen flares. F to drop one. The green one I left here marks the way out.',7,'ISAO',7);
   say('Keep me clear of the walls. I’d like to come back.',6,'ISAO',16);
 }
-function pause(){if(!['playing','surface','detonation'].includes(mode))return;resumeMode=mode;mode='paused';keys.clear();velocity.set(0,0,0);$('pause').hidden=false;audio.pause(true);if(document.pointerLockElement)document.exitPointerLock();}
-function resume(){if(mode!=='paused')return;mode=resumeMode;$('pause').hidden=true;audio.pause(false);if(mode==='playing')lock();}
+function pause(){if(!['playing','surface','detonation'].includes(mode))return;resumeMode=mode;mode='paused';keys.clear();velocity.set(0,0,0);$('pause').hidden=false;audio.pause(true);}
+function resume(){if(mode!=='paused')return;mode=resumeMode;$('pause').hidden=true;audio.pause(false);}
 function scan(){
   if(mode!=='playing')return;
   if(!mission.lidarAvailable){alert(mission.lidarProcessingAt?'PROCESSING LIDAR RETURNS':'LIDAR INFORMATION NOT YET PROCESSED',3);return;}
@@ -74,7 +71,7 @@ function dropFlare(){
   world.dropFlare(world.player,simulationTime,yaw);audio.tone(180,.3,.09);alert(`FLARE RELEASED / ${mission.flares} REMAINING`,2);
 }
 function end(outcome){
-  mode='ended';keys.clear();velocity.set(0,0,0);dialogueQueue=[];audio.finish();if(document.pointerLockElement)document.exitPointerLock();
+  mode='ended';keys.clear();velocity.set(0,0,0);dialogueQueue=[];audio.finish();
   $('ending').hidden=false;$('hud').hidden=true;
   const content={
     rescued:['COLONY SECURED / UNIT RECOVERED','WELCOME<br>HOME.','The ground goes quiet. Four damaged rotors clear the rim.<br><br>ISAO: “I need a new lamp.”'],
@@ -110,13 +107,13 @@ function event(type){
     audio.tone(360,.7,.16);dialogueQueue=[];say('Delivery complete. Now please get me out.',7);alert('PAYLOAD ARMED — GET BACK TO THE SURFACE',8);$('countdown').hidden=false;
     say('One hundred seconds. Find the shaft. Get me out.',5,'ISAO',9);   // mission.js FUSE (100 s since 2026-10-18), spelled out like 'Thirty seconds.'; test/mission.test.mjs checks the words against FUSE
   } else if(type==='extracted'){
-    mode='surface';keys.clear();velocity.set(0,0,0);world.player.set(-17,2.5,22);if(document.pointerLockElement)document.exitPointerLock();$('alert').textContent='';alertUntil=0;   // no PRESS Q hint over the surface
+    mode='surface';keys.clear();velocity.set(0,0,0);world.player.set(-17,2.5,22);$('alert').textContent='';alertUntil=0;   // no PRESS Q hint over the surface
     dialogueQueue=[];say(mission.rush?'I’m out. Bringing the charge forward.':'I’m out. The charge is still counting.',6);   // the fuse hurries when he is out early (mission.js FUSE_RUSH, note 12)
   } else if(type==='signal-lost'){
-    mode='surface';keys.clear();velocity.set(0,0,0);if(document.pointerLockElement)document.exitPointerLock();$('alert').textContent='';alertUntil=0;say('ISAO — SIGNAL LOST',6,'CONTROL');
+    mode='surface';keys.clear();velocity.set(0,0,0);$('alert').textContent='';alertUntil=0;say('ISAO — SIGNAL LOST',6,'CONTROL');
   } else if(type==='detonated'){
     mode='detonation';detonationAt=simulationTime;world.startDetonation(simulationTime);keys.clear();velocity.set(0,0,0);
-    if(document.pointerLockElement)document.exitPointerLock();audio.finish();audio.play('sinkhole_quake',.6);audio.play('blast_fire',.55);$('comms').classList.remove('on');$('alert').textContent='SUBSURFACE DETONATION';
+    audio.finish();audio.play('sinkhole_quake',.6);audio.play('blast_fire',.55);$('comms').classList.remove('on');$('alert').textContent='SUBSURFACE DETONATION';
   } else if(type==='lost')end(type);
 }
 function step(dt){
@@ -240,10 +237,8 @@ document.addEventListener('keydown',e=>{
   if(mode==='playing'){keys.add(e.code);if(e.code==='KeyQ')scan();if(e.code==='KeyF')dropFlare();if(['Digit1','Digit2','Digit3'].includes(e.code))selectView(Number(e.code.slice(-1))-1);if(e.code==='KeyV')selectView('optical');}
 });
 document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.key==='Meta'||e.key==='Control')keys.clear();});
-document.addEventListener('mousemove',e=>{if(mode!=='playing'||(!document.pointerLockElement&&!dragging))return;yaw-=e.movementX*.002;pitch=chasePitch(pitch-e.movementY*.002);});   // x turns ISAO (no bank: flight.js TILT), y only the chase camera's pitch (flight.js CHASE)
-$('view').addEventListener('mousedown',()=>{if(mode==='playing'){dragging=true;if(!document.pointerLockElement)lock();}});
-document.addEventListener('mouseup',()=>dragging=false);
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement){hadLock=true;}else if(hadLock){hadLock=false;if(mode==='playing')pause();}});
+// THE MOUSE DOES NOTHING (Stålheart round 7, note 9, owner 2026-11-05: "W tilts forward S tilts backward, A and D rotate for the next set of W and S. Space bar
+// and shift for up and down"): no yaw, no pitch, no pointer lock; the keys alone fly ISAO (↑ ↓ still tilt the camera), and the chase camera follows his back
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
 window.addEventListener('blur',()=>{keys.clear();if(['playing','surface','detonation'].includes(mode))pause();});
 window.addEventListener('resize',()=>world?.resize());
@@ -286,7 +281,7 @@ try{
   if(new URLSearchParams(location.search).has('test'))window.__below={
     snapshot:()=>({mode,mission:{...mission},position:world.player.toArray(),cameraPosition:world.camera.position.toArray(),velocity:velocity.toArray(),attitude:{roll:flight.roll,pitch:flight.pitch},yaw,pitch,drawCalls:world.renderer.info.render.calls,points:world.renderer.info.render.points,meanFrameMs:frameTimes.reduce((a,b)=>a+b,0)/frameTimes.length*1000,...world.stats(),audio:audio.stats(),mother:'ovum-spider-v3',route:nearestRoute(world.player).s}),
     place:(s,dx=0,dy=0)=>{const c=center(s);world.player.set(c.x+dx,c.y+dy,c.z);velocity.set(0,0,0);},
-    look:(y,p)=>{yaw=y;pitch=chasePitch(p);},   // the player's own range: the harness shows no view the mouse cannot reach
+    look:(y,p)=>{yaw=y;pitch=chasePitch(p);},   // the test's hand (A/D's heading, ↑ ↓'s pitch, in the player's own range); the chase camera follows it as it follows a turn
     advance:(seconds)=>{for(let t=0;t<seconds;t+=1/60)step(Math.min(1/60,seconds-t));},
     contactSamples:world.contactSamples,
     blastFrame:(age)=>{world.startDetonation(simulationTime);mission.payload=false;mission.detonated=true;mission.outcome='sacrifice';mode='detonation';detonationAt=simulationTime;world.update(simulationTime+age,mission,false,{flight,dt:0,yaw,pitch,cinematic:true,reducedMotion});updateHUD();mode='paused';resumeMode='detonation';audio.pause(true);world.render();},
