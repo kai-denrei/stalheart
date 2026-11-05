@@ -26,8 +26,15 @@ export function printSpan(root) {
   return root.userData.printSpan;
 }
 
+// a clone without the userData: Object3D.copy deep-copies userData through JSON, and a mounted tier carries its AnimationMixer and actions there
+// (story-base mount), which are circular: the clone threw in the game on the radar's first print tick (the --antenna-print step, 2026-11-05)
+function bareClone(source) {
+  const kept = []; source.traverse((o) => { kept.push([o, o.userData]); o.userData = {}; });
+  try { return cloneSkinned(source); } finally { for (const [o, ud] of kept) o.userData = ud; }
+}
+
 export function createStructurePrint(holder, source, { colour = 0xbfe6ff, opacity = 0.85, skin = 0.8, now } = {}) {
-  const ghost = cloneSkinned(source); ghost.name = `${source.name} print`; ghost.visible = true;
+  const ghost = bareClone(source); ghost.name = `${source.name} print`; ghost.visible = true;
   ghost.traverse((o) => { o.visible = true; if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
   ghost.userData.printSpan = printSpan(source);
   const print = printGhost(ghost, colour, { shared: true, opacity });

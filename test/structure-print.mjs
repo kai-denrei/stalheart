@@ -21,6 +21,7 @@ function rec(withFar = true) {
   const holder = new THREE.Group(); holder.matrixAutoUpdate = false; holder.userData.placed = new THREE.Matrix4().makeScale(2, 2, 2); holder.matrix.copy(holder.userData.placed);
   const far = withFar ? tier('far', solidMat) : null, near = tier('near', solidMat);
   if (far) holder.add(far); holder.add(near); near.visible = !withFar;
+  for (const t of [far, near].filter(Boolean)) { const mixer = new THREE.AnimationMixer(t); t.userData.mixer = mixer; t.userData.actions = { Spin: mixer.clipAction(new THREE.AnimationClip('Spin', 1, [])) }; }   // as story-base mounts a tier with clips: circular userData
   return { holder, far, near: withFar ? null : near, shown: 'far', spare: near };
 }
 let wall = 0; const lifts = [];
@@ -36,6 +37,7 @@ const meshes = (o) => { const l = []; o.traverse((x) => { if (x.isMesh) l.push(x
   const st = prints.state('radar', r); assert.deepEqual(st, { ghost: true, skinning: false, solid: false, k: 0.25 }, 'the first tick: a ghost, the solid hidden');
   assert.equal(lifts.at(-1), 1, 'the holder at its full size: no Y rise under the wire');
   const ghost = r.holder.children.find((c) => /print$/.test(c.name)); assert.ok(ghost, 'the ghost is a child of the holder');
+  assert.ok(r.far.userData.mixer && r.far.userData.actions.Spin, 'the tier keeps its mixer and actions'); assert.equal(ghost.userData.mixer, undefined, 'the ghost carries none');
   const gm = meshes(ghost), mats = new Set(gm.map((m) => m.material)); assert.equal(gm.length, 3); assert.equal(mats.size, 1, 'one shared material');
   const wire = [...mats][0]; assert.equal(wire.wireframe, true); assert.equal(wire.color.getHex(), P.colour); assert.equal(wire.depthWrite, false); assert.equal(wire.clippingPlanes.length, 1);
   assert.ok(gm.every((m) => m.geometry === r.far.children[gm.indexOf(m)].geometry), 'the ghost shares the tier\'s geometry');
