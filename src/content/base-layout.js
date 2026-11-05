@@ -84,7 +84,8 @@ export const STRUCTURES = Object.freeze([
   { id: 'ammo-b', asset: 'assets/models/astro/ammo_missile_cruise_projectile_game.glb', island: 'assembly', stage: 9, scale: 1, offset: [-21, 0, 1], tilt: 90, lift: 0.35, heading: [-0.2, 0.98], batch: true },
   { id: 'ammo-c', asset: 'assets/models/astro/ammo_heavy_240_projectile_game.glb', island: 'assembly', stage: 9, scale: 1, offset: [-16, 0, 8], tilt: 90, lift: 0.15, heading: [0.6, 0.8], batch: true },
   // the ARC-01 has no distance tier on the base: its launch is engine-driven on ONE model, and a near/far swap put the animation on the hidden tier
-  { id: 'launcher', asset: 'assets/models/astro/arc01_launcher_d0_lod1.glb', island: 'launcher', stage: 9, scale: 1, offset: [0, 0, 0], heading: [-1, 0] },
+  // `dark`: meshes whose glow stands off between launches (the magnets, owner 2026-11-05: NOT lit at the beginning; src/content/orbital-works.js LAUNCHER_LIGHTS)
+  { id: 'launcher', asset: 'assets/models/astro/arc01_launcher_d0_lod1.glb', island: 'launcher', stage: 9, scale: 1, offset: [0, 0, 0], heading: [-1, 0], dark: ['PASSAGE_GATES', 'ACCELERATOR_LIGHTS'] },
   // EARLIER LANDINGS, out past the clearing on open ground (anchor 'open' snaps to the nearest open cell): two HUGIN boosters standing
   // on their tripods and one wreck on its side. The flight GLBs sit on their mass reference, feet at -6.3 m, hence the offset; the wreck
   // is tilted onto its side and lifted by its hull radius. Draft placement, to be moved once the tank trip beat is written.

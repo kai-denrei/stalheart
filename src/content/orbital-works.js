@@ -12,8 +12,10 @@ export const ORBITAL_WORKS = Object.freeze({
   routine: Object.freeze({ first: 75, every: Object.freeze([150, 300]) }),
 });
 
-// THE MAGNETS ONE BY ONE (owner, 2026-10-19, third round, note 5: "small change, stage 7 the launcher; the magnets should light up in cyan one
-// by one, not all at a time"): the ARC-01's `magnets` passage gates (sixteen on the pinned lod1 rail, evenly spaced along its arc) light in
-// cyan from the breech up the rail as the charge begins, one every `step` s, each over `ramp` s: sixteen take 3.9 s, the 4 s charge before
-// the release; they still go out together after it (src/domain/light-sequence.js, src/fx/arc-launch.js)
-export const LAUNCHER_LIGHTS = Object.freeze({ magnets: 16, step: 0.25, ramp: 0.15 });
+// THE MAGNETS LIGHT WITH THE PAYLOAD (owner, 2026-11-05, round 7, note 6: "I insist" they are NOT on at the beginning, they light up with the
+// payload moving, "the impression that it is a magnetically powered launch"; it keeps 2026-10-19's "one by one"): the ARC-01's `magnets` passage
+// gates (sixteen on the pinned lod1 rail) and their status lights stand dark (`idle`, an emissiveIntensity) on the base and through the loading;
+// over the charge only the breech glows, up to `breech`; while the sled runs the rail the gate at its arc index and `ahead` past it burn at
+// `peak`, the `trail` behind it fading one step each, the rest dark; after the release all fall together over 2 s and stay at `idle`
+// (src/domain/light-sequence.js lightsBySled, src/fx/arc-launch.js; the standing launcher's two meshes are set dark by base-layout's `dark`)
+export const LAUNCHER_LIGHTS = Object.freeze({ magnets: 16, ahead: 2, trail: 3, peak: 2, breech: 0.15, idle: 0 });

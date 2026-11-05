@@ -1421,6 +1421,9 @@ try{
  await until(`${T}.state().programme.colony.calibrated`,5000).catch(async()=>assert.fail('Isao has his calibration after two manned passes'));
  // 4. THE ARC-01 prints once the calibration is in, then launches SOL-88 over 30 s; SOL is automated from the insertion stage
  await until(`${T}.state().programme.printed.includes("launcher")`,120000).catch(async()=>assert.fail(`the ARC-01 prints (${JSON.stringify(await prog())})`));
+ // THE MAGNETS LIGHT WITH THE PAYLOAD (owner, 2026-11-05, round 7, note 6; src/fx/arc-launch.js magnetGlow): every frame of the launch, the levels and the
+ // materials' glow; dark through the loading and the charge (the breech at most LAUNCHER_LIGHTS.breech), a wave on the sled's arc index, dark 2 s after the release
+ await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__launchLog=[];const tick=()=>{const s=T.showcase.launch();if(s)L.push(s);if((s||!L.length)&&L.length<20000)requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
  await until(`${T}.state().shot==='sol88Launch'`,15000).catch(async()=>assert.fail(`the first launch is a cinematic (${(await st()).shot})`));
  await delay(6500);current='colony-launch-shot';await finish();
  await delay(4500);current='colony-launch-shot-away';await finish();
@@ -1428,6 +1431,17 @@ try{
  await until(`${T}.state().programme.colony.launch.phase==="released" || ${T}.state().programme.colony.launch.phase==="unfolding"`,20000);
  current='colony-launch';await finish();
  await until(`${T}.state().programme.colony.sol88`,LAUNCH.duration*1000+15000).catch(async()=>assert.fail(`the launch completes and SOL-88 is up (${JSON.stringify((await prog()).colony)})`));
+ {const L=await evaluate('window.__launchLog'),{LAUNCHER_LIGHTS}=await import('../src/content/orbital-works.js'),R=LAUNCH.start+LAUNCH.seconds,max=(x)=>Math.max(...x.glow.flat());
+  const pre=L.filter(x=>x.t<LAUNCH.start),acc=L.filter(x=>x.phase==='accelerating'),post=L.filter(x=>x.t>=R+2.05);
+  console.log(`  colony: launch lights over ${L.length} frames (split worn ${L.filter(x=>x.split?.every(Boolean)).length}): before the sled moves max glow ${Math.max(0,...pre.map(max))}; accelerating ${acc.map(x=>`${x.t}s:${x.lit.filter(v=>v>=0.9).length}full/${x.lit.findIndex(v=>v>=0.9)}`).join(' ')}; after the release +2 s max ${Math.max(0,...post.map(max))} over ${post.length}`);
+  assert.ok(pre.length>0&&pre.every(x=>max(x)<=LAUNCHER_LIGHTS.breech+1e-6),`the magnets are dark until the sled moves, the breech at most ${LAUNCHER_LIGHTS.breech} (${JSON.stringify(pre.filter(x=>max(x)>LAUNCHER_LIGHTS.breech).slice(0,2))})`);
+  assert.ok(pre.filter(x=>x.t<LAUNCH.chargeAt).every(x=>max(x)===LAUNCHER_LIGHTS.idle),'dark through the loading');
+  assert.ok(acc.length>0,`frames caught while the sled runs the rail (${L.map(x=>x.t).slice(0,40)})`);
+  assert.ok(acc.every(x=>x.glow.every(m=>m.length===LAUNCHER_LIGHTS.magnets&&m.filter(v=>v>=0.9*LAUNCHER_LIGHTS.peak).length===x.lit.filter(v=>v>=0.9).length)),`the materials wear the wave, one per magnet: the split is on while the sled runs (${JSON.stringify(acc.slice(0,2).map(x=>x.glow))})`);
+  assert.ok(pre.some(x=>max(x)>0),'the breech glows faintly over the charge (the split is on before the sled moves)');
+  for(const x of acc){const full=x.lit.filter(v=>v>=0.9).length,head=x.lit.findIndex(v=>v>=0.9);assert.ok(full>=1&&full<=3&&(head>=13||full===3),`a wave of three at the sled (${x.t} s: ${x.lit})`);if(head>=6)assert.ok(x.lit.slice(0,3).every(v=>v<0.3),`the breech dark again behind the sled (${x.t} s: ${x.lit})`);}
+  assert.ok(post.length>0&&post.every(x=>max(x)===0),`all dark 2 s after the release (${JSON.stringify(post.filter(x=>max(x)>0).slice(0,2))})`);
+  const standing=await evaluate(`${T}.showcase.magnets()`);assert.ok(standing&&standing.flat().length>0&&standing.flat().every(v=>v===0),`the standing launcher's magnets are dark between launches (${JSON.stringify(standing)})`);}
  {const s=await st();assert.equal(s.laser.auto,true,'SOL fires on its own now');assert.equal(s.laser.platform,'sol88','SOL-88 is the platform overhead');
   await until('/^SOL-88/.test(document.querySelector("#story-views [data-view=laser]").textContent)',5000).catch(async()=>assert.fail(`the strip names SOL-88 (${await evaluate('[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent+"/"+b.hidden).join("|")')} nav=${await evaluate('document.querySelectorAll("#story-views").length')} laser=${JSON.stringify(((l)=>({auto:l.auto,platform:l.platform,strip:l.strip,phase:l.phase}))((await st()).laser))})`));}
  // 5. AN AUTOMATED PASS: bodies out of a breach, the pass overhead, nobody seated, and the beam burns them on its own
@@ -3572,6 +3586,45 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const k1=(await st()).kicks;console.log(`  round13: drove ${moved.toFixed(4)} units in 12 s, ${still} still samples of 119, kicks ${k1-k0}`);
  assert.ok(moved>0.05,'the hull drives');assert.ok(still<40,`it never sits ground against a wall for long (${still} still samples)`);
  current='round13-drive';await finish();
+ } else if(args.includes('--nest-lag')) {
+ // THE NEST COMES ROUND THE LANDER (owner, 2026-11-05, round 7, note 1: "a lag between clearing a nest and the cargo being available"; src/domain/guard-aggro.js
+ // hullField, src/fx/enemy-step.js guardField). Measured first: with the hull parked at a site's stand and a player killing what comes within reach, the swarm
+ // went down in ~25 s and the last three to ten guards milled on the lander's far side, out of sight, holding the cargo another 40 s; nothing else lagged (the
+ // flag, the pickup and the state all on the frame the count fell under STORY_EXPEDITIONS.clearBelow, automated() true every frame, no queued guard).
+ // ?lab=1: the lab's immortal hull (src/lab.js), so the parked hull is not lost to the touches while it waits. WATCH: the hull parked, nobody killing for WATCH_S: every guard comes to the hull (none left beyond FAR cells). PLAY: the nearest guard within KILL_CELLS
+ // killed every 0.3 s: the cargo is picked up within PLAY_S, on the frame the count fell (tPickup - tLastKill under 1.5 s). Timeline JSON in NEST_OUT.
+ const T='window.__stalheartTest',site=process.env.SITE||'rocket-a',K=+(process.env.KILL_CELLS||3),FAR=+(process.env.FAR||3.5),out=process.env.NEST_OUT||join(output,'nest-lag.json'),{STORY_EXPEDITIONS}=await import('../src/content/story-defaults.js');
+ await go('nest-lag',`index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition&lab=1${process.env.NEST_QUERY||''}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`${T}.showcase.nest("${site}").guards.length>0 && ${T}.showcase.nest("${site}").queued===0`,60000);
+ const stand=await evaluate(`${T}.cargoStand("site","${site}")`);assert.ok(stand>=0,`a stand cell for ${site}`);
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
+ await evaluate(`${T}.placeTank(${stand})`);await delay(300);
+ const ring=(g)=>{const h=[0,0,0,0,0];for(const x of g)h[Math.min(4,Math.floor(x.hull/1.5))]++;return h.join('/');};   // guards by hull distance: <1.5 / <3 / <4.5 / <6 / beyond, cells
+ const w0=await evaluate(`${T}.showcase.nest("${site}")`);
+ await delay(+(process.env.WATCH_S||20)*1000);
+ const w1=await evaluate(`${T}.showcase.nest("${site}")`),far=w1.guards.filter(x=>x.hull>FAR);
+ console.log(`NEST LAG watch ${site}: ${w1.guards.length} guards; by hull distance (1.5-cell rings) ${ring(w0.guards)} -> ${ring(w1.guards)}; beyond ${FAR} cells ${far.length} (${far.map(x=>`${x.type}@nest${x.nest}/hull${x.hull}`).join(' ')})`);
+ await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__nestLog=[],t0=performance.now();const tick=()=>{const p=T.showcase.nest(${JSON.stringify(site)});L.push({w:+((performance.now()-t0)/1000).toFixed(3),n:p.guards.length,q:p.queued,st:p.state,fl:p.flag,ca:!!p.carrying,auto:p.auto,hull:p.hull});if(L.length<20000&&!p.carrying)requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
+ const kills=[],k0=Date.now();
+ while(Date.now()-k0<+(process.env.PLAY_S||60)*1000){
+  if(await evaluate(`!!${T}.showcase.nest("${site}").carrying`))break;
+  if(await evaluate(`${T}.showcase.killGuards("${site}",${K})`))kills.push(await evaluate('window.__nestLog.at(-1)?.w??0'));
+  await delay(300);
+ }
+ await delay(1000);
+ const L=await evaluate('window.__nestLog'),first=(f)=>L.find(f)??null,cb=STORY_EXPEDITIONS.clearBelow;
+ const tLastKill=first(x=>x.n<cb),tCleared=first(x=>x.st!=='guarded'),tFlag=first(x=>x.fl),tPickup=first(x=>x.ca),ten=first(x=>x.n<=10);
+ const res={site,K,watch:{before:ring(w0.guards),after:ring(w1.guards),beyond:far.length},kills:kills.length,lastKill:kills.at(-1)??null,tenLeft:ten?.w??null,tLastKill:tLastKill?.w??null,tCleared:tCleared?.w??null,tFlag:tFlag?.w??null,tPickup:tPickup?.w??null,
+  autoFalse:L.filter(x=>!x.auto).length,queued:Math.max(0,...L.map(x=>x.q)),frames:L.length,hull:L[0]?.hull,trace:L.filter((x,i,a)=>i===0||x.n!==a[i-1].n||x.st!==a[i-1].st).map(x=>[x.w,x.n,x.q,x.st,x.fl?1:0,x.ca?1:0])};
+ writeFileSync(out,JSON.stringify(res,null,1));
+ console.log('NEST LAG '+JSON.stringify({...res,trace:undefined}));
+ assert.equal(far.length,0,`the nest comes for the parked hull: no guard left beyond ${FAR} cells after the watch (${far.map(x=>`${x.type}@nest${x.nest}/hull${x.hull}`).join(' ')})`);
+ assert.ok(tPickup,`the cargo is picked up within the play (${JSON.stringify(res.trace.slice(-6))})`);
+ assert.ok(tPickup.w-tLastKill.w<1.5,`the pickup on the count's fall: ${(tPickup.w-tLastKill.w).toFixed(2)} s (target under 1.5)`);
+ assert.ok(tPickup.w-ten.w<+(process.env.TAIL_S||6),`the last ten guards come and go within ${process.env.TAIL_S||6} s: ${(tPickup.w-ten.w).toFixed(2)} s (6.4 s on the base without the field, 2.4-2.5 s with it)`);
+ current='nest-lag';await finish();
  } else if(args.includes('--nest-guards')) {
  // THE SMALL REED AT EACH NEST (owner, 2026-10-16: 'let's put a small Reed at each cargo spot too'; STORY_EXPEDITIONS.sites guards with family/tier,
  // src/fx/expedition-glue.js openSite): on the expedition page each open site has its guards up, one of them a Reed of the small tier with a creature

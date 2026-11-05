@@ -5053,7 +5053,7 @@ export function initTdTab(root) {
       // because cur === next is a zero-length chord
       setAmmo: (n) => { ammo = n; updateHud(); }, laserAuto: (on) => laserStation.setAuto(on),   // the harness's rack and SOL's automation switch
       placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
-      killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); },
+      killGuards: (...a) => gameHooks.showcase.killGuards(...a),   // src/fx/showcase-hooks.js
       hitTank: (whole = true) => { if (playerHP > 1 || (!whole && hullArmour > 1)) playerHit(null, null, whole); },   /* a hull lost whole (the suites' hull-loss steps), or hitTank(false): one dent */
       parkHull: (id = 'stalheart') => { const at = storyBase?.structure(id)?.holder?.getWorldPosition(new THREE.Vector3()).normalize().toArray(); let best = -1, d = Infinity; if (at) graph.centers.forEach((c, ci) => { const k = a6Arc(c, at); if (k < d && dungeon.tags[ci] !== BLOCKED && storyBase.inside(id, c)) { d = k; best = ci; } }); if (best >= 0) gameHooks.placeTank(best); return best; },   /* the hull parked under the Stålheart, nearest its holder (it mends there, 2026-10-18) */
       cargoView: (k, id) => {
@@ -5208,7 +5208,7 @@ export function initTdTab(root) {
       // THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems
       // through these and nothing else, so it needs no ?acceptance=1
       showcase: createShowcaseHooks({
-        camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci), hullBlock: () => hullDrive.block(),
+        camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci), hullBlock: () => hullDrive.block(), killCreature,
         story: () => story, storyBase: () => storyBase, deploy: () => hullDeploy.state(), playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP,
         setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipRig.setTrack(v); },
       }),

@@ -9,7 +9,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture } from './model-fixture.js';
 import { LAUNCHER_LIGHTS } from '../content/orbital-works.js';
-import { lightLevels, arcIndex } from '../domain/light-sequence.js';
+import { lightsBySled, arcIndex } from '../domain/light-sequence.js';
 
 export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, chargeAt: 4, start: 8, seconds: 0.4, climb: 6, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
 const RELEASE = LAUNCH.start + LAUNCH.seconds;
@@ -37,12 +37,25 @@ export function launchState(seconds) {
   return { t, sled, payload, phase, charge: t < LAUNCH.start ? ease(t, LAUNCH.chargeAt, LAUNCH.start) : t < RELEASE ? 1 : 1 - ease(t, RELEASE, RELEASE + 2), clamp: 1 - ease(t, RELEASE - 0.04, RELEASE), deploy: ease(t, 17, 21), burn: t >= 21 && t < 26, done: t >= LAUNCH.duration };
 }
 
-// THE MAGNETS ONE BY ONE (owner, 2026-10-19, third round, note 5: "small change, stage 7 the launcher; the magnets should light up in cyan one
-// by one, not all at a time"). The magnets are the ARC-01's sixteen passage gates and the status lights on them, and the pinned lod1 merges
-// each set into one mesh with one material (PASSAGE_GATES, ACCELERATOR_LIGHTS: no node per gate), so one emissive lit them all at once. For
-// the charge each mesh wears a copy of its geometry with its triangles sorted into one group per gate (by the gate's place on the rail's arc,
-// src/domain/light-sequence.js arcIndex) and one clone of its material per group. The clones share the original's shader program, so nothing
-// compiles; the extra draws (sixteen a mesh) last only until the magnets are equal again after the release, and the merged mesh comes back.
+// THE MAGNETS LIGHT WITH THE PAYLOAD (owner, 2026-11-05, round 7, note 6; LAUNCHER_LIGHTS): each magnet's emissiveIntensity at a launch state.
+// Dark through the loading; over the charge the breech alone glows up to `breech`; while the sled runs the rail the wave's head is the sled's
+// own arc index (the rule that splits the mesh below); after the release the last wave falls with the charge, all together, to `idle`
+export function magnetGlow(s, out = new Array(LAUNCHER_LIGHTS.magnets)) {
+  const L = LAUNCHER_LIGHTS, n = L.magnets;
+  if (s.t < LAUNCH.chargeAt) return out.fill(L.idle);
+  if (s.t < LAUNCH.start) { out.fill(L.idle); out[0] = L.idle + (L.breech - L.idle) * s.charge; return out; }
+  const head = s.t < RELEASE ? arcIndex(s.sled.position[1], s.sled.position[2], RAIL_CENTRE, LAUNCH.sweep, n) : n - 1, fall = s.t < RELEASE ? 1 : s.charge;
+  lightsBySled(head, n, L, out);
+  for (let i = 0; i < n; i++) out[i] = L.idle + (L.peak - L.idle) * out[i] * fall;
+  return out;
+}
+
+// ONE MESH A MAGNET (owner, 2026-10-19, "one by one, not all at a time"; 2026-11-05, "with the payload moving"). The magnets are the ARC-01's
+// sixteen passage gates and the status lights on them, and the pinned lod1 merges each set into one mesh with one material (PASSAGE_GATES,
+// ACCELERATOR_LIGHTS: no node per gate), so one emissive lit them all at once. For the launch each mesh wears a copy of its geometry with its
+// triangles sorted into one group per gate (by the gate's place on the rail's arc, src/domain/light-sequence.js arcIndex) and one clone of its
+// material per group. The clones share the original's shader program, so nothing compiles; the extra draws (sixteen a mesh) last only until
+// the magnets are equal again after the release, and the merged mesh comes back.
 function perMagnet(mesh, count) {
   if (!mesh?.isMesh || Array.isArray(mesh.material) || !mesh.material?.emissive) return null;
   const was = { geometry: mesh.geometry, material: mesh.material };
@@ -57,12 +70,23 @@ function perMagnet(mesh, count) {
   g.clearGroups();
   byGate.forEach((tris, i) => { g.addGroup(index.length, tris.length * 3, i); for (const t of tris) index.push(vertex(t), vertex(t + 1), vertex(t + 2)); });
   g.setIndex(index);
-  const mats = byGate.map(() => was.material.clone());
-  mesh.geometry = g; mesh.material = mats;
-  return {
-    mats, worn: () => mesh.material === mats,   // something else may have swapped the material since: then the merged path lights it as before
-    restore() { if (mesh.material === mats) { mesh.geometry = was.geometry; mesh.material = was.material; g.dispose(); } for (const m of mats) m.dispose(); },   // the copy goes only where the original is back: a swapped material leaves the mesh its geometry
+  // THE SPLIT WAITS FOR A PLAIN MATERIAL: a print's skin (src/fx/tower-print.js skinIn) wears clipping clones of the materials it finds and puts those
+  // back at its end, and the first launch begins as the ARC-01's print ends; a split made from a clipping clone, or put on before the skin's end, was
+  // undone by it and the merged path lit all sixteen at once (measured on --colony, 2026-11-05). worn() puts the split on, from the mesh's material,
+  // whenever that is plain (no clipping planes) and not the split: before the launch, and again over whatever a skin put back
+  let mats = null, base = was.material;
+  mesh.geometry = g;
+  const split = {
+    get mats() { return mats; },
+    worn() {
+      const m = mesh.material;
+      if (m !== mats && m && !Array.isArray(m) && !m.clippingPlanes?.length && mesh.geometry === g) { for (const x of mats ?? []) x.dispose(); base = m; mats = byGate.map(() => m.clone()); mesh.material = mats; }
+      return !!mats && mesh.material === mats;
+    },
+    restore() { if (mesh.material === mats || mesh.material === base) { mesh.geometry = was.geometry; mesh.material = base; g.dispose(); } for (const x of mats ?? []) x.dispose(); },   // the copy goes only where the original is back: a swapped material leaves the mesh its geometry
   };
+  split.worn();
+  return split;
 }
 
 // launcher: the standing structure's root (src/fx/story-base.js structure(id).root); now(): the game clock in seconds; onComplete: once
@@ -92,13 +116,14 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
     last = s;
     if (sled) { sled.position.fromArray(s.sled.position); sled.rotation.x = s.sled.pitch; }
     for (const [c, side] of clamps) if (c) c.position.x = side * (1.47 - 0.15 * s.clamp);
-    // through the charge each magnet rises on its own beat, from the breech up the rail (LAUNCHER_LIGHTS); after the release they fall with
-    // the charge together, and once it is spent they are one mesh again
+    // dark until the sled moves, then a wave that rides the sled up the rail (magnetGlow, LAUNCHER_LIGHTS); after the release they fall with
+    // the charge together, and once it is spent they are one mesh again, dark
     if (s.t >= RELEASE + 2) merge();
-    const lit = s.t < RELEASE ? lightLevels(s.t - LAUNCH.chargeAt, LAUNCHER_LIGHTS.magnets, LAUNCHER_LIGHTS.step, LAUNCHER_LIGHTS.ramp, levels) : null;
+    magnetGlow(s, levels);
+    const top = Math.max(...levels);
     for (const [m, split] of magnets) {
-      if (split?.worn()) split.mats.forEach((mat, i) => { mat.emissive.set(0x00eaff); mat.emissiveIntensity = 0.25 + 2 * (lit ? lit[i] : s.charge); });
-      else if (m?.material?.emissive) { m.material.emissive.set(0x00eaff); m.material.emissiveIntensity = 0.25 + s.charge * 2; }
+      if (split?.worn()) split.mats.forEach((mat, i) => { mat.emissive.set(0x00eaff); mat.emissiveIntensity = levels[i]; });
+      else if (m?.material?.emissive) { m.material.emissive.set(0x00eaff); m.material.emissiveIntensity = s.t < LAUNCH.start ? LAUNCHER_LIGHTS.idle : top; }
     }
     if (sat) {
       sat.position.fromArray(s.payload.position); sat.rotation.x = s.payload.pitch; sat.position.add(up.clone().applyEuler(sat.rotation));
@@ -122,7 +147,9 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
     // where a camera should look: the payload while it flies, else the sled (world space)
     // computed from the choreography in the launcher's own frame, not read off a node whose world matrix may not be updated yet
     focus: (out = new THREE.Vector3()) => { if (!launcher) return out; launcher.updateWorldMatrix(true, false); const s = last ?? launchState(0); return launcher.localToWorld(out.fromArray(s.t < RELEASE ? s.sled.position : s.payload.position)); },
-    state: () => ({ t: last ? +last.t.toFixed(1) : 0, phase: last?.phase ?? 'loading', done, satellite: !!sat, sled: !!sled }),
+    // lit: each magnet's level 0..1 of LAUNCHER_LIGHTS.peak; glow: the emissiveIntensity the two meshes' materials actually wear (the gates', the lights')
+    state: () => ({ t: last ? +last.t.toFixed(2) : 0, phase: last?.phase ?? 'loading', done, satellite: !!sat, sled: !!sled, split: magnets.map(([, x]) => (x ? x.worn() : null)), lit: levels.map((v) => +(v / LAUNCHER_LIGHTS.peak).toFixed(3)),
+      glow: magnets.map(([m, split]) => (split?.worn() ? split.mats.map((x) => +x.emissiveIntensity.toFixed(3)) : [+(m?.material?.emissiveIntensity ?? 0).toFixed(3)])) }),
     dispose() { done = true; merge(); if (sat) launcher?.remove(sat); sat = null; thrust?.stop?.(0.2); thrust = null; },
   };
 }

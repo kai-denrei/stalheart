@@ -1,37 +1,45 @@
-// light-sequence.mjs — the ARC-01's magnets light one by one (owner, 2026-10-19, third round, note 5: "the magnets should light up in cyan
-// one by one, not all at a time"): the pure row, and the real launcher's gates sorted into sixteen equal groups along its rail
+// light-sequence.mjs — the ARC-01's magnets light with the payload (owner, 2026-11-05, round 7, note 6: NOT on at the beginning, they light up
+// with the payload moving; keeping 2026-10-19's "one by one, not all at a time"): the pure wave, the launch's glow per phase, and the real
+// launcher's gates sorted into sixteen equal groups along its rail
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { lightLevels, sequenceSeconds, arcIndex } from '../src/domain/light-sequence.js';
+import { lightsBySled, arcIndex } from '../src/domain/light-sequence.js';
 import { LAUNCHER_LIGHTS } from '../src/content/orbital-works.js';
-import { LAUNCH } from '../src/fx/arc-launch.js';
+import { LAUNCH, launchState, magnetGlow } from '../src/fx/arc-launch.js';
+import { STRUCTURES } from '../src/content/base-layout.js';
 
-const { magnets, step, ramp } = LAUNCHER_LIGHTS;
-assert.deepEqual([magnets, step, ramp], [16, 0.25, 0.15]);
-const near = (a, b) => Math.abs(a - b) < 1e-9;
+const { magnets, ahead, trail, peak, breech, idle } = LAUNCHER_LIGHTS;
+assert.deepEqual([magnets, ahead, trail, peak, breech, idle], [16, 2, 3, 2, 0.15, 0]);
 
-// before the sequence every light is dark, after it every light is full
-assert.ok(lightLevels(-0.01, magnets, step, ramp).every((v) => v === 0), 'dark before the start');
-assert.ok(lightLevels(sequenceSeconds(magnets, step, ramp) + 1e-9, magnets, step, ramp).every((v) => v === 1), 'all full at the end');   // + 1e-9: 3.9 - 3.75 is not 0.15 in binary
-assert.ok(near(sequenceSeconds(magnets, step, ramp), 3.9), 'sixteen at 0.25 s with a 0.15 s ramp: 3.9 s');
-assert.ok(sequenceSeconds(magnets, step, ramp) <= LAUNCH.start - LAUNCH.chargeAt, `all sixteen magnets are lit before the release: the sequence (${sequenceSeconds(magnets, step, ramp)} s) fits the charge window (${LAUNCH.start - LAUNCH.chargeAt} s, LAUNCH.chargeAt to LAUNCH.start)`);
-assert.equal(sequenceSeconds(1, step, ramp), ramp);
-// ONE BY ONE: light i starts at i*step and is full ramp seconds later; the next one has not started yet when it is full
-{ const at = (t) => lightLevels(t, magnets, step, ramp);
-  for (let i = 0; i < magnets; i++) {
-    const s = i * step;
-    assert.equal(at(s)[i], 0, `light ${i} starts at ${s}`);
-    assert.ok(Math.abs(at(s + ramp / 2)[i] - 0.5) < 1e-6, `light ${i} is half lit half way up its ramp`);
-    assert.ok(at(s + ramp)[i] > 1 - 1e-9, `light ${i} full at ${s + ramp}`);
-    if (i + 1 < magnets) assert.equal(at(s + ramp)[i + 1], 0, `light ${i + 1} still dark when light ${i} is full`);
+// THE WAVE: nothing lit before the sled moves; the head and `ahead` past it full, `trail` behind fading a step each, the rest dark
+assert.ok(lightsBySled(-1, magnets).every((v) => v === 0), 'nothing lit before the sled moves');
+assert.deepEqual(lightsBySled(0, magnets, { ahead, trail }), [1, 1, 1, ...new Array(13).fill(0)], 'at the breech: the sled\'s gate and two past it');
+assert.deepEqual(lightsBySled(8, magnets, { ahead, trail }), [0, 0, 0, 0, 0, 0.25, 0.5, 0.75, 1, 1, 1, 0, 0, 0, 0, 0], 'mid rail: three full, three fading behind, the breech dark');
+assert.deepEqual(lightsBySled(15, magnets, { ahead, trail }), [...new Array(12).fill(0), 0.25, 0.5, 0.75, 1], 'at the exit: the last gate full, the trail behind it');
+for (let i = 0; i < magnets; i++) { const v = lightsBySled(i, magnets, { ahead, trail }); assert.equal(v.filter((x) => x === 1).length, Math.min(ahead + 1, magnets - i), `head ${i}: the full ones`); for (let k = 0; k < magnets; k++) if (k < i - trail || k > i + ahead) assert.equal(v[k], 0, `head ${i}: ${k} dark`); }
+{ const out = new Array(4); assert.equal(lightsBySled(1, 4, { ahead: 0, trail: 1 }, out), out); assert.deepEqual(out, [0.5, 1, 0, 0]); }
+
+// THE LAUNCH (src/fx/arc-launch.js magnetGlow on the choreography's own states): dark through the loading, only the breech's faint glow over
+// the charge, the wave rides the sled's own arc index up the rail, all fall together after the release and are dark 2 s after it
+const RELEASE = LAUNCH.start + LAUNCH.seconds, glow = (t) => magnetGlow(launchState(t));
+for (let t = 0; t < LAUNCH.chargeAt; t += 0.25) assert.ok(glow(t).every((v) => v === idle), `dark while loading (${t} s)`);
+for (let t = LAUNCH.chargeAt; t < LAUNCH.start; t += 0.1) { const g = glow(t); assert.ok(g[0] <= breech + 1e-9 && g.slice(1).every((v) => v === idle), `the charge: only the breech glows, faintly (${t.toFixed(1)} s: ${g})`); }
+assert.ok(Math.abs(glow(LAUNCH.start - 1e-6)[0] - breech) < 1e-3, 'the breech at its glow as the sled moves');
+{ let lastHead = -1;
+  for (let t = LAUNCH.start; t < RELEASE; t += 0.01) {
+    const s = launchState(t), head = arcIndex(s.sled.position[1], s.sled.position[2], [2.6 + LAUNCH.radius, -20], LAUNCH.sweep, magnets), g = magnetGlow(s);
+    assert.ok(head >= lastHead, `the wave only climbs (${t.toFixed(2)} s)`); lastHead = head;
+    assert.equal(g[head], peak, `the sled's own gate burns (${t.toFixed(2)} s, gate ${head})`);
+    assert.ok(g.every((v, i) => i <= head + ahead || v === 0), `nothing lit ahead of the wave (${t.toFixed(2)} s)`);
   }
-  // mid-sequence (1.6 s): six lit, the seventh (started at 1.5 s) two thirds up, nine dark; never out of order
-  const mid = at(1.6);
-  assert.deepEqual(mid.map((v) => +v.toFixed(3)), [1, 1, 1, 1, 1, 1, 0.667, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-  for (let t = -0.5; t < 4.5; t += 0.05) { const v = at(t); for (let i = 1; i < magnets; i++) assert.ok(v[i] <= v[i - 1], `ordered at ${t}`); }
-}
-// a zero ramp is a switch; an `out` array is reused
-{ const out = new Array(3); assert.equal(lightLevels(0.5, 3, 0.5, 0, out), out); assert.deepEqual(out, [1, 1, 0]); }
+  assert.equal(lastHead, magnets - 1, 'the wave reaches the exit before the release'); }
+{ const t = LAUNCH.start + LAUNCH.seconds * Math.SQRT1_2, g = glow(t);   // half way up the rail's arc (u = ((t - start) / seconds)^2 = 0.5)
+  assert.equal(g.filter((v) => v >= 0.9 * peak).length, 3, `mid acceleration: exactly three burn (${g})`);
+  assert.ok(g.slice(0, 3).every((v) => v < 0.3 * peak), `mid acceleration: the breech is dark again (${g})`); }
+{ const a = glow(RELEASE + 0.5), b = glow(RELEASE + 1.5); assert.ok(Math.max(...b) < Math.max(...a) && Math.max(...a) < peak, 'after the release they fall together'); }
+for (const t of [RELEASE + 2, RELEASE + 3, 20, 29]) assert.ok(glow(t).every((v) => v === idle), `dark 2 s after the release and on (${t} s)`);
+// THE STANDING LAUNCHER: its two meshes are set dark on the base (base-layout's `dark`, src/fx/story-base.js mount)
+assert.deepEqual(STRUCTURES.find((s) => s.id === 'launcher').dark, ['PASSAGE_GATES', 'ACCELERATOR_LIGHTS']);
 
 // arcIndex: the rail's arc (src/fx/arc-launch.js railPose: centre at y 2.6 + radius, z -20; sweep 1.05 rad), sixteen gates evenly spaced on it
 const centre = [2.6 + 40, -20], sweep = 1.05;
