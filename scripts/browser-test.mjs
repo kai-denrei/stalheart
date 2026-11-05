@@ -1520,12 +1520,18 @@ try{
  assert.equal(await evaluate(`${T}.antennaPrint()`),true,'the close-up forced');
  {const s=await st();console.log(`  antenna-print: cut ${JSON.stringify(AN(s))}, shot ${s.shot}`);assert.equal(s.shot,'antennaPrint');assert.ok(AN(s).lens&&AN(s).lens.near===ANTENNA_CLOSEUP.shot.near,'the near plane lowered');assert.equal(AN(s).said,true,'the line asked');}
  await keyEv({key:'x',code:'KeyX'});{const s=await st();assert.equal(s.shot,'antennaPrint','a plain key inside the lock leaves it running');assert.equal(AN(s).hint,false,'no hint inside the lock');}
- for(let k=0;k<4;k++){const A=ANTENNA_CLOSEUP.angles[k];await until(`(${T}.state().antenna.cut?.t??99)>=${A.from+Math.min(2.2,(A.to-A.from)*0.6)}`,30000).catch(()=>{});const s=await st();console.log(`  antenna-print: angle ${k+1}: ${JSON.stringify(AN(s).cut)}, shot ${s.shot}`);if(!AN(s).cut)break;assert.equal(AN(s).cut.angle,k,`angle ${k+1}`);await frame(`antenna-print-${k+1}`);}
+ for(let k=0;k<4;k++){const A=ANTENNA_CLOSEUP.angles[k];await until(`(${T}.state().antenna.cut?.t??99)>=${A.from+Math.min(2.2,(A.to-A.from)*0.6)}`,30000).catch(()=>{});const s=await st();console.log(`  antenna-print: angle ${k+1}: ${JSON.stringify(AN(s).cut)}, shot ${s.shot}`);if(!AN(s).cut)break;assert.equal(AN(s).cut.angle,k,`angle ${k+1}`);await frame(`antenna-print-${k+1}`);
+  // THE WIRE FIRST, THE SKIN AFTER (owner, 2026-11-05, round 5 notes 4 + 5): mid-print the radar is its wire ghost clipped at the print's height over a
+  // hidden solid (src/fx/structure-print.js); from the print's end the solid stands (skinning in over 0.8 s)
+  console.log(`  antenna-print: angle ${k+1} print ${JSON.stringify(AN(s).print)}`);
+  if(k===1){const p=AN(s).print;assert.ok(p?.ghost&&!p.skinning&&!p.solid&&p.k>0&&p.k<1,`mid-print: the wire, no solid (${JSON.stringify(p)})`);}
+  if(k===3&&AN(s).cut.t>=12){const p=AN(s).print;assert.ok(p?.solid,`at the print's end the solid stands (${JSON.stringify(p)})`);}}
  {const s=await st();assert.ok(AN(s).hint,'the hint after the lock');assert.equal(await evaluate(`document.getElementById('antenna-skip-hint')?.textContent??null`),ANTENNA_CLOSEUP.shot.hint);}
  await keyEv({key:' ',code:'Space'});
  {const s=await st();console.log(`  antenna-print: after Space ${JSON.stringify(AN(s))}, shot ${s.shot}`);assert.notEqual(s.shot,'antennaPrint','Space skips after the lock');assert.equal(AN(s).lens,null,'the lens put back');assert.equal(AN(s).skips,1,'a skip');assert.equal(await evaluate(`!!document.getElementById('antenna-skip-hint')`),false,'the hint node removed');}
  await until(`(window.__seen?.briefs||[]).some(b=>/Eight days out/.test(b))`,40000).catch(async()=>assert.fail(`Isao's antenna line (${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-6))})`));
- await delay(1500);current='antenna-print-end';await finish();
+ await delay(1500);{const p=AN(await st()).print;console.log(`  antenna-print: after the cut, print ${JSON.stringify(p)}`);assert.ok(p&&!p.ghost&&p.solid,`the ghost gone, the radar solid (${JSON.stringify(p)})`);}
+ current='antenna-print-end';await finish();
  } else if(args.includes('--pet-print')) {
  // ISAO PRINTS THE COMPANIONS (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable
  // scene where Isao whimsically prints the cat ... Close up on the creation, showing various angles." / "same with the Cheetah later."): on the finished base

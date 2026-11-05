@@ -107,6 +107,9 @@ export const KIT = Object.freeze({
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate
   rotorSteps: 2, quiverSteps: 1, rotorEdge: 0.4,   // the Quiver's wall cell touches the lane one step nearer the gate, on the Rotor's side: the sightline to the gate pile is proven there              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell; the lab's static model stands this share of the way toward the lane (the game perches every tower on its wall's edge)
   bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },
+  // THE STRUCTURES' PRINT (owner, 2026-11-05, round 5 notes 4 + 5; src/fx/structure-print.js): the wire ghost in Isao's print-beam blue at
+  // `opacity`, drawn up from the plot as the beam rasters, then the solid's skin rising over it in `skin` seconds
+  print: { colour: 0xbfe6ff, opacity: 0.85, skin: 0.8 },
   lod: { metres: 150, hysteresis: 1.3, ratio: 0.1 },   // camera closer than this shows the near tier (and first fetches it); it stays until 1.3x that; far tiers keep a tenth of the triangles   // a hull rolls two lane cells straight out of its doors; bay 03's authored roll-out carries the hull 19 model metres in 8 s
 });
 

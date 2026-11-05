@@ -67,5 +67,7 @@ export function createBasePrint({ base, plan, placer }) {
       if (step.gate) base.growGate(1, gateOf(step)?.id ?? null);
     },
     state: () => ({ step: at.step, k: +at.k.toFixed(3) }),
+    // each structure of a step: its wire, its skin, whether a solid tier shows, the wire's k (src/fx/structure-print.js; the harness reads it)
+    pieces: (step) => Object.fromEntries((step?.structures ?? []).map((id) => [id, base.printState?.(id) ?? null])),
   };
 }
