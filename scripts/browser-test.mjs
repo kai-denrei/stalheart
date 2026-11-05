@@ -1521,6 +1521,61 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   console.log(`  drive: closest ${min} m, hull top ${top} m/s, dodges ${c.dodges-d0}; ${log.filter((_,k)=>k%5===0).join(' ')}`);
   assert.ok(top>2,`the hull drove (${top} m/s)`);assert.ok(c.dodges>d0,`${pick.id} dodged`);assert.ok(min>2.5,`the hull never within 2.5 m of ${pick.id} (closest ${min} m)`);
   if(!shot){current='companions-dodge';await finish();}}
+ } else if(args.includes('--rover')) {
+ // THE ROVER AND THE BIO-PEARLS (owner, 2026-11-05, round 8 note 7; src/fx/rover-glue.js): a skipped opening at sector 2, the depot standing. Kills
+ // accrue on the ground (the field rises by what the ledger books, the bank does not move); F drops a flare under the hull; the rover leaves home
+ // within 2 s, reaches the flare, harvests (the field falls, its cargo rises), drives home and unloads (the bank rises by what it delivered, the
+ // pearls' fill with it, the hose live while it pours); then the pearls filled to their cap: the rover's next load holds it home (STORAGE FULL)
+ // until a spend makes room. The trip's times and kg print as ROVER TRIP; the frames are artifacts/browser/rover-*.png
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),R=()=>evaluate(`${T}.rover.state()`),{ROVER,PEARLS}=await import('../src/content/rover.js');
+ const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
+ await go('rover',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===2`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ await until(`${T}.rover.state().built && ${T}.rover.state().scene.ready`,60000).catch(async()=>assert.fail(`the depot live and the rover loaded (${JSON.stringify(await R())})`));
+ {const r=await R();console.log(`  depot: home cell ${r.home}, ${r.mode}, cap ${r.cap} kg, pearls ${r.pearls.join(' / ')}, bank ${r.bank}`);
+  assert.equal(r.cap,PEARLS.count*PEARLS.capacity,'the bank is capped at the three pearls');assert.equal(r.mode,'idle');assert.equal(r.pearls.reduce((a,b)=>a+b,0),r.bank,'the pearls hold the bank');}
+ // the kills: the ledger's ideal defender (every live body killed, paid as the tank's kill) until 4,000 kg lie on the ground
+ const s0=await st(),b0=s0.biomass,L0=s0.ledger;let r1=null,s1=null;
+ for(const t0=Date.now();Date.now()-t0<300000;){const S=await st();if(S.sector?.phase==='fighting')await evaluate(`${T}.sectorCull(999,'tank')`);await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();`);r1=await R();if(r1.field>=4000)break;await delay(500);}
+ s1=await st();const cat=(L)=>Object.values(L.byCategory).reduce((a,b)=>a+b,0)-(L.spentBy?Object.values(L.spentBy).reduce((a,b)=>a+b,0):0);
+ console.log(`  the field: ${r1.field} kg on ${r1.piles} piles (drawn ${r1.drawn}); ledger.field ${s1.ledger.field-L0.field} kg; bank ${b0} -> ${s1.biomass}`);
+ assert.ok(r1.field>=4000,`4,000 kg on the ground (${r1.field})`);assert.ok(Math.abs((s1.ledger.field-L0.field)-(r1.field+r1.rotted))<=2,'the field holds what the ledger booked as kill pay');
+ assert.equal(s1.biomass-b0,cat(s1.ledger)-cat(L0),`the bank moved only by credits that are not kills (${b0} -> ${s1.biomass})`);assert.equal(r1.drawn,r1.piles,'every pile drawn');
+ {const hud=await evaluate(`document.querySelector('.hud-field')?.textContent??''`);assert.match(hud,/^FIELD [\d,]+ kg$/,`the HUD's field number (${hud})`);}
+ await evaluate(`${T}.sectorQuiet(true)`);
+ // the flare: the hull on the richest ground, F
+ const rich=await evaluate(`${T}.rover.richest()`);await evaluate(`${T}.placeTank(${rich.cell})`);await delay(300);
+ await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);
+ const tw0=Date.now();
+ {const r=await R();console.log(`  F at cell ${r.hull} (richest ${rich.cell}, ${rich.kg} kg within reach): flares ${JSON.stringify(r.flares.map(f=>[f.id,f.cell]))}`);
+  assert.equal(r.flares.length,1,'one flare standing');assert.equal(r.flares[0].cell,r.hull,'the flare under the hull');}
+ await until(`${T}.rover.state().mode!=='idle'`,2000).catch(async()=>assert.fail(`the rover leaves home within 2 s (${JSON.stringify(await R())})`));
+ console.log(`  left home in ${Date.now()-tw0} ms wall`);
+ await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover reaches the flare (${JSON.stringify(await R())})`));
+ const h0=await R();await delay(2500);const h1=await R();current='rover-harvest';await finish();
+ console.log(`  harvest: cargo ${h0.cargo} -> ${h1.cargo} kg, field ${h0.field} -> ${h1.field} kg, belt ${h1.scene.belt} m`);
+ assert.ok(h1.cargo>h0.cargo||h1.mode!=='harvest','its cargo rises');assert.ok(h1.field<h0.field,'the field falls');
+ await until(`['unload','full','idle'].includes(${T}.rover.state().mode) && ${T}.rover.state().events.some(e=>e.ev==='dock')`,240000).catch(async()=>assert.fail(`the rover drives home (${JSON.stringify(await R())})`));
+ const u0=await R();await delay(600);const u1=await R();current='rover-unload';await finish();
+ assert.ok(u1.mode==='idle'||u1.scene.hose,'the hose runs while it unloads');
+ await until(`${T}.rover.state().trips>=1`,60000).catch(async()=>assert.fail(`the rover unloads (${JSON.stringify(await R())})`));
+ const r2=await R(),ev=Object.fromEntries(r2.events.map(e=>[e.ev,e]));
+ const trip={out:ev.out?.t,arrive:ev.arrive?.t,home:ev.home?.t,dock:ev.dock?.t,unloaded:ev.unloaded?.t,kg:r2.delivered,path:h0.length};
+ console.log(`ROVER TRIP ${JSON.stringify(trip)} (out -> arrive ${(trip.arrive-trip.out).toFixed(1)} s, harvest ${(trip.home-trip.arrive).toFixed(1)} s, back ${(trip.dock-trip.home).toFixed(1)} s, unload ${(trip.unloaded-trip.dock).toFixed(1)} s; bank ${u0.bank} -> ${r2.bank}, pearls ${r2.pearls.join(' / ')})`);
+ assert.ok(r2.delivered>0&&r2.delivered<=ROVER.capacity,`it brought a load home (${r2.delivered} kg)`);
+ assert.ok(r2.bank-s1.biomass>=r2.delivered-1,`the bank rose by the cargo (${s1.biomass} -> ${r2.bank}, ${r2.delivered} kg)`);assert.equal(r2.pearls.reduce((a,b)=>a+b,0),r2.bank,'the pearls hold the bank');
+ assert.ok(r2.pearlFx.fitted>=PEARLS.count&&!r2.pearlFx.errors.length,`the pearls' fill shader fitted (${JSON.stringify(r2.pearlFx)})`);
+ // A PEARL AT CAPACITY HOLDS THE ROVER: the pearls filled to the cap, the standing flare sends it back for the rest; home, STORAGE FULL, the load kept aboard
+ await evaluate(`${T}.rover.fillPearls()`);
+ if(!(await R()).flares.length){const c=(await evaluate(`${T}.rover.richest()`)).cell;await evaluate(`${T}.rover.flareAt(${c})`);}
+ await until(`${T}.rover.state().mode==='full'`,300000).catch(async()=>assert.fail(`a full bank holds the rover at home (${JSON.stringify(await R())})`));
+ const f0=await R();await delay(3000);const f1=await R();
+ console.log(`  STORAGE FULL: bank ${f1.bank} / ${f1.cap}, aboard ${f1.cargo} kg, console "${await evaluate(`document.querySelector('.hc-rover')?.textContent`)}"`);
+ assert.equal(f1.mode,'full','it holds');assert.equal(f1.bank,f1.cap,'the bank at its cap');assert.ok(f1.cargo>0&&f1.cargo===f0.cargo,'the load kept aboard');
+ await evaluate(`${T}.rover.spend(${PEARLS.capacity})`);
+ await until(`${T}.rover.state().mode!=='full'`,20000).catch(async()=>assert.fail(`a spend lets it unload (${JSON.stringify(await R())})`));
+ current='rover-after';await finish();
  } else if(args.includes('--antenna-print')) {
  // THE ANTENNA, PRINTED ON SCREEN (owner, 2026-11-02, round 4 note 4): the grown base of sector 4 has its radar standing and the call made at the load,
  // due eight days on; the harness replays the radar's print under the close-up (antennaPrint(): the real path is the radar step at sector 2, --grow):
@@ -2880,7 +2935,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // spend by kind, the bank at the sector's end, the share of fighting samples the bank could buy the cheapest sentry (45 kg). BOARD=pick takes
  // two affordable cards, the board's own (structures, the hull's) first and cheapest first, then sentries, through the real CONTINUE (the build board, src/fx/build-board.js); else the harness continues
  // past it with no pick. No assertions but a page error; the JSON goes to artifacts/browser/ledger(-TAG).json. MAX_S caps the wall time (2400).
- const T='window.__stalheartTest',from=+process.env.FROM||1,to=+process.env.TO||5,pay=process.env.PAY??'tank',board=process.env.BOARD||'none',maxS=+process.env.MAX_S||2400,reach=+(process.env.R??999);
+ // THE FIELD (round 8 note 7: kills lie on the ground, the rover brings them to the pearls, the pearls are the bank, src/fx/rover-glue.js): ROVER=flare
+ // (the default) is the reference flagger: whenever the rover stands idle with biomass on the ground, a flare on the richest ground (the real trips,
+ // their clock the income's); ROVER=collect banks the whole field every sample (the ideal stand-in, the round-6 numbers' shape); ROVER=none flags
+ // nothing. Each row adds the field (on the ground, rotted, brought home) and the rover's trips.
+ const T='window.__stalheartTest',from=+process.env.FROM||1,to=+process.env.TO||5,pay=process.env.PAY??'tank',board=process.env.BOARD||'none',maxS=+process.env.MAX_S||2400,reach=+(process.env.R??999),rover=process.env.ROVER||'flare';
  await go('ledger',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${from}#td`);
  await until(`!!${T} && ${T}.state().sector?.n===${from}`,120000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
@@ -2889,10 +2948,13 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  while(Date.now()-t0<maxS*1000){
   const b=await books();
   if(b.phase==='fighting'){const k=samples[b.n]??={n:0,afford:0};k.n++;if(b.bank>=45)k.afford++;if(pay)await evaluate(`${T}.sectorCull(${reach},${JSON.stringify(pay)})`);}
+  if(rover==='collect')await evaluate(`${T}.rover?.collect?.()`);
+  else if(rover==='flare')await evaluate(`(()=>{const r=${T}.rover?.state?.();if(r?.built&&r.mode==='idle'&&!r.queued&&r.field>0&&!r.flares.some(f=>f.id===r.order)){const c=${T}.rover.richest();if(c)${T}.rover.flareAt(c.cell);}})()`);
   await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();if(${T}.state().screenOpen)document.querySelector('#synthetic-modal [data-continue]')?.click();`);
   if(b.phase==='lost'||b.phase==='lost-shown'){rows.push({n:b.n,lost:true});console.log(`LEDGER sector ${b.n} LOST`);break;}
   if(b.debrief&&b.n!==lastN){lastN=b.n;const L=b.ledger,d=(o,p)=>Object.fromEntries(Object.entries(o??{}).map(([k,v])=>[k,Math.round(v-(p?.[k]??0))]).filter(([,v])=>v));
-   const row={n:b.n,clock:Math.round(b.clock),bank:b.bank,earned:b.report?.biomass?.earned,spent:b.report?.biomass?.spent,kills:b.report?.kills?.bySource,bySource:d(L.bySource,prev?.bySource),byCategory:d(L.byCategory,prev?.byCategory),spentBy:d(L.spentBy,prev?.spentBy),afford:samples[b.n]?+(samples[b.n].afford/samples[b.n].n).toFixed(2):null,towers:b.towers,printed:b.printed.slice()};
+   const rv=await evaluate(`${T}.rover?.state?.()??null`);
+   const row={n:b.n,clock:Math.round(b.clock),bank:b.bank,field:rv?.built?{ground:rv.field,rotted:rv.rotted,home:Math.round(b.ledger.harvested??0),trips:rv.trips,cap:rv.cap}:null,earned:b.report?.biomass?.earned,spent:b.report?.biomass?.spent,kills:b.report?.kills?.bySource,bySource:d(L.bySource,prev?.bySource),byCategory:d(L.byCategory,prev?.byCategory),spentBy:d(L.spentBy,prev?.spentBy),afford:samples[b.n]?+(samples[b.n].afford/samples[b.n].n).toFixed(2):null,towers:b.towers,printed:b.printed.slice()};
    rows.push(row);prev=L;console.log(`LEDGER ${JSON.stringify(row)}`);
    if(b.n>=to)break;
    if(board==='pick'){await evaluate(`${T}.sectorContinue('continue')`);await until(`!!${T}.state().board?.open`,15000).catch(()=>console.log('LEDGER no board opened'));
@@ -2900,7 +2962,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
      for(const id of take)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);await evaluate(`${T}.board.confirm()`);picks.push({before:b.n+1,bank:bd.bank,offers:bd.offers.map(o=>`${o.id}:${o.price}`),took:take});console.log(`LEDGER board before ${b.n+1}: bank ${bd.bank}, offers ${bd.offers.map(o=>`${o.id} ${o.price}`).join(', ')}; took ${take.join(', ')||'none'}`);}}
    else{await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}
   await delay(2000);}
- writeFileSync(join(output,`ledger${process.env.TAG?'-'+process.env.TAG:''}.json`),JSON.stringify({from,to,pay,board,wallSeconds:Math.round((Date.now()-t0)/1000),rows,picks},null,1));
+ writeFileSync(join(output,`ledger${process.env.TAG?'-'+process.env.TAG:''}.json`),JSON.stringify({from,to,pay,board,rover,wallSeconds:Math.round((Date.now()-t0)/1000),rows,picks},null,1));
  console.log(`LEDGER BANK ${rows.map(r=>`S${r.n} ${r.bank}`).join(' · ')} (${Math.round((Date.now()-t0)/1000)} s wall)`);
  current='ledger';await finish();
  } else if(args.includes('--board')) {
@@ -2915,9 +2977,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`!!${T} && ${T}.state().sector?.n===1`,120000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
  {const p=(await st()).programme;assert.deepEqual(p.bought.slice().sort(),['board','garage'],`a jump to sector 1 stands in for the boards before it: the board and the garage bought (${JSON.stringify(p.bought)})`);}
- // sector 1 played and held by the ledger's ideal defender (every body killed, paid as the tank's kill: the bank the board is priced for), the debrief up;
+ // sector 1 played and held by the ledger's ideal defender (every body killed, paid as the tank's kill, and since round 8 every pile harvested at once,
+ // T.rover.collect(), the stand-in for the rover's trips: the bank the board is priced for), the debrief up;
  // then its real CONTINUE
- await until(`(()=>{const S=${T}.state().sector;if(S.phase==='fighting')${T}.sectorCull(999,'tank');document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return S.debriefOpen;})()`,600000).catch(async()=>assert.fail(`sector 1 is held (${JSON.stringify((await st()).sector)})`));
+ await until(`(()=>{const S=${T}.state().sector;if(S.phase==='fighting')${T}.sectorCull(999,'tank');${T}.rover?.collect?.();document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return S.debriefOpen;})()`,600000).catch(async()=>assert.fail(`sector 1 is held (${JSON.stringify((await st()).sector)})`));
  await delay(1200);
  await evaluate(`document.querySelector('.sdb-acts [data-act=continue]').click()`);
  await until(`${T}.state().board.open`,8000).catch(async()=>assert.fail(`CONTINUE opens the build board (${JSON.stringify((await st()).board)})`));
