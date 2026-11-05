@@ -28,17 +28,16 @@ export function createBuildBoard(c) {
     const taken = [...c.towers().map((t) => t.ci), ...c.orders.filter((o) => o.kind === 'tower').map((o) => o.ci)];
     return emptiestLaneSite({ candidates: Object.keys(s.socketToward ?? {}).map(Number).filter((ci) => !c.placeError(ci)), doors, taken, centers: g.centers, cellSide: c.cellSide() });
   }
-  function weakest() {
-    const up = c.towers().filter((t) => !c.orders.some((o) => o.ci === t.ci)).map((t) => ({ t, cost: upgradeCost(t.def, t.tier) })).filter((x) => x.cost !== null).sort((a, b) => a.t.tier - b.t.tier || a.cost - b.cost)[0];
-    return up ? { ci: up.t.ci, name: up.t.def.name, tier: up.t.tier, cost: up.cost, tower: up.t } : null;
-  }
+  // the standing sentries Isao could upgrade, weakest first (the lowest level, then the cheapest step)
+  const weakest = () => c.towers().filter((t) => !c.orders.some((o) => o.ci === t.ci)).map((t) => ({ t, cost: upgradeCost(t.def, t.tier) })).filter((x) => x.cost !== null).sort((a, b) => a.t.tier - b.t.tier || a.cost - b.cost)
+    .slice(0, 2).map(({ t, cost }) => ({ ci: t.ci, name: t.def.name, tier: t.tier, cost }));
   // a companion is a card when its unit carries an `offer` ({ price, fromSector, effect }: stream A's field) and it is not born yet
   const pets = () => (COMPANIONS.units ?? []).map((u, index) => ({ u, index })).filter(({ u, index }) => u.offer && c.petLife(index) === 'unborn').map(({ u, index }) => ({ ...u.offer, id: u.id, index, label: u.name }));
   function world(n) {
-    const s = c.story(), pg = s.programme, up = weakest();   // the weakest sentry's upgrade, or null
+    const s = c.story(), pg = s.programme;
     const sentries = c.sentryKeys().map((k) => TOWER_BY_KEY[k]).filter(Boolean).map((d) => ({ key: d.key, name: d.name, cost: d.cost }));
-    return { up, w: { steps: pg.steps, done: pg.done, bought: pg.bought ?? new Set(), ctx: { phase: s.beats?.phase?.() ?? null, sector: n, back: s.backOpen ? 'held' : null, manned: c.manned() },
-      bank: bank(), sentryRoom: site() >= 0, sentries, upgrade: up, hull: c.hull(), shield: c.shield(), pets: pets() } };
+    return { w: { steps: pg.steps, done: pg.done, bought: pg.bought ?? new Set(), ctx: { phase: s.beats?.phase?.() ?? null, sector: n, back: s.backOpen ? 'held' : null, manned: c.manned() },
+      bank: bank(), sentryRoom: site() >= 0, sentries, upgrades: weakest(), hull: c.hull(), shield: c.shield(), pets: pets() } };
   }
   const div = (cls, text, tag = 'div') => { const el = document.createElement(tag); el.className = cls; if (text != null) el.textContent = text; return el; };
   function render() {

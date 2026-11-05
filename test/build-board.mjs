@@ -43,7 +43,9 @@ const world = (over = {}) => ({ steps: BASE_PROGRAMME, done: new Set(), bought: 
     assert.ok(BUILD_BOARD.index.every((k, i, a) => i === 0 || k >= a[i - 1]), 'the index never falls');
   }
   const full = boardOffers(world({ done: new Set(BOARD_STEPS), bank: 100 }), BUILD_BOARD);
-  assert.deepEqual(full.map((o) => o.id), ['sentry:rotor', 'sentry:quiver', 'upgrade:7'], 'nothing to mend, a full rack, every hull: three cards');
+  assert.deepEqual(full.map((o) => o.id), ['sentry:rotor', 'sentry:quiver', 'upgrade:7', 'sentry:mortar'], 'nothing to mend, a full rack, every hull: the other sentry kind fills in');
+  const two = boardOffers(world({ done: new Set(BOARD_STEPS), upgrade: null, upgrades: [{ ci: 7, name: 'Rotor', tier: 0, cost: 31 }, { ci: 9, name: 'Quiver', tier: 1, cost: 108 }] }), BUILD_BOARD);
+  assert.deepEqual(two.map((o) => o.id), ['sentry:rotor', 'sentry:mortar', 'upgrade:7', 'sentry:quiver', 'upgrade:9'], 'the fill: the other kinds, dearest first, then the next weakest sentry\'s upgrade');
   const hurt = boardOffers(world({ done: new Set(BOARD_STEPS), hull: { dents: 1, max: 4, hulls: 2, maxHulls: 3 }, shield: { rack: 1, cap: 4 } }), BUILD_BOARD);
   assert.deepEqual(hurt.map((o) => o.id), ['sentry:rotor', 'sentry:mortar', 'upgrade:7', 'repair', 'spare', 'shield']);
   const noRoom = boardOffers(world({ sentryRoom: false, done: new Set(BOARD_STEPS) }), BUILD_BOARD);

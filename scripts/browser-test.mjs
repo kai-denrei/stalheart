@@ -2765,7 +2765,7 @@ try{
  // opening plays sectors FROM..TO (1..5) with an ideal defender who EARNS (every live body within R cells of a door, 999: all, dies, paid as PAY's kill:
  // tank (default) | tower | none), and at each debrief the books: income by source (eco.ledger: kill pay by who killed, credits by category),
  // spend by kind, the bank at the sector's end, the share of fighting samples the bank could buy the cheapest sentry (45 kg). BOARD=pick takes
- // the board's two cheapest affordable cards through the real CONTINUE (the build board, src/fx/build-board.js); else the harness continues
+ // two affordable cards, the board's own (structures, the hull's) first and cheapest first, then sentries, through the real CONTINUE (the build board, src/fx/build-board.js); else the harness continues
  // past it with no pick. No assertions but a page error; the JSON goes to artifacts/browser/ledger(-TAG).json. MAX_S caps the wall time (2400).
  const T='window.__stalheartTest',from=+process.env.FROM||1,to=+process.env.TO||5,pay=process.env.PAY??'tank',board=process.env.BOARD||'none',maxS=+process.env.MAX_S||2400,reach=+(process.env.R??999);
  await go('ledger',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${from}#td`);
@@ -2783,7 +2783,7 @@ try{
    rows.push(row);prev=L;console.log(`LEDGER ${JSON.stringify(row)}`);
    if(b.n>=to)break;
    if(board==='pick'){await evaluate(`${T}.sectorContinue('continue')`);await until(`!!${T}.state().board?.open`,15000).catch(()=>console.log('LEDGER no board opened'));
-    const bd=await evaluate(`${T}.state().board`);if(bd?.open){const cards=bd.offers.filter(o=>o.price<=bd.bank).sort((x,y)=>x.price-y.price);let left=bd.bank;const take=[];for(const c of cards){if(take.length<2&&c.price<=left){take.push(c.id);left-=c.price;}}
+    const bd=await evaluate(`${T}.state().board`);if(bd?.open){const own=o=>!/^(sentry|upgrade):/.test(o.id),cards=bd.offers.filter(o=>o.price<=bd.bank).sort((x,y)=>(own(y)-own(x))||x.price-y.price);let left=bd.bank;const take=[];for(const c of cards){if(take.length<2&&c.price<=left){take.push(c.id);left-=c.price;}}
      for(const id of take)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);await evaluate(`${T}.board.confirm()`);picks.push({before:b.n+1,bank:bd.bank,offers:bd.offers.map(o=>`${o.id}:${o.price}`),took:take});console.log(`LEDGER board before ${b.n+1}: bank ${bd.bank}, offers ${bd.offers.map(o=>`${o.id} ${o.price}`).join(', ')}; took ${take.join(', ')||'none'}`);}}
    else{await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}
   await delay(2000);}

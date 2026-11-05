@@ -5,7 +5,8 @@
 //     (i) the board's structures (programme steps marked `board`) not standing and not bought whose `when` would hold in the coming sector
 //         (the idle gate aside: the board is between waves), at most tune.structuresMax; (ii) sentries: the cheapest unlocked kind and the
 //         dearest the bank can buy (tune.sentryKinds), when the book has room; (iii) an upgrade of the weakest standing sentry; (iv) the hull:
-//         its dents mended, a spare hull, the shield rack full; (v) a companion with an `offer`, from its sector. A short pool shows what it has.
+//         its dents mended, a spare hull, the shield rack full; (v) a companion with an `offer`, from its sector; then, still short of six, the
+//         other sentry kinds and the next weakest sentry's upgrade (w.upgrades, weakest first). A short pool shows what it has.
 //   pickable(offers, picked, id, bank) -> can `id` join the picks: affordable after the others picked are paid, and picks below tune.picks
 //   toggle(offers, picked, id, bank, max) -> the new picks (a refused pick leaves them as they were)
 //   jumpBought(steps, sector) -> the board steps a jump to `sector` stands in for having bought (the history a skipped run implies)
@@ -25,17 +26,21 @@ export function boardOffers(w, tune) {
   const ctx = { ...w.ctx, waveActive: false }, k = priceIndex(tune, w.ctx.sector);
   const structs = (w.steps ?? []).filter((s) => s.board && !w.done.has(s.id) && !w.bought.has(s.id) && tune.structures[s.id] && whenHolds({ ...(s.when ?? {}), idle: false }, ctx));
   for (const s of structs.slice(0, tune.structuresMax)) push({ id: `build:${s.id}`, kind: 'structure', step: s.id, label: String(s.label).toUpperCase(), price: scaled(tune.structures[s.id].price, k), effect: tune.structures[s.id].effect });
-  if (w.sentryRoom) {
-    const kinds = (w.sentries ?? []).slice().sort((a, b) => a.cost - b.cost);
-    const cheap = kinds[0], dear = kinds.filter((k) => k.cost <= w.bank).at(-1) ?? kinds.at(-1);
-    for (const k of [cheap, dear].filter(Boolean).slice(0, tune.sentryKinds)) push({ id: `sentry:${k.key}`, kind: 'sentry', key: k.key, label: String(k.name).toUpperCase(), price: k.cost, effect: tune.words.sentry(k.name) });
-  }
-  if (w.upgrade) push({ id: `upgrade:${w.upgrade.ci}`, kind: 'upgrade', ci: w.upgrade.ci, label: `${String(w.upgrade.name).toUpperCase()} +1`, price: w.upgrade.cost, effect: tune.words.upgrade(w.upgrade.name, w.upgrade.tier + 2) });
+  const kinds = w.sentryRoom ? (w.sentries ?? []).slice().sort((a, b) => a.cost - b.cost) : [];
+  const sentry = (k) => push({ id: `sentry:${k.key}`, kind: 'sentry', key: k.key, label: String(k.name).toUpperCase(), price: k.cost, effect: tune.words.sentry(k.name) });
+  const ups = w.upgrades ?? (w.upgrade ? [w.upgrade] : []);
+  const upgrade = (u) => push({ id: `upgrade:${u.ci}`, kind: 'upgrade', ci: u.ci, label: `${String(u.name).toUpperCase()} +1`, price: u.cost, effect: tune.words.upgrade(u.name, u.tier + 2) });
+  const dear = kinds.filter((k) => k.cost <= w.bank).at(-1) ?? kinds.at(-1);
+  for (const k of [kinds[0], dear].filter(Boolean).slice(0, tune.sentryKinds)) sentry(k);
+  if (ups[0]) upgrade(ups[0]);
   const hull = w.hull ?? {};
   if (hull.dents < hull.max) push({ id: 'repair', kind: 'repair', label: tune.repair.label, price: scaled(tune.repair.price, k), effect: tune.repair.effect });
   if (hull.hulls < hull.maxHulls) push({ id: 'spare', kind: 'spare', label: tune.spare.label, price: scaled(tune.spare.price, k), effect: tune.spare.effect });
   if (w.shield && w.shield.rack < w.shield.cap) push({ id: 'shield', kind: 'shield', label: tune.shield.label, price: scaled(tune.shield.price, k), effect: tune.shield.effect });
   for (const p of w.pets ?? []) if ((w.ctx.sector ?? 0) >= (p.fromSector ?? tune.pet.fromSector)) push({ id: `pet:${p.id}`, kind: 'pet', index: p.index, label: String(p.label).toUpperCase(), price: scaled(p.price ?? tune.pet.price, k), effect: p.effect ?? '' });
+  // a board still short of six fills with the other unlocked sentry kinds (dearest first) and the next weakest sentry's upgrade
+  for (const k of kinds.slice().reverse()) sentry(k);
+  for (const u of ups.slice(1)) upgrade(u);
   return out;
 }
 
