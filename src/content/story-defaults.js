@@ -132,7 +132,7 @@ export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1
 // FASTER, AND OUT OF THE LIT WALL (owner, 2026-11-05, round 5, note 6: "waves emerging from sinkholes: an overhaul"): `climb` 1.1 -> 0.5 (the hidden wait after the
 // queue's delay), `pop` 0.3 -> 0.25; the rise starts at the bowl's depth under the lip (`rim` along the way out, src/domain/hole-floor.js), not at the throat's
 // -0.55 crater radii, and ends where the body stands; a Pearl body rises without the blob (it is drawn in its own colour as it rises; the blob stays for the
-// dot clouds); a record is born at the point it rises from, so its body never crosses the hole to reach it. Measured: release to a visible body 1.27 -> 0.63 s
+// dot clouds); a record is born at the point it rises from, so its body never crosses the hole to reach it. Measured: release to a visible body 1.27 -> 0.64 s
 // after the queue's delay (docs/log entry 2026-11-05 round 5 stream A)
 export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2, out: 1.35, climb: 0.5, pop: 0.25 });
 // ROUND AN OPEN HOLE, NOT ACROSS IT (owner, 2026-11-02, round 4, note 6; src/domain/crater-dodge.js through src/fx/enemy-step.js): a record within
