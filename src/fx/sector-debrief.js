@@ -68,7 +68,7 @@ function pageHero(r) {
       ${tile('SCORE', roll(s.total, { at: 160, dur: 1000 }), 140)}
       ${tile('KILLS', roll(k.total, { at: 200, dur: 900 }), 180)}
       ${tile('RAMS', `${roll(t.rams, { at: 240, dur: 800 })}<small>BEST ${formatValue(num(t.bestCombo), 'combo')}</small>`, 220)}
-      ${tile('BIOMASS', `${roll(b.earned, { at: 280, dur: 900 })}${unit('KG')}<small>${formatValue(num(b.bank), 'int')} IN THE BANK</small>`, 260)}
+      ${tile('BIOMASS', `${roll(b.earned, { at: 280, dur: 900 })}${unit('KG')}<small>${formatValue(num(b.bank), 'int')} IN THE BANK${b.ground > 0 ? ` · ${formatValue(num(b.ground), 'int')} ON THE GROUND` : ''}</small>`, 260)}
       ${tile('LEFT IN FIELD', `${roll(b.leftInField, { at: 320, dur: 800 })}${unit('KG')}`, 300, num(b.leftInField) > 0)}
       ${tile('ACCURACY', roll(Math.round(acc * 100), { fmt: 'pct', at: 360, dur: 800 }), 340)}
       ${tile('HULLS LOST', roll(t.hullsLost, { at: 400, dur: 600 }), 380, num(t.hullsLost) > 0)}

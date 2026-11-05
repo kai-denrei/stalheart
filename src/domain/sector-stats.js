@@ -98,7 +98,8 @@ export const mergeBests = (bests, records) => ({ ...bests, ...Object.fromEntries
 
 // THE REPORT CONTRACT. sectorState: makeSector's state. bank: biomass in hand at the end. outcome: 'secure' | 'lost'.
 // bests: { key: value } from earlier runs. stamps / records: SECTOR_STAMPS / SECTOR_RECORDS.
-export function report(st, sector, { t, bank = 0, outcome = 'secure', bests = {}, stamps = [], records = [] } = {}) {
+// ground: biomass still on the ground at the end (round 8 note 7: the rover's field, src/domain/biomass-field.js); only reported when there is any
+export function report(st, sector, { t, bank = 0, ground = 0, outcome = 'secure', bests = {}, stamps = [], records = [] } = {}) {
   const seconds = Math.max(0, Math.round(t - st.t0));
   const tempo = st.tempo.slice();
   while (tempo.length < Math.max(1, Math.ceil((t - st.t0) / st.bin))) tempo.push(0);
@@ -109,7 +110,7 @@ export function report(st, sector, { t, bank = 0, outcome = 'secure', bests = {}
   const r = {
     sector: st.n, name: st.name, seconds, outcome,
     score: { ...st.score },
-    biomass: { earned: Math.round(st.earned), spent: Math.round(st.spent), bank: Math.round(bank), leftInField: breaches.reduce((s, b) => s + b.leftInField.kg, 0) },
+    biomass: { earned: Math.round(st.earned), spent: Math.round(st.spent), bank: Math.round(bank), leftInField: breaches.reduce((s, b) => s + b.leftInField.kg, 0), ...(ground > 0 ? { ground: Math.round(ground) } : {}) },
     breaches,
     kills: { total: st.kills.total, bySource: { ...st.kills.bySource }, byTower: { ...st.kills.byTower }, byBelt: { ...st.kills.byBelt }, byGun: { ...st.kills.byGun }, tempo },
     tank: { shotsFired: st.shotsFired, shotsHit: st.shotsHit, rams: st.rams, bestCombo: st.bestCombo, shieldSeconds: tenths(st.shieldSeconds), stationSeconds: tenths(st.stationSeconds), damageTaken: tenths(st.damageTaken), hullsLost: st.hullsLost, partsHome: st.partsHome.slice() },

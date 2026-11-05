@@ -543,7 +543,7 @@ export function createEnemyStep(host) {
           host.debris.push(burst);
           if (!spec.lightRam) host.setBumpLeft(host.BUMP_LEN);   // a light Pearl tier (white, yellow) is run over without the drag (round four)
           for (let m = e.members || 1; m > 0; m--) {   // a squad rams as its members
-          const kg = host.gunshipRig.feed(host.eco().award(spec.bounty, { ram: true })); // the ram premium
+          const kg = host.gunshipRig.feed(host.payKill(spec.bounty, { ram: true }, e.cur)); // the ram premium; on the ground for the rover once the depot stands (src/fx/rover-glue.js)
           host.scoreKill(spec.bounty, { src: 'tank', ram: true,
             alive: host.enemies.filter((x) => x.alive).length });
           host.setRamCombo(host.ramCombo() + 1); host.setRamComboT(host.RAM_COMBO_GAP); host.ramFloat.show(host.player.pos, kg, host.ramCombo());   // +N kg ×M over the hull (src/fx/ram-readout.js)

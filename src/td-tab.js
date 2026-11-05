@@ -13,6 +13,7 @@ import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } fro
 import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js';
 import { unlockedTowers } from './domain/expeditions.js';
 import { createExpeditionsHost } from './fx/expedition-glue.js';
+import { createRoverGlue } from './fx/rover-glue.js';
 import { CARGO_LOOK } from './content/cargo.js';
 import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, SHELL_WORDS, VERDICT_LOW, VERDICT_MID, VERDICT_HIGH } from './content/controller-copy.js';
 import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js';
@@ -1653,6 +1654,7 @@ export function initTdTab(root) {
   // THE TANK'S INPUT (src/platform/tank-input.js): the keys, the seat keys, the hold buttons, the throttle lever, the directive chip
   const tankInput = createTankInput({
     root,
+    dropFlare: () => roverGlue.dropFlare(),   // F (round 8 note 7)
     params,
     pulseHint,
     setView,
@@ -2174,7 +2176,7 @@ export function initTdTab(root) {
       + ` <span class="hp-you">♥${playerHP}</span>`
       + (storyMode && !story?.sectorN ? '</div>' : ` <span class="hp-ammo${ammo === 0 ? ' out' : ''}">✦${ammo}</span></div>`)
       + `<div class="hud-res"><span class="hud-biomass">${eco.biomass}kg`
-      + `${storyMode && !story?.sectorN ? '' : ` ×${eco.multiplier().toFixed(2)}`}</span>`   /* the story shows no campaign readouts before sector 1 */
+      + `${storyMode && !story?.sectorN ? '' : ` ×${eco.multiplier().toFixed(2)}`}</span>${roverGlue.hud()}`   /* the story shows no campaign readouts before sector 1; FIELD n kg on the ground (round 8) */
       + `<span class="hud-wave">${storyMode ? '' : `WAVE <b>${wave}</b> · R${round}`}</span></div>`
       + (storyMode ? (sectorRun?.hudLine() ?? '') : `<div class="hud-obj">breaches ${spAlive}/${spawnPoints.length}`
       + ` · ${programmeDone() ? 'WAVES SPENT — CLOSE THE GATES'
@@ -2607,6 +2609,7 @@ export function initTdTab(root) {
     emerge: (o) => emergeBlobs.spawn(o),
     rubble: (o) => emergeBlobs.rubble(o),   // the boss breaks the surface: the drop's rock chunks from the lip, no blob (2026-10-23)
     hullKmh: () => hullConsole.kmh(),   // a Reed is rammable by a hull fast enough (2026-10-16)
+    payKill: (b, o, ci) => roverGlue.payKill(b, o, ci),   // a ram's pay on the ground for the rover (round 8 note 7)
     disposeObj,
     gameBreaches,
     spawnQueue,
@@ -2808,7 +2811,7 @@ export function initTdTab(root) {
     e.hp -= squadDamage(e, dmg, src); creatureEnemies.hit(e, src, dmg);   // the creature probe counts the sentries' work
     for (let k = shedSquad(e) + (e.hp <= 0); k > 0; k--) {   // each body pays, a squad's shed members too
       // any weapon's kill pays — but not the same
-      gunshipRig.feed(eco.award(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5))), { src }));
+      gunshipRig.feed(roverGlue.payKill(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5))), { src }, e.cur));   // the kg lie on the kill's cell once the depot stands (src/fx/rover-glue.js)
       scoreKill(spec.bounty, { src, alive: enemies.filter((x) => x.alive).length });
       noteWaveKill(e.type, src); sectorRun?.kill(e, src, via);
       noteKillContext(e, src);
@@ -4466,6 +4469,7 @@ export function initTdTab(root) {
     return createSectorRun({ story, host: root, api: storyApi, waveSize: params.waveSize, threatMult, hardcore: story.hardcore, spawnGap: { spread: SPAWN_SPREAD, max: SPAWN_GAP_MAX }, store: localStorage, rng: () => whim(),
       ready: () => automated() && (story.beats.phase() === 'expedition' || story.handover.stage >= (story.handover.defendStage ?? 8)) && !briefs.queue() && !shotActive() && !syntheticModal?.isOpen() && !paused, firstSector: storyQuery.firstSector,   /* SKIP TUTORIAL opens the run at the back-door sector: its collapse and breach are the first thing the player sees */
       tune: () => tune, centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(), hold: () => creatureEnemies.holds(), clockHeld: () => !!discoParty?.holding(),
+      ground: () => roverGlue.ground(),   // the debrief's ON THE GROUND (round 8 note 7)
       // the ring the gunship's far breach walks: a minute out
       field: () => ({
         cellSide,
@@ -4548,6 +4552,11 @@ export function initTdTab(root) {
     pilot: () => pilot,
     playerPos: () => player.pos,
     cellSide: () => cellSide,
+  });
+  // THE ROVER AND THE BIO-PEARLS (round 8 note 7, src/fx/rover-glue.js): kills lie on the ground, F's flare sends the rover, the pearls are the bank
+  const roverGlue = createRoverGlue({
+    scene, hullConsole, player, showBrief, showToast, updateHud, wire: () => (wire ? wireOpts : null), metres: () => metresToArc(1, cellSide), briefQ: () => briefs.queue(),
+    story: () => story, storyBase: () => storyBase, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode,
   });
   // THE COLONY'S TICK (src/fx/colony-tick.js): the reel, the lapse, the perks, the pads, the boards, the beacons, the works
   const colonyTick = createColonyTick({
@@ -4766,6 +4775,7 @@ export function initTdTab(root) {
       colonyTick.perks(f);
       autoSupport.tick(f);
       colonyTick.works(f);
+      roverGlue.tick(f.dt);   // the field, the flares, the rover's trip, the pearls (src/fx/rover-glue.js)
       programme.build(f);
     },
     sideBreachCandidates: canyonRun.sideBreachCandidates,
@@ -5205,6 +5215,7 @@ export function initTdTab(root) {
       backInside: () => { const m = story?.backMouth, h = graph.centers[dungeon.heart]; if (!m) return 0; const b = sub3(m.dir, scale3(h, dot3(m.dir, h))); return enemies.filter((e) => e.alive && story.inside(e.cur) && dot3(sub3(e.pos, h), b) > 0).length; },
       viewBack: (height, back) => { const m = story?.backMouth; if (!m) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...m.dir), { id: 'backview', hold: 600, dive: { ...story.backDoor.dive, height: height ?? story.backDoor.dive.height, back: back ?? story.backDoor.dive.back, diveSeconds: 1e-3 } }); },
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
+      rover: roverGlue.test,   // the rover, the field and the pearls (round 8 note 7, --rover)
       // THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems
       // through these and nothing else, so it needs no ?acceptance=1
       showcase: createShowcaseHooks({

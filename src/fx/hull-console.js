@@ -4,13 +4,14 @@
 // (HULL_ARMOUR, src/content/tank.js; a dent flashes the line red), its pace in km/h from frame to frame, smoothed, and how it is driven (MANUAL,
 // CRUISE, or the autopilot's directive). Isao's card stands above the line (styles.css #td-brief), the radar and the lever under it. Not on a phone.
 //   createHullConsole(container, { metres })   metres(): metres a unit of the hull's space
-//   -> { tick(dt, pos, { on, above, armour, hits, mode }), kmh(), dispose() }
+//   -> { tick(dt, pos, { on, above, armour, hits, mode }), kmh(), note(text, full), dispose() }
+//      note: the Yushi Rover's line (round 8 note 7, src/fx/rover-glue.js: ROVER · OUT 1,240 KG, STORAGE FULL), empty for none
 //      on: shown or hidden; above: pixels the line sits over the screen's bottom edge; armour of hits: the dents left; mode: the word
 export function createHullConsole(container, { metres }) {
   const el = document.createElement('div'); el.className = 'hull-console'; el.hidden = true;
-  el.innerHTML = '<span class="hc-hull">MÖRK <i class="hc-pips"></i></span><span class="hc-kmh"></span><span class="hc-mode"></span>';
+  el.innerHTML = '<span class="hc-hull">MÖRK <i class="hc-pips"></i></span><span class="hc-kmh"></span><span class="hc-mode"></span><span class="hc-rover"></span>';
   container.appendChild(el);
-  const pips = el.querySelector('.hc-pips'), kmhEl = el.querySelector('.hc-kmh'), modeEl = el.querySelector('.hc-mode');
+  const pips = el.querySelector('.hc-pips'), kmhEl = el.querySelector('.hc-kmh'), modeEl = el.querySelector('.hc-mode'), roverEl = el.querySelector('.hc-rover');
   let last = null, kmh = 0, frame = 0, wasArmour = null, dentT = 0, drawn = '';
   return {
     tick(dt, pos, { on, above, armour = null, hits = 0, mode = '' }) {
@@ -27,6 +28,7 @@ export function createHullConsole(container, { metres }) {
       if (row !== drawn) { drawn = row; pips.textContent = hits > 0 ? '■'.repeat(Math.max(0, armour ?? hits)) + '□'.repeat(Math.max(0, hits - (armour ?? hits))) : ''; modeEl.textContent = mode; el.classList.toggle('hc-low', hits > 0 && armour !== null && armour <= 1); }
     },
     kmh: () => kmh,
+    note(text = '', full = false) { if (roverEl.textContent !== text) roverEl.textContent = text; roverEl.classList.toggle('hc-full', !!full); },
     dispose() { el.remove(); },
   };
 }
