@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-11-05-owner-the-amethyst-reads-white-in-the-nest-and-the-waves-fine-in-the-quiver-s-seeker",
+  "date": "2026-11-05",
+  "type": "issue",
+  "status": "observed",
+  "title": "Owner: CUTIS-CORE AMETHYST looks fine in the Quiver's seeker view but a plain white mass with a hint of purple in the nest and the waves (next to do)",
+  "context": "Owner, 2026-11-05, on 17dad6d4 (round 4 merged, note 3 'purple reads purple' shipped by stream A: the full purple/brown skin back, gain 1.35, the pearl drawn over at .55, the saturated-purple share among daylit ivories 27 % -> 49 %, measured from the Quiver's seeker and sector 1's spawn, entry 2026-11-02-round-4-stream-a-bodies-and-hull). Two screenshots: (a) the Quiver's SEEKER view, TGT-251 BARBED, BELT PURPLE, locked at 100 m: the body reads purple, correct; (b) a high view over the base's rock cells in daylight near the carcass of the Nih-Dairia with two Rotor beams: the purple body on a rock top is a plain near-white mass with two small purple dots (the pearls) and a hint of purple, next to a plain white one. Same tier, same code path; the backdrop and the lighting differ (seeker: night sky, the body against black; the waves: the daylit lit rock, the cyan wire look).",
+  "outcome": "Recorded as the next item after the session restart; nothing changed. To measure before touching the knobs: the amethyst's membrane colour at the wave's camera over lit rock vs the seeker's black backdrop (the 2026-10-19 note recorded the same 'pale purple core in daylight'; the 2026-11-02 fix was measured as a share among daylit ivories from the seeker, not from the base's high camera). Candidates to test one at a time: the membrane's white glints and the pearl's clear coat over a pale skin washing it out in daylight (PEARL_MEMBRANE gain / the pearl-over-skin .55, src/content/pearl-enemies.js), tone mapping over the lit rock top, and the wire-look's additive cyan edges behind a translucent skin.",
+  "alternatives": [],
+  "evidence": [
+    "Owner's two screenshots of 2026-11-05 08:57 and 08:59 (the base's rock tops in daylight; the Quiver's seeker at TGT-251 BARBED), described in context.",
+    "src/content/pearl-enemies.js purple row (0xa879c5 / 0xdfa9ff) and the PEARL_MEMBRANE notes of 2026-10-18/19 and 2026-11-02.",
+    "docs/STATE.md 2026-10-19 third round: 'the pale purple core in daylight' listed for the owner's eye."
+  ],
+  "supersedes": []
+}

@@ -371,7 +371,19 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 68 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 70 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Owner: CUTIS-CORE AMETHYST looks fine in the Quiver's seeker view but a plain white mass with a hint of purple in the nest and the waves (next to do)
+
+`2026-11-05-owner-the-amethyst-reads-white-in-the-nest-and-the-waves-fine-in-the-quiver-s-seeker` · issue · **observed**
+
+Owner, 2026-11-05, on 17dad6d4 (round 4 merged, note 3 'purple reads purple' shipped by stream A: the full purple/brown skin back, gain 1.35, the pearl drawn over at .55, the saturated-purple share among daylit ivories 27 % -> 49 %, measured from the Quiver's seeker and sector 1's spawn, entry 2026-11-02-round-4-stream-a-bodies-and-hull). Two screenshots: (a) the Quiver's SEEKER view, TGT-251 BARBED, BELT PURPLE, locked at 100 m: the body reads purple, correct; (b) a high view over the base's rock cells in daylight near the carcass of the Nih-Dairia with two Rotor beams: the purple body on a rock top is a plain near-white mass with two small purple dots (the pearls) and a hint of purple, next to a plain white one. Same tier, same code path; the backdrop and the lighting differ (seeker: night sky, the body against black; the waves: the daylit lit rock, the cyan wire look).
+
+### Note 9 (sector 10): the 'missing' ground piece shows the far side's line set; not reproduced headless, waiting on the owner
+
+`2026-11-05-note-9-the-missing-ground-piece-is-the-far-side-s-line-set-not-reproduced` · issue · **observed**
+
+Owner, 2026-11-02, two screenshots for note 9 on b9434246 / 17dad6d4: 'a piece of ground that is missing and displays some other texture', sector 10, near the base. Tank view: a dark cell with an irregular rounded patch of dense cyan wireframe mesh and a bright cyan rim on one side. High view over the base: the same patch at the foot of a lone raised rock cell. The 'other texture' is the far side of the planet's own line set (the cyan edges, LineSegments, visible from inside the sphere because floors are front-face only) seen through a spot where the ground draws nothing. Stream A had photographed the same tangle from a camera inside rock at the back-door mouth (entry 2026-11-02-round-4-stream-a-bodies-and-hull).
 
 ### Twelve hundred Pearl bodies in the game, measured in a headed Chrome on the M4: a column marching down the lane holds the frame to the gate; a pile of them at the hull's feet is GPU-bound at 20-30 fps; the crowd cap sinks to 400 under it (owner, 2026-10-15: 'confirm that we can have up to 1200 enemies as in our dev lab tests')
 

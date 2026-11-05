@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-11-05-note-9-the-missing-ground-piece-is-the-far-side-s-line-set-not-reproduced",
+  "date": "2026-11-05",
+  "type": "issue",
+  "status": "observed",
+  "title": "Note 9 (sector 10): the 'missing' ground piece shows the far side's line set; not reproduced headless, waiting on the owner",
+  "context": "Owner, 2026-11-02, two screenshots for note 9 on b9434246 / 17dad6d4: 'a piece of ground that is missing and displays some other texture', sector 10, near the base. Tank view: a dark cell with an irregular rounded patch of dense cyan wireframe mesh and a bright cyan rim on one side. High view over the base: the same patch at the foot of a lone raised rock cell. The 'other texture' is the far side of the planet's own line set (the cyan edges, LineSegments, visible from inside the sphere because floors are front-face only) seen through a spot where the ground draws nothing. Stream A had photographed the same tangle from a camera inside rock at the back-door mouth (entry 2026-11-02-round-4-stream-a-bodies-and-hull).",
+  "outcome": "Not reproduced. A gap like that needs a cell with neither its floor quad nor its rock top (src/fx/board-surface.js: refreshCells rewrites the floor only for the queued cells but the rock tops for their neighbours too, so a cell flipped BLOCKED -> open without being queued and then touched by a neighbour's refresh would end up with neither), or an open crater whose ground discard (src/game-breaches.js uBreachHoles) has no bowl under it. Every tag writer found queues its cell (td-tab breachWallCell and the breach clear radius, src/fx/back-door.js, src/fx/canyon-run.js, src/fx/programme-host.js printed/repaired, src/fx/strike-console.js). Headless Chrome scans of every cell's floor and top slot and every breach group's visibility: a fresh ?skip=defence&sector=10 for 8 min (the back door open from the start, breaches opening, one sealing, in the owner's look=tronColors) and a played run sectors 1-6 every 20 s: no gap. The headless player loses sector 7 (the door cull is not enough there), so the owner's path 7-10 is unscanned. Safari (the owner's browser) draws the crater rings and black disc in the SAT-3 feed at sector 2, so this is not a browser shader difference. Nothing changed in the tree. Owner asked by Telegram (2026-11-02): which view the second shot was, whether the patch stayed and sat where the back door's rock fell or by the printed back gate, and whether it followed a repair (mended) or a sealed breach; a MAP screenshot requested. Probe kept untracked as scripts/probe-note9.mjs (modes nine/scan/play on top of stream A's --r4a step: MODE=scan SCANQ=... SCANT=... SHOTS=1, MODE=play START=n MINUTES=m).",
+  "alternatives": [
+    "A browser-specific shader failure in Safari (the crater discard without its bowl): rejected, Safari draws the bowl's rings and disc in the feed, though the bowl walls themselves were not captured in Safari.",
+    "Blaming a tag writer that skips the refresh queue: no such writer found; the mechanism stays a hypothesis until a reproduction or the owner's answers locate the cell.",
+    "Patching board-surface to refresh floors for neighbours as well (a blind fix): not done, no root cause, and it would hide a real writer bug."
+  ],
+  "evidence": [
+    "Owner's two screenshots of 2026-11-02 (sector 10, tank view and the high view over the base), described in context.",
+    "scripts/probe-note9.mjs (untracked scratch probe): MODE=scan runs t30-t300 on ?skip=defence&sector=10&day=2.95&look=tronColors, every scan both: 0, odd breaches: none; MODE=play START=1 MINUTES=20: S1-S6 clean, S7 lost.",
+    "src/fx/board-surface.js refreshCells / writeFloor / writeTop; src/game-breaches.js sync/seal; src/sinkhole-terrain.js.",
+    "Safari capture of the SAT-3 feed at sector 2 (open -a Safari + screencapture, safaridriver needs an admin password)."
+  ],
+  "supersedes": []
+}
