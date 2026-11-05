@@ -24,9 +24,16 @@
 // then a skip with spacebar is feasible"): `shot.lock` seconds of the cut nothing skips, then only `shot.skipKey` does (src/fx/camera-shot.js), the
 // `shot.hint` line shown from the lock's end to the cut's end
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
+// A MECH IS A BATTERY, NOT A MOUNT (round 7, owner, 2026-11-05, note 7: "the mechs at THE MOTHER's site should be more aggressive and shoot more often"):
+// a mech's record fires `cadence` times its sentry's rate, out to `range` times its range (src/domain/mech-roles.js batteryDef; a Quiver's reach is its
+// missile's, unchanged), a Rotor's barrels heating 1/cadence a round so a battery never locks; its rounds deal `bossShare` to the mother (THE PAIR JOINS,
+// THE GUNSHIP DECIDES: 0.1 since the merge of 2026-10-23, when two Ridgebacks' TALON volleys took her 180 in 34 s; every other enemy takes the full round;
+// 0.15, not the design's 0.2: at 0.2 the four alone, the gunship silent, killed her 63.8 s after they landed on --arena-fight NOFIRE=1, inside the rule's 60 s margin).
+// `engageCells`: while she is up the arena pair closes to the ring this many hops round her (src/fx/mech-squad.js quarry), inside the Rotor's battery reach
+const FIRE = { cadence: 1.8, range: 1.35, bossShare: 0.15 }, ENGAGE = 6;
 export const REINFORCEMENTS = freeze({
   days: 8, pace: 0.08, roles: ['arena', 'arena', 'base', 'hunt'], offsetCells: 5, scale: 0.75,
-  weapons: ['rotor', 'lancer', 'quiver', 'quiver'], bossShare: 0.1,   // THE PAIR JOINS, THE GUNSHIP DECIDES (2026-10-23, the merge of the two overnight branches: two Ridgebacks' TALON volleys took her 180 in 34 s): their rounds deal this share to a body-led boss (src/td-tab.js damageEnemy); every other enemy takes the full round
+  weapons: ['rotor', 'lancer', 'quiver', 'quiver'], fire: FIRE, bossShare: FIRE.bossShare, engageCells: ENGAGE,   // bossShare: the fire's, the key src/td-tab.js damageEnemy reads
   keepFromHull: 2, lodMetres: 140, fade: 20, patrolCells: 14,
   timeline: {
     duration: 28, release: 6.2, capsuleGap: 0.45, slotGap: 0.18, brake: 0.8, entry: 480, split: 300, splitSink: 4, fallTo: 12, capsuleX: 6,

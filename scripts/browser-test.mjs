@@ -1942,7 +1942,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const norm=(v)=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
  // a point on the chord from her centre toward the hull, `m` metres from her (in the 40 mm's reach: her contacts within its 22 m blast + 8)
  const between=(b,m=25)=>{const a=b.dist.at.boss,h=b.dist.at.hull,gapM=b.dist.gap*METRES_PER_CELL,k=Math.min(0.5,m/Math.max(1e-6,gapM));return norm(a.map((v,i)=>v+(h[i]-v)*k));};
- const fire=(gun,p)=>evaluate(`${T}.arenaFire(${JSON.stringify(gun)},${JSON.stringify(p)})`);
+ // NOFIRE=1 (round 7, note 7): the harness fires nothing, so what takes her hit points is the Ridgebacks' (the pair alone must not end her under 60 s)
+ const fire=(gun,p)=>process.env.NOFIRE?Promise.resolve(false):evaluate(`${T}.arenaFire(${JSON.stringify(gun)},${JSON.stringify(p)})`);
+ const mech={landG:null,dist:{},hp:[]};   // THE RIDGEBACKS AS BATTERIES (round 7, note 7): when they land in the window, the arena pair's arc to her, her hit points
  const w0=Date.now(),s0=await st(),g0=s0.boss.t;let s=s0,last=null,hullMax=0,bossMax=0,stationLost=null,samples=0;
  const fortys=[],launches=[];const byMode={};let hulls0=s0.hulls,hullsLost=0,hullsWas=s0.hulls,cleanWait=0,scare=null,stunSeen=false,readyAgain=null,busy=false,second=null,dead=null,speeds=[],hullSpeeds=[],gapMin=Infinity,gapMax=0;
  let nextForty=g0+2,nukeAt=g0+12,labLast=null;
@@ -1967,6 +1969,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   if(readyAgain!=null&&launches.length===1)nukeAt=b.t;
   last={g:+g.toFixed(1),dist:{hull:b.dist.hull,boss:b.dist.boss,gap:b.dist.gap},mode:lab.mode,speed:b.speed,hullSpeed:b.hullSpeed,heavy:s.gunship.heavy?.phase,station:s.gunship.station,hp:b.bossHp,hulls:s.hulls,cam:{m:s.camJump.m,deg:s.camJump.deg,left:s.gunship.left,passes:s.gunship.passes}};
   if(samples%20===0)console.log('  fight '+JSON.stringify(last));
+  {const ms=s.reinforcements?.mechs??[];if(ms.length&&mech.landG==null)mech.landG=+g.toFixed(1);ms.forEach((m,i)=>{if(m.herCells!=null)(mech.dist[i]??=[]).push(m.herCells);});if(samples%10===0)mech.hp.push([+g.toFixed(1),b.bossHp==null?null:+b.bossHp.toFixed(1)]);}
   if(g>=WINDOW)break;
   await delay(150);
  }
@@ -1980,6 +1983,12 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  console.log(`ARENA FIGHT (e) the station: ${stationLost==null?`on station for all ${gSpan} s`:`lost at ${stationLost} s`}; the seat reads ${JSON.stringify(await evaluate(`document.querySelector('[data-f="left"]')?.textContent||null`))}, the strip ${JSON.stringify(await evaluate(`document.querySelector('#story-views [data-mount="gunship"]')?.textContent||null`))}`);
  console.log(`ARENA FIGHT speeds (m/s over a second): hers mean ${mean(speeds)} (fight mean ${sf.speedMean}, peak ${sf.speedPeak}), the hull's mean ${mean(hullSpeeds)} (fight mean ${sf.hullMean}); temperament ${sf.temper}, lunges ${sf.lunges}`);
  console.log(`ARENA FIGHT her speed by mode (m/s mean, samples): ${Object.entries(byMode).map(([k,v])=>`${k} ${mean(v)} (${v.length})`).join(', ')}`);
+ // THE RIDGEBACKS (round 7, note 7): shots per mech per game minute since they landed (all four weapons), the share of their frames with a weapon on a target,
+ // the arena pair's arc to her while she was up; before (21eee83a, headless) the pair fired 114 a minute each and walked 2 cells, aimed 0.996 of their frames
+ const M1=(await st()).reinforcements,mMin=Math.max(1e-6,(gSpan-(mech.landG??gSpan))/60),mean2=(a)=>a?.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):null;
+ const mrows=(M1?.mechs??[]).map((m,i)=>({role:m.role,perMin:+(m.shots/mMin).toFixed(1),byWeapon:m.byWeapon,aimed:m.frames?+(m.aimed/m.frames).toFixed(3):null,cells:m.cells,her:mean2(mech.dist[i]),herMin:mech.dist[i]?.length?Math.min(...mech.dist[i]):null}));
+ console.log(`ARENA FIGHT the Ridgebacks: ${M1?.phase}, landed at ${mech.landG} s of the window, ${(mMin*60).toFixed(1)} s on the ground; ${JSON.stringify(mrows)}`);
+ console.log(`ARENA FIGHT her hit points (window s, hp): ${JSON.stringify(mech.hp)}${dead?`; dead at ${dead.g} s`:''}`);
  const cj=await camReport('ARENA FIGHT');
  // THE SKY METER (owner, 2026-11-05, round 6 note 3: "controlling the gunship while Isao is close to the boss sinkhole makes the gunship face the sky"): every seated
  // frame's forward against its radial since TAKE THE GUN (state().camSky, src/fx/cam-jump.js); not one may look above the horizon, the glide into the seat included
@@ -1987,11 +1996,18 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  current='arena-fight-end';await finish();
  assert.ok(sky.frames>0&&sky.up===0,`no seated frame faces the sky (${sky.up} of ${sky.frames}, highest ${sky.top})`);
  assert.ok(cj.seated.frames>0&&cj.seated.m<25&&cj.seated.deg<20,`the seated camera never jumps: worst ${cj.seated.m} m, ${cj.seated.deg} degrees over ${cj.seated.frames} seated frames (limits 25 m / 20 degrees)`);
+ // THE RIDGEBACKS AS BATTERIES (round 7, note 7), with NOFIRE=1 (the gunship silent, the window long enough to measure: in the fired run they land 17 s in and the
+ // fight ends 17-35 s later): the arena pair fires at least twice its base's rate (21eee83a NOFIRE: 458 and 306 a minute, 382 a mech) and the four alone do
+ // not end her inside 60 s of landing (her death stays in the gunship's hands)
+ if(process.env.NOFIRE){const pair=mrows.filter(r=>r.role==='arena'),per=pair.reduce((a,r)=>a+r.perMin,0)/Math.max(1,pair.length),alone=dead?+(dead.g-(mech.landG??0)).toFixed(1):null;
+  console.log(`ARENA FIGHT NOFIRE: the pair ${per.toFixed(0)} shots a mech a minute (base 382); her death ${alone==null?'not in the window':`${alone} s after they landed`}`);
+  assert.ok(pair.length===2&&per>=2*382,`the arena pair fires at least twice as often (${per.toFixed(0)} vs 382)`);assert.ok(alone==null||alone>=60,`the four alone do not end her inside 60 s (${alone})`);}
+ else{
  assert.ok(readyAgain!=null&&readyAgain<=12,`(a) the MK-9 ready again within 12 s of a launch (${readyAgain})`);assert.ok(second!=null,'(a) a second MK-9 in the same pass');
  assert.ok(hullMax<=DISC&&bossMax<=DISC,`(b) neither leaves the disc (hull ${hullMax}, boss ${bossMax}, disc ${DISC})`);assert.ok(gSpan>=Math.min(60,WINDOW)||dead,`(b) watched at least 60 s of game clock (${gSpan})`);
  assert.ok((sf.wild??0)>=1&&scare&&scare.gapMax>scare.gap0,`(c) a 40 mm sent her wild and the gap grew within 3 s (${JSON.stringify(scare)})`);
  assert.ok(stunSeen&&(sf.stuns??0)>=1,`(d) an MK-9 within its blast stunned her (${sf.stuns})`);
- assert.ok(stationLost==null,`(e) the station did not end (${stationLost})`);
+ assert.ok(stationLost==null,`(e) the station did not end (${stationLost})`);}
  }
  } else if(args.includes('--day-42')) {
  // DAY 42 (owner, 2026-10-18; spec docs/superpowers/specs/2026-10-18-day-42-design.md): sector 4 opened on day 42; the field culled to a breath, the party:

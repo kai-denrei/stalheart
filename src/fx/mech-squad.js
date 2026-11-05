@@ -26,7 +26,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
 import { ARENA } from '../content/sectors.js';
 import { MAX_TIER } from '../towers.js';
-import { nextCell, parkCell } from '../domain/mech-roles.js';
+import { nextCell, parkCell, batteryDef } from '../domain/mech-roles.js';
 import { arenaFloor } from '../domain/arena.js';
 import { BLOCKED } from '../dungeon.js';
 import { createGait, rigOf, applyGait, gaitRate } from './mech-gait.js';
@@ -39,9 +39,10 @@ const PIVOT = { rotor: ['MINIGUN_YAW', 'MINIGUN_PITCH', /^SOCKET_MINIGUN_MUZZLE_
 export function createMechSquad(h) {
   let mechs = [], records = [], plain = null, park = 0, last = 0, parts = null, hidden = false, s = (h.seed >>> 0) || 26;
   const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
-  const v = new THREE.Vector3(), up = new THREE.Vector3(), fwd = new THREE.Vector3(), x = new THREE.Vector3(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  const bq = new THREE.Vector3(), v = new THREE.Vector3(), up = new THREE.Vector3(), fwd = new THREE.Vector3(), x = new THREE.Vector3(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
   const centre = (ci) => h.graph().centers[ci];
   const open = (ci) => h.dungeon().tags[ci] !== BLOCKED;
+  const herCells = (mc) => { const e = h.enemies().find((x) => x.alive && x.bodyLed), k = centre(mc.cur); return e ? +(Math.acos(Math.max(-1, Math.min(1, k[0] * e.pos[0] + k[1] * e.pos[1] + k[2] * e.pos[2]))) / h.cellSide()).toFixed(1) : null; };   // the arc to the mother in cells (state, round 7)
 
   // the nearest cell to a point: its own and its neighbours, from a start cell, until none is nearer
   function nearestFrom(start, p) {
@@ -55,8 +56,8 @@ export function createMechSquad(h) {
     const muzzles = []; mc.root.traverse((o) => { if (muzzleRe.test(o.name)) muzzles.push(o); });
     const side = key === 'quiver' ? (i % 2 ? /_R_/ : /_L_/) : null;
     obj.userData = { head, headFacing: 0, pitchNode: pitch, muzzles: side ? muzzles.filter((o) => side.test(o.name)) : muzzles };
-    const def = h.towerDef(key);
-    return { key, def, tier: MAX_TIER, ci: mc.cur, obj, cooldown: 0, spent: 0, id: h.towerId(), mech: true, mechIndex: mc.index, heat: 0, pivot: mc.root.getObjectByName(yawName), yawNode: key === 'quiver' ? null : mc.root.getObjectByName(yawName), pitchModel: pitchName ? mc.root.getObjectByName(pitchName) : null, spin: key === 'rotor' ? mc.root.getObjectByName('MINIGUN_SPIN') : null };
+    const def = batteryDef(h.towerDef(key), REINFORCEMENTS.fire);   // A BATTERY, NOT A MOUNT (round 7, note 7): faster and farther than the sentry it is
+    return { key, def, tier: MAX_TIER, ci: mc.cur, obj, cooldown: 0, spent: 0, id: h.towerId(), mech: true, mechIndex: mc.index, heat: 0, heatMul: 1 / (REINFORCEMENTS.fire?.cadence ?? 1), pivot: mc.root.getObjectByName(yawName), yawNode: key === 'quiver' ? null : mc.root.getObjectByName(yawName), pitchModel: pitchName ? mc.root.getObjectByName(pitchName) : null, spin: key === 'rotor' ? mc.root.getObjectByName('MINIGUN_SPIN') : null };
   }
 
   function adopt(list, frame, centreCell) {
@@ -71,7 +72,7 @@ export function createMechSquad(h) {
       m.mixer.stopAllAction();   // the landing clip let go: the gait poses the rig from here (its first pose is the park's, this tick)
       const farRoot = m.far ? m.far.clone(true) : null; if (farRoot) { farRoot.visible = false; m.wrap.add(farRoot); }
       const wo = h.wire?.(); if (wo) { setWireframe(m.root, true, wo); if (farRoot) setWireframe(farRoot, true, wo); }   // before instance(): the parts' InstancedMeshes take the wire material (host.wire, ?wire=1)
-      const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0 };
+      const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0, quarry: -1, frames: 0, aimed: 0 };   // frames, aimed: the frames run and those with a weapon on a target (round 7's measure)
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
     }
@@ -103,7 +104,10 @@ export function createMechSquad(h) {
     const g = h.graph(), hull = h.hull(), keep = REINFORCEMENTS.keepFromHull * h.cellSide();
     const avoid = mc.role === 'hunt' && hull ? (ci) => { const k = g.centers[ci]; return Math.hypot(k[0] - hull[0], k[1] - hull[1], k[2] - hull[2]) < keep; } : () => false;
     const targets = mc.role === 'hunt' ? new Set(h.enemies().filter((e) => e.alive && !e.harmless && e.cur >= 0).map((e) => e.cur)) : null;
-    return nextCell({ role: mc.role, cur: mc.cur, prev: mc.prev, adj: g.adj, open, rand, plain, dist: h.dungeon().distToHeart, park, targets, avoid });
+    // THE PAIR CLOSES (round 7, note 7): while the mother is up (her body leads her record) the arena pair walks to her ring, then back to the plain
+    const her = mc.role === 'arena' ? h.enemies().find((e) => e.alive && e.bodyLed) : null;
+    mc.quarry = her ? nearestFrom(her.cur >= 0 ? her.cur : mc.cur, bq.fromArray(her.pos)) : -1;
+    return nextCell({ role: mc.role, cur: mc.cur, prev: mc.prev, adj: g.adj, open, rand, plain, dist: h.dungeon().distToHeart, park, targets, avoid, quarry: mc.quarry, engage: REINFORCEMENTS.engageCells });
   }
 
   // the far tier past lodMetres, the game tier back inside lodMetres - 20 m: a view decision, so it is taken on frozen frames too (a camera cut
@@ -163,12 +167,12 @@ export function createMechSquad(h) {
 
   return {
     adopt,
-    tick(dt, t) { last = t; if (!mechs.length) return; mechs.forEach((mc) => { if (dt > 0) stepMech(mc, dt); else { tierOf(mc, h.metres()); mc.wrap.updateMatrixWorld(true); } stepRecords(mc); }); drawParts(); },
+    tick(dt, t) { last = t; if (!mechs.length) return; mechs.forEach((mc) => { if (dt > 0) { stepMech(mc, dt); mc.frames++; if (mc.recs.some((r) => r.trackTarget?.alive || r.missileTarget?.alive)) mc.aimed++; } else { tierOf(mc, h.metres()); mc.wrap.updateMatrixWorld(true); } stepRecords(mc); }); drawParts(); },
     towers: () => records,
     state: () => mechs.map((mc) => {
       const shots = mc.recs.reduce((n, r) => n + (r.shots ?? 0), 0), fired = Math.max(...mc.recs.map((r) => r.firedAt ?? -1e9));
       return { role: mc.role, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), gait: { rate: +(mc.rate ?? 0).toFixed(3), contacts: mc.contacts, speed: +mc.speed.toFixed(3), mode: mc.gait.mode }, heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
-        onPlain: plain ? plain.has(mc.cur) : null, park, parkDist: park >= 0 ? h.dungeon().distToHeart[park] : null, far: mc.isFar, eyeM: Math.round(mc.wrap.position.distanceTo(h.eye()) / h.metres()), t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
+        onPlain: plain ? plain.has(mc.cur) : null, park, parkDist: park >= 0 ? h.dungeon().distToHeart[park] : null, far: mc.isFar, eyeM: Math.round(mc.wrap.position.distanceTo(h.eye()) / h.metres()), t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, byWeapon: mc.recs.map((r) => r.shots ?? 0), frames: mc.frames, aimed: mc.aimed, quarry: mc.quarry, herCells: herCells(mc), firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },
     parts: () => parts?.length ?? 0,

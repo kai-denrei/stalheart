@@ -37,7 +37,10 @@ squad.adopt([0, 1, 2, 3].map(fakeMech), frame, 22);
 const recs = squad.towers();
 assert.equal(recs.length, 16, 'sixteen records');
 assert.deepEqual([...new Set(recs.map((r) => r.key))].sort(), ['lancer', 'quiver', 'rotor'], 'rotor, lancer, quivers');
-assert.ok(recs.every((r) => r.tier === MAX_TIER && r.mech === true && r.def === TOWER_BY_KEY[r.key]), 'the sentry defs at the top tier, marked mech');
+assert.ok(recs.every((r) => r.tier === MAX_TIER && r.mech === true && r.def.key === r.key), 'the sentry defs at the top tier, marked mech');
+// A BATTERY, NOT A MOUNT (round 7, note 7): each record's def is its sentry's at REINFORCEMENTS.fire's cadence and range, its barrels heating 1/cadence a round
+{ const F = REINFORCEMENTS.fire; assert.ok(recs.every((r) => Math.abs(r.def.rate - TOWER_BY_KEY[r.key].rate * F.cadence) < 1e-9 && Math.abs(r.def.range - TOWER_BY_KEY[r.key].range * F.range) < 1e-9 && r.def.dmg === TOWER_BY_KEY[r.key].dmg && Math.abs(r.heatMul * F.cadence - 1) < 1e-9), 'faster and farther, the same rounds');
+  assert.ok(F.cadence > 1 && F.range > 1 && TOWER_BY_KEY.rotor.rate === 2.2, 'the sentries themselves untouched'); }
 assert.equal(new Set(recs.map((r) => r.id)).size, 16, 'their own ids');
 assert.ok(recs.every((r) => r.obj.userData.head && r.obj.userData.headFacing === 0 && r.obj.userData.pitchNode && r.obj.userData.muzzles.length === 1), 'a rig with a head, a pitch and the model\'s muzzle');
 assert.deepEqual(squad.state().map((m) => m.role), REINFORCEMENTS.roles);
