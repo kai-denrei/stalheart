@@ -39,3 +39,16 @@ check('always integral', Number.isInteger(bloomTargetSize(801, 457, 2, 0.5).w));
 
 if (failures > 0) { console.error(`\n${failures} failure(s)`); process.exit(1); }
 console.log('\npostfx sizing invariants hold');
+
+// THE ONE-PASS TAIL (2026-11-06): scene + bloom summed and converted for the display in one fragment. The shader is built from the
+// vendored OutputShader by string replacement, so a vendor change that moves either anchor must fail here, not silently in the browser.
+{
+  const { addOutputFragment } = await import('../src/postfx.js');
+  const f = addOutputFragment();
+  console.log('the one-pass tail:');
+  check('samples the bloom texture', f.includes('uniform sampler2D tBloom;'));
+  check('sums scene and bloom before the transfer', f.includes('texture2D( tDiffuse, vUv ) + texture2D( tBloom, vUv )'));
+  check('keeps the display transfer', f.includes('colorspace_pars_fragment') && f.includes('sRGBTransferOETF'));
+  check('keeps the tone mapping switch', f.includes('ACES_FILMIC_TONE_MAPPING'));
+  if (failures > 0) { console.error(`\n${failures} failure(s)`); process.exit(1); }
+}
