@@ -95,7 +95,7 @@ import { wallCushion as cushionWalls, breachBlocked as craterBlocked, CRATER_PAD
 import {TOWERS, TOWER_BY_KEY, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER} from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; 
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js'; import { createAmmoOrbs } from './fx/ammo-orbs.js';
 import {makeTankFeel, landTankFeel, applyTankHealth} from './tankfeel.js';
@@ -2074,11 +2074,9 @@ export function initTdTab(root) {
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
   const comboEl = root.querySelector('#td-combo'), ramFloat = createRamReadout(root, { project: (p) => new THREE.Vector3(p[0], p[1], p[2]).project(camera) });
-  // WHAT SURVIVES THE ENCOURAGEMENT BEING SWITCHED OFF. The praise is the part the operator wants gone — RECKLESS!, すげ〜!, the
-  // heart's lines. The SCORING is not praise: a streak multiplier and a ram count are facts you are playing against, so they
-  // stay. With the words stripped, in every language, because "×1.45" is the whole message and "STREAK" was only ever decoration
-  // on it.
-  const CALLOUT_NUMERIC = { 'co-streak': true, 'co-milestone': true, 'co-cargo': true, 'co-cta': true };   /* co-cargo is information (a part secured, a tower unlocked): it survives the praise switch whole */
+  // WHAT SURVIVES THE PRAISE SWITCHED OFF. The praise goes (RECKLESS!, すげ〜!, the heart's lines); the SCORING stays (a streak
+  // multiplier, a ram count: facts you play against), its words stripped in every language: "×1.45" is the whole message.
+  const CALLOUT_NUMERIC = { 'co-streak': true, 'co-a6': true, 'co-milestone': true, 'co-cargo': true, 'co-cta': true }, calloutSides = createCalloutSides();   /* co-cargo is information (a part secured, a tower unlocked): it survives the praise switch whole */
   const numbersOnly = (t) => {
     const m = String(t).match(/[×x]\s*[\d.]+/);
     return m ? m[0].replace(/\s+/g, '') : t;
@@ -2092,7 +2090,7 @@ export function initTdTab(root) {
     }
     while (calloutsEl.children.length >= 3) calloutsEl.firstChild.remove();
     const d = document.createElement('div');
-    d.className = `callout ${cls}`;
+    d.className = `callout ${cls}${calloutSides.of(cls)}`;
     d.textContent = text;
     calloutsEl.appendChild(d);
     setTimeout(() => d.remove(), cls === 'co-cargo' || cls === 'co-cta' ? 2600 : 1200);
@@ -3485,7 +3483,7 @@ export function initTdTab(root) {
     const top = 1 + params.wallHeight * 0.35;
     a6Post.position.set(c[0] * top, c[1] * top, c[2] * top);
     scene.add(a6Post);
-    showCallout('A6 POSTED', 'co-streak');
+    showCallout('A6 POSTED', 'co-a6');
     return true;
   }
 

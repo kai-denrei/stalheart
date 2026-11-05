@@ -3278,6 +3278,32 @@ try{
   await delay(250);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'gunship-40mm-burst.png'),Buffer.from(shot.data,'base64'));
  }
  await finish();
+ } else if(args.includes('--streak-sides')) {
+ // THE STREAK STEPS ASIDE (owner, 2026-11-05, round 6 note 4: "the streak callouts should not sit centred on the tank but slightly offset, alternating left and
+ // right"; src/domain/callout-side.js): every callout the page raises is recorded with its class, its text and its box's centre against the screen's centre
+ // (300 ms in, past co-pop's scale); a frame per streak callout in artifacts/browser/streak-sides/. The streak callouts alternate at 9vw, every other is centred.
+ const T='window.__stalheartTest',dir=resolve(process.env.OUT||join(output,'streak-sides'));mkdirSync(dir,{recursive:true});const label=process.env.LABEL||'streak';
+ await go('streak-sides','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&creatures=pearl&hold=1#td');
+ await until(`!!${T} && ${T}.state().sector?.n===2`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card{display:none!important}</style>")');
+ await evaluate(`(()=>{const L=window.__co=[];const c=document.querySelector('#td-callouts');new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){const e={t:Math.round(performance.now()),text:n.textContent,cls:n.className};L.push(e);setTimeout(()=>{const r=n.getBoundingClientRect();e.dx=Math.round(r.left+r.width/2-innerWidth/2);e.w=Math.round(r.width);e.vw=+(e.dx/innerWidth*100).toFixed(1);},300);}}).observe(c,{childList:true});})()`);
+ // fifteen kills through the game's own damage path (damageEnemy -> noteKillContext -> noteStreak): the streak callouts at the 5th, 10th and 15th
+ for(const [t,k] of [['amoeba',18]])await evaluate(`${T}.spawnFodder(${k},${JSON.stringify(t)})`);
+ const live=`${T}.creatures.pearls().filter(e=>e.alive&&!(e.emergeAge<1.2))`;await until(`${live}.length>=15`,120000);await delay(1000);
+ // the harness's hand (damageBoss strikes the first live huge hunter): fifteen of the pile marked so, one struck dead per call
+ const n0=await evaluate(`(()=>{const L=${live}.slice(0,15);for(const e of L){e.hunter=true;e.tier='huge';}return L.length;})()`);console.log(`  marked ${n0}`);
+ const shots=[];let seen=0;const watch=async(ms)=>{const end=Date.now()+ms;while(Date.now()<end){const L=await evaluate('window.__co');for(;seen<L.length;seen++){if(/co-streak/.test(L[seen].cls)&&shots.length<6){await delay(250);const s=await send('Page.captureScreenshot',{format:'png'});const f=join(dir,`${label}-${shots.length}-${L[seen].cls.replace(/\s+/g,'_')}.png`);writeFileSync(f,Buffer.from(s.data,'base64'));shots.push(f);}}await delay(40);}};
+ let kills=0;for(let i=0;i<15;i++){const r=await evaluate(`${T}.damageBoss(999)`);if(r)kills++;await delay(i===4||i===9?150:60);if(i===9){await watch(200);}}
+ await watch(1500);console.log(`  kills by damageBoss ${kills}; streak ${JSON.stringify((await evaluate(`${T}.state()`)).streak)}`);
+ await delay(500);const L=await evaluate('window.__co');
+ console.log(`STREAK SIDES: ${L.length} callouts; streak ${L.filter(e=>/co-streak/.test(e.cls)).length}`);for(const e of L)console.log('  '+JSON.stringify(e));
+ // the alternation and the offsets, then the others centred
+ const st=L.filter(e=>/co-streak\b/.test(e.cls));
+ for(let i=1;i<st.length;i++)assert.notEqual(st[i].cls,st[i-1].cls,`streak callouts alternate (${st[i-1].cls} then ${st[i].cls})`);
+ for(const e of st)assert.ok(Math.abs(Math.abs(e.vw)-9)<1.5&&(/-l\b/.test(e.cls)?e.dx<0:e.dx>0),`a streak callout sits 9vw to its side (${JSON.stringify(e)})`);
+ for(const e of L.filter(e=>!/co-streak/.test(e.cls)))assert.ok(Math.abs(e.dx)<=2,`every other callout stays centred (${JSON.stringify(e)})`);
+ assert.ok(st.length>=2,`two streak callouts at least (${st.length})`);
+ console.log(' shots '+shots.join(' '));current='streak-sides';await finish();
  } else if(args.includes('--crowd-probe')) {
  // THE CROWD'S COST (no assertions): bodies held on the field at each count, the frame, the enemies' CPU, the draw calls, the GPU
  const T='window.__stalheartTest';

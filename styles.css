@@ -2741,7 +2741,11 @@ html, body {
    callout never carries a glow the rest of the layer does not. */
 .co-reckless { color: var(--p-green); }
 .co-heart { color: var(--p-white); }
-.co-streak { color: var(--p-blue); }
+.co-streak, .co-a6 { color: var(--p-blue); }
+/* THE STREAK STEPS ASIDE (owner, 2026-11-05, round 6 note 4): the streak callouts alternate left and right of the hull, never on it; `left`, not
+   transform, because co-pop owns transform (src/domain/callout-side.js). A6 POSTED (co-a6) and every other shout keep the centre */
+.co-streak-l { position: relative; left: -9vw; }
+.co-streak-r { position: relative; left: 9vw; }
 /* the A6's post marker sits on the board, not in this lane — but its
    button needs to read as an ORDER rather than a purchase: no cost, no
    colour from the tower palette, just the machine's own amber */
@@ -2826,6 +2830,8 @@ body.td-victory #td-tut {
    looking. The two numbers split to either side of it, high and a little in
    from the edges: the streak multiplier left, the ram count right, both
    readable in peripheral vision without ever sitting over the tank. */
+.no-callouts .co-streak-l,
+.no-callouts .co-streak-r { left: 0; }   /* the praise-off column is already off the centre */
 .no-callouts #td-callouts {
   /* clear of the HUD: the score bar, the CTR buttons and the wave card own
      the top ~22%, and 17% put the numbers straight through them */
