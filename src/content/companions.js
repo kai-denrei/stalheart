@@ -45,6 +45,7 @@ export const COMPANIONS = freeze({
     // Pounce carries 1.6 m of root travel on MOTION, so it is a trick played in place, never a gait
     { id: 'k0', name: 'K0-TECH', kind: 'feline', model: 'assets/models/k0-tech/k0_tech_d0_lod1.glb', far: 'assets/models/k0-tech/k0_tech_d0_lod2.glb',
       idle: 'Watch_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw', 'Pounce'], top: 4.2, accel: 14, turn: 3.6, trot: 1.6, wander: [0.2, 0.34], shotScale: 0.5, born: 'pet_born_k0',
+      offer: { price: 1800, fromSector: 2, effect: 'a small feline companion, printed now instead of after the greenhouse' },   // THE BUILD BOARD's card (round 6, stream B reads a unit's `offer`): the farm is a board purchase now, so the cat can be bought before it
       gaits: [{ clip: 'Stalk_Cycle', mps: 0.0893, max: 0.12 }, { clip: 'Feline_Walk_Cycle', mps: 0.2383, max: 0.5 }, { clip: 'Gallop_Cycle', mps: 2.6889, max: 4.4 }] },
     // THE NIH-DAIRIA MECH (owner, 2026-11-05, round 6 note 1b: "a Nih-Dairia mech about the tank's size", Isao's own, printed after THE ARENA's kill):
     // 6.6 x 1.8 x 7.6 m (the hull is 10 m long: scale 1), NO baked clips. `pose: 'mech'` drives it through src/fx/mech-pose.js (the workshop's
