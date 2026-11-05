@@ -11,6 +11,8 @@
 //   offsetCells the group's centre from the arena's cell, down the heart's field toward the base (the crater is ARENA.craterCells round the centre)
 //   scale       the mechs' cargo scale in the cinematic (0.75 of the MX-06's 8 m plot); the capsule is drawn at 1
 //   weapons     the sentry records a mech carries (src/content/sentries.js keys), at the sentries' top tier
+//   hullPadM    (round 8 note 3) a Ridgeback's half width round the hull's box, metres: the MX-06's 8 m plot at `scale` 0.75 is 6 m, so 3; inside it,
+//               the hull pushes the mech aside (src/fx/mech-squad.js pushFromHull)
 //   keepFromHull the hunter's least distance from the hull in cells; `lodMetres` the far tier beyond (the README's 140 m); `fade` the shells' wreck
 //   seconds after landing before they go
 // `timeline` is the owner's cinematic (SentryTowers_A6 feids26/timeline.js), metres and seconds: two capsules at x -/+capsuleX entering from
@@ -34,7 +36,7 @@ const FIRE = { cadence: 1.8, range: 1.35, bossShare: 0.15 }, ENGAGE = 6;
 export const REINFORCEMENTS = freeze({
   days: 8, pace: 0.08, roles: ['arena', 'arena', 'base', 'hunt'], offsetCells: 5, scale: 0.75,
   weapons: ['rotor', 'lancer', 'quiver', 'quiver'], fire: FIRE, bossShare: FIRE.bossShare, engageCells: ENGAGE,   // bossShare: the fire's, the key src/td-tab.js damageEnemy reads
-  keepFromHull: 2, lodMetres: 140, fade: 20, patrolCells: 14,
+  keepFromHull: 2, hullPadM: 3, lodMetres: 140, fade: 20, patrolCells: 14,
   timeline: {
     duration: 28, release: 6.2, capsuleGap: 0.45, slotGap: 0.18, brake: 0.8, entry: 480, split: 300, splitSink: 4, fallTo: 12, capsuleX: 6,
     landings: [[-6, -4], [-3, 4], [4, -3], [7, 5]], fallTimes: [6, 6.25, 6.55, 11.6], shellGone: 3.5, groundCamera: [16.5, 18], ground: [9.75, 0.2, 7],

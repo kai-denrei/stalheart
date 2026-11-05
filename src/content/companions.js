@@ -13,7 +13,7 @@
 //   play.chase     a game of tag: the chaser at `top`, the one fleeing at `flee` of its own top, a tag within `tagM` metres swaps the roles,
 //                  the game over after `secs`; `every` seconds between games, `first` the delay before the first one; a pair further than
 //                  `startM` apart trots together first; the fleer picks its next point within `awayM` of itself (it dodges, it does not cross the base)
-//   play.greet     the trot to the hull, sitting `nearM` metres from it, `every` seconds apart; only once the hull has stood still `dodge.stillS`
+//   play.greet     the trot to the hull, sitting `nearM` metres from its point (round 8: outside its box, COMPANIONS.hull), `every` seconds apart; only once the hull has stood still `dodge.stillS`
 //   play.dance     DAY 42 ON THE DANCE FLOOR (owner, 2026-11-02, round 4 note 8): during the party a dash at `dash` of the top speed for `dashS`
 //                  seconds at most to a point `floorM` metres from the ball's foot and `hullM` off the hull (the first --day-42 frame had the parked
 //                  hull between C-07 and the cut's lens), then a trick or a sit (`sitSecs`) in place, in turn, until the klaxon
@@ -31,6 +31,11 @@
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 export const COMPANIONS = freeze({
   scale: 1, roamCells: 6, keepFromHull: 2.5, lodMetres: 90, fade: 15, startCells: 2,
+  // THE HULL PUSHES THEM ASIDE (owner, 2026-11-05, round 8 note 3: "collision between friendly units: the tank bumping into mechs, cheetah, etc.
+  // should push them aside"): the hull's box in metres, the half sizes src/fx/hull-contact.js measures off the drawn tank (its vertices in the lower
+  // 45 % of its height: 4.4 x 2.19 on the story's hull, read through the harness 2026-11-06), and `pad` a pet's half width round it (the mech pads by
+  // its own `padM`); a born unit inside that box is moved out of it every frame (src/domain/friendly-push.js), the hull not slowed
+  hull: { halfLength: 4.4, halfWidth: 2.2, pad: 0.8 },
   units: [
     { id: 'c07', name: 'C-07', kind: 'feline', model: 'assets/models/c07/c07_d0_lod1.glb', far: 'assets/models/c07/c07_d0_lod2.glb',
       idle: 'Watch_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw'], top: 7, accel: 7, turn: 3.2, trot: 4, born: 'pet_born_c07',   // no middle gait: the trot is a lope on the gallop clip at 0.65
@@ -83,7 +88,7 @@ export const COMPANIONS = freeze({
   play: {
     idle: [1.5, 4], wander: [0.45, 0.65], dash: [0.75, 1], trot: 2.3, sitSecs: [3, 6], trick: 0.25, wanderMax: 14,
     chase: { secs: [8, 14], tagM: 1.6, flee: 0.75, every: [20, 45], first: 8, startM: 25, awayM: 20 },
-    greet: { nearM: 3, every: [40, 90], first: 25 },
+    greet: { nearM: 6.5, every: [40, 90], first: 25 },   // round 8 note 3: 3 m off the hull's point sat a greeting cat inside the 8.8 m hull; now its half length + pad + 1 m (4.4 + 0.8 + 1, rounded up)
     dance: { dash: [0.45, 0.7], dashS: 3, sitSecs: [1.5, 2.5], floorM: [5, 13], hullM: 9 },
     dodge: { nearM: 6, rangeM: 60, laneM: 5, leadS: 3, movingMps: 0.5, closingMps: 0.3, stillMps: 0.3, stillS: 1, clearM: 12, maxS: 6 },
     // THE HEAVY ONE (round 6, the mech): seconds at rest, the share of rests that end in a walk (else the anchor or the reach, `trick` of them the
