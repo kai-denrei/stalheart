@@ -30,6 +30,10 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], when: { phase: 'expedition' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
   { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
+  // THE DEPOT (owner, 2026-11-05, round 8 note 7): the Bio-Pearls the bank lives in, the rover's pad and the SAI-92's bay, printed straight after
+  // HUGIN on a bare page; until it stands a kill pays the bank at once as it always did, from its perk on the bodies' biomass lies on the
+  // ground for the rover (src/fx/rover-glue.js). On a skipped opening it stands from the start (stage 8)
+  { id: 'depot', label: 'depot', islands: ['depot'], structures: ['pearl-a', 'pearl-b', 'pearl-c', 'sai92-bay', 'sai92'], when: { sector: 1, idle: true }, seconds: 14, metres: 6, brief: 'build_depot', perk: 'depot' },
   { id: 'radar', label: 'radar', islands: ['radar'], structures: ['radar'], when: { sector: 2 }, seconds: 12, metres: 18, brief: 'build_radar', perk: 'uplink', closeup: 'antenna' },   // closeup: the print on screen, its line said over the cut (ANTENNA_CLOSEUP below)
   { id: 'assembly', label: 'assembly line', islands: ['assembly'], structures: ['assembly'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_assembly', perk: 'rebuild' },
   // THE BACK GATE (owner, 2026-09-18: "back gate is a reminder that focusing on defense on one side leaves one open; surprise it
@@ -67,6 +71,10 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], board: true, when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
   { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], board: true, when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
   { id: 'launcher', label: 'ARC-01 launcher', islands: ['launcher'], structures: ['launcher'], board: true, when: { sector: 4, idle: true, manned: 2 }, passable: true, seconds: 20, metres: 12, brief: 'build_launcher', perk: 'launcher' },
+  // THE FOURTH PEARL (round 8 note 7), last so the board's four structure cards keep the colony's own ahead of it: +12,000 kg of storage on the depot, a board card from the board before sector 3 (the ledger's sector 3 is
+  // where an ideal bank first passes the three pearls' 36,000 kg); standing, it adds its vessel to the bank's cap (src/fx/rover-glue.js reads the
+  // step done, not a perk: the depot's perk opens the pearl's entry in the terminal, and the card's thumbnail is that entry's, `board: 'pearl'`)
+  { id: 'pearl', label: 'Bio-Pearl', structures: ['pearl-d'], board: true, when: { sector: 3, idle: true }, seconds: 8, metres: 4, brief: 'build_pearl', perk: null },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
 // ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the

@@ -33,6 +33,7 @@ function world(log) {
     WAVE_WARN: 3, shield: new Proxy({ up: false }, { get: (o, k) => (k in o ? o[k] : rec('shield.' + String(k))) }), shieldTune: {}, lab: { on: false }, SPAWN_SPREAD: 3.2, SPAWN_GAP_MAX: 0.45, crowdGate: createCrowdGate(), openNeighbors: (ci) => adj[ci], tmpObj: new THREE.Object3D(),
     player: { pos: centers[2].slice(), cur: 2, won: false }, effectiveStats: () => ({ range: 1 }), shieldUp: () => false, BUMP_LEN: 0.5, gunshipRig: new Proxy({}, { get: (_, k) => rec('gs.' + String(k)) }), RAM_COMBO_GAP: 1.2, ramFloat: new Proxy({}, { get: (_, k) => rec('ramFloat.' + String(k)) }),
     camDist: () => 0.4, heartHit: rec('heartHit'), playerHit: rec('playerHit'),
+    payKill: (b, o) => st.eco.award(b, o),   // round 8 note 7: a ram's pay goes through the rover glue (src/fx/rover-glue.js), which books it on the economy as before
   });
   return { st, fixed };
 }

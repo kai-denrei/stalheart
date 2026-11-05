@@ -24,6 +24,7 @@ export const BUILD_BOARD = Object.freeze({
     farm: Object.freeze({ price: 3200, effect: '+40 kg of biomass every sector' }),
     chips: Object.freeze({ price: 2800, effect: 'SOL\'s passes come a fifth sooner' }),
     launcher: Object.freeze({ price: 4000, effect: 'SOL-88 goes up: SOL fires on its own' }),
+    pearl: Object.freeze({ price: 2000, effect: '+12,000 kg of storage: a fourth Bio-Pearl' }),   // round 8 note 7: the bank is the pearls' sum
   }),
   repair: Object.freeze({ price: 1200, label: 'HULL REPAIR', effect: 'the hull\'s dents mended now' }),
   spare: Object.freeze({ price: 4800, label: 'SPARE HULL', effect: 'one more hull in the bays' }),

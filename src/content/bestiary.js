@@ -12,6 +12,7 @@ import { STRUCTURES, KIT } from './base-layout.js';
 import { DOME_ISLANDS, DOME_STRUCTURES } from './dome-city.js';
 import { REINFORCEMENTS } from './reinforcements.js';
 import { COMPANIONS } from './companions.js';
+import { ROVER, PEARLS } from './rover.js';
 import { LASER_PLATFORMS, LASER_ORBIT } from './orbital-laser.js';
 import { GUNSHIP_ORBIT } from './gunship.js';
 import { SHOWCASE_ELEMENTS } from './showcase.js';
@@ -261,6 +262,27 @@ export const UNIT_ENTRIES = freeze([
     facts: [['DOMES', `${DOME_ISLANDS.length} · ${[...new Set(DOME_STRUCTURES.filter((s) => s.island).map((s) => s.module))].join(' · ')}`], ['BRIDGES', `${DOME_STRUCTURES.filter((s) => s.anchor === 'frame').length} · 52 m, the deck 7.5 m up, the hull drives under`], ['THE SEVENTH', 'the Stålheart stands where the power dome would']], isao: [
       'Six domes round the Stålheart: two habitats, two logistics halls, a biosphere and a fabrication dome. The colony came with them; I only had to unfold them.',
       'Four bridges, fifty-two metres each, the deck seven and a half up. The hull goes under. Please go under.',
+    ] },
+  // --- THE DEPOT (owner, 2026-11-05, round 8 note 7: the Yushi Rover "brings the biomass back to the Yushi045 biopearl, these are where the
+  // biomass is stored ... the yushi rover is also a buildable unit, but not used for now"; note 5, "we import new models"), on the books once the
+  // depot stands. The rover's price is the catalog's only: no board card this round. The pearl's entry draws the board's fourth-pearl card (`board`)
+  { id: 'yushi-rover', section: 'colony', name: 'YŪSHI ROVER · BIOMASS RECOVERY', label: 'COLONY · THE HARVEST', needs: { perk: 'depot' }, swatch: 0xffb43c,
+    model: { url: ROVER.model, clip: null },
+    facts: [['SIZE', '5.4 x 3.5 x 10.3 m · six wheels'], ['HOLD', `${ROVER.capacity.toLocaleString('en-US')} kg a trip · ${ROVER.harvestRate} kg/s at the rake`], ['DRIVE', `${ROVER.speed} m/s · to the newest flare (F)`], ['PRICE', `${ROVER.price.toLocaleString('en-US')} kg · a second rover: not yet`]], isao: [
+      'A rake, a belt, two tanks and six wheels. It goes where your flare burns and brings the fallen home to the pearls.',
+      'It does not fight, and nothing out there has learned to shoot it yet. Drop the flare where they fell; it does the rest.',
+    ] },
+  { id: 'yushi045', section: 'colony', name: 'YŪSHI045 · BIO-PEARL', label: 'COLONY · THE BANK', needs: { perk: 'depot' }, board: 'pearl',
+    model: built('pearl-a', 'depot', { clip: null }),
+    facts: [['NAME', '有機性資源コンテナ 第045型'], ['HOLDS', `${PEARLS.capacity.toLocaleString('en-US')} kg of binder each`], ['STANDING', `${PEARLS.count} with the depot · a fourth on the board`], ...printed('depot')], isao: [
+      'Organic-resource container, version 045. Every kilo we own that is not already standing is in one of these.',
+      'The shoulder lights count it. When every light is lit, spend, or buy me a fourth.',
+    ] },
+  { id: 'sai92', section: 'colony', name: 'SAI-92 · 採掘 · MINERAL HOPPER', label: 'COLONY · THE DEPOT', needs: { perk: 'depot' },
+    model: built('sai92', 'depot', { clip: null }),
+    facts: [['SIZE', '6.3 x 4.0 x 4.6 m · landed'], ['BAY', '10 x 9 m · an ore receiver, gas and power'], ['NAME', 'sai ku tsuu · 採掘, to dig'], ['MINING', 'to come']], isao: [
+      'A cold-gas hopper: it lands on a seam, anchors, drills, and flies the ore home to its bay. Sai ku tsuu. To dig.',
+      'It stands on its bay for now. The day the colony needs rock more than bodies, it flies.',
     ] },
   // --- the eight sentries, through the game's own look at the top tier (the stats rows come from src/towers.js on the card, not here) -----------
   ...SENTRIES.map((s) => ({ id: s.key, section: 'sentries', name: `${s.name.toUpperCase()} · SENTRY ${s.number}`, label: 'SENTRY', needs: { sentry: s.key }, tower: s.key,

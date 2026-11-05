@@ -113,7 +113,7 @@ for (let n = 0; n < STAGES.length; n++) {
   assert.equal(g.stage, 1); assert.equal(g.reach, STAGES.length - 1);
   assert.deepEqual(ids(g.islands), ISLANDS.filter((i) => !i.founded).map((i) => i.id), 'every island is still to print at stage 1');
   assert.ok([...g.islands, ...g.structures].filter((x) => x.founded).every((x) => !x.pending) && g.islands.filter((i) => i.founded).length === ISLANDS.filter((i) => i.founded).length, 'the founded pieces stand from the first frame');
-  assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'garage', 'chips', 'ammo-a', 'ammo-b', 'ammo-c', 'launcher'], 'every later structure is pending');
+  assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'garage', 'chips', 'ammo-a', 'ammo-b', 'ammo-c', 'launcher', 'pearl-a', 'pearl-b', 'pearl-c', 'pearl-d', 'sai92-bay', 'sai92'], 'every later structure is pending');
   assert.ok(g.structures.some((s) => s.id === 'sh02' && !s.pending), 'the intact SH02 still stands at stage 1');
   assert.ok(g.gate.pending && g.walls.length === KIT.wallsPerSide * 2 && g.walls.every((w) => w.pending), 'the gate and its walls wait');
   assert.deepEqual(g.bays.map((b) => [b.n, !!b.pending]), [[1, true], [2, true], [3, true]], 'the bays are pending berths');

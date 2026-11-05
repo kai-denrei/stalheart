@@ -41,6 +41,12 @@ export const ISLANDS = Object.freeze([
   { id: 'chips', w: 14, d: 12, x: 60, z: 40, stage: 9 },
   { id: 'garage', w: 12, d: 18, x: 31, z: 62, stage: 9 },   // THE GARAGE (owner, 2026-10-03: "there is a new Garage to use"): the A6 open-roof paint bay east of the bays
   { id: 'launcher', w: 16, d: 30, x: -74, z: 2, stage: 9 },   // 22 m clear of the boards (owner, 2026-10-15, sector 6's launch: "the launcher is too close to the ScoreBoard. Separate them"; was 10 m)
+  // THE DEPOT (owner, 2026-11-05, round 8 note 7: the Yushi Rover "brings the biomass back to the Yushi045 biopearl, these are where the biomass is
+  // stored"; and note 5, "we import new models": the SAI-92 stands there too): 36 x 16 m in the north-west corner of the clearing, beyond HUGIN's
+  // slab (it ends at z -60; this one starts at z -86, 4 m and more clear of everything), its corner 123 m from the pole inside the 142 m the
+  // clearing allows. Stage 8: printed by the programme's `depot` step after HUGIN (a bare page), standing from the start on a skipped opening.
+  // The dome city (?base=dome, src/content/dome-city.js) moves it by this id
+  { id: 'depot', w: 36, d: 16, x: -70, z: -78, stage: 8 },
 ]);
 
 // structures: asset, island they stand on, stage, model offset to centre the
@@ -87,6 +93,18 @@ export const STRUCTURES = Object.freeze([
   // the ARC-01 has no distance tier on the base: its launch is engine-driven on ONE model, and a near/far swap put the animation on the hidden tier
   // `dark`: meshes whose glow stands off between launches (the magnets, owner 2026-11-05: NOT lit at the beginning; src/content/orbital-works.js LAUNCHER_LIGHTS)
   { id: 'launcher', asset: 'assets/models/astro/arc01_launcher_d0_lod1.glb', island: 'launcher', stage: 9, scale: 1, offset: [0, 0, 0], heading: [-1, 0], dark: ['PASSAGE_GATES', 'ACCELERATOR_LIGHTS'] },
+  // THE DEPOT'S PIECES (round 8 note 7; docs/a6-settlement-assets.lock.json, the owner's A6 settlement models): the Yushi045 Bio-Pearls in a row
+  // along the island's east edge (4 x 4 m plots, 4 m apart; their SOCKET_FILL faces -X, toward the rover's dock 8 m west, the author's dock),
+  // three standing with the depot and the fourth the build board's card (stage 9, the `pearl` step); their fill is driven from the bank by
+  // src/fx/bio-pearls.js (assets/models/yushi045/runtime.js), so they are not batched. The SAI-92 bay in the middle of the island with the unit
+  // landed on its SOCKET_LANDING (0, 0.215, 0), facing +Z: it stands this round (mining is to come). The rover's pad is the west half (not a
+  // structure: src/content/rover.js ROVER.pad). None of them stops the hull: small pieces stay passable (2026-10-03)
+  { id: 'pearl-a', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [16, 0, -6] },
+  { id: 'pearl-b', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [16, 0, -2] },
+  { id: 'pearl-c', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [16, 0, 2] },
+  { id: 'pearl-d', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 9, scale: 1, offset: [16, 0, 6] },
+  { id: 'sai92-bay', asset: 'assets/models/sai92/sai92_bay_d0_lod1.glb', far: 'assets/models/sai92/sai92_bay_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [-1, 0, 0], batch: true },
+  { id: 'sai92', asset: 'assets/models/sai92/sai92_unit_d0_lod1.glb', far: 'assets/models/sai92/sai92_unit_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [-1, 0.215, 0], batch: true },
   // EARLIER LANDINGS, out past the clearing on open ground (anchor 'open' snaps to the nearest open cell): two HUGIN boosters standing
   // on their tripods and one wreck on its side. The flight GLBs sit on their mass reference, feet at -6.3 m, hence the offset; the wreck
   // is tilted onto its side and lifted by its hull radius. Draft placement, to be moved once the tank trip beat is written.

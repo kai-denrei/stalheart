@@ -44,6 +44,12 @@ export function earlyCallBonus(secondsSaved, cap = 40) {
 export function makeEconomy(opts = {}) {
   const startBiomass = opts.startBiomass ?? START_BIOMASS;
   let biomass = startBiomass;
+  // THE PEARLS ARE THE BANK (owner, 2026-11-05, round 8 note 7: the Yushi045 Bio-Pearls are "where the biomass is stored"; src/domain/bio-pearls.js):
+  // `cap` is their capacity, Infinity until a depot stands. A credit that does not fit is lost (ledger.lost); the rover's deposit only takes
+  // what fits and keeps the rest aboard. KILLS LEAVE BIOMASS ON THE GROUND: award(..., { hold: true }) books the kill (the streak, the score,
+  // `earned` by source) without banking it; the kg go to the field (src/domain/biomass-field.js) and come in through deposit() when the
+  // rover unloads them (ledger.field: kg laid on the ground, ledger.harvested: kg the rover brought home)
+  let cap = opts.cap ?? Infinity;
   let streak = 0;
   let score = 0; // cumulative, never spent
   // LEDGER (2026-09-02): what came in and what went out, so the sim can
@@ -51,7 +57,9 @@ export function makeEconomy(opts = {}) {
   // kills and bonuses; `spent` is every successful spend.
   let earned = 0, spent = 0, peak = biomass;
 
-  const ledger = { bounty: 0, grants: 0, refunds: 0, breachGrants: 0 };
+  const ledger = { bounty: 0, grants: 0, refunds: 0, breachGrants: 0, field: 0, harvested: 0, lost: 0 };
+  // a credit into the capped bank: what fits, the rest lost
+  const bank = (n) => { const fit = Math.max(0, Math.min(n, cap - biomass)); biomass += fit; ledger.lost += n - fit; if (biomass > peak) peak = biomass; return fit; };
   // THE LEDGER BY SOURCE (round 6, the build board's measure, 2026-11-05): kill pay by who killed (`src`: tank, tower, strike, ram, ...),
   // credits by category (sector-held, farm, grant, breach-grant, refund) and spends by kind (sentry, upgrade, board, plasma, ...)
   const bySource = {}, byCategory = {}, spentBy = {};
@@ -64,18 +72,27 @@ export function makeEconomy(opts = {}) {
     get starting() { return startBiomass; },
     get ledger() { return { ...ledger, bySource: { ...bySource }, byCategory: { ...byCategory }, spentBy: { ...spentBy } }; },
     get streak() { return streak; },
+    get cap() { return cap; },
+    setCap(n) { cap = Number.isFinite(n) && n >= 0 ? n : Infinity; },
     get score() { return score; },
     multiplier,
     // a kill: streak grows FIRST, then bounty scales by the multiplier —
     // HK's onKill order exactly (award includes the kill's own streak step)
-    award(bounty, { ram = false, src = null } = {}) {
+    award(bounty, { ram = false, src = null, hold = false } = {}) {
       streak++;
       const amount = Math.round(bounty * (ram ? RAM_PREMIUM : 1) * multiplier());
       tally(bySource, ram ? 'ram' : src ?? 'other', amount);
-      biomass += amount;
+      if (hold) ledger.field += amount; else bank(amount);
       score += amount;
-      earned += amount; ledger.bounty += amount; if (biomass > peak) peak = biomass;
+      earned += amount; ledger.bounty += amount;
       return amount;
+    },
+    // the rover unloads: what fits in the pearls, returned (the rest stays aboard)
+    deposit(n) {
+      if (!Number.isFinite(n) || n <= 0) return 0;
+      const fit = Math.max(0, Math.min(n, cap - biomass));
+      biomass += fit; ledger.harvested += fit; if (biomass > peak) peak = biomass;
+      return fit;
     },
     // an enemy reached the Heart: the streak dies with the moment
     leak() { streak = 0; },
@@ -88,13 +105,12 @@ export function makeEconomy(opts = {}) {
     },
     addBiomass(n, { category = 'grant' } = {}) {
       if (!Number.isFinite(n) || n < 0) throw new Error('Biomass credit must be finite and nonnegative');
-      biomass += n; tally(byCategory, category, n);
+      bank(n); tally(byCategory, category, n);
       if (category === 'refund') ledger.refunds += n;
       else {
         earned += n; score += n;
         if (category === 'breach-grant') ledger.breachGrants += n; else ledger.grants += n;
       }
-      if (biomass > peak) peak = biomass;
     },
     get earned() { return earned; },
     get spent() { return spent; },

@@ -81,6 +81,9 @@ export function createTankInput(host) {
     if (down && (k === ' ' || k === 'spacebar')) { host.fire(); ev.preventDefault(); return; }
     // T FOR TATE (盾), not S: S is REVERSE in CTL_DRIVE_KEYS (a map, so a grep for 's' never showed it)
     if (down && k === 't') { host.deployShieldNow(); ev.preventDefault(); return; }
+    // F FOR A FLARE (owner, 2026-11-05, round 8 note 7: "the tank drops temporary flares like Isao, which dispatches the Yushi Rover"): one under
+    // the hull, the rover's order (src/fx/rover-glue.js); the key was free
+    if (down && k === 'f' && !ev.repeat) { host.dropFlare?.(); ev.preventDefault(); return; }
     if (down && k === 'h') host.pulseHint();
     if (down && k === 'v') toggleView();
     // views land on number keys and on the letters that say them: 1/M/O all read as "map" and go to orbit, 2 is first person, 3

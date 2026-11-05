@@ -48,3 +48,6 @@ Models by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/, the owne
 | logistics dome | `assets/models/dome-colony/` | `dome-ne`, `dome-se` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
 | 52 m long bridge (`bridge_long`, LOD1 1,060 tris, 2 draws) | `assets/models/dome-colony/` | `bridge-w1`, `bridge-w2`, `bridge-e1`, `bridge-e2` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
 | research and power domes | `assets/models/dome-colony/` | pinned, not placed (the Stålheart is the power dome; the north centre is the mouth corridor) | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| YushiRover biomass recovery rover (LOD1 driven by its unchanged `runtime.js`, `src/fx/rover.js`; LOD2 pinned, not shown: a frozen pose) | `assets/models/yushi-rover/` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| Yūshi045 Bio-Pearl (LOD1 near, LOD2 far, the capacity shader through its unchanged `runtime.js`, `src/fx/bio-pearls.js`; ships UNPACKED: gltfpack drops its `_YUSHI` attribute, `scripts/build.mjs`) | `assets/models/yushi045/` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| SAI-92 mining hopper and its service bay (LOD1 near, LOD2 far, static on the depot island this round) | `assets/models/sai92/` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |

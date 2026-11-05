@@ -21,6 +21,7 @@ import { ENEMY_SPEC } from './enemyspec.js';
 import { TOWERS, towerSound } from './towers.js';
 import { LASER_PLATFORMS } from './content/orbital-laser.js';
 import { SHOWCASE_ELEMENTS } from './content/showcase.js';
+import { ROVER } from './content/rover.js';
 
 export const GROUPS = ['friendly', 'neutral', 'hostile'];
 
@@ -80,6 +81,12 @@ const SKY_UNITS = [
     note: 'three rotating containment cages · launched by the ARC-01 once Isao has your calibration · fires on its own at the densest pile, or yours in the seat', sounds: [] },
 ];
 
+// THE DEPOT (owner, 2026-11-05, round 8 note 7: "the yushi rover is also a buildable unit, but not used for now"): the rover carries its price
+// here and in the terminal (src/content/bestiary.js), and no board card this round
+const DEPOT_UNITS = [
+  { id: 'yushi-rover', kind: 'model', url: ROVER.model, label: 'YŪSHI ROVER · BIOMASS RECOVERY',
+    note: `${ROVER.price} kg · ${ROVER.capacity} kg a trip · goes to the newest flare (F) and brings the biomass home · a second rover: not yet`, sounds: [] },
+];
 // Towers are the player's army too, so they belong on the friendly side.
 // Built through the look registry, which is why they carry kind:'tower'.
 const TOWER_UNITS = TOWERS.map((t) => ({
@@ -135,9 +142,13 @@ const PICKUP_UNITS = [
 const STRUCTURE_UNITS = [
   { id: 'container', kind: 'fixture', label: 'life container',
     note: 'three shallow berths in a row by the heart, one hull each — the racked spares are your lives' },
+  { id: 'yushi045', kind: 'model', url: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', label: 'yūshi045 bio-pearl',
+    note: 'the bank: 12,000 kg of binder each, three on the depot, a fourth on the build board' },
+  { id: 'sai92', kind: 'model', url: 'assets/models/sai92/sai92_unit_d0_lod1.glb', label: 'SAI-92 · 採掘',
+    note: 'the mineral hopper, landed on its bay on the depot · mining is to come' },
 ];
 export const UNIT_CATALOG = {
-  friendly: [...TOWER_UNITS, ...PLAYER_UNITS, ...SKY_UNITS],
+  friendly: [...TOWER_UNITS, ...PLAYER_UNITS, ...SKY_UNITS, ...DEPOT_UNITS],
   neutral: [...PICKUP_UNITS, ...STRUCTURE_UNITS],
   hostile: [...HOSTILE_UNITS],
 };

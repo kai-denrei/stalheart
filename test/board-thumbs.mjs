@@ -24,8 +24,8 @@ assert.equal(thumbKey({ draw: 'structure', step: 'farm' }), 'bb-structure-farm')
 assert.equal(thumbKey({ draw: 'tower', look: 'sentry', key: 'rotor', tier: 1 }), 'bb-tower-sentry-rotor-1', 'an upgraded sentry is drawn again');
 assert.equal(thumbKey({ draw: 'hull' }), 'bb-hull');
 
-// every board structure has a bestiary model to draw (its perk names the entry), and so does the hull
-for (const step of Object.keys(BUILD_BOARD.structures)) assert(UNIT_ENTRIES.some((e) => e.needs?.perk === step && e.model?.url), `${step} has a bestiary model`);
+// every board structure has a bestiary model to draw (its perk names the entry, or the entry's `board` names the step), and so does the hull
+for (const step of Object.keys(BUILD_BOARD.structures)) assert(UNIT_ENTRIES.some((e) => (e.board ?? e.needs?.perk) === step && e.model?.url), `${step} has a bestiary model`);
 assert(UNIT_ENTRIES.find((e) => e.id === 'mork')?.model?.url, 'the MÖRK has a model');
 
 // the wiring: the board's tiles carry the thumbnail, td-tab hands the board the sprite rig and the look

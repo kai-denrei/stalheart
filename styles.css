@@ -715,6 +715,8 @@ html, body {
   font-weight: bold;
   text-shadow: 0 0 7px rgba(157, 255, 190, 0.5);
 }
+/* THE FIELD (round 8 note 7): the kg on the ground beside the bank, olive like the piles, quieter than the bank it is not yet */
+.hud-field { color: #b6c98a; font-size: 12px; margin-left: 8px; letter-spacing: 0.06em; }
 
 /* GAMEPLAY tips block — lives in the briefing and pause modals only */
 .tips-head {
@@ -1275,6 +1277,8 @@ html, body {
 .hull-console { position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: 222px; z-index: 5; pointer-events: none; display: flex; gap: 14px; align-items: baseline; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #b8ffca; opacity: 0.85; white-space: nowrap; }
 .hull-console .hc-pips { font-style: normal; letter-spacing: 0.05em; color: #7fe39a; }
 .hull-console .hc-mode { color: #9fdcff; }
+/* THE ROVER'S LINE (round 8 note 7, src/fx/rover-glue.js): its state and the kg aboard, amber like its flares; STORAGE FULL reads red */
+.hull-console .hc-rover { color: #ffb43c; } .hull-console .hc-rover:empty { display: none; } .hull-console .hc-rover.hc-full { color: #ff8a6b; }
 .hull-console.hc-low .hc-pips { color: #ff8a6b; }
 .hull-console.hc-dent { color: #ff3b2f; } .hull-console.hc-dent .hc-pips { color: #ff3b2f; }
 .hull-console[hidden] { display: none; }

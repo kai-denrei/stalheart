@@ -6,14 +6,14 @@ import { BUILD_BOARD } from '../src/content/build-board.js';
 import { boardOffers, pickable, toggle, totalOf, jumpBought, emptiestLaneSite } from '../src/domain/build-board.js';
 import { makeBuildProgramme, due, begin, finish, buy, snapshot } from '../src/domain/build-programme.js';
 
-const BOARD_STEPS = ['board', 'garage', 'armory', 'farm', 'chips', 'launcher'];
+const BOARD_STEPS = ['board', 'garage', 'armory', 'farm', 'chips', 'launcher', 'pearl'];   // round 8 note 7: the fourth Bio-Pearl
 const SENTRIES = [{ key: 'rotor', name: 'Rotor', cost: 45 }, { key: 'quiver', name: 'Quiver', cost: 90 }, { key: 'mortar', name: 'Mortar', cost: 110 }];
 const world = (over = {}) => ({ steps: BASE_PROGRAMME, done: new Set(), bought: new Set(), ctx: { phase: 'expedition', sector: 2, back: null, manned: 0 }, bank: 300, sentryRoom: true, sentries: SENTRIES,
   upgrade: { ci: 7, name: 'Rotor', tier: 0, cost: 31 }, hull: { dents: 4, max: 4, hulls: 3, maxHulls: 3 }, shield: { rack: 4, cap: 4 }, pets: [], ...over });
 
 // the content: exactly the six non-spine steps are the board's, each priced; the spine stays automatic
 {
-  assert.deepEqual(BASE_PROGRAMME.filter((s) => s.board).map((s) => s.id), BOARD_STEPS, 'the six structures that left the automatic programme');
+  assert.deepEqual(BASE_PROGRAMME.filter((s) => s.board).map((s) => s.id), BOARD_STEPS, 'the seven structures that left the automatic programme');
   for (const id of BOARD_STEPS) assert.ok(BUILD_BOARD.structures[id]?.price > 0 && BUILD_BOARD.structures[id].effect, `${id}: a price and an effect`);
   assert.equal(BUILD_BOARD.offers, 6); assert.equal(BUILD_BOARD.picks, 2);
 }
@@ -92,7 +92,7 @@ const world = (over = {}) => ({ steps: BASE_PROGRAMME, done: new Set(), bought: 
 {
   assert.deepEqual(jumpBought(BASE_PROGRAMME, 1), ['board', 'garage']);
   assert.deepEqual(jumpBought(BASE_PROGRAMME, 4), BOARD_STEPS);
-  assert.deepEqual(jumpBought(BASE_PROGRAMME, 3), ['board', 'garage', 'armory', 'farm']);
+  assert.deepEqual(jumpBought(BASE_PROGRAMME, 3), ['board', 'garage', 'armory', 'farm', 'pearl']);   // the fourth pearl's gate is sector 3 (round 8)
 }
 // Isao's sentry: the door whose lane holds the fewest sentries, its nearest free socket
 {

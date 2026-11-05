@@ -65,6 +65,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
+  let alsoNear = null;   // more friendlies a door opens for, beside the hull (nearAlso: the Yushi Rover, round 8 note 7)
   const patches = new Map();   // cell -> the meshes of a wall printed where the plan had rock (patchWall)
   const dropped = new Set(), ZERO = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);   // kit wall segments burned away (walls(), dropWall())
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
@@ -208,7 +209,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       driveLod(eye);
       for (const g of gates) {
         const f = force && typeof force === 'object' ? force[g.id] : force;   // `force` may be one flag for every door or a flag per gate id
-        if (g.position) g.want = f ?? (Array.isArray(near) && Math.hypot(near[0] - g.position.x, near[1] - g.position.y, near[2] - g.position.z) < g.radius);
+        if (g.position) g.want = f ?? [near, ...(alsoNear?.() ?? [])].some((q) => Array.isArray(q) && Math.hypot(q[0] - g.position.x, q[1] - g.position.y, q[2] - g.position.z) < g.radius);
         driveGate(g, dt);
       }
     },
@@ -228,6 +229,8 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // a closed, standing door, by id: the pathfinder asks this once per enemy per step, so it allocates nothing
     gateSealed: (id) => { const g = gates.find((x) => x.id === id); return !!g && g.built && !g.open; },
     // every door, front first: the sector loop wears each one down and the HUD prints them side by side
+    // THE ROVER THROUGH THE GATE (round 8 note 7): a function returning more points the doors open for, as they open for the hull's
+    nearAlso: (fn) => { alsoNear = fn; },
     gateList: () => gates.map((g) => ({ id: g.id, cells: g.plan?.cells ?? [], present: !!g.action, built: g.built, open: g.open, want: g.want, t: +g.t.toFixed(2) })),
     // Isao's print, piece by piece (k 0..1): a slab or a wall rises along its local up, a landmark scales up from its plot, and the gate
     // counts as built (it opens for the tank, it holds the swarm) once it reaches the top

@@ -12,7 +12,7 @@ const SEEN = 'td.controls-page-seen', RACK = 'td.shield-empty-hint', AUTO_HIDE_M
 export const CONTROLS_PAGE = [
   ['MÖRK · THE TANK', [
     ['W / ↑', 'faster · tap twice to cruise'], ['S / ↓', 'brake, then reverse'], ['A D / ← →', 'steer · Q / E throttle'],
-    ['Space', 'fire a shell'], ['Shift', 'hold: lasers'], ['T', 'shield'], ['V', 'view · 1 map · 2 first person · 3 third'],
+    ['Space', 'fire a shell'], ['Shift', 'hold: lasers'], ['T', 'shield'], ['F', 'drop a flare: the rover comes for the biomass'], ['V', 'view · 1 map · 2 first person · 3 third'],
   ]],
   ['SEATS · THE STRIP AT THE BOTTOM', [
     ['7 8 9 0', 'tank · gunship · SOL-82 · map, from anywhere'],   // the views strip's four buttons, on the keys (owner, 2026-09-16)
