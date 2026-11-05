@@ -44,3 +44,12 @@ export function planCanyon({ centers, heart, dist, cellArc, tune, bearings = 16 
   floor.sort((p, q) => depth.get(p) - depth.get(q) || p - q);   // deep end first (2026-10-15): the swarm stands as a column from the hole outward
   return { floor, rock, spawn: nearest(-L / 2 + 1.5, pick.axis), mouth: pick.mouth, axis: pick.axis, centre: a };
 }
+
+// WHEN SOL-82'S SEAT COMES (round 7, owner, 2026-11-05, note 5: "the second commandeering of SOL: the command should be almost immediate once
+// announced, Isao's later comms about it happen while we control the satellite"). The first canyon (sector 3) keeps its order: the column up
+// (`upAt`, the queue empty or `queueWait` after the first body) then `seatAfter` seconds. THE CANYON AGAIN: `again.seatDelay` seconds after its
+// announce (`announcedAt`), the column still rising under the beam. Times on one clock; null: not yet.
+export function canyonSeatDue({ again = false, announcedAt = null, upAt = null, t, tune }) {
+  if (again && tune.again) return announcedAt != null && t - announcedAt >= tune.again.seatDelay;
+  return upAt != null && t - upAt >= tune.seatAfter;
+}

@@ -5566,6 +5566,18 @@ const killReal=(Date.now()-t0)/1000;
  // mission trigger should reset SOL"): the player takes SOL-82 by hand on a regular pass BEFORE the canyon's pass is laid over him
  if(process.env.CANYON_SEATED){await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);await evaluate(`${T}.laserSeat(true)`);await until(`!!document.querySelector("#sol82-briefing [data-skip]") || ${T}.state().laser.seated`,5000);await evaluate(`document.querySelector("#sol82-briefing [data-skip]")?.click()`);await until(`${T}.state().laser.seated`,10000);
   const s=await st();console.log(`  seated by hand before the canyon's pass: ${JSON.stringify({seated:s.laser.seated,phase:s.laser.phase,special:s.laser.special,strip:s.laser.strip})}`);assert(s.laser.seated&&!s.laser.special,'in a regular pass by hand');}
+ // SOL-82'S SECOND COMMANDEERING IS IMMEDIATE (round 7, owner, 2026-11-05, note 5): THE CANYON AGAIN seats the player CANYON.again.seatDelay after its announce,
+ // the column still rising; the announce is the first of the sector's own line and canyon_again on Isao's panel (src/fx/isao-voice.js asked: a line shown),
+ // read on the sector clock; canyon_pass comes after the seat, and his card stands over the seat (it was hidden there)
+ if(again&&!process.env.CANYON_SEATED){const V='(async()=>{const m=await import("./src/fx/isao-voice.js");return m.isaoSay.asked.map(e=>e.id);})()',marks={},w0=Date.now();let card=false;
+  while(Date.now()-w0<90000){const s=await st(),ids=await evaluate(V),c=s.sector.clock,mk=(k,v)=>{if(v&&marks[k]==null)marks[k]=c;};
+   mk('announce',ids.includes('sector_canyon_again')||ids.includes('canyon_again'));mk('canyonAgain',ids.includes('canyon_again'));mk('seat',s.laser.seated&&s.laser.special);mk('passBrief',ids.includes('canyon_pass'));mk('firstQueued',s.queued>0);if(marks.firstQueued!=null)mk('allUp',s.queued===0);
+   if(marks.seat!=null&&!card)card=await evaluate('(b=>!!b&&!b.classList.contains("hidden")&&getComputedStyle(b).display!=="none"&&b.getBoundingClientRect().width>0)(document.querySelector("#td-brief"))');
+   if(marks.passBrief!=null&&card&&(marks.allUp!=null||c-marks.seat>20))break;await delay(150);}
+  const s=await st();console.log(`CANYON AGAIN seat: ${JSON.stringify(marks)} (sector clock); seat - announce ${marks.seat!=null&&marks.announce!=null?(marks.seat-marks.announce).toFixed(2):'-'} s; the column up ${marks.allUp!=null?(marks.allUp-marks.seat).toFixed(2):'-'} s after the seat; Isao's card shown over the seat ${card}; queued ${s.queued}, alive ${s.performance.enemies}, overhead ${s.laser.overhead}`);
+  assert(marks.announce!=null&&marks.seat!=null&&marks.seat-marks.announce<=4,`seated within 4 s of the announce (${JSON.stringify(marks)})`);
+  assert(marks.passBrief!=null&&marks.passBrief>=marks.seat,`canyon_pass shown after the seat (${JSON.stringify(marks)})`);
+  assert(card,'Isao\'s card shows over the seat');}
  await until(`${T}.state().performance.enemies>=250`,60000).catch(async()=>assert.fail(`the swarm rises (${(await st()).performance.enemies} alive)`));
  await until(`${T}.state().laser.seated && ${T}.state().laser.special`,60000).catch(async()=>assert.fail(`SOL-82's canyon pass and its seat (${JSON.stringify((await st()).laser)})`));
  {const s=await st(),L=(await import('../src/content/sectors.js')).CANYON;assert.equal(s.laser.radius,L.pass.radius,'the canyon\'s wide beam');assert(s.laser.energy>=L.pass.energy-0.5,`the canyon's long burn (${s.laser.energy})`);
