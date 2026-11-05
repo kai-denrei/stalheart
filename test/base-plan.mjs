@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
-import { ISLANDS, STRUCTURES, KIT, STAGES } from '../src/content/base-layout.js';
+import { ISLANDS as CLASSIC_ISLANDS, STRUCTURES as CLASSIC_STRUCTURES, KIT, STAGES, BASE_LAYOUT_MODES, withBaseLayout } from '../src/content/base-layout.js';
 import { buildStoryPlanet, frameToWorld } from '../src/domain/story-planet.js';
 import { planBase } from '../src/domain/base-plan.js';
 import { BLOCKED } from '../src/dungeon.js';
 import { findBackMouth } from '../src/domain/back-door.js';
 import { STORY_BACK_DOOR } from '../src/content/story-defaults.js';
 const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
+// BOTH LAYOUTS (round 8 note 6, src/content/dome-city.js): every rule below holds for the classic base and for the dome city round it; the
+// stage-1 list is the same on both (the domes and bridges are stage 2, founded: never pending, standing from a grown base's first frame)
+for (const mode of BASE_LAYOUT_MODES) {
+const { islands: ISLANDS, structures: STRUCTURES } = withBaseLayout(CLASSIC_ISLANDS, CLASSIC_STRUCTURES, mode);
 const layout = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
 // islands never overlap and stay inside the clearing
 for (const a of ISLANDS) {
@@ -98,7 +102,7 @@ for (let n = 0; n < STAGES.length; n++) {
   const plain = planBase(planet, layout, n), same = planBase(planet, layout, n, { reach: n });
   assert.equal(JSON.stringify(same), JSON.stringify(plain), `stage ${n}: reach = stage is the plain plan, byte for byte`);
   assert.ok(!JSON.stringify(plain).includes('"pending"') && !('reach' in plain), `stage ${n}: the plain plan marks nothing pending`);
-  const grown = planBase(planet, layout, n, { reach: STAGES.length - 1 }), keep = (a) => a.filter((x) => !x.pending);
+  const grown = planBase(planet, layout, n, { reach: STAGES.length - 1 }), keep = (a) => a.filter((x) => !x.pending && !(x.founded && x.stage > n));   // a founded piece above the stage stands in a grown base only
   // what stands now is the plain plan (structures on a pending island already ride at their final height, a hair over the slab to come)
   assert.deepEqual(keep(grown.islands), plain.islands, `stage ${n}: standing islands`);
   assert.deepEqual(keep(grown.structures).map(({ y, ...s }) => s), plain.structures.map(({ y, ...s }) => s), `stage ${n}: standing structures`);
@@ -107,7 +111,8 @@ for (let n = 0; n < STAGES.length; n++) {
 }
 { const g = planBase(planet, layout, 1, { reach: STAGES.length - 1 }), ids = (a) => a.filter((x) => x.pending).map((x) => x.id);
   assert.equal(g.stage, 1); assert.equal(g.reach, STAGES.length - 1);
-  assert.deepEqual(ids(g.islands), ISLANDS.map((i) => i.id), 'every island is still to print at stage 1');
+  assert.deepEqual(ids(g.islands), ISLANDS.filter((i) => !i.founded).map((i) => i.id), 'every island is still to print at stage 1');
+  assert.ok([...g.islands, ...g.structures].filter((x) => x.founded).every((x) => !x.pending) && g.islands.filter((i) => i.founded).length === ISLANDS.filter((i) => i.founded).length, 'the founded pieces stand from the first frame');
   assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'garage', 'chips', 'ammo-a', 'ammo-b', 'ammo-c', 'launcher'], 'every later structure is pending');
   assert.ok(g.structures.some((s) => s.id === 'sh02' && !s.pending), 'the intact SH02 still stands at stage 1');
   assert.ok(g.gate.pending && g.walls.length === KIT.wallsPerSide * 2 && g.walls.every((w) => w.pending), 'the gate and its walls wait');
@@ -145,4 +150,5 @@ for (let n = 0; n < STAGES.length; n++) {
   assert.ok(two.backSockets.length >= 1 && two.backSockets.length <= KIT.backGate.sockets, `back sockets ${two.backSockets.length}`);
   for (const s of two.backSockets) { assert.equal(planet.dungeon.tags[s.cell], BLOCKED, 'a socket stands on rock'); assert.ok(backMouth.beyond.includes(s.toward), 'aimed at the back lane'); assert.ok(!two.sockets.some((f) => f.cell === s.cell), 'not mountable until the back gate is printed'); }
   assert.equal(new Set(two.backSockets.map((s) => s.cell)).size, two.backSockets.length, 'distinct sockets'); }
-console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);
+console.log(`Base plan (${mode}): ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);
+}

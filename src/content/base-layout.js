@@ -2,6 +2,7 @@
 // metres around the pole; -Z points at the clearing's open mouth. Plots are
 // the kit's reserved footprints (4 m cells), islands carry one scalable slab.
 import { STORY_SCALE } from './story-defaults.js';
+import { DOME_ISLANDS, DOME_STRUCTURES, DOME_PLACEMENT, DOME_SOLIDS } from './dome-city.js';
 
 export const STAGES = Object.freeze([
   { n: 0, name: 'Empty pole' },
@@ -133,6 +134,24 @@ export function landmarkTierMode(search) {
   return new URLSearchParams(search || '').get('landmarks') === 'candidate' ? 'candidate' : 'shipped';
 }
 
+// THE BASE HAS TWO LAYOUTS (owner, 2026-11-05, round 8 note 6: "we introduce a new layout for the main base: the dome city, which includes
+// our existing elements in between"; src/content/dome-city.js). 'classic' is the base as it always stood; 'dome' adds the six domes and four
+// bridges and moves the classic islands its placement table names (centres only: every island keeps its size and its structures, which ride
+// their island; a `heading` there turns those structures). This is the ONE place a layout becomes the islands and structures, like
+// withLandmarkTiers: the game world, the labs and the tests call it before planBase. Anything but 'dome' hands back the arrays unchanged.
+export const BASE_LAYOUT_MODES = ['classic', 'dome'];
+export function withBaseLayout(islands, structures, mode = 'classic', { domes = DOME_ISLANDS, buildings = DOME_STRUCTURES, placement = DOME_PLACEMENT } = {}) {
+  if (mode !== 'dome') return { islands, structures };
+  // an id the table names but this tree has not got is skipped, not invented (stream D's `depot` arrives by merge)
+  const moved = islands.map((i) => (placement[i.id] ? { ...i, x: placement[i.id].x, z: placement[i.id].z } : i));
+  const turned = structures.map((s) => (s.island && placement[s.island]?.heading ? { ...s, heading: placement[s.island].heading } : s));
+  return { islands: [...moved, ...domes], structures: [...turned, ...buildings] };
+}
+// ONE PARSER FOR THE SWITCH, beside landmarkTierMode: ?base=dome is the dome city, anything else (or nothing) the classic base. Pure.
+export function baseLayoutMode(search) {
+  return new URLSearchParams(search || '').get('base') === 'dome' ? 'dome' : 'classic';
+}
+
 // THE BUILDINGS THAT STOP THE HULL (owner, 2026-10-03: "they should feel solid (except those where the tank can go under like the
 // Stalheart)"; src/fx/story-base.js solidAt). Not the Stålheart (the hull drives under its gantry), the bays (the hull lives in them)
 // or the Rotor on its wall. The standing landers at the expedition sites are solid; the two wrecks lie on their sides across their sites
@@ -142,4 +161,6 @@ export function landmarkTierMode(search) {
 // not so much that its entire perimeter becomes an invisible wall"): the triangles near the ground on a grid (src/domain/footprint.js),
 // so a lander's body stops the hull where it stands and the lane past its legs is open, and the solar array can be solid at last, its
 // charging pad open between its panels
-export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'chips', 'launcher', 'solar', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d']);   // the solar array too (owner, 2026-10-07): its panels block, its charging pad between them is open (the footprint is the geometry's now, src/domain/footprint.js)
+// THE DOME CITY'S DOMES AND BRIDGES too (round 8 note 6; src/content/dome-city.js DOME_SOLIDS): a dome's shell meets the ground all round, a bridge
+// stops the hull at its columns and lets it under its 7.5 m deck between them. Ids the classic base has not got simply never match
+export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'chips', 'launcher', 'solar', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d', ...DOME_SOLIDS]);   // the solar array too (owner, 2026-10-07): its panels block, its charging pad between them is open (the footprint is the geometry's now, src/domain/footprint.js)

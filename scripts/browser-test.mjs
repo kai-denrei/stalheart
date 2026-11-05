@@ -44,8 +44,11 @@ async function until(expression,timeout=25000){const start=Date.now();while(Date
 /* CREATURES=dots|pearl|...: every game page this run opens takes ?creatures=<it> unless its URL names one (the A/B against the story's default, the
    Pearl set since 2026-10-14; src/platform/game-flags.js). Labs and pages without a query are left alone. */
 const withCreatures=p=>process.env.CREATURES&&/^index\.html\?/.test(p)&&!/[?&]creatures=/.test(p)?p.replace('?',`?creatures=${encodeURIComponent(process.env.CREATURES)}&`):p;
+/* BASE=dome|classic: every game page this run opens takes ?base=<it> unless its URL names one (THE DOME CITY, round 8 note 6:
+   src/content/base-layout.js baseLayoutMode; a suite chain run once per layout). Labs and pages without a query are left alone. */
+const withBase=p=>process.env.BASE&&/^index\.html\?/.test(p)&&!/[?&]base=/.test(p)?p.replace('?',`?base=${encodeURIComponent(process.env.BASE)}&`):p;
 async function go(name,path,width=1440,height=900,expectedPath=path,dpr=1){
- path=withCreatures(path);expectedPath=withCreatures(expectedPath);
+ path=withBase(withCreatures(path));expectedPath=withBase(withCreatures(expectedPath));
  current=name;consoleLines.length=0;errors.length=0;requests.length=0;
  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});
  if(await evaluate('location.href')===urlRoot+path){await send('Page.navigate',{url:'about:blank'});await until('location.href === "about:blank"');}

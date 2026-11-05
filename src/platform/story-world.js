@@ -14,7 +14,7 @@ import { LASER_AUDIO } from '../content/orbital-laser.js';
 // the story world's cues, with SOL-82's burning ground once the orbital laser is in the arsenal (src/fx/laser-arsenal.js)
 const STORY_WORLD_SOUNDS = Object.freeze({ ...STORY_SOUNDS, ...LASER_AUDIO, ...voiceSounds() });   // Isao's lines, lazy (src/fx/isao-voice.js)
 export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
-import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode, withBaseLayout, baseLayoutMode } from '../content/base-layout.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
 import { createStoryBase, basisAt } from '../fx/story-base.js';
 import { createArrival } from '../fx/arrival.js';
@@ -34,6 +34,12 @@ import { pickArenaCell, arenaFloor } from '../domain/arena.js';
 import { ARENA } from '../content/sectors.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
+// THE BASE'S LAYOUT (round 8 note 6, src/content/dome-city.js): 'classic' is STORY_LAYOUT itself, 'dome' the dome city round the same base
+export function storyLayout(base = 'classic') {
+  if (base !== 'dome') return STORY_LAYOUT;
+  const { islands, structures } = withBaseLayout(ISLANDS, STRUCTURES, base);
+  return { ...STORY_LAYOUT, islands, structures };
+}
 
 export function readStoryQuery(search) {
   const q = new URLSearchParams(search);
@@ -61,6 +67,7 @@ export function readStoryQuery(search) {
     threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short && deepLink && !chapter ? 0.35 : 1))),
     stage: skip ? STORY_SKIP.stage : chapter ? 1 : Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
+    base: baseLayoutMode(search),   // ?base=dome: THE DOME CITY (round 8 note 6); ?base=classic the base as it stood
     phase: skip ? STORY_SKIP.phase : chapter ? chapter.from : (STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null),   // ?phase=expedition: a jump past the handover starts the beats there
     // ISAO GROWS THE BASE IN PLAY: ?grow=1, and a bare story page that names no stage; an explicit stage=N stays the static base
     // the sector the run opens on: SKIP TUTORIAL's (sector 1), or ?sector=N beside it, which a harness or the drawer's BACK DOOR jump
@@ -117,7 +124,7 @@ function laneBerth(planet, dungeon, from, to, [a, b]) {
   return ci === exit || dungeon.tags[ci] === BLOCKED || dungeon.tags[exit] === BLOCKED ? null : { ci, exit, pos, out };
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', base: baseMode = 'classic', phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -129,7 +136,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // THE COLONY GROWS PAST THE FINISHED BASE (2026-10-01): a growing page reaches every stage; the finished base (SKIP TUTORIAL and a
   // stage-8 link) reaches the colony's stage too, pending, so Isao prints the armory, the farm, the chip plant and the ARC-01 in play
   const reach = grow || stage >= STORY_SKIP.stage ? STAGES.length - 1 : stage;
-  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach, backMouth });
+  const layout = storyLayout(baseMode);
+  const plan = planBase(planet, landmarks === 'shipped' ? layout : { ...layout, structures: withLandmarkTiers(layout.structures, landmarks) }, stage, { reach, backMouth });
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
   for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
@@ -139,8 +147,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const gateCellMap = new Map();
   for (const g of plan.gates ?? []) for (const ci of g.cells ?? []) if (ci >= 0) gateCellMap.set(ci, g.id ?? 'gate');
 
-  // a pad at an island's centre: the solar array's charging ring, the armory's reload ring
-  const padOf = (id, [dx, dz] = [0, 0]) => { const i = ISLANDS.find((x) => x.id === id); if (!i) return null; const pos = placer.toWorld([i.x + dx, 0, i.z + dz]).normalize().toArray(); return { cell: dx || dz ? nearestCell(planet.graph.centers, pos) : plan.cells[i.id], pos, standing: stage >= i.stage }; };
+  // a pad at an island's centre: the solar array's charging ring, the armory's reload ring (the layout's island: the dome city moves some)
+  const padOf = (id, [dx, dz] = [0, 0]) => { const i = layout.islands.find((x) => x.id === id); if (!i) return null; const pos = placer.toWorld([i.x + dx, 0, i.z + dz]).normalize().toArray(); return { cell: dx || dz ? nearestCell(planet.graph.centers, pos) : plan.cells[i.id], pos, standing: stage >= i.stage }; };
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
