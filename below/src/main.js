@@ -2,7 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { createWorld } from './world.js';
 import { createAudio } from './audio.js';
 import {impactCue} from './audio-cues.js';
-import {createFlight,fly,chasePitch} from './flight.js';
+import {createFlight,fly,chasePitch,createOrbit,orbitStep} from './flight.js';
 import { parseMode, endingAction, postOutcome, postReady, isShow, briefingIdle, askHandoff, handoffOf, postShown, poseToCave, poseToHole } from './handoff.js';
 import { DOOR, tiltAt, climbAt } from './door.js';
 import { center, confine, closeToQueen, createMission, tickMission, START, QUEEN, CHAMBER_LIP, nearestRoute, useFlare, recordImpact, MAX_HP, FLARE_COUNT, SINKHOLE_THROAT, FUSE, START_CARD, startCard, HOLE_SCALE } from './mission.js';
@@ -12,7 +12,7 @@ const $=id=>document.getElementById(id);
 const stalheart=parseMode(location.search);   // the campaign's last mission inside Stålheart's page (src/handoff.js)
 const audio=createAudio();
 const keys=new Set(),velocity=new THREE.Vector3();
-let world,mission=createMission(),flight=createFlight(START),mode='briefing',resumeMode='playing',detonationAt=0,yaw=0,pitch=-.43;
+let world,mission=createMission(),flight=createFlight(START),mode='briefing',resumeMode='playing',detonationAt=0,yaw=0,pitch=-.43,orbit=createOrbit(),dragging=false,dragX=0,dragY=0;   // the mouse's orbit of the camera (round 8, note 4): never yaw or pitch
 let simulationTime=0,lastTime=performance.now(),lastScan=-10,lastHit=-10,alertUntil=0,commsUntil=0,impact=0,cardUntil=0;
 let dialogueQueue=[],seen=new Set(),frameTimes=[];
 let climbing=null,skyFade=null;   // the climb out of the arena's hole (src/door.js): its seconds, and the sky's fade over the page
@@ -39,14 +39,14 @@ function start(){
   // THE GREEN FLARE (note 11, src/flares.js BEACON): left beside the throat's foot, on the rubble in Stålheart's page, on the floor on its own; the way out
   {const d=world.doorStart.position,o=BEACON.offset;world.dropBeacon({x:d.x+o.x,y:d.y+o.y,z:d.z+o.z},0);}
   cardUntil=START_CARD.seconds;   // the start card (mission.js startCard)
-  yaw=0;pitch=-.43;world.player.copy(from);flight=createFlight(from);flight.position=world.player;flight.velocity=velocity;
+  yaw=0;pitch=-.43;orbit=createOrbit();dragging=false;dragX=dragY=0;world.player.copy(from);flight=createFlight(from);flight.position=world.player;flight.velocity=velocity;
   $('briefing').hidden=true;$('pause').hidden=true;$('ending').hidden=true;$('hud').hidden=false;$('countdown').hidden=true;$('interaction').hidden=true;$('isao-face').classList.remove('worried');
   $('alert').textContent='';alertUntil=0;mode='playing';audio.reset();audio.pause(false);audio.init().catch(()=>{});updateSoundLabel();
   say('Work light’s on. Keep me clear of the walls.',6);
   say('Fifteen flares. F to drop one. The green one I left here marks the way out.',7,'ISAO',7);
   say('Keep me clear of the walls. I’d like to come back.',6,'ISAO',16);
 }
-function pause(){if(!['playing','surface','detonation'].includes(mode))return;resumeMode=mode;mode='paused';keys.clear();velocity.set(0,0,0);$('pause').hidden=false;audio.pause(true);}
+function pause(){if(!['playing','surface','detonation'].includes(mode))return;resumeMode=mode;mode='paused';keys.clear();dragging=false;dragX=dragY=0;velocity.set(0,0,0);$('pause').hidden=false;audio.pause(true);}
 function resume(){if(mode!=='paused')return;mode=resumeMode;$('pause').hidden=true;audio.pause(false);}
 function scan(){
   if(mode!=='playing')return;
@@ -130,6 +130,8 @@ function step(dt){
   // control style. Then up and down separate"): A and D (and ← →) turn the airframe, ↑ ↓ tilt the camera, W and S fly it where it faces; no strafe
   const turn=(Number(keys.has('ArrowLeft'))-Number(keys.has('ArrowRight'))+Number(keys.has('KeyA'))-Number(keys.has('KeyD')))*dt*1.3;
   yaw+=turn;pitch=chasePitch(pitch+(Number(keys.has('ArrowUp'))-Number(keys.has('ArrowDown')))*dt);   // the camera's pitch, never under ISAO (flight.js CHASE, round 6)
+  // the drag's pixels since the last step swing the camera round him (flight.js orbitStep, round 8 note 4), not during the door's first frames (doorLook owns the view)
+  const doorFrames=stalheart&&!reducedMotion&&simulationTime<DOOR.tilt;orbitStep(orbit,doorFrames?0:dragX,doorFrames?0:dragY,dt,{dragging,basePitch:pitch});dragX=dragY=0;
   const forward=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),side=0;
   const vertical=Number(keys.has('Space'))-Number(keys.has('ShiftLeft')||keys.has('ShiftRight'));
   fly(flight,dt,{forward,right:side,vertical},yaw,mission.payload);
@@ -152,7 +154,7 @@ function step(dt){
   if(simulationTime>commsUntil)$('comms').classList.remove('on');
   if(simulationTime>alertUntil)$('alert').textContent=mission.payload&&mission.lidarAvailable&&!seen.has('lidar-used')?LIDAR_HINT:'';   // other alerts pass over it, then it is back; not on the escape (the bomb placed), and surface/detonation never come here
   impact=Math.max(0,impact-dt*.7);$('impact').style.opacity=String(impact);
-  const route=nearestRoute(player);audio.update(velocity.length(),simulationTime,player.y<SINKHOLE_THROAT-1,!keys.has('KeyE')&&mission.fuse>10,route.s,route.branch);world.update(simulationTime,mission,false,{flight,dt,yaw,pitch,reducedMotion});
+  const route=nearestRoute(player);audio.update(velocity.length(),simulationTime,player.y<SINKHOLE_THROAT-1,!keys.has('KeyE')&&mission.fuse>10,route.s,route.branch);world.update(simulationTime,mission,false,{flight,dt,yaw,pitch,orbit,reducedMotion});
   if(stalheart&&!reducedMotion&&simulationTime<DOOR.tilt)doorLook(tiltAt(simulationTime));else if(handoffPose)setFov(CAVE_FOV);
   updateHUD();
 }
@@ -237,10 +239,16 @@ document.addEventListener('keydown',e=>{
   if(mode==='playing'){keys.add(e.code);if(e.code==='KeyQ')scan();if(e.code==='KeyF')dropFlare();if(['Digit1','Digit2','Digit3'].includes(e.code))selectView(Number(e.code.slice(-1))-1);if(e.code==='KeyV')selectView('optical');}
 });
 document.addEventListener('keyup',e=>{keys.delete(e.code);if(e.key==='Meta'||e.key==='Control')keys.clear();});
-// THE MOUSE DOES NOTHING (Stålheart round 7, note 9, owner 2026-11-05: "W tilts forward S tilts backward, A and D rotate for the next set of W and S. Space bar
-// and shift for up and down"): no yaw, no pitch, no pointer lock; the keys alone fly ISAO (↑ ↓ still tilt the camera), and the chase camera follows his back
+// THE MOUSE ORBITS THE CAMERA, NEVER ISAO (Stålheart round 8, note 4, owner 2026-11-05: "moving the mouse should move the camera but without hindering the
+// Isao movement"; round 7 note 9 had taken the mouse away: "W tilts forward S tilts backward, A and D rotate for the next set of W and S"): a drag over the view
+// gathers the pointer's pixels for the next step's orbitStep (flight.js ORBIT), and nothing a mouse sends ever writes yaw or pitch, so the keys fly him along HIS
+// heading while the view looks elsewhere; let go and the camera returns to his back on its own. NO POINTER LOCK: its loss used to pause the game (round 7
+// removed it with the mouse), a drag needs none, and the harness's CDP drag exercises this very path
+$('view').addEventListener('mousedown',e=>{if(mode==='playing'&&e.button===0){dragging=true;e.preventDefault();}});
+document.addEventListener('mousemove',e=>{if(!dragging)return;if(!(e.buttons&1)||mode!=='playing'){dragging=false;return;}dragX+=e.movementX||0;dragY+=e.movementY||0;});   // a release missed outside the window ends it
+document.addEventListener('mouseup',()=>{dragging=false;});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
-window.addEventListener('blur',()=>{keys.clear();if(['playing','surface','detonation'].includes(mode))pause();});
+window.addEventListener('blur',()=>{keys.clear();dragging=false;if(['playing','surface','detonation'].includes(mode))pause();});
 window.addEventListener('resize',()=>world?.resize());
 
 // the game's handoff, asked for and waited on (HANDOFF_WAIT ms at most) before the world is built: the world takes its sky (and, src/door.js, its carcass)
@@ -279,7 +287,7 @@ try{
   requestAnimationFrame(frame);
   // Explicit test URL only; the normal game exposes no debug controls.
   if(new URLSearchParams(location.search).has('test'))window.__below={
-    snapshot:()=>({mode,mission:{...mission},position:world.player.toArray(),cameraPosition:world.camera.position.toArray(),velocity:velocity.toArray(),attitude:{roll:flight.roll,pitch:flight.pitch},yaw,pitch,drawCalls:world.renderer.info.render.calls,points:world.renderer.info.render.points,meanFrameMs:frameTimes.reduce((a,b)=>a+b,0)/frameTimes.length*1000,...world.stats(),audio:audio.stats(),mother:'ovum-spider-v3',route:nearestRoute(world.player).s}),
+    snapshot:()=>({mode,mission:{...mission},position:world.player.toArray(),cameraPosition:world.camera.position.toArray(),velocity:velocity.toArray(),attitude:{roll:flight.roll,pitch:flight.pitch},yaw,pitch,drawCalls:world.renderer.info.render.calls,points:world.renderer.info.render.points,meanFrameMs:frameTimes.reduce((a,b)=>a+b,0)/frameTimes.length*1000,...world.stats(),audio:audio.stats(),orbit:{...orbit},dragging,mother:'ovum-spider-v3',route:nearestRoute(world.player).s}),
     place:(s,dx=0,dy=0)=>{const c=center(s);world.player.set(c.x+dx,c.y+dy,c.z);velocity.set(0,0,0);},
     look:(y,p)=>{yaw=y;pitch=chasePitch(p);},   // the test's hand (A/D's heading, ↑ ↓'s pitch, in the player's own range); the chase camera follows it as it follows a turn
     advance:(seconds)=>{for(let t=0;t<seconds;t+=1/60)step(Math.min(1/60,seconds-t));},
