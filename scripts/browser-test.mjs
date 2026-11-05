@@ -2587,7 +2587,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // THE DOME CITY, LOOKED AT (round 8 note 6, src/content/dome-city.js; no assertions but a page error): run it once with BASE=classic and once
  // with BASE=dome. The frame's cost on the base camera a skipped opening starts on (the perf readout's draw calls, triangles, frame and gpu ms,
  // the median of SAMPLES half-second samples), then the hull set down at each spot below with the chase camera behind it, a still each, and
- // whether that eye stands inside a dome (within its 14.6 m, under its 36 m). A spot is frame metres (x, z) and a heading; a hull 22 m out of a
+ // whether that eye stands inside a dome (its glass shell is 13.2 m high, its sentry mast 2.2 m across to the 32 m platform) or over one. A spot is frame metres (x, z) and a heading; a hull 22 m out of a
  // dome facing away from it puts the chase camera between the two, the worst case for the camera's clip
  const T='window.__stalheartTest',tag=process.env.BASE||'classic',n=+process.env.SAMPLES||12;
  await go(`dome-look-${tag}`,'index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&fps=1#td');
@@ -2616,8 +2616,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    const placed=await evaluate(`${T}.showcase.placeAt(${JSON.stringify(u)})`);
    await evaluate(`${T}.showcase.look(${JSON.stringify(dir)});${T}.showcase.follow()`);await delay(2500);
    const ss=await evaluate(`${T}.seatState()`),eye=frameOf(ss.pos),tank=frameOf(ss.tankPos);
-   const inside=dc.map(([cx,cz],k)=>Math.hypot(eye[0]-cx,eye[1]-cz)<14.6&&eye[2]<36?['dome-nw','dome-w','dome-sw','dome-ne','dome-e','dome-se'][k]:null).filter(Boolean);
-   console.log(`DOME LOOK ${name}: hull at (${tank[0].toFixed(1)}, ${tank[1].toFixed(1)}) cell ${placed}, eye (${eye[0].toFixed(1)}, ${eye[1].toFixed(1)}) ${eye[2].toFixed(1)} m up${inside.length?' INSIDE '+inside.join(','):''}`);
+   const inside=dc.map(([cx,cz],k)=>{const r=Math.hypot(eye[0]-cx,eye[1]-cz);return (r<14.6&&eye[2]<13.2)||(r<2.4&&eye[2]<36)?['dome-nw','dome-w','dome-sw','dome-ne','dome-e','dome-se'][k]:null;}).filter(Boolean),over=dc.some(([cx,cz])=>Math.hypot(eye[0]-cx,eye[1]-cz)<14.6);   // the shell (to 13.2 m, 14.6 at its foot) or the 2.2 m sentry mast to the 32 m platform and its cradle
+   console.log(`DOME LOOK ${name}: hull at (${tank[0].toFixed(1)}, ${tank[1].toFixed(1)}) cell ${placed}, eye (${eye[0].toFixed(1)}, ${eye[1].toFixed(1)}) ${eye[2].toFixed(1)} m up${inside.length?' INSIDE '+inside.join(','):over?' over a dome, beside its sentry mast':''}`);
    current=`dome-look-${tag}-${name}`;await finish();
   }
  }
