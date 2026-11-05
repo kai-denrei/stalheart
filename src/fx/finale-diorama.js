@@ -19,8 +19,9 @@ import { DAY_42 } from '../content/day-42.js';
 import { COMPANIONS } from '../content/companions.js';
 
 // the companions' places in the diorama, in the hull's measure T: `side` along the boards from the hull (C-07 on the camera's side), `front`
-// toward the camera (round 4, note 14)
-export const DIORAMA_PETS = Object.freeze([Object.freeze({ side: -0.85, front: 0.45 }), Object.freeze({ side: 0.8, front: 0.3 })]);
+// toward the camera (round 4, note 14); K0-TECH (round 6) the third place, in front of the hull's camera-side corner, nearer the lens (a 0.41 m cat);
+// the Nih-Dairia mech (round 6) the fourth, past the dog's side and back toward the boards, standing in its last pose (no sit: no clips)
+export const DIORAMA_PETS = Object.freeze([Object.freeze({ side: -0.85, front: 0.45 }), Object.freeze({ side: 0.8, front: 0.3 }), Object.freeze({ side: -0.4, front: 0.85 }), Object.freeze({ side: 1.7, front: -0.5 })]);
 // the last staging, for the harness (src/fx/showcase-hooks.js diorama): who stood in it and where each lands on the screen at both ends of its rail (NDC)
 let lastCast = null;
 export const dioramaCast = () => lastCast;

@@ -13,12 +13,16 @@
 //         perk(id), day(), sectorRun(), shotActive(), seated(), card(), isaoBusy(), alive(), won(), slabAt(p, padM) (the raised island's top under a
 //         unit point, metres, or null: src/fx/story-base.js)
 //   createPetPrint(host) -> { tick(dt), force(i) (unit i printed now: false when born or printing), state(), restore() }
+// THE THIRD AND THE FOURTH (round 6, 2026-11-05): K0-TECH after the greenhouse, and the Nih-Dairia mech after THE ARENA's kill (the trigger's
+// `boss`: sectorRun().bossDown(), the arena's SECURE with its mother dead; the arena's own hold lifted from then). A unit's own `print` goes over
+// COMPANIONS.print (printKnobs: the mech's 9 m plot, its 20 s print and its angles); a posed unit's ghost is posed as its body is (src/fx/mech-pose.js).
 import * as THREE from '../../vendor/three.module.js';
 import { COMPANIONS } from '../content/companions.js';
 import { STORY_PHASES } from '../domain/automation.js';
-import { nextPrint, printGates, printReady, printEnd, printTimeline } from '../domain/pet-print.js';
+import { nextPrint, printGates, printReady, printEnd, printTimeline, printKnobs } from '../domain/pet-print.js';
 import { loadModelFixture, cloneFixture, modelClips } from './model-fixture.js';
 import { createPrintCloseup, framePoint } from './print-closeup.js';
+import { createMechPoser } from './mech-pose.js';
 
 const P = COMPANIONS.prints, K = COMPANIONS.print, TL = K.timeline, END = printEnd(TL), UNITS = COMPANIONS.units;
 const unitIndex = (id) => UNITS.findIndex((u) => u.id === id);
@@ -35,7 +39,7 @@ export function createPetPrint(h) {
   const cutAt = (r, plane, share) => plane.setFromNormalAndCoplanarPoint(w.copy(r.up).negate(), at(r, [0, -0.02 + share * (r.box.h + 0.04), 0], v));
 
   function makeBed(r) {
-    const g = new THREE.Group(), R = K.bedM, c = K.colour;
+    const g = new THREE.Group(), R = r.K.bedM, c = r.K.colour;
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 1.04, 0.05, 48), new THREE.MeshStandardMaterial({ color: 0x1b232a, roughness: 0.55, metalness: 0.6, transparent: true }));
     disc.position.y = 0.005; g.add(disc);
     const glow = (r0, r1, op) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 64), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2; m.position.y = 0.035; g.add(m); return m; };
@@ -50,6 +54,7 @@ export function createPetPrint(h) {
       const g = cloneFixture(scene);
       g.traverse((o) => { if (o.isMesh) { o.material = new THREE.MeshBasicMaterial({ color: K.colour, wireframe: true, transparent: true, opacity: 0.9, depthWrite: false, clippingPlanes: [r.ghostPlane] }); o.frustumCulled = false; } });
       const clip = modelClips(def.model).find((c) => c.name === def.idle);
+      if (def.pose === 'mech') createMechPoser(g, def.rig)?.reset();   // no clips: posed as the body is (round 6)
       if (clip) { r.ghostMixer = new THREE.AnimationMixer(g); r.ghostMixer.clipAction(clip).play(); r.ghostMixer.update(0); }
       r.ghost = g; r.bed.add(g);
     }, () => {});
@@ -65,25 +70,25 @@ export function createPetPrint(h) {
   function unclipSkin(r) { for (const [o, was, cl] of r.skin) { if (o.material === cl[0] || o.material === cl) o.material = was; for (const c of cl) c.dispose(); } r.skin.length = 0; }
 
   // the bed on the bare floor: the best candidate whose plot and the close angles' ring (clear metres out) stand off every raised slab
-  function pickSpot(c) {
-    const cand = c.spots(K.spotCells, K.bedM + 0.8);
-    for (const clear of K.slabClear) { const hit = cand.find((x) => h.slabAt(x.p, K.bedM + clear) == null); if (hit) return hit.ci; }
+  function pickSpot(c, KP) {
+    const cand = c.spots(KP.spotCells, KP.bedM + 0.8);
+    for (const clear of KP.slabClear) { const hit = cand.find((x) => h.slabAt(x.p, KP.bedM + clear) == null); if (hit) return hit.ci; }
     return cand[0]?.ci ?? -1;
   }
   function begin(i, k) {
-    const c = h.companions(), def = UNITS[i];
-    const ci = pickSpot(c);
+    const c = h.companions(), def = UNITS[i], KP = printKnobs(K, def);
+    const ci = pickSpot(c, KP);
     if (!c.print(i, ci)) return false;
     const pos = new THREE.Vector3(), quat = new THREE.Quaternion();
     c.frameOf(i, pos, quat);
-    const r = { i, k, id: def.id, t: 0, cell: ci, done: false, cut: false, cutDone: false, woke: false, said: false, skipped: false, m: h.metres(), origin: pos.clone(), up: pos.clone().normalize(), quat,
+    const r = { K: KP, TL: KP.timeline, END: printEnd(KP.timeline), i, k, id: def.id, t: 0, cell: ci, done: false, cut: false, cutDone: false, woke: false, said: false, skipped: false, m: h.metres(), origin: pos.clone(), up: pos.clone().normalize(), quat,
       x: new THREE.Vector3(1, 0, 0).applyQuaternion(quat), z: new THREE.Vector3(0, 0, 1).applyQuaternion(quat), ghostPlane: new THREE.Plane(), skinPlane: new THREE.Plane(), skin: [], ghost: null, ghostMixer: null, isao: null, angle: -1 };
     // the body's measure at its first frame, metres (the slice's height, the sheet's size and the camera's scale)
     const root = c.roots()[i], b = new THREE.Box3();
     if (root) { const keep = [root.parent, root.position.clone(), root.quaternion.clone(), root.scale.clone()]; root.parent?.remove(root); root.position.set(0, 0, 0); root.quaternion.identity(); root.scale.setScalar(1); root.updateMatrixWorld(true); b.setFromObject(root); keep[0]?.add(root); root.position.copy(keep[1]); root.quaternion.copy(keep[2]); root.scale.copy(keep[3]); }
     const sz = b.isEmpty() ? new THREE.Vector3(0.5, 0.9, 2) : b.getSize(new THREE.Vector3());
     r.box = { w: sz.x, h: Math.max(0.3, b.isEmpty() ? 0.9 : b.max.y), l: sz.z, zc: b.isEmpty() ? 0 : (b.min.z + b.max.z) / 2 };
-    r.size = Math.max(0.55, Math.min(1.2, r.box.l / K.refLength));
+    r.size = Math.max(0.55, Math.min(1.2, r.box.l / KP.refLength));
     run = r;
     r.bed = makeBed(r); makeGhost(r, def); clipSkin(r, root);
     cutAt(r, r.ghostPlane, 0); cutAt(r, r.skinPlane, 0);
@@ -109,12 +114,12 @@ export function createPetPrint(h) {
   }
   function shot(r) {
     r.cut = true;
-    cu.begin({ origin: r.origin, x: r.x, up: r.up, z: r.z, m: r.m, angles: K.angles, size: r.size, dur: END + 1, clock: () => r.t, done: () => r.done,
+    cu.begin({ origin: r.origin, x: r.x, up: r.up, z: r.z, m: r.m, angles: r.K.angles, size: r.size, dur: r.END + 1, clock: () => r.t, done: () => r.done,
       onEnd: () => { r.cut = false; r.cutDone = true; if (!r.done) { r.skipped = true; skips++; finish(r); } } });
   }
   function poseIsao(r, s) {
     const I = r.isao; if (!I) return;
-    const hover = at(r, [Math.sin(r.t * 0.9) * 0.25, r.box.h + K.hoverM - I.foot + Math.sin(r.t * 2.1) * 0.12, r.box.zc], v.clone());
+    const hover = at(r, [Math.sin(r.t * 0.9) * 0.25, r.box.h + r.K.hoverM - I.foot + Math.sin(r.t * 2.1) * 0.12, r.box.zc], v.clone());
     I.rec.obj.position.lerpVectors(I.from, hover, s.isao);
     tmp.position.copy(I.rec.obj.position); tmp.up.copy(r.up); tmp.lookAt(w.copy(I.rec.obj.position).addScaledVector(r.z, r.m * 4).addScaledVector(r.up, -r.m * 1.2 * s.isao));
     I.rec.obj.quaternion.slerpQuaternions(I.quat, tmp.quaternion, Math.min(1, s.isao * 1.5));
@@ -122,7 +127,7 @@ export function createPetPrint(h) {
   function step(dt) {
     const r = run; if (!r || r.done) return;
     r.t += dt;
-    const s = printTimeline(r.t, TL, K.band), c = h.companions();
+    const s = printTimeline(r.t, r.TL, r.K.band), c = h.companions();
     cutAt(r, r.ghostPlane, s.ghost); cutAt(r, r.skinPlane, s.skin);
     if (r.ghost) { r.ghost.visible = s.fade > 0.01; r.ghost.traverse((o) => { if (o.isMesh) o.material.opacity = 0.9 * s.fade; }); }
     r.slice.visible = s.beam; r.slice.position.y = s.slice * r.box.h; r.slice.material.opacity = 0.14 + 0.1 * Math.abs(Math.sin(r.t * 9));
@@ -140,7 +145,7 @@ export function createPetPrint(h) {
     if (!s.still && !r.woke) { r.woke = true; c?.wake(r.i); }
     if (s.phase === 'wake' && !r.said) { r.said = true; h.showBrief(UNITS[r.i].born); }
     if (r.cut) { cu.tick(dt); r.angle = cu.angle(); }   // the lens, the hint, a cut between angles (src/fx/print-closeup.js)
-    if (r.t >= END) finish(r);
+    if (r.t >= r.END) finish(r);
   }
   // the print done (its end, or a skip): the unit born and in its play, the print and the beam gone, the bed fading, Isao back to his work
   function finish(r) {
@@ -177,10 +182,10 @@ export function createPetPrint(h) {
       const i = unitIndex(id), k = Math.max(0, P.order.indexOf(id)), tr = P.triggers[k];
       if (i < 0 || !tr) { why = 'no trigger'; return; }
       const prev = k > 0 ? P.order[k - 1] : null, prevDay = prev ? (bornDay.get(prev) ?? (born.includes(prev) ? day() - (tr.days ?? 0) : null)) : null;
-      const gates = printGates(tr, { phase: h.phase?.() ?? null, phases: STORY_PHASES, perk: (p) => !!h.perk(p), day: day(), prevDay });
+      const sr = h.sectorRun?.() ?? null, st = sr?.state?.().phase, bossDown = sr?.bossDown?.() != null;
+      const gates = printGates(tr, { phase: h.phase?.() ?? null, phases: STORY_PHASES, perk: (p) => !!h.perk(p), day: day(), prevDay, boss: bossDown });
       held = gates ? held + dt : 0;
-      const sr = h.sectorRun?.() ?? null, st = sr?.state?.().phase;
-      const cond = { forced: forced >= 0, shot: h.shotActive(), gates, held, delay: tr.delay ?? 0, patience: tr.patience ?? Infinity, alive: h.alive(), won: h.won(), arena: !!sr?.defNow?.()?.boss,
+      const cond = { forced: forced >= 0, shot: h.shotActive(), gates, held, delay: tr.delay ?? 0, patience: tr.patience ?? Infinity, alive: h.alive(), won: h.won(), arena: !!sr?.defNow?.()?.boss && !bossDown,
         seated: h.seated(), card: h.card(), isaoBusy: h.isaoBusy(), fighting: st === 'fighting', breathing: !!sr?.breathing?.() };
       if (!printReady(cond)) { why = cond.shot ? 'shot' : forced >= 0 ? 'forced' : !gates ? 'gates' : held < cond.delay ? 'delay' : cond.seated ? 'seat' : cond.card ? 'card' : cond.isaoBusy ? 'brief' : cond.fighting ? 'fight' : 'held'; return; }
       if (!c.loaded(i)) { why = 'loading'; return; }
@@ -190,7 +195,7 @@ export function createPetPrint(h) {
       const c = h.companions(); if (!c || !UNITS[i] || c.life(i) !== 'unborn' || run) return false;
       forced = i; return true;
     },
-    state: () => ({ why, held: +held.toFixed(1), forced, prints, skips, printing: run ? { id: run.id, t: +run.t.toFixed(2), phase: printTimeline(run.t, TL, K.band).phase, angle: run.angle, cut: run.cut, cell: run.cell, isao: !!run.isao, ghost: !!run.ghost, size: +run.size.toFixed(2), box: Object.fromEntries(Object.entries(run.box).map(([k, x]) => [k, +x.toFixed(2)])),
+    state: () => ({ why, held: +held.toFixed(1), forced, prints, skips, printing: run ? { id: run.id, t: +run.t.toFixed(2), end: run.END, bedM: run.K.bedM, phase: printTimeline(run.t, run.TL, run.K.band).phase, angle: run.angle, cut: run.cut, cell: run.cell, isao: !!run.isao, ghost: !!run.ghost, size: +run.size.toFixed(2), box: Object.fromEntries(Object.entries(run.box).map(([k, x]) => [k, +x.toFixed(2)])),
       eyeM: +(h.camera.position.distanceTo(run.origin) / run.m).toFixed(2), eyeUp: +(h.camera.position.clone().sub(run.origin).dot(run.up) / run.m).toFixed(2), fov: +h.camera.fov.toFixed(1), isaoM: run.isao ? [+run.isao.foot.toFixed(2), +run.isao.tall.toFixed(2), +(run.isao.rec.obj.position.clone().sub(run.origin).dot(run.up) / run.m).toFixed(2)] : null } : null,
       last, bornDay: Object.fromEntries(bornDay), lens: cu.lens(), hint: cu.hint(), end: END }),
     restore() {

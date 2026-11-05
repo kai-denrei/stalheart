@@ -241,6 +241,18 @@ export const UNIT_ENTRIES = freeze([
       'A scout frame with the radio taken out and the ears left in. Twin optics, a cassette of batteries, a tail that says everything.',
       'He and the cheetah have a game. Nobody told them the rules; they tag, they swap, they do it again.',
     ] },
+  { id: 'k0', section: 'colony', name: 'K0-TECH · LYNX-POINT SIAMESE', label: 'COLONY · COMPANION', needs: { pet: 'k0' }, swatch: 0xd8c3a0,
+    model: { url: COMPANIONS.units[2].model, scale: COMPANIONS.scale, clip: 'Feline_Walk_Cycle' },
+    facts: [['SERIES', 'K0-TECH / LYNX-POINT SIAMESE'], ['HEIGHT', '0.41 m'], ['GALLOP', `${COMPANIONS.units[2].top} m/s`], ['PLAY', 'tag · stalks · pounces · rolls · gives paw']], isao: [
+      'Faceted armour, blue-coated sensors, a tail I shortened twice. She is half the cheetah\'s height and twice her opinions.',
+      'She guards the greenhouse from mice we have never seen. I do not tell her.',
+    ] },
+  { id: 'mech', section: 'colony', name: 'NIH-DAIRIA MECH · ISAO\'S STUDY', label: 'COLONY · COMPANION', needs: { pet: 'mech' }, swatch: 0xe8e0cc,
+    model: { url: COMPANIONS.units[3].model, scale: COMPANIONS.scale, clip: null },
+    facts: [['SERIES', 'ISAO FIELDWORK / BIOMIMETIC SERIES 001'], ['SIZE', '6.6 x 1.8 x 7.6 m'], ['GAIT', `alternating tripod · ${COMPANIONS.units[3].top} m/s`], ['PLAY', 'roams · reaches · anchors · watches']], isao: [
+      'Six limbs. One borrowed idea. I watched a Nih-Dairia for a long time, and the Builder Robot translated what I understood into carbon sleeves and ivory pads.',
+      'It does not run and it does not dance. It walks to the hull when the hull is still, and stands off, the way she never did.',
+    ] },
   // --- the eight sentries, through the game's own look at the top tier (the stats rows come from src/towers.js on the card, not here) -----------
   ...SENTRIES.map((s) => ({ id: s.key, section: 'sentries', name: `${s.name.toUpperCase()} · SENTRY ${s.number}`, label: 'SENTRY', needs: { sentry: s.key }, tower: s.key,
     model: { fit: { height: 5, maxSpan: 5 } }, facts: [['BUILD', s.note]], isao: SENTRY_LINES[s.key] ?? [] })),

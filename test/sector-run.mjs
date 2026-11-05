@@ -362,7 +362,9 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
     const left = [{ alive: true, guard: null, type: 'gslime' }, { alive: true, guard: null, type: 'ghost' }, { alive: true, guard: null, hunter: true, tier: 'small', type: 'reed' }, { alive: true, guard: null, hunter: true, tier: 'pup', type: 'reed' }];
     ww.enemies.push(...left); ww.engaged = true;
     step(SECTOR_TIMING.stall + 5); assert.equal(run.state().phase, 'fighting', `the mother alive still holds it (${run.state().phase})`);
+    assert.equal(run.bossDown(), null, 'the mother alive: not down (round 6, the mech\'s print)');
     boss.alive = false; ww.talking = true; step(0.5); assert.equal(run.state().phase, 'secure', `the mother dead: SECURE with four bodies alive elsewhere (${run.state().phase})`);
+    const downAt = run.bossDown(); assert.ok(downAt != null, 'the mother dead: bossDown says when (round 6: the mech\'s print trigger)');
     // THE NEST AND THE QUEEN (owner, 2026-10-19, note 9): Isao's boss_dead and arena_decoded are read before the debrief pauses the game (api.bossTalking)
     step(SECTOR_TIMING.securePause + 0.5); assert.deepEqual(log.slice(1), [], 'Isao still talking: no report yet');
     ww.talking = false; step(0.5); assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'and the report as he stops: a fight round the hull does not hold the boss sector\'s debrief');
@@ -371,6 +373,7 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(ww.opened.at(-1).alive, true, 'the arena\'s hole is spent, not sealed: the nest\'s mouth stays open');
   assert.deepEqual(log.slice(1), [['report', SECTOR_DOOR.earliest + 1]], 'the boss sector held: its report, no finale');
   run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'BOTH WALLS'); assert.equal(run.state().name, 'BOTH WALLS');
+  assert.ok(run.bossDown() != null, 'and kept past THE ARENA (round 6)');
   // THE HOLE NEVER CLOSES (owner, 2026-10-26, note 4: "the sinkhole DOES NOT CLOSE, it is the very entrance we must use for the Cave mission"): BOTH WALLS'
   // start caved in every live breach as a stray, the arena's kept hole too; the nest's mouth is not a stray, and a second opening leaves it open
   const nest = ww.opened.find((o) => o.ci === 230 && o.keep), opened0 = ww.opened.length;

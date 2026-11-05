@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { COMPANIONS } from '../src/content/companions.js';
 import { STORY_PHASES } from '../src/domain/automation.js';
-import { nextPrint, printGates, printReady, printEnd, printTimeline, printCamera } from '../src/domain/pet-print.js';
+import { nextPrint, printGates, printReady, printEnd, printTimeline, printCamera, printKnobs } from '../src/domain/pet-print.js';
 import { brief } from '../src/isaobriefs.js';
 import { readFileSync } from 'node:fs';
 
@@ -16,6 +16,7 @@ assert.deepEqual([...P.order].sort(), COMPANIONS.units.map((u) => u.id).sort(), 
 assert.equal(P.order[0], 'c07', 'C-07 is printed first'); assert.equal(P.triggers.length, P.order.length, 'a trigger per print');
 assert.equal(P.triggers[1].perk, 'uplink', 'the second after the radar'); assert(P.triggers[1].days >= 1, 'the second some days after the first');
 assert(STORY_PHASES.includes(P.triggers[0].phase), 'the first trigger names a story beat');
+assert.equal(P.order[2], 'k0', 'K0-TECH third (round 6)'); assert.equal(P.triggers[2].perk, 'farm', 'the third after the greenhouse'); assert.equal(P.triggers[2].days, 2, 'two days after the second');
 for (const tr of P.triggers) assert(brief(tr.brief)?.lines.length >= 1, `${tr.brief} is a line of Isao's`);
 for (const u of COMPANIONS.units) assert(brief(u.born)?.lines.length >= 1, `${u.id}'s waking line ${u.born}`);
 assert.equal(K.shot.lock, 5, 'five seconds mandatory'); assert.equal(K.shot.skipKey, ' ', 'then Space skips');
@@ -25,6 +26,7 @@ assert(/feidsDrop\|mechLook\|petPrint\|antennaPrint\)/.test(readFileSync(new URL
 assert.equal(nextPrint(['c07', 'k9'], []), 'c07'); assert.equal(nextPrint(['c07', 'k9'], new Set(['c07'])), 'k9'); assert.equal(nextPrint(['c07', 'k9'], ['c07', 'k9']), null);
 assert.equal(nextPrint(['k9', 'c07'], []), 'k9', 'the swapped order prints the dog first');
 assert.equal(nextPrint(['c07', 'k9'], ['k9']), 'c07', 'one born out of order (the harness) leaves the other next');
+assert.equal(nextPrint(P.order, ['c07', 'k9']), 'k0', 'the cat after the dog (round 6)');
 
 // 3. the gates
 const w = (o) => ({ phase: 'expedition', phases: STORY_PHASES, perk: () => false, day: 5, prevDay: null, ...o });
@@ -37,6 +39,10 @@ assert.equal(printGates(second, w({ perk: up, prevDay: null })), false, 'the fir
 assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D + 1 })), false, `${D - 1} days after the first: not yet`);
 assert.equal(printGates(second, w({ perk: () => false, prevDay: 0 })), false, 'no radar: not yet');
 assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D })), true, `${D} days after the first and the radar up`);
+{ const third = P.triggers[2], farm = (p) => p === 'farm';
+  assert.equal(printGates(third, w({ perk: (p) => p === 'uplink', prevDay: 0 })), false, 'the radar alone: no cat');
+  assert.equal(printGates(third, w({ perk: farm, prevDay: 4 })), false, 'one day after the dog: not yet');
+  assert.equal(printGates(third, w({ perk: farm, prevDay: 3 })), true, 'the greenhouse up and two days after the dog'); }
 
 // 4. printReady
 const base = { gates: true, held: 30, delay: 20, patience: 150, alive: true, won: false, arena: false, shot: false, seated: false, card: false, isaoBusy: false, fighting: false, breathing: false };
@@ -82,3 +88,23 @@ for (const A of K.angles) {
 }
 const half = printCamera(5, K.angles, 0.5), whole = printCamera(5, K.angles, 1); assert(whole.eye.every((x, i) => Math.abs(x * 0.5 - half.eye[i]) < 1e-9), 'scaled by the body');
 console.log(`Pet print: order ${P.order.join(' -> ')}, triggers ${P.triggers.map((t) => [t.phase, t.perk, t.days != null ? `${t.days} d` : null, `${t.delay} s`].filter(Boolean).join('+')).join(' | ')}, ${END} s scene in ${phases.length - 1} phases, ${K.angles.length} angles`);
+
+// 7. THE FOURTH (round 6, 2026-11-05): the Nih-Dairia mech after THE ARENA's kill: the order of four, a trigger each, the `boss` gate (nothing
+// else asked of it), strictly after K0-TECH; its own print over the default (a 9 m plot, 20 s print, 2 s skin, 4 s wake), its four angles in
+// order over its longer scene, scaled to a 7.6 m body (the eye 8-40 m off its look), the cheetah's print untouched; the lines exist
+{
+  const mech = COMPANIONS.units.find((u) => u.id === 'mech'), k = P.order.indexOf('mech'), tr = P.triggers[k];
+  assert.deepEqual(P.order, ['c07', 'k9', 'k0', 'mech'], 'the order of four'); assert.equal(P.triggers.length, 4, 'a trigger each');
+  assert.equal(tr.boss, true, 'the mech after the kill'); assert(!tr.phase && !tr.perk && tr.days == null, 'nothing else asked of it');
+  assert.equal(printGates(tr, w({ phase: null, boss: false })), false, 'the mother alive: no mech'); assert.equal(printGates(tr, w({ phase: null, boss: true })), true, 'her dead: the mech may come');
+  assert.equal(nextPrint(P.order, ['c07', 'k9']), 'k0', 'the cat before the mech even after the kill');
+  const KM = printKnobs(K, mech), TM = KM.timeline, EM = printEnd(TM);
+  assert.equal(KM.bedM * 2 >= 9 && KM.bedM * 2 < 10, true, `a 9 m plot (radius ${KM.bedM})`); assert.equal(KM.refLength, 7.6); assert.deepEqual([TM.print, TM.skin, TM.wake], [20, 2, 4], 'print 20 s, skin 2 s, wake 4 s');
+  assert.equal(KM.colour, K.colour, 'the default colour kept'); assert.equal(printKnobs(K, COMPANIONS.units[0]), K, 'the cheetah\'s print untouched');
+  assert.equal(KM.angles[0].from, 0); assert(KM.angles[KM.angles.length - 1].to >= EM, `the last angle covers its ${EM} s`);
+  for (let j = 1; j < KM.angles.length; j++) assert.equal(KM.angles[j].from, KM.angles[j - 1].to, 'its angles cut one into the next');
+  const seenM = new Set(); for (let t = 0; t < EM; t += 0.1) seenM.add(printCamera(t, KM.angles).angle); assert.equal(seenM.size, KM.angles.length, 'every angle of its shown');
+  for (const A of KM.angles) { const a = printCamera(A.from, KM.angles), d = Math.hypot(...a.eye.map((x, i) => x - a.look[i])); assert(d > 8 && d < 40, `an angle sized for a 7.6 m body (${d.toFixed(1)} m)`); }
+  for (const id of [tr.brief, mech.born, P.triggers[2].brief, COMPANIONS.units[2].born]) assert(brief(id)?.lines.length >= 1, `${id} is a line of Isao's`);
+  console.log(`Pet print: the mech fourth on the kill, ${EM} s on a ${KM.bedM * 2} m plot over ${KM.angles.length} angles`);
+}

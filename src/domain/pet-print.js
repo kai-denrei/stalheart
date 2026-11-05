@@ -4,11 +4,12 @@
 // src/fx/pet-print.js. Bed metres: x right of the unit's facing, y up, z its facing; seconds from the print's start.
 //   nextPrint(order, born)          -> the first id of `order` not yet born (born: a Set or array of ids), or null: strictly in order
 //   printGates(trigger, w)          -> whether a trigger's gates hold: w { phase, phases (the beats in order), perk(id), day, prevDay (the day the
-//                                      print before it was born; null: none before it, or not born yet) }
+//                                      print before it was born; null: none before it, or not born yet), boss (round 6: THE ARENA's mother dead) }
 //   printReady(c)                   -> whether the print starts now: forced goes at once (a running shot excepted); otherwise the gates held for
 //                                      `delay` s, the hull alive, no win, not the arena, no shot, seat, card or line of Isao's, and the fight in a
 //                                      breath (or secure, or no sector yet) until `patience` s with the gates held, after which a fight no longer holds it
 //   printEnd(tl)                    -> the timeline's length (s)
+//   printKnobs(print, unit)          -> the print's numbers for a unit: `print` with the unit's own `print` over it (round 6, the mech's plot and angles)
 //   printTimeline(t, tl, band)      -> { phase: 'arrive'|'print'|'skin'|'wake'|'done', isao (0..1 down to the bed, back to 0 as it wakes),
 //                                      ghost (0..1, the print's cut up the body), skin (0..1, the unit's own wireframe's cut), fade (the print's
 //                                      opacity share), beam (the head extruding), still (the unit held at its first frame), slice (the cut's share) }
@@ -24,6 +25,7 @@ export function printGates(tr, w) {
   if (!tr) return false;
   if (tr.phase) { const at = w.phases.indexOf(w.phase), need = w.phases.indexOf(tr.phase); if (at < 0 || need < 0 || at < need) return false; }
   if (tr.perk && !w.perk(tr.perk)) return false;
+  if (tr.boss && !w.boss) return false;   // the mech (round 6): after THE ARENA's kill
   if (tr.days != null) { if (w.prevDay == null || w.day - w.prevDay < tr.days) return false; }
   return true;
 }
@@ -37,6 +39,7 @@ export function printReady(c) {
 }
 
 export const printEnd = (tl) => tl.arrive + tl.print + tl.skin + tl.wake;
+export const printKnobs = (print, unit) => (unit?.print ? { ...print, ...unit.print } : print);
 
 export function printTimeline(t, tl, band = 0.12) {
   const a = tl.arrive, p = a + tl.print, s = p + tl.skin, end = s + tl.wake;

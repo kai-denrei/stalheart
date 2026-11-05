@@ -11,9 +11,9 @@ const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
  if(!path.startsWith(resolve(root,'assets')+'/') && !(lockFile==='docs/missile-assets.lock.json' && file.path==='src/core/a6-missile-flight.js'))throw Error('Asset outside allowed pinned paths');
- if(!existsSync(path)&&fetchMissing&&!lock.baseUrl)throw Error(`No upstream for ${file.path}; restore it from the owner's export`);
+ if(!existsSync(path)&&fetchMissing&&!(file.baseUrl??lock.baseUrl))throw Error(`No upstream for ${file.path}; restore it from the owner's export`);
  if(!existsSync(path) && fetchMissing){
-  const response=await fetch(lock.baseUrl+file.sourcePath);if(!response.ok)throw Error(`HTTP ${response.status}: ${file.sourcePath}`);
+  const response=await fetch((file.baseUrl??lock.baseUrl)+file.sourcePath);if(!response.ok)throw Error(`HTTP ${response.status}: ${file.sourcePath}`);
   const bytes=Buffer.from(await response.arrayBuffer());if(sha(bytes)!==file.sha256)throw Error(`Upstream checksum mismatch: ${file.sourcePath}`);
   mkdirSync(dirname(path),{recursive:true});writeFileSync(path+'.tmp',bytes);renameSync(path+'.tmp',path);
  }

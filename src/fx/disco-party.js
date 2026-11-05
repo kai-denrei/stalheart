@@ -179,7 +179,7 @@ export function createDiscoParty(h) {
   const petFrame = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, px = new THREE.Vector3(), py = new THREE.Vector3(), pz = new THREE.Vector3();
   const QUARTERS = [[1, 1], [-1, 1], [1, -1], [-1, -1]], seg3 = new THREE.Line3(), hp = new THREE.Vector3(), cp = new THREE.Vector3();
   function petPose(i, out, eye, look, side) {
-    const S = DAY_42.shot, m = metres(); if (!h.pets?.()?.frameOf(i, petFrame.pos, petFrame.quat)) return false;
+    const S = DAY_42.shot, m = metres() * (COMPANIONS.units[i]?.shotScale ?? 1); if (!h.pets?.()?.frameOf(i, petFrame.pos, petFrame.quat)) return false;   // a small body's shot closer (round 6, K0-TECH)
     px.set(1, 0, 0).applyQuaternion(petFrame.quat); py.set(0, 1, 0).applyQuaternion(petFrame.quat); pz.set(0, 0, 1).applyQuaternion(petFrame.quat);
     look.copy(petFrame.pos).addScaledVector(py, S.petLook * m);
     const at = (q) => eye.copy(petFrame.pos).addScaledVector(px, q[0] * S.petEye[0] * m).addScaledVector(py, S.petEye[1] * m).addScaledVector(pz, q[1] * S.petEye[2] * m);
@@ -205,7 +205,7 @@ export function createDiscoParty(h) {
     if (h.seated() || h.shotActive()) return;
     const st = structure(), root = st?.near ?? st?.root; if (!root || !tipOf(root)) return;
     const S = DAY_42.shot, start = { pos: h.camera.position.clone(), quat: h.camera.quaternion.clone() };
-    const born = h.pets?.()?.born?.() ?? [], pets = COMPANIONS.units.map((u, i) => (born.includes(u.id) ? i : -1)).filter((i) => i >= 0);
+    const born = h.pets?.()?.born?.() ?? [], pets = COMPANIONS.units.map((u, i) => (born.includes(u.id) && u.kind !== 'heavy' ? i : -1)).filter((i) => i >= 0);   // the mech watches, it does not dance (round 6)
     const dur = pets.length ? Math.max(S.seconds, S.petsAt + pets.length * S.petSecs) : S.seconds;
     cut = { seg: -1, shown: -1, lens: null, pets, dur, segs: [], sides: [] };
     const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();

@@ -53,6 +53,7 @@ export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
   let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, stampedes = 0, backOpenedAt = null, campaignShown = false, finaleShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null, nest = null;   // nest: the arena's kept hole (THE NEST'S MOUTH, 2026-10-16), open for the rest of the run (round 3 c, 2026-10-26)   // canyon: { plan, id, phase, upAt } in THE CANYON
   const sps = new Map(), reports = [], omens = new Set();
+  let bossDownAt = null;   // THE MECH'S PRINT (round 6, 2026-11-05): the sector clock when THE ARENA read SECURE, its mother dead (bossLeft 0); kept for the run
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   let readySince = null;   // when the story first said it was ready for the first sector
   // THE SECTOR'S OWN CLOCK (2026-09-25): it runs only while the sector ticks, and the controller skips the tick while the world is
@@ -444,7 +445,7 @@ export function createSectorRun(h) {
     // standing by the base for minutes) held THE ARENA open after the mother died; there the count is the boss, alive or still queued (src/domain/boss-sector.js)
     const count = def.boss ? bossLeft(h.enemies(), h.queue(), def.boss.boss?.tier) : stalled() ? 0 : aliveSectorEnemies();
     if (!pending.length && !h.hold?.() && isSecure(sector, count, def.boss ? 0 : SECTOR_TIMING.stragglers ?? 0)) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
-      phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t;
+      phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t; if (def.boss) bossDownAt ??= t;
       h.callout('SECTOR SECURE', 'co-victory'); h.sfx?.('tank_pickup'); h.hud();
     }
   }
@@ -461,6 +462,7 @@ export function createSectorRun(h) {
   }
 
   return {
+    bossDown: () => bossDownAt,   // THE ARENA's mother dead (round 6: the mech's print trigger, src/fx/pet-print.js), or null
     tick, hudLine, defOf, defNow: () => def,   /* defOf(n): a sector's row by number (the VARS playtest page names them, src/fx/vars-modal.js); defNow: the one running (the tune panel) */
     // the wave clock may arm only while every breach of the sector stands open and ready and one of them still has waves
     // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
@@ -520,6 +522,7 @@ export function createSectorRun(h) {
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; isaoSpeak('sector_lost'); h.hud(); return true; },
     state: () => ({
       nest: nest ? { cell: nest.ci, open: !!nest.alive } : null,   // the arena's hole, kept open after its sector (the cave's door)
+      bossDown: bossDownAt == null ? null : +bossDownAt.toFixed(1),   // THE ARENA's mother dead, on the sector clock (round 6: the mech's print)
       phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
