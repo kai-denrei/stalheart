@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 70 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 71 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Round 6 stream C: the gunship facing the sky near the boss hole not reproduced headless (instrumented as state().camSky); the streak callouts step aside, left and right
+
+`2026-11-05-round-6-stream-c-the-gunship-s-sky-not-reproduced-and-the-streak-callouts-step-aside` · change · **observed**
+
+Owner, 2026-11-05, after round 5 (spec docs/superpowers/specs/2026-11-05-round-6-five-notes-design.md, stream C): 3) controlling the gunship while Isao is close to the boss sinkhole makes the gunship face the sky; 4) the streak callouts should not sit centred on the tank but slightly offset, alternating left and right. Branch round-6-fixes off 9f0eab02, port 18183, unpushed.
 
 ### Owner: CUTIS-CORE AMETHYST looks fine in the Quiver's seeker view but a plain white mass with a hint of purple in the nest and the waves (next to do)
 

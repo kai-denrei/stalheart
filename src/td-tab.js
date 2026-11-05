@@ -95,7 +95,7 @@ import { wallCushion as cushionWalls, breachBlocked as craterBlocked, CRATER_PAD
 import {TOWERS, TOWER_BY_KEY, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER} from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; 
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js'; import { createAmmoOrbs } from './fx/ammo-orbs.js';
 import {makeTankFeel, landTankFeel, applyTankHealth} from './tankfeel.js';
@@ -1117,9 +1117,9 @@ export function initTdTab(root) {
 
   const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ seconds: 1.0, far: 1.8, hold: () => paused, wait: () => shotId() === 'takeControl' });   /* shorter (owner, 2026-10-16: "the time between announcing SOL and getting control is too long"; was 1.4 / 3.2) */
   const SEAT_GLIDE_PEAK = 150;   // m/s: the gunship seat's glide in never moves faster at its peak (round 3, 2026-10-26: a frame clamped at 0.1 s moves at most 15 m)
-  // THE CAMERA'S JUMP METER (round 3, 2026-10-26: the gunship's view jump-cut; src/fx/cam-jump.js): sampled once a painted frame before the draw, state().camJump
+  // THE CAMERA'S JUMP METER (round 3; src/fx/cam-jump.js), state().camJump, and its sky meter (round 6), state().camSky
   const camJump = createCamJump({ metres: () => metresToArc(1, cellSide), info: () => ({ gunship: { phase: gunship.phase, left: Number.isFinite(gunship.left) ? +gunship.left.toFixed(2) : String(gunship.left), passes: gunship.passes },
-    seat: { pilotMode, gunship: !!pilot?.gunship, map: !!pilot?.isMap?.(), view: pilot?.state.view ?? null, yaw: +(pilot?.state.yaw ?? 0).toFixed(3), pitch: +(pilot?.state.pitch ?? 0).toFixed(3), glide: seatGlide.active(), shot: shotId() ?? null, strip: storyViews?.now?.() ?? null }, boss: bossRun?.on?.() ? bossRun.state().phase : null, paused }) });
+    seat: { pilotMode, gunship: !!pilot?.gunship, map: !!pilot?.isMap?.(), view: pilot?.state.view ?? null, yaw: +(pilot?.state.yaw ?? 0).toFixed(3), pitch: +(pilot?.state.pitch ?? 0).toFixed(3), glide: seatGlide.active(), shot: shotId() ?? null, strip: storyViews?.now?.() ?? null }, boss: bossRun?.on?.() ? bossRun.state().phase : null, hole: bossRun?.on?.() ? bossRun.state().hullCells : null, paused }) });
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -2074,11 +2074,9 @@ export function initTdTab(root) {
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
   const comboEl = root.querySelector('#td-combo'), ramFloat = createRamReadout(root, { project: (p) => new THREE.Vector3(p[0], p[1], p[2]).project(camera) });
-  // WHAT SURVIVES THE ENCOURAGEMENT BEING SWITCHED OFF. The praise is the part the operator wants gone — RECKLESS!, すげ〜!, the
-  // heart's lines. The SCORING is not praise: a streak multiplier and a ram count are facts you are playing against, so they
-  // stay. With the words stripped, in every language, because "×1.45" is the whole message and "STREAK" was only ever decoration
-  // on it.
-  const CALLOUT_NUMERIC = { 'co-streak': true, 'co-milestone': true, 'co-cargo': true, 'co-cta': true };   /* co-cargo is information (a part secured, a tower unlocked): it survives the praise switch whole */
+  // WHAT SURVIVES THE PRAISE SWITCHED OFF. The praise goes (RECKLESS!, すげ〜!, the heart's lines); the SCORING stays (a streak
+  // multiplier, a ram count: facts you play against), its words stripped in every language: "×1.45" is the whole message.
+  const CALLOUT_NUMERIC = { 'co-streak': true, 'co-a6': true, 'co-milestone': true, 'co-cargo': true, 'co-cta': true }, calloutSides = createCalloutSides();   /* co-cargo is information (a part secured, a tower unlocked): it survives the praise switch whole */
   const numbersOnly = (t) => {
     const m = String(t).match(/[×x]\s*[\d.]+/);
     return m ? m[0].replace(/\s+/g, '') : t;
@@ -2092,7 +2090,7 @@ export function initTdTab(root) {
     }
     while (calloutsEl.children.length >= 3) calloutsEl.firstChild.remove();
     const d = document.createElement('div');
-    d.className = `callout ${cls}`;
+    d.className = `callout ${cls}${calloutSides.of(cls)}`;
     d.textContent = text;
     calloutsEl.appendChild(d);
     setTimeout(() => d.remove(), cls === 'co-cargo' || cls === 'co-cta' ? 2600 : 1200);
@@ -3485,7 +3483,7 @@ export function initTdTab(root) {
     const top = 1 + params.wallHeight * 0.35;
     a6Post.position.set(c[0] * top, c[1] * top, c[2] * top);
     scene.add(a6Post);
-    showCallout('A6 POSTED', 'co-streak');
+    showCallout('A6 POSTED', 'co-a6');
     return true;
   }
 
@@ -5042,7 +5040,7 @@ export function initTdTab(root) {
         screensOpened: syntheticModal?.opened() ?? 0,
         brassLive: brass?.live() ?? 0,
         daylight: daylight?.state() ?? null, day: daylight?.day() ?? null, party: discoParty?.state() ?? null, ending: { party: discoParty?.replayState?.() ?? null }, streak: { now: eco.streak, best: run.bestStreak, x: +eco.multiplier().toFixed(2) },
-        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(), camJump: camJump.state(),   /* FEIDS-26 (2026-10-23); the scope's friendlies drawn last frame (round 3) */
+        reinforcements: reinforcements?.state() ?? null, radar: radarScope.state(), camJump: camJump.state(), camSky: camJump.sky(),   /* FEIDS-26; the scope's friendlies last frame */
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
