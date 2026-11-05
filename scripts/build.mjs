@@ -12,6 +12,11 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // Landmarks (astro, kit, far, story) go through the plain loader and take quantised attributes; units, sentries and the legacy
 // props run custom geometry pipelines (unpacking, merging, retinting) and are packed with float attributes to stay out of their way.
 const QUANTISED = /^assets\/models\/(astro|kit|far|story)\//;
+// THE BIO-PEARL SHIPS UNPACKED (round 8, 2026-11-06; docs/superpowers/specs/2026-11-06-round-8-seven-notes-design.md): the Yushi045's fill is a
+// custom `_YUSHI` vertex attribute (assets/models/yushi045/runtime.js reads it for the capacity shader) and gltfpack drops it even with -kv
+// (measured 2026-11-06), so its GLBs are copied as they are (63 + 27 KB plain); the release is checked below for the attribute in dist/
+const UNPACKED = /^assets\/models\/yushi045\//;
+const keepsAttribute = (bytes, name) => { const n = bytes.readUInt32LE(12); return bytes.toString('utf8', 20, 20 + n).includes(`"${name}"`); };
 async function packGlb(bytes, name) {
   let out = null;
   await pack(['-i', name, '-o', name, '-cc', ...(QUANTISED.test(name) ? [] : ['-noq']), '-kn', '-km', '-ke'], { read: () => bytes, write: (p, data) => { out = Buffer.from(data); } });
@@ -50,9 +55,10 @@ for (const path of paths) {
     }
     if (path.endsWith('.css')) text = text.replace(/url\((['"]?)(\.?\/?assets\/[^)'"?]+)\1\)/g, `url($1$2?v=${token}$1)`);
     await writeFile(dest, text);
-  } else if (rel.startsWith('assets/models/') && rel.endsWith('.glb')) await writeFile(dest, await packGlb(await readFile(path), rel));
+  } else if (rel.startsWith('assets/models/') && rel.endsWith('.glb') && !UNPACKED.test(rel)) await writeFile(dest, await packGlb(await readFile(path), rel));
   else await copyFile(path, dest);
   const bytes = await readFile(dest);
+  if (UNPACKED.test(rel) && rel.endsWith('.glb') && !keepsAttribute(bytes, '_YUSHI')) throw Error(`${rel}: the _YUSHI attribute is missing from dist/ (the Bio-Pearl's capacity shader needs it)`);
   manifest.push({ path: rel, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
 }
 await writeFile(resolve(out, '.nojekyll'), '');
