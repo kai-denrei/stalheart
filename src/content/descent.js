@@ -11,6 +11,7 @@ export const DESCENT = Object.freeze({
   brief: 'descent_brief', back: 'descent_back', last: 'descent_last',
   mobileSkip: true,
   lookHold: 2.5,   // seconds the camera looks at the arena's hole (the nest's mouth) before the cave opens (2026-10-16)
+  printCap: 45,   // game seconds the descent waits at most for a print of Isao's running at its start (round 7, note 8: the print seen to its end; the mech's is 27.6 s)
   briefCap: 22,   // game seconds the cave waits at most for Isao's descent_brief to finish: three lines' dwell (17.6 s by lineDwell) plus a margin; the owner's exposition is read before the cave covers the game (2026-10-18)
   // THE HOLE IS THE DOOR (owner, 2026-10-26, note 7; src/fx/hole-door.js): the camera's look, dive and rise on the arena's hole, in cells and seconds.
   // rimOut/rimUp: the rim view's point past the rim and over it; top: the axis point the dive turns down at; under: the hand-over, below the surface along

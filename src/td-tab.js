@@ -55,7 +55,7 @@ import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDisco
 import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js'; import { REINFORCEMENTS } from './content/reinforcements.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
 import { createCompanions } from './fx/companions.js'; import { createPetPrint } from './fx/pet-print.js'; import { createAntennaPrint } from './fx/antenna-print.js';   // C-07 AND RECKON K9, THE BASE COMPANIONS (owner, 2026-10-27)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
-import { setWireframe } from './fx/model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the sentries, the hull and the Ridgebacks drawn as the briefings' wireframe; the gunship and SOL as they are
+import { setWireframe, wireCount } from './fx/model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the sentries, the hull and the Ridgebacks drawn as the briefings' wireframe; the gunship and SOL as they are
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { createLaserArsenal } from './fx/laser-arsenal.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import {GAMEPLAY_TIPS} from './fx/briefing-cards.js';
@@ -3274,7 +3274,6 @@ export function initTdTab(root) {
   });
   const perchOf = towerPose.perchOf;
   function placeTowerObj(tower) { const r = towerPose.placeTowerObj(tower); if (wire && tower.obj && !tower.obj.userData.print) setWireframe(tower.obj, true, wireOpts); return r; }   // ?wire=1: every placement (print, rebuild, upgrade, the tier plate) leaves the sentry a wireframe; Isao's print ghost is its own
-  const wireCount = (root) => { let n = 0, w = 0; root?.traverse((o) => { if (o.isMesh) { n++; if (o.material?.wireframe) w++; } }); return [w, n]; };
   const wireState = () => ({ on: wire, mode: wire ? (wireOpts.tint ? 'tint' : 'flat') : null, hull: wireCount(playerMesh), towers: towers.reduce((a, t) => { const [w, n] = wireCount(t.obj); return [a[0] + w, a[1] + n]; }, [0, 0]), mechs: mechSquad?.wire?.() ?? null });   // state().wire: [wireframed, meshes]
   const wireSurvey = (root) => {   // the solid materials under a root, grouped (the wire palette's survey, harness only)
     const m = new Map();
@@ -4659,7 +4658,7 @@ export function initTdTab(root) {
     context: () => ({ rev: document.querySelector('meta[name="rev"]')?.content ?? '', url: location.href, sector: sectorRun?.defNow() ? `${sectorRun.defNow().n} · ${sectorRun.defNow().name}` : '', screen: screenTiers(enemies, PEARL_OF) }),
     record: (name, text) => recordTune({ base: location.pathname.replace(/[^/]*$/, ''), name, text, download: (n, t) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/markdown' })); a.download = n; a.click(); } }) });   /* THE TUNE PANEL (X): what is on screen, tweaked and recorded (owner, 2026-10-16) */
   const holeDoor = createHoleDoor({ camera, startShot, cellSide: () => cellSide, centers: () => graph.centers,   /* ONE PLACE (2026-11-05, note 10): the hole's frame faces the heart; the sky, the carcass and the last frame for BELOW */
-    heart: () => graph.centers[dungeon.heart], sky: () => daylight?.sky() ?? null, carcass: () => creatureEnemies?.carcass()?.handoff() ?? null, still: () => { postfx.render(); return renderer.domElement; } }), descentHost = createDescentHost(root, { hold: (v) => { paused = still = !!v; }, showBrief, speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t, briefing: () => briefs.queue()?.id ?? briefs.pending() ?? null,
+    heart: () => graph.centers[dungeon.heart], sky: () => daylight?.sky() ?? null, carcass: () => creatureEnemies?.carcass()?.handoff() ?? null, still: () => { postfx.render(); return renderer.domElement; } }), descentHost = createDescentHost(root, { hold: (v) => { paused = still = !!v; }, showBrief, printing: () => !!petPrint?.printing(), speak: (id) => isaoSpeak(id), story: () => story, mobile: mobileShell, t: () => t, briefing: () => briefs.queue()?.id ?? briefs.pending() ?? null,
     look: (ci) => { endShot(); holeDoor.look(ci); }, dive: (ci, s) => holeDoor.dive(ci, s), rise: (ci, p) => holeDoor.rise(ci, p), door: (ci) => holeDoor.measure(ci), handoff: (ci) => holeDoor.handoff(ci), still: () => holeDoor.still() });   /* the arena's hole, the door in and out (src/fx/hole-door.js, 2026-10-26) */
   const canyonRun = createCanyonRun({
     breachQueue,
@@ -4797,6 +4796,7 @@ export function initTdTab(root) {
     canyonCut: canyonRun.canyonCut,
     bossBegin: bossRun.begin, bossEnd: bossRun.end, arenaDue: () => bossRun.arenaDue(), bossTalking: () => bossRun.talking(),   // THE ARENA sector (src/fx/boss-run.js): its breach opens once the hull is at the beacon
     descent: (then) => descentHost.begin(then),   // THE DESCENT before the ending (src/fx/descent-host.js)
+    printNow: (id, then) => !!petPrint?.printNow(id, then),
     breakSide: canyonRun.breakSide,
     repaired: programme.repaired,
     printed: programme.printed,

@@ -1547,6 +1547,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), C=(s)=>s.companions, PR=(s)=>s.companions.print, {COMPANIONS}=await import('../src/content/companions.js');
  const keyEv=async(o)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',...o});await send('Input.dispatchKeyEvent',{type:'keyUp',...o});await delay(300);};
  const frame=async(name)=>{const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(output,name+'.png'),Buffer.from(s.data,'base64'));};
+ if(!process.env.PET_ARENA){   // PET_ARENA=1: only the round 7 arena beat below
  await go('pet-print',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td`);
  await until(`!!${T} && !!${T}.state().companions?.print`,120000).catch(async()=>assert.fail('the companions and the print host created'));
  await until(`${T}.state().companions.loaded`,60000).catch(async()=>assert.fail(`both models loaded (${JSON.stringify(C(await st()))})`));
@@ -1604,6 +1605,35 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`['wander','sit','trick','greet','idle'].includes(${T}.state().companions.units[3].mode)`,20000).catch(()=>{});
  {const u=C(await st()).units[3];console.log(`  the mech after its print: ${u.mode} ${u.speed} m/s pose ${JSON.stringify(u.pose)}, on the roam ${u.onRoam}`);assert.ok(u.onRoam,'the mech on the roam');}
  await delay(1500);current='pet-print';await finish();
+ }
+ // ROUND 7 (owner, 2026-11-05, note 8: "before BELOW, Isao prints something but we have no time to see it"): on the boss route the mech's print is a beat of
+ // THE ARENA's SECURE (src/fx/sector-run.js printNow): it starts within 2 s of the arena's end (SECURE, securePause, Isao's lines over the mother), or as a cut
+ // already running ends (the FEIDS-26 drop, held by the seat on this route, takes the camera as the seat is left); SECURE to the print logged (Isao's lines over the mother may hold the debrief's moment:
+ // logged), its close-up runs to its end, the game live, and the debrief shows only once it is done. Read on the sector clock
+ {const {SECTOR_DOOR,SECTOR_TIMING}=await import('../src/content/sectors.js');
+  await go('pet-print-arena',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")');
+  await until(`${T}.state().boss.on && ${T}.state().boss.phase==='beacon'`,90000).catch(async()=>assert.fail(`the beacon phase (${JSON.stringify((await st()).boss)})`));
+  await until(`${T}.state().companions?.loaded`,60000).catch(async()=>assert.fail(`the companions loaded (${JSON.stringify(C(await st()))})`));
+  await evaluate(`${T}.arenaNow()`);
+  await until(`${T}.state().boss.card`,120000).catch(async()=>assert.fail(`THE MOTHER's card (${JSON.stringify((await st()).boss)})`));
+  await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');
+  await until(`!${T}.state().boss.card&&!${T}.state().paused`,10000);
+  await until(`${T}.state().boss.led`,60000).catch(async()=>assert.fail(`her body leads her record (${JSON.stringify((await st()).boss)})`));
+  assert.equal(C(await st()).units[3].life,'unborn','the mech not printed before her death');
+  assert.ok(await evaluate(`${T}.damageBoss(999)`)!=null,'the boss hit through damageEnemy');
+  const marks={},w0=Date.now(),held={};let early=null,cutSeen=false;
+  while(Date.now()-w0<240000){const s=await st(),c=s.sector.clock,p=PR(s),mk=(k,v)=>{if(v&&marks[k]==null)marks[k]=c;};
+   mk('secure',s.sector.phase==='secure'||s.sector.secure);mk('print',p.printing?.id==='mech');mk('printPhase',s.sector.phase==='print');
+   if(s.sector.phase==='print'&&!p.printing){const k=`${s.shot??'-'}/${p.why}`;held[k]=(held[k]??0)+1;}if(s.sector.phase==='secure')held.talk=s.boss.talking??held.talk;
+   if(p.printing?.id==='mech'&&s.shot===COMPANIONS.print.shot.id)cutSeen=true;mk('printEnd',marks.print!=null&&!p.printing);mk('debrief',s.sector.debriefOpen);
+   if(s.sector.debriefOpen&&p.printing)early??={c,t:p.printing.t};if(marks.debrief!=null)break;await delay(150);}
+  const s=await st(),p=PR(s);console.log(`PET PRINT at THE ARENA's SECURE: ${JSON.stringify(marks)} (sector clock); the print ${marks.print!=null&&marks.secure!=null?(marks.print-marks.secure).toFixed(2):'-'} s after SECURE (securePause ${SECTOR_TIMING.securePause}); held before it began (shot/why: samples) ${JSON.stringify(held)}; the cut seen ${cutSeen}; last ${JSON.stringify(p.last)}; now ${JSON.stringify(p.now)}; the mech ${C(s).units[3].life}`);
+  current='pet-print-arena';await finish();
+  {const cut=Object.keys(held).filter(k=>k!=='talk'),onlyCut=cut.every(k=>/\/shot$/.test(k)&&!k.startsWith('-/'));assert.ok(marks.print!=null&&marks.printPhase!=null&&(marks.print-marks.printPhase<=2||onlyCut),`the mech's print starts within 2 s of the arena's end, or held only by a running cut (${JSON.stringify({marks,held})})`);}
+  assert.ok(cutSeen,'its close-up ran');assert.equal(p.last?.id,'mech');assert.equal(p.last?.skipped,false,'run to its end');{const tl=COMPANIONS.units.find(u=>u.id==='mech').print.timeline;assert.ok(p.last.t>=tl.arrive+tl.print+tl.skin+tl.wake-0.2,`the whole scene (${p.last.t} s)`);}
+  assert.equal(early,null,`no debrief while it prints (${JSON.stringify(early)})`);assert.ok(marks.debrief!=null&&marks.debrief>=marks.printEnd,`the debrief after the print (${JSON.stringify(marks)})`);}
  } else if(args.includes('--wire')) {
  // THE WIREFRAME, THE DEFAULT (owner, 2026-10-26 as ?wire=1, 2026-10-27 the default): the hull, every sentry and the four Ridgebacks drawn as wireframes with no flag; the gunship and SOL untouched; ?wire=0 the solids
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
@@ -1671,7 +1701,19 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // THE CAVE LOADS BEHIND A STILL GAME (owner, 2026-11-02, note 10): the glide to the rim view on the live game, then the game held on its last frame (paused,
  // nothing drawn: the canvas's GL draws counted) with Isao's panel reading over it, the cave's frame made only then; the cave says it is ready, the brief
  // ends, the game runs for the dive, and stands still again under the shown cave
- await evaluate(`${T}.descentNow()`);await delay(300);
+ // A PRINT IS SEEN TO ITS END (round 7, owner, 2026-11-05, note 8: "before BELOW, Isao prints something but we have no time to see it"): a print running as the
+ // descent begins holds its brief, its look and the cave (DESCENT.printCap at most): a companion's print forced (or the one already running), the descent asked
+ // mid-print waits in 'print' with no brief said; Space after the cut's lock ends the print, and the brief is said with no print running
+ {const {COMPANIONS}=await import('../src/content/companions.js');await until(`!!${T}.state().companions?.loaded`,60000).catch(()=>{});
+  const pi=await evaluate(`(()=>{const c=${T}.state().companions;if(!c)return -2;if(c.print.printing)return -1;return c.units.findIndex(u=>u.life==='unborn');})()`);
+  assert.ok(pi>=-1,`a print to run (${pi})`);if(pi>=0)assert.equal(await evaluate(`${T}.petPrint(${pi})`),true,'a print forced');
+  await until(`!!${T}.state().companions.print.printing`,60000).catch(async()=>assert.fail(`the print began (${JSON.stringify((await st()).companions?.print)})`));
+  await evaluate(`${T}.descentNow()`);await delay(500);
+  {const d=(await st()).descent;console.log(`  the descent asked mid-print: ${d.phase}, said ${JSON.stringify(d.said)}`);assert.equal(d.phase,'print','the descent waits for the print');assert.ok(!d.said.includes(DESCENT.brief),'no brief while it prints');}
+  await until(`(${T}.state().companions.print.printing?.t??99)>=${(COMPANIONS.print.shot.lock??5)+0.3}`,60000).catch(()=>{});
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',text:' '});await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',text:' '});
+  await until(`${T}.state().descent.said.includes(${JSON.stringify(DESCENT.brief)})`,15000).catch(async()=>assert.fail(`the brief said once the print is done (${JSON.stringify((await st()).descent)})`));
+  const s=await st();console.log(`  the print done (${JSON.stringify(s.companions.print.last)}), the descent ${s.descent.phase}`);assert.equal(s.companions.print.printing,null,'no print running when the descent\'s brief is said');}
  {const d=await st(),panel=await evaluate('!document.querySelector("#td-brief").classList.contains("hidden")');assert.ok(['look','load'].includes(d.descent.phase),`the look first (${JSON.stringify(d.descent)})`);assert.equal(d.descent.shown,false,'the cave waits while Isao speaks');assert.ok(panel,'Isao\'s panel is up with the brief');console.log(`  on the panel at the hand-off: ${(await evaluate('document.querySelector("#td-brief-line").textContent')).slice(0,80)}`);}
  const briefT0=Date.now();
  await until(`${T}.state().descent.phase==='load'`,30000).catch(async()=>assert.fail(`the game stands still once the look has glided to the rim (${JSON.stringify((await st()).descent)})`));
@@ -1893,11 +1935,14 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // prints go strictly in order, so the mech's print is forced (--pet-print runs the order): the bed by the base, its distance from the carcass in hops
  // logged; a frame mid-print (artifacts/browser/arena-carcass-mech.png)
  {const s=await st();assert.ok(s.sector?.bossDown!=null,`the kill recorded for the mech's trigger (${s.sector?.bossDown})`);console.log(`  after the kill: bossDown ${s.sector.bossDown}; print ${JSON.stringify(s.companions?.print?{why:s.companions.print.why,prints:s.companions.print.prints}:null)}`);}
- assert.equal(await evaluate(`${T}.petPrint(3)`),true,'the mech\'s print forced after the kill');
+ // ROUND 7 (note 8): the mech now prints at THE ARENA's SECURE, before its debrief (--pet-print asserts the beat): born by now, it is not forced again
+ const mechBorn=(await st()).companions?.units?.[3]?.life==='born';
+ if(mechBorn){const p=(await st()).companions.print;console.log(`  the mech printed at THE ARENA's SECURE (round 7): last ${JSON.stringify(p.last)}, now ${JSON.stringify(p.now)}`);assert.equal(p.last?.id==='mech'||p.prints>=1,true,'the mech\'s print ran');}
+ else{assert.equal(await evaluate(`${T}.petPrint(3)`),true,'the mech\'s print forced after the kill');
  await until(`${T}.state().companions.print.printing?.id==='mech'`,60000).catch(async()=>assert.fail(`the mech's print began (${JSON.stringify((await st()).companions?.print)})`));
  await until(`(${T}.state().companions.print.printing?.t??0)>=12`,90000).catch(()=>{});
  {const s=await st(),p=s.companions.print.printing,hops=await evaluate(`(()=>{const T=${T},a=${cell},b=${p?.cell??-1},seen=new Map([[a,0]]),q=[a];while(q.length){const c=q.shift(),d=seen.get(c);if(c===b)return d;if(d>=400)return -1;for(const n of T.creatures.neighbours(c))if(!seen.has(n)){seen.set(n,d+1);q.push(n);}}return -1;})()`);
-  console.log(`  the mech mid-print at t ${p?.t} (${p?.phase}), bed cell ${p?.cell}, ${hops} hops from the carcass's cell ${cell} (-1: more than 400)`);current='arena-carcass-mech';await finish();}
+  console.log(`  the mech mid-print at t ${p?.t} (${p?.phase}), bed cell ${p?.cell}, ${hops} hops from the carcass's cell ${cell} (-1: more than 400)`);current='arena-carcass-mech';await finish();}}
  } else if(args.includes('--arena-fight')) {
  // THE ARENA FIGHT ON THE LAB'S ENGINE (owner, 2026-10-23: "the Nih-Dairia fight; there is a well-tuned version in the lab and we keep reproducing something that does
  // not work. a) not enough nukes on the gunship, b) nih-dairia aggro is different, c) the whole idea is the monster aggro on the tank, acting as a lure, and it leaves

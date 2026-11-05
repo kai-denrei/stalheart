@@ -320,7 +320,11 @@ export function createSectorRun(h) {
     reports.push(r); lastReport = r;
     if (def?.boss) api.bossEnd?.(outcome);   // THE BOSS: the hull back to the player, Isao free, the seat left (src/fx/boss-run.js)
     const show = () => { const ending = phase === 'finale'; phase = outcome === 'lost' ? 'lost-shown' : 'debrief'; h.pause(true); debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines(), confirm: ending }); h.hud(); };   // the ending's card asks before a skip (round 3)
-    if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); const fin = () => finale(show); if (!api.descent?.(fin)) fin(); } else show();   // THE DESCENT (src/fx/descent-host.js) before THE ENDING before the score
+    if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); const fin = () => finale(show); if (!api.descent?.(fin)) fin(); }   // THE DESCENT (src/fx/descent-host.js) before THE ENDING before the score
+    // THE MECH'S PRINT, A BEAT OF THE ARENA'S SECURE (round 7, owner, 2026-11-05, note 8: "before BELOW, Isao prints something but we have no time to see it"):
+    // the securePause read and bossEnd done, Isao prints his Nih-Dairia mech in its close-up, the game live, and the debrief comes when it is done
+    else if (def?.boss && outcome === 'secure' && api.printNow?.('mech', () => { if (phase === 'print') show(); })) { phase = 'print'; h.hud(); }
+    else show();
   }
   // the break between sectors: the host may take it (THE BUILD BOARD since round 6, src/fx/build-board.js; the paint shop before it) and hand it
   // back when done. `via` says how the card was left: 'continue' (its CONTINUE: the board opens), 'hold' (KEEP HOLDING: the hold is its own
@@ -530,7 +534,7 @@ export function createSectorRun(h) {
     state: () => ({
       nest: nest ? { cell: nest.ci, open: !!nest.alive } : null,   // the arena's hole, kept open after its sector (the cave's door)
       bossDown: bossDownAt == null ? null : +bossDownAt.toFixed(1),   // THE ARENA's mother dead, on the sector clock (round 6: the mech's print)
-      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'print', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, hole: !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),

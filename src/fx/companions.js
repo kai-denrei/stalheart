@@ -26,7 +26,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { COMPANIONS } from '../content/companions.js';
 import { createPlay, stepPlay, gaitFor, MOVING } from '../domain/companion-play.js';
 import { BLOCKED } from '../dungeon.js';
-import { loadModelFixture, cloneFixture, modelClips, setWireframe } from './model-fixture.js';
+import { loadModelFixture, cloneFixture, modelClips, setWireframe, wireCount } from './model-fixture.js';
 import { createMechPoser } from './mech-pose.js';
 import { motionOf } from '../domain/mech-pose.js';
 
@@ -211,7 +211,6 @@ export function createCompanions(h) {
     if (dt > 0) stepPlay(play, dt, ctx);
     for (let i = 0; i < units.length; i++) stepUnit(units[i], play.units[i], dt);
   }
-  const wireCount = (root) => { let wired = 0, n = 0; root?.traverse((o) => { if (o.isMesh) { n++; if (o.material?.wireframe) wired++; } }); return [wired, n]; };
   return {
     tick,
     state: () => ({

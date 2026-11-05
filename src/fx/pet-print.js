@@ -12,7 +12,11 @@
 //   host: scene, camera, metres(), startShot, endShot, snapCamera, showBrief, companions(), isao() (the drone's record or null), phase() (the story beat),
 //         perk(id), day(), sectorRun(), shotActive(), seated(), card(), isaoBusy(), alive(), won(), slabAt(p, padM) (the raised island's top under a
 //         unit point, metres, or null: src/fx/story-base.js)
-//   createPetPrint(host) -> { tick(dt), force(i) (unit i printed now: false when born or printing), state(), restore() }
+//   createPetPrint(host) -> { tick(dt), force(i) (unit i printed now: false when born or printing), printNow(id, then), printing(), state(), restore() }
+// THE MECH'S PRINT IS A BEAT OF THE ARENA'S SECURE (round 7, owner, 2026-11-05, note 8: "before BELOW, Isao prints something but we have no time to
+// see it"): src/fx/sector-run.js asks printNow('mech', then) after the arena's securePause; the print runs forced (a running shot still holds it, at
+// most COMPANIONS.print.nowWait game seconds before `then` goes without it), its close-up and Isao's line as ever, and `then` (the debrief) runs when
+// it ends or is skipped. false: nothing to print now (born, another print running, no companions, the hull lost): the caller goes on at once
 // THE THIRD AND THE FOURTH (round 6, 2026-11-05): K0-TECH after the greenhouse, and the Nih-Dairia mech after THE ARENA's kill (the trigger's
 // `boss`: sectorRun().bossDown(), the arena's SECURE with its mother dead; the arena's own hold lifted from then). A unit's own `print` goes over
 // COMPANIONS.print (printKnobs: the mech's 9 m plot, its 20 s print and its angles); a posed unit's ghost is posed as its body is (src/fx/mech-pose.js).
@@ -29,7 +33,7 @@ const unitIndex = (id) => UNITS.findIndex((u) => u.id === id);
 
 export function createPetPrint(h) {
   const bornDay = new Map();   // id -> the day it was born (the next trigger's `days`)
-  let held = 0, forced = -1, run = null, why = 'idle', prints = 0, skips = 0, bedLeft = null, last = null;
+  let held = 0, forced = -1, run = null, why = 'idle', prints = 0, skips = 0, bedLeft = null, last = null, nowThen = null, nowWait = 0, nowLog = null;
   const cu = createPrintCloseup({ camera: h.camera, startShot: h.startShot, endShot: h.endShot, snapCamera: h.snapCamera }, { ...K.shot, hintId: 'pet-skip-hint' });
   const v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Quaternion(), tmp = new THREE.Object3D();
   const day = () => h.day?.() ?? 0;
@@ -89,7 +93,7 @@ export function createPetPrint(h) {
     const sz = b.isEmpty() ? new THREE.Vector3(0.5, 0.9, 2) : b.getSize(new THREE.Vector3());
     r.box = { w: sz.x, h: Math.max(0.3, b.isEmpty() ? 0.9 : b.max.y), l: sz.z, zc: b.isEmpty() ? 0 : (b.min.z + b.max.z) / 2 };
     r.size = Math.max(0.55, Math.min(1.2, r.box.l / KP.refLength));
-    run = r;
+    run = r; if (nowThen) { r.then = nowThen; nowThen = null; nowLog = { ...nowLog, began: +nowWait.toFixed(2) }; }
     r.bed = makeBed(r); makeGhost(r, def); clipSkin(r, root);
     cutAt(r, r.ghostPlane, 0); cutAt(r, r.skinPlane, 0);
     // the slice: a glowing sheet at the cut, the head's layer
@@ -162,6 +166,7 @@ export function createPetPrint(h) {
     if (r.cut) h.endShot();   // the print's own end ends its cut (onEnd: the lens back, the game's camera)
     last = { id: r.id, t: +r.t.toFixed(2), skipped: r.skipped, cell: r.cell, angle: r.angle };
     run = null; forced = -1; held = 0; why = 'born';
+    if (r.then) { const then = r.then; r.then = null; then(); }   // the debrief after the print (printNow)
   }
   function fadeBed(dt) {
     if (!bedLeft) return;
@@ -176,6 +181,7 @@ export function createPetPrint(h) {
       fadeBed(dt);
       const c = h.companions(); if (!c) return;
       if (run) { step(dt); return; }
+      if (nowThen) { nowWait += dt; if (forced < 0 || nowWait > (K.nowWait ?? 12)) { const then = nowThen; nowThen = null; forced = -1; nowLog = { ...nowLog, gaveUp: +nowWait.toFixed(2) }; then(); return; } }
       if (forced >= 0 && c.life(forced) !== 'unborn') forced = -1;   // born meanwhile (its own trigger): nothing left to force
       const born = c.born(), id = forced >= 0 ? UNITS[forced].id : nextPrint(P.order, born);
       if (!id) { why = 'all born'; return; }
@@ -192,13 +198,20 @@ export function createPetPrint(h) {
       why = begin(i, k) ? 'printing' : 'no spot';
     },
     force(i) {
-      const c = h.companions(); if (!c || !UNITS[i] || c.life(i) !== 'unborn' || run) return false;
+      const c = h.companions(); if (!c || !UNITS[i] || c.life(i) !== 'unborn' || run || nowThen) return false;
       forced = i; return true;
     },
-    state: () => ({ why, held: +held.toFixed(1), forced, prints, skips, printing: run ? { id: run.id, t: +run.t.toFixed(2), end: run.END, bedM: run.K.bedM, phase: printTimeline(run.t, run.TL, run.K.band).phase, angle: run.angle, cut: run.cut, cell: run.cell, isao: !!run.isao, ghost: !!run.ghost, size: +run.size.toFixed(2), box: Object.fromEntries(Object.entries(run.box).map(([k, x]) => [k, +x.toFixed(2)])),
+    printNow(id, then) {
+      const c = h.companions(), i = unitIndex(id);
+      if (!c || i < 0 || c.life(i) !== 'unborn' || run || nowThen || !h.alive()) return false;
+      forced = i; nowThen = then ?? (() => {}); nowWait = 0; nowLog = { id }; return true;
+    },
+    printing: () => !!run,
+    state: () => ({ why, held: +held.toFixed(1), forced, prints, skips, now: nowLog, printing: run ? { id: run.id, t: +run.t.toFixed(2), end: run.END, bedM: run.K.bedM, phase: printTimeline(run.t, run.TL, run.K.band).phase, angle: run.angle, cut: run.cut, cell: run.cell, isao: !!run.isao, ghost: !!run.ghost, size: +run.size.toFixed(2), box: Object.fromEntries(Object.entries(run.box).map(([k, x]) => [k, +x.toFixed(2)])),
       eyeM: +(h.camera.position.distanceTo(run.origin) / run.m).toFixed(2), eyeUp: +(h.camera.position.clone().sub(run.origin).dot(run.up) / run.m).toFixed(2), fov: +h.camera.fov.toFixed(1), isaoM: run.isao ? [+run.isao.foot.toFixed(2), +run.isao.tall.toFixed(2), +(run.isao.rec.obj.position.clone().sub(run.origin).dot(run.up) / run.m).toFixed(2)] : null } : null,
       last, bornDay: Object.fromEntries(bornDay), lens: cu.lens(), hint: cu.hint(), end: END }),
     restore() {
+      nowThen = null;
       if (run) { const r = run; r.done = true; unclipSkin(r); h.scene.remove(r.bed); h.scene.remove(r.beam); if (r.isao) r.isao.rec.held = false; run = null; }
       if (bedLeft) { h.scene.remove(bedLeft.g); bedLeft = null; }
       cu.restore();
