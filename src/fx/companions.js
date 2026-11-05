@@ -6,6 +6,8 @@
 // so a dash draws an arc), keeps it on the roam (the clearing within roamCells of the heart, off the solid structures and off the hull's
 // point), and plays the model's own gait at the rate that matches the ground speed (the paws never slide), its idle at rest and its one-shots
 // in place. Beyond lodMetres from the eye the one-draw distance tier stands in.
+// THE THIRD (round 6, 2026-11-05): K0-TECH, the small feline, makes three; every per-pair rule runs over the units' list (tag's `pair`, 'other' the
+// partner the play names).
 // ISAO PRINTS THEM (owner, 2026-10-30): neither is on the planet at landing. A unit is 'unborn' (loaded, hidden, out of the play), then
 // 'printing' (on the bed at its spot, facing the heart, held at its idle's first frame while src/fx/pet-print.js reveals it, then its idle
 // playing), then 'born' (in the play). ?pets=born has both born from the first frame (the play's own test).
@@ -24,7 +26,7 @@ import { BLOCKED } from '../dungeon.js';
 import { loadModelFixture, cloneFixture, modelClips, setWireframe } from './model-fixture.js';
 
 export function createCompanions(h) {
-  const K = COMPANIONS, units = [], play = createPlay(K.play);
+  const K = COMPANIONS, units = [], play = createPlay(K.play, K.units.length);
   let s = (h.seed >>> 0) || 7, roam = [], disposed = false, last = 0;
   const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
   const v = new THREE.Vector3(), w = new THREE.Vector3(), up = new THREE.Vector3(), x = new THREE.Vector3(), m4 = new THREE.Matrix4();
@@ -44,7 +46,7 @@ export function createCompanions(h) {
     return c;
   }
 
-  // the two: each a wrap on the sphere holding the game tier (animated) and the far tier (static, hidden until far)
+  // each a wrap on the sphere holding the game tier (animated) and the far tier (static, hidden until far)
   const starts = roam.filter((ci) => dg.distToHeart[ci] === K.startCells);
   K.units.forEach((def, i) => {
     const cell = starts.length ? starts[Math.floor(rand() * starts.length) % starts.length] : roam[i] ?? dg.heart;
@@ -75,7 +77,7 @@ export function createCompanions(h) {
 
   // a target token resolved on the sphere: a roam point, one away from the other, one near me, the other's or the hull's live place
   function resolve(u, token) {
-    const other = units[1 - u.i];
+    const other = units[play.units[u.i].with ?? (u.i === 0 ? 1 : 0)] ?? u;   // the other one of its game or its trot together (round 6: three)
     if (token === 'other') return u.goal.copy(other.pos);
     if (token === 'hull') { const p = h.hull(); return p ? u.goal.set(p[0], p[1], p[2]).normalize() : u.goal.copy(u.pos); }
     if (token === 'away') {   // the farthest from the other among near roam points (within awayM of me; the farthest of all when none is near)
@@ -158,7 +160,7 @@ export function createCompanions(h) {
     x.crossVectors(up, u.heading).normalize(); m4.makeBasis(x, up, u.heading);
     u.wrap.position.copy(u.pos); u.wrap.quaternion.setFromRotationMatrix(m4); u.wrap.scale.setScalar(K.scale * m);
     // the far tier past lodMetres (a view decision, taken on frozen frames too)
-    if (u.farRoot && u.root) { const d = u.wrap.position.distanceTo(h.eye()) / m, far = u.isFar ? d > K.lodMetres - K.fade : d > K.lodMetres; u.isFar = far; u.farRoot.visible = far; u.root.visible = !far; }
+    if (u.farRoot && u.root) { const lod = def.lodMetres ?? K.lodMetres, d = u.wrap.position.distanceTo(h.eye()) / m, far = u.isFar ? d > lod - K.fade : d > lod; u.isFar = far; u.farRoot.visible = far; u.root.visible = !far; }
     // the clip: a one-shot in place, else the gait the ground speed asks for at its rate, else the idle
     if (!u.mixer) return;
     if (p.oneShot) { if (u.oneShot !== p.oneShot) { u.oneShot = p.oneShot; fadeTo(u, p.oneShot, K.crossfade, true); } u.rate = 1; }
@@ -167,7 +169,7 @@ export function createCompanions(h) {
   }
 
   const ctx = {
-    now: 0, rand, units: K.units.map((d) => ({ top: d.top, trot: d.trot, idle: d.idle, sit: d.sit, tricks: d.tricks })),
+    now: 0, rand, units: K.units.map((d) => ({ top: d.top, trot: d.trot, wander: d.wander, idle: d.idle, sit: d.sit, tricks: d.tricks })),
     dist: (i, j) => metresBetween(units[i].pos, units[j].pos), toTarget: (i) => metresBetween(units[i].pos, units[i].goal),
     toHull: (i) => { const p = h.hull(); return p ? Math.hypot(units[i].pos.x - p[0], units[i].pos.y - p[1], units[i].pos.z - p[2]) / h.metres() : null; },
     blocked: (i) => units[i].blocked, clipSecs, present: (i) => units[i]?.life === 'born', dancing: () => !!h.party?.(),
@@ -189,14 +191,14 @@ export function createCompanions(h) {
     if (disposed || !roam.length) return;
     last = t; ctx.now = t; trackHull(dt);
     if (dt > 0) stepPlay(play, dt, ctx);
-    for (let i = 0; i < 2; i++) stepUnit(units[i], play.units[i], dt);
+    for (let i = 0; i < units.length; i++) stepUnit(units[i], play.units[i], dt);
   }
   const wireCount = (root) => { let wired = 0, n = 0; root?.traverse((o) => { if (o.isMesh) { n++; if (o.material?.wireframe) wired++; } }); return [wired, n]; };
   return {
     tick,
     state: () => ({
-      loaded: units.every((u) => u.loaded), failed: units.some((u) => u.failed), roam: roam.length, t: +last.toFixed(2), dist: +ctx.dist(0, 1).toFixed(2),
-      game: { on: play.game.on, chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) }, dodges: play.dodges, hullMps: +(hullV.length() / h.metres()).toFixed(2),
+      loaded: units.every((u) => u.loaded), failed: units.some((u) => u.failed), roam: roam.length, t: +last.toFixed(2), dist: +ctx.dist(...play.game.pair).toFixed(2),
+      game: { on: play.game.on, pair: play.game.pair.slice(), chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) }, dodges: play.dodges, hullMps: +(hullV.length() / h.metres()).toFixed(2),
       units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, hullM: hullSeen ? +(u.pos.distanceTo(hullP) / h.metres()).toFixed(2) : null, far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
     }),
     contacts: () => units.filter((u) => u.loaded && u.life !== 'unborn').map((u) => ({ pos: u.wrap.position.toArray() })),

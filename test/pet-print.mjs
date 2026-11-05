@@ -16,6 +16,7 @@ assert.deepEqual([...P.order].sort(), COMPANIONS.units.map((u) => u.id).sort(), 
 assert.equal(P.order[0], 'c07', 'C-07 is printed first'); assert.equal(P.triggers.length, P.order.length, 'a trigger per print');
 assert.equal(P.triggers[1].perk, 'uplink', 'the second after the radar'); assert(P.triggers[1].days >= 1, 'the second some days after the first');
 assert(STORY_PHASES.includes(P.triggers[0].phase), 'the first trigger names a story beat');
+assert.equal(P.order[2], 'k0', 'K0-TECH third (round 6)'); assert.equal(P.triggers[2].perk, 'farm', 'the third after the greenhouse'); assert.equal(P.triggers[2].days, 2, 'two days after the second');
 for (const tr of P.triggers) assert(brief(tr.brief)?.lines.length >= 1, `${tr.brief} is a line of Isao's`);
 for (const u of COMPANIONS.units) assert(brief(u.born)?.lines.length >= 1, `${u.id}'s waking line ${u.born}`);
 assert.equal(K.shot.lock, 5, 'five seconds mandatory'); assert.equal(K.shot.skipKey, ' ', 'then Space skips');
@@ -25,6 +26,7 @@ assert(/feidsDrop\|mechLook\|petPrint\|antennaPrint\)/.test(readFileSync(new URL
 assert.equal(nextPrint(['c07', 'k9'], []), 'c07'); assert.equal(nextPrint(['c07', 'k9'], new Set(['c07'])), 'k9'); assert.equal(nextPrint(['c07', 'k9'], ['c07', 'k9']), null);
 assert.equal(nextPrint(['k9', 'c07'], []), 'k9', 'the swapped order prints the dog first');
 assert.equal(nextPrint(['c07', 'k9'], ['k9']), 'c07', 'one born out of order (the harness) leaves the other next');
+assert.equal(nextPrint(P.order, ['c07', 'k9']), 'k0', 'the cat after the dog (round 6)');
 
 // 3. the gates
 const w = (o) => ({ phase: 'expedition', phases: STORY_PHASES, perk: () => false, day: 5, prevDay: null, ...o });
@@ -37,6 +39,10 @@ assert.equal(printGates(second, w({ perk: up, prevDay: null })), false, 'the fir
 assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D + 1 })), false, `${D - 1} days after the first: not yet`);
 assert.equal(printGates(second, w({ perk: () => false, prevDay: 0 })), false, 'no radar: not yet');
 assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D })), true, `${D} days after the first and the radar up`);
+{ const third = P.triggers[2], farm = (p) => p === 'farm';
+  assert.equal(printGates(third, w({ perk: (p) => p === 'uplink', prevDay: 0 })), false, 'the radar alone: no cat');
+  assert.equal(printGates(third, w({ perk: farm, prevDay: 4 })), false, 'one day after the dog: not yet');
+  assert.equal(printGates(third, w({ perk: farm, prevDay: 3 })), true, 'the greenhouse up and two days after the dog'); }
 
 // 4. printReady
 const base = { gates: true, held: 30, delay: 20, patience: 150, alive: true, won: false, arena: false, shot: false, seated: false, card: false, isaoBusy: false, fighting: false, breathing: false };

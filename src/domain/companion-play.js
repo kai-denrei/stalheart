@@ -3,8 +3,10 @@
 // and WHERE it goes as a token the scene resolves ('pick' a roam point, 'away' a point away from the other, 'other' the other's live
 // place, 'hull' the hull's), and the one-shot clip it plays in place. Distances come in as metres; the sphere, the clearing and the
 // buildings are the scene's business (src/fx/companions.js), which reports a blocked move through `blocked`.
-//   createPlay(knobs) -> { units: [p, p], game: { on, chaser, until, nextAt, tagLock, tags }, greetAt }
-//   stepPlay(state, dt, ctx) -> state, ctx: { now, rand, units: [{ top, trot?, idle, sit, tricks }], dist(i, j) metres between the two, toTarget(i),
+//   createPlay(knobs, n = 2) -> { units: [p, ...n], game: { on, pair: [i, j], chaser, until, nextAt, tagLock, tags }, greetAt }
+//     (round 6, 2026-11-05: K0-TECH makes three: a game of tag is between two of the printed ones, `pair`, picked by `rand` when more than two are
+//     free; `chaser` is a unit index; a unit's record carries `with`, the other one of its game or its trot together, which the scene's 'other' resolves to)
+//   stepPlay(state, dt, ctx) -> state, ctx: { now, rand, units: [{ top, trot?, wander?, idle, sit, tricks }], dist(i, j) metres between two, toTarget(i),
 //     toHull(i) (null: no hull), blocked(i), clipSecs(i, name), present(i)? (2026-10-30: a unit Isao has not printed yet is not on the planet: its
 //     record is left alone and no game of tag starts without both; absent, both are present), hullMotion(i)? (round 4, 2026-11-02: the hull as unit i
 //     sees it, { d metres, speed m/s, closing m/s toward the unit, lateral metres off the hull's line of travel } or null; absent, a still hull),
@@ -21,13 +23,15 @@
 const span = ([a, b], rand) => a + (b - a) * rand();
 export const MOVING = new Set(['wander', 'dash', 'chase', 'flee', 'greet', 'dodge', 'dance']);
 
-export function createPlay(knobs) {
-  const p = () => ({ mode: 'idle', until: 0, target: null, retarget: false, speed: 0, oneShot: null, moves: 0, blockedAt: -1 });
-  return { units: [p(), p()], game: { on: false, chaser: 0, until: 0, nextAt: knobs.chase.first, tagLock: 0, tags: 0, games: 0 }, greetAt: knobs.greet.first, hullStill: 0, dodges: 0, knobs };
+export function createPlay(knobs, n = 2) {
+  const p = () => ({ mode: 'idle', until: 0, target: null, retarget: false, speed: 0, oneShot: null, moves: 0, blockedAt: -1, with: null });
+  return { units: Array.from({ length: n }, p), game: { on: false, pair: [0, 1], chaser: 0, until: 0, nextAt: knobs.chase.first, tagLock: 0, tags: 0, games: 0 }, greetAt: knobs.greet.first, hullStill: 0, dodges: 0, knobs };
 }
 
 function rest(p, now, knobs, rand) { p.mode = 'idle'; p.until = now + span(knobs.idle, rand); p.target = null; p.speed = 0; p.oneShot = null; }
-function goTo(p, mode, token, speed, until) { p.mode = mode; p.target = token; p.retarget = true; p.speed = speed; p.until = until; p.oneShot = null; p.moves++; }
+function goTo(p, mode, token, speed, until, other = null) { p.mode = mode; p.target = token; p.retarget = true; p.speed = speed; p.until = until; p.oneShot = null; p.moves++; if (other != null) p.with = other; }
+// the game's roles over its pair: the chaser after the other, the other away at `flee` of its own top
+function roles(s, ctx, keep) { const g = s.game, [a, b] = g.pair; for (const i of [a, b]) if (!keep || s.units[i].mode !== 'dodge') goTo(s.units[i], i === g.chaser ? 'chase' : 'flee', i === g.chaser ? 'other' : 'away', (i === g.chaser ? 1 : s.knobs.chase.flee) * ctx.units[i].top, g.until, i === a ? b : a); }
 // the hull bearing down on a unit: moving, closing on it, and either already near or due on it within leadS along its lane
 export function hullThreat(m, k) {
   if (!m || m.speed <= k.movingMps || m.closing <= k.closingMps) return false;
@@ -35,21 +39,28 @@ export function hullThreat(m, k) {
 }
 
 export function stepPlay(s, dt, ctx) {
-  const { now, rand } = ctx, k = s.knobs, g = s.game, here = (i) => (ctx.present ? !!ctx.present(i) : true), kd = k.dodge;
-  const motion = [ctx.hullMotion?.(0) ?? null, ctx.hullMotion?.(1) ?? null], hullSpeed = motion[0]?.speed ?? motion[1]?.speed ?? 0;
+  const { now, rand } = ctx, k = s.knobs, g = s.game, here = (i) => (ctx.present ? !!ctx.present(i) : true), kd = k.dodge, n = s.units.length;
+  const motion = s.units.map((_, i) => ctx.hullMotion?.(i) ?? null), hullSpeed = motion.find((m) => m)?.speed ?? 0;
   s.hullStill = hullSpeed < kd.stillMps ? s.hullStill + dt : 0;
   const dancing = !!ctx.dancing?.(), kn = k.dance;
   if (dancing && g.on) { g.on = false; g.nextAt = now + span(k.chase.every, rand); }   // the party ends a game of tag
   // the game of tag over the pair
+  const free = () => { const out = []; for (let i = 0; i < n; i++) if (here(i) && (s.units[i].mode === 'idle' || s.units[i].mode === 'wander')) out.push(i); return out; };
   if (g.on) {
-    if (now >= g.until) { g.on = false; g.nextAt = now + span(k.chase.every, rand); for (const p of s.units) rest(p, now, k, rand); }
-    else if (ctx.dist(0, 1) < k.chase.tagM && now >= g.tagLock) { g.chaser = 1 - g.chaser; g.tagLock = now + 1.2; g.tags++; for (let i = 0; i < 2; i++) if (s.units[i].mode !== 'dodge') goTo(s.units[i], i === g.chaser ? 'chase' : 'flee', i === g.chaser ? 'other' : 'away', (i === g.chaser ? 1 : k.chase.flee) * ctx.units[i].top, g.until); }
-  } else if (!dancing && now >= g.nextAt && here(0) && here(1) && s.units.every((p) => p.mode === 'idle' || p.mode === 'wander')) {
-    if (ctx.dist(0, 1) > k.chase.startM) { for (let i = 0; i < 2; i++) if (s.units[i].target !== 'other') goTo(s.units[i], 'wander', 'other', Math.min(ctx.units[i].trot ?? k.trot, ctx.units[i].top), now + k.wanderMax); return s; }   // too far apart for a game: they trot together first
-    g.on = true; g.games++; g.chaser = rand() < 0.5 ? 0 : 1; g.until = now + span(k.chase.secs, rand); g.tagLock = now + 1;
-    for (let i = 0; i < 2; i++) goTo(s.units[i], i === g.chaser ? 'chase' : 'flee', i === g.chaser ? 'other' : 'away', (i === g.chaser ? 1 : k.chase.flee) * ctx.units[i].top, g.until);
+    const [a, b] = g.pair;
+    if (now >= g.until) { g.on = false; g.nextAt = now + span(k.chase.every, rand); rest(s.units[a], now, k, rand); rest(s.units[b], now, k, rand); }
+    else if (ctx.dist(a, b) < k.chase.tagM && now >= g.tagLock) { g.chaser = g.chaser === a ? b : a; g.tagLock = now + 1.2; g.tags++; roles(s, ctx, true); }
+  } else if (!dancing && now >= g.nextAt) {
+    let pool = free();
+    if (pool.length >= 2) {
+      if (pool.length > 2) { const x = pool.splice(Math.min(pool.length - 1, Math.floor(rand() * pool.length)), 1)[0], y = pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))]; pool = x < y ? [x, y] : [y, x]; }
+      const [a, b] = pool; g.pair = [a, b];
+      if (ctx.dist(a, b) > k.chase.startM) { for (const i of [a, b]) if (s.units[i].target !== 'other') goTo(s.units[i], 'wander', 'other', Math.min(ctx.units[i].trot ?? k.trot, ctx.units[i].top), now + k.wanderMax, i === a ? b : a); return s; }   // too far apart for a game: they trot together first
+      g.on = true; g.games++; g.chaser = rand() < 0.5 ? a : b; g.until = now + span(k.chase.secs, rand); g.tagLock = now + 1;
+      roles(s, ctx, false);
+    }
   }
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < n; i++) {
     if (!here(i)) continue;
     const p = s.units[i], u = ctx.units[i], blocked = ctx.blocked(i);
     if (blocked) p.blockedAt = now;
@@ -61,7 +72,7 @@ export function stepPlay(s, dt, ctx) {
       case 'idle': if (now >= p.until) {
         const hull = ctx.toHull(i), r = rand();
         if (hull != null && now >= s.greetAt && s.hullStill >= kd.stillS) { s.greetAt = now + span(k.greet.every, rand); goTo(p, 'greet', 'hull', Math.min(u.trot ?? k.trot, u.top), now + k.wanderMax); }
-        else if (r < 0.55) goTo(p, 'wander', 'pick', span(k.wander, rand), now + k.wanderMax);
+        else if (r < 0.55) goTo(p, 'wander', 'pick', span(u.wander ?? k.wander, rand), now + k.wanderMax);
         else if (r < 0.75) goTo(p, 'dash', 'pick', span(k.dash, rand) * u.top, now + k.wanderMax);
         else if (r < 0.87 || !u.tricks.length) { p.mode = 'sit'; p.oneShot = u.sit; p.speed = 0; p.until = now + span(k.sitSecs, rand); }
         else { const t = u.tricks[Math.min(u.tricks.length - 1, Math.floor(rand() * u.tricks.length))]; p.mode = 'trick'; p.oneShot = t; p.speed = 0; p.until = now + ctx.clipSecs(i, t) + 0.5; }

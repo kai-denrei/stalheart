@@ -23,6 +23,10 @@
 //                  after `maxS` with no threat left); the greet waits for the hull to stand `stillS` seconds under `stillMps`
 //   roamCells      how far from the heart cell (hops) they roam; keepFromHull metres they keep off the hull's point when not greeting
 //   units[].born   Isao's line as the printed unit wakes (src/isaobriefs.js)
+//   units[].wander its own walk band (m/s) over play.wander (round 6, K0-TECH: a 0.24 m/s walk); units[].shotScale the share of the close shots'
+//                  distances for a small body (DAY 42's cut, the harness's look; absent, 1)
+// THE THIRD (round 6, 2026-11-05): K0-TECH, the small feline (assets/models/k0-tech), printed after the greenhouse; tag is a game of two among the
+// printed ones (src/domain/companion-play.js)
 //   lodMetres / fade  beyond lodMetres from the eye the static distance tier (one draw) stands in, back inside lodMetres - fade
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 export const COMPANIONS = freeze({
@@ -34,6 +38,12 @@ export const COMPANIONS = freeze({
     { id: 'k9', name: 'RECKON K9', kind: 'canine', model: 'assets/models/reckon-k9/reckon_k9_d0_lod1.glb', far: 'assets/models/reckon-k9/reckon_k9_d0_lod2.glb',
       idle: 'Alert_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw', 'Jump'], top: 5.5, accel: 5, turn: 2.8, born: 'pet_born_k9',
       gaits: [{ clip: 'Walk_Cycle', mps: 0.3571, max: 0.7 }, { clip: 'Run_Cycle', mps: 2.182, max: 2.7 }, { clip: 'Gallop_Cycle', mps: 3.1, max: 3.8 }, { clip: 'Sprint_Cycle', mps: 4.43, max: 7 }] },
+    // K0-TECH-01 (owner, 2026-11-05, round 6 note 1a: "the small feline"): 0.30 x 0.41 x 1.05 m, half C-07's height; the stalk is the slow creep,
+    // a nimble top of 3.2 m/s (not C-07's 7); its own wander band (its walk is 0.24 m/s: play.wander would put it on the gallop at the rate's floor);
+    // Pounce carries 1.6 m of root travel on MOTION, so it is a trick played in place, never a gait
+    { id: 'k0', name: 'K0-TECH', kind: 'feline', model: 'assets/models/k0-tech/k0_tech_d0_lod1.glb', far: 'assets/models/k0-tech/k0_tech_d0_lod2.glb',
+      idle: 'Watch_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw', 'Pounce'], top: 3.2, accel: 7, turn: 3.6, trot: 1.6, wander: [0.2, 0.34], shotScale: 0.5, born: 'pet_born_k0',
+      gaits: [{ clip: 'Stalk_Cycle', mps: 0.0893, max: 0.12 }, { clip: 'Feline_Walk_Cycle', mps: 0.2383, max: 0.5 }, { clip: 'Gallop_Cycle', mps: 2.6889, max: 4 }] },
   ],
   play: {
     idle: [1.5, 4], wander: [0.45, 0.65], dash: [0.75, 1], trot: 2.3, sitSecs: [3, 6], trick: 0.25, wanderMax: 14,
@@ -61,10 +71,11 @@ export const COMPANIONS = freeze({
   //                    unit's facing, y up, z its facing; each eye and look eased from the first to the second over [from, to] s, fov in degrees),
   //                    scaled by the body's length over `refLength`; `shot` the live cut (5 s mandatory, then Space skips, as the FEIDS-26 drop)
   prints: {
-    order: ['c07', 'k9'],
+    order: ['c07', 'k9', 'k0'],
     triggers: [
       { phase: 'expedition', delay: 20, patience: 150, brief: 'pet_print_first' },   // the colony up, the first wave dealt with, the hull the player's: the first quiet moment after
       { phase: 'expedition', perk: 'uplink', days: 3, delay: 10, patience: 150, brief: 'pet_print_second' },   // "later": three days on and the radar up
+      { phase: 'expedition', perk: 'farm', days: 2, delay: 10, patience: 150, brief: 'pet_print_third' },   // K0-TECH (round 6): the greenhouse up (sector 3) and two days on
     ],
   },
   print: {

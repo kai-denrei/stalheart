@@ -83,15 +83,14 @@ console.log('Companions: an unprinted unit stays out of the play; tag waits for 
   const { hullThreat } = await import('../src/domain/companion-play.js'), KD = COMPANIONS.play.dodge;
   function drive({ unit = 1, hull0 = [-40, 0], vel = [12, 0], seconds = 8, lane = 0 } = {}) {
     let s = 21; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
-    const st = createPlay(COMPANIONS.play), def = COMPANIONS.units, pos = [[0, lane + 0.01], [30, 30]], spd = [0, 0], goal = [pos[0].slice(), pos[1].slice()], hull = hull0.slice();
-    st.units[unit].mode = 'greeted'; st.units[unit].until = 1e9; st.units[unit].oneShot = def[unit].sit; st.units[1 - unit].mode = 'sit'; st.units[1 - unit].until = 1e9;
-    if (unit === 1) { pos[1] = [0, lane + 0.01]; pos[0] = [30, 30]; }
+    const def = COMPANIONS.units, n = def.length, st = createPlay(COMPANIONS.play, n), pos = def.map((_, i) => (i === unit ? [0, lane + 0.01] : [30 + 20 * i, 30])), spd = def.map(() => 0), goal = pos.map((p) => p.slice()), hull = hull0.slice();
+    st.units.forEach((p, i) => { if (i === unit) { p.mode = 'greeted'; p.oneShot = def[i].sit; } else p.mode = 'sit'; p.until = 1e9; });   // round 6: every unit, the one driven at greeted by the hull
     const motion = (i) => { const rx = pos[i][0] - hull[0], ry = pos[i][1] - hull[1], d = Math.hypot(rx, ry), sp = Math.hypot(...vel); if (sp < 1e-6) return { d, speed: 0, closing: 0, lateral: d }; const ux = vel[0] / sp, uy = vel[1] / sp, al = rx * ux + ry * uy; return { d, speed: sp, closing: d > 1e-9 ? (rx * vel[0] + ry * vel[1]) / d : sp, lateral: Math.sqrt(Math.max(0, d * d - al * al)) }; };
     const ctx = { now: 0, rand, units: def.map((d) => ({ top: d.top, trot: d.trot, idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => 40, toTarget: (i) => Math.hypot(goal[i][0] - pos[i][0], goal[i][1] - pos[i][1]), toHull: (i) => motion(i).d, blocked: () => false, clipSecs: () => 4, hullMotion: motion };
     let min = Infinity, dodged = false; const dt = 1 / 30;
     for (let t = 0; t < seconds; t += dt) {
       ctx.now = 100 + t; stepPlay(st, dt, ctx);
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < n; i++) {
         const p = st.units[i];
         if (p.retarget) { p.retarget = false; if (p.target === 'fromHull') { const sp = Math.hypot(...vel) || 1, nx = -vel[1] / sp, ny = vel[0] / sp, side = Math.sign((pos[i][0] - hull[0]) * nx + (pos[i][1] - hull[1]) * ny) || 1; goal[i] = [pos[i][0] + side * nx * 12, pos[i][1] + side * ny * 12]; } else goal[i] = pos[i].slice(); }
         if (p.mode === 'dodge') dodged = true;
@@ -102,7 +101,8 @@ console.log('Companions: an unprinted unit stays out of the play; tag waits for 
     }
     return { min, dodged, st };
   }
-  for (const unit of [0, 1]) for (const v of [6, 12, 20, 30]) { const r = drive({ unit, vel: [v, 0] }); assert(r.dodged, `${COMPANIONS.units[unit].id} dodged a hull at ${v} m/s`); assert(r.min > 4, `${COMPANIONS.units[unit].id}: a hull at ${v} m/s never within 4 m (closest ${r.min.toFixed(2)} m)`); }
+  // round 6: K0-TECH (3.2 m/s) cannot clear 4 m in the 1.3 s a 30 m/s hull takes from 40 m; from 100 m the 60 m range sees it in time (5.4 m)
+  for (const unit of COMPANIONS.units.map((_, i) => i)) for (const v of [6, 12, 20, 30]) { if (COMPANIONS.units[unit].top < 4 && v >= 30) { const r = drive({ unit, vel: [v, 0], hull0: [-100, 0] }); assert(r.dodged && r.min > 4, `${COMPANIONS.units[unit].id}: a hull at ${v} m/s from 100 m never within 4 m (closest ${r.min.toFixed(2)} m)`); continue; } const r = drive({ unit, vel: [v, 0] }); assert(r.dodged, `${COMPANIONS.units[unit].id} dodged a hull at ${v} m/s`); assert(r.min > 4, `${COMPANIONS.units[unit].id}: a hull at ${v} m/s never within 4 m (closest ${r.min.toFixed(2)} m)`); }
   { const r = drive({ unit: 1, hull0: [-5, 0], vel: [4, 0] }); assert(r.min > 2, `a hull starting 5 m off at 4 m/s (already on it as it moves off) never within 2 m (closest ${r.min.toFixed(2)} m)`); }
   { const r = drive({ unit: 1, vel: [12, 0], lane: 12 }); assert(!r.dodged, 'a hull passing 12 m to the side sends no one running'); }
   { const r = drive({ unit: 1, vel: [0, 0], hull0: [-4, 0] }); assert(!r.dodged && r.st.units[1].mode === 'greeted', 'a parked hull 4 m off: the unit stays sat'); }
@@ -139,3 +139,25 @@ console.log('Companions: out of the tank\'s way: a hull driven at a sitting unit
   party.on = false; ctx.hullMotion = () => null; ctx.now = 70; stepPlay(st, 0.05, ctx); assert(st.units.every((p) => p.mode !== 'dance'), 'the klaxon ends the dance');
 }
 console.log('Companions: DAY 42: both dance through the party (tricks, sits, dashes), no tag, the klaxon ends it');
+// 8. THREE (round 6, 2026-11-05: K0-TECH): a game of tag is between two of the printed ones; the pair varies over a long run, every game's two are
+// present, a running game's pair are the only chase/flee modes, the third keeps its own play meanwhile; K0-TECH walks in its own band (its walk
+// is 0.24 m/s), never past its top; `with` names the other one of a game; one printed alone never starts a game; the dodge holds for the cat too
+{
+  const n = COMPANIONS.units.length, k0 = COMPANIONS.units.findIndex((u) => u.id === 'k0');
+  assert(k0 >= 0 && COMPANIONS.units[k0].wander[1] <= COMPANIONS.units[k0].gaits[1].max, 'K0-TECH\'s own wander band sits on its walk');
+  assert(COMPANIONS.units[k0].tricks.includes('Pounce') && !COMPANIONS.units[k0].gaits.some((g) => g.clip === 'Pounce'), 'Pounce is a trick, never a gait (1.6 m of root travel)');
+  let s = 17; const rand = () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5 >>> 0) / 4294967296);
+  const st = createPlay(COMPANIONS.play, n), set = new Array(n).fill(0), present = COMPANIONS.units.map(() => true), pairs = new Set(), wanders = [];
+  const ctx = { now: 0, rand, units: COMPANIONS.units.map((d) => ({ top: d.top, trot: d.trot, wander: d.wander, idle: d.idle, sit: d.sit, tricks: d.tricks })), dist: () => (st.game.on && ctx.now % 7 < 0.05 ? 1 : 10), toTarget: (i) => (ctx.now - set[i] > 3 ? 0.5 : 8), toHull: () => 30, blocked: () => false, clipSecs: () => 4, present: (i) => present[i] };
+  for (let t = 0; t < 900; t += 0.05) {
+    ctx.now = t; stepPlay(st, 0.05, ctx);
+    if (st.game.on) { const [a, b] = st.game.pair; pairs.add(`${a}${b}`); assert(a !== b && present[a] && present[b], 'a game of two present ones');
+      st.units.forEach((p, i) => { if (i !== a && i !== b) assert(p.mode !== 'chase' && p.mode !== 'flee', `unit ${i} out of the game ${a}-${b} keeps its own play`); });
+      assert.equal(st.units[a].mode === 'chase' || st.units[a].mode === 'flee' ? st.units[a].with : b, b, 'with names the other one'); }
+    st.units.forEach((p, i) => { if (p.retarget) { p.retarget = false; set[i] = t; if (i === k0 && p.mode === 'wander' && p.target === 'pick') wanders.push(p.speed); } assert(p.speed <= COMPANIONS.units[i].top + 1e-9, `${i} never past its top`); });
+  }
+  assert(pairs.size >= 2, `the pair varies over three (${[...pairs]})`); assert(st.game.games >= 6, `games played (${st.game.games})`);
+  const [lo, hi] = COMPANIONS.units[k0].wander; assert(wanders.length && wanders.every((v) => v >= lo - 1e-9 && v <= hi + 1e-9), `K0-TECH wanders in its band (${wanders.length} walks)`);
+  const lone = createPlay(COMPANIONS.play, n); for (let t = 0; t < 200; t += 0.05) { ctx.now = t; ctx.present = (i) => i === k0; stepPlay(lone, 0.05, ctx); } assert.equal(lone.game.games, 0, 'one printed alone: no game');
+  console.log(`Companions: three: ${st.game.games} games over pairs ${[...pairs].join(', ')}, K0-TECH's ${wanders.length} walks in ${lo}-${hi} m/s`);
+}

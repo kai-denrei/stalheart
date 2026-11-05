@@ -241,6 +241,12 @@ export const UNIT_ENTRIES = freeze([
       'A scout frame with the radio taken out and the ears left in. Twin optics, a cassette of batteries, a tail that says everything.',
       'He and the cheetah have a game. Nobody told them the rules; they tag, they swap, they do it again.',
     ] },
+  { id: 'k0', section: 'colony', name: 'K0-TECH · LYNX-POINT SIAMESE', label: 'COLONY · COMPANION', needs: { pet: 'k0' }, swatch: 0xd8c3a0,
+    model: { url: COMPANIONS.units[2].model, scale: COMPANIONS.scale, clip: 'Feline_Walk_Cycle' },
+    facts: [['SERIES', 'K0-TECH / LYNX-POINT SIAMESE'], ['HEIGHT', '0.41 m'], ['GALLOP', `${COMPANIONS.units[2].top} m/s`], ['PLAY', 'tag · stalks · pounces · rolls · gives paw']], isao: [
+      'Faceted armour, blue-coated sensors, a tail I shortened twice. She is half the cheetah\'s height and twice her opinions.',
+      'She guards the greenhouse from mice we have never seen. I do not tell her.',
+    ] },
   // --- the eight sentries, through the game's own look at the top tier (the stats rows come from src/towers.js on the card, not here) -----------
   ...SENTRIES.map((s) => ({ id: s.key, section: 'sentries', name: `${s.name.toUpperCase()} · SENTRY ${s.number}`, label: 'SENTRY', needs: { sentry: s.key }, tower: s.key,
     model: { fit: { height: 5, maxSpan: 5 } }, facts: [['BUILD', s.note]], isao: SENTRY_LINES[s.key] ?? [] })),

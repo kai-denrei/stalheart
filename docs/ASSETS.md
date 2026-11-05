@@ -22,3 +22,15 @@ Do not use the upstream viewer's CDN Three.js modules in Stalheart; the GLBs are
 ## Landmark sources
 
 Models and animations by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/, reused with attribution under the upstream `ASSET-LICENSE.md`. `docs/astro-assets.lock.json` and `docs/astro-industry-assets.lock.json` pin the story's landmark sources at `b22a8c9a6e04d40819b68859624f362d6bff8680`: Stålheart (Terraformer 3000) and the HUGIN launchpad game versions, and the robotic assembly line. They keep authored metre scale, +Y up, +Z forward, rigs and clips. The Astro diorama's crew, SKYWARD array, warehouse, reactor, full solar complex and foundation tile retired with that lab on 2026-09-14; the crew will return as new lower-poly exports. D0 is an intact destruction state, not an LOD.
+
+## Companions and reinforcements
+
+Models by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/, reused with attribution under the upstream `ASSET-LICENSE.md` (credited in `ATTRIBUTIONS.md`, "Models by jelaludo"). Game tier LOD1 in the game, static LOD2 at distance; metres, +Y up, +Z forward, authored clips and pivots kept.
+
+| unit | folder | revision | lock |
+| --- | --- | --- | --- |
+| C-07 Mechanical Cheetah | `assets/models/c07/` | `ab4642de` | `docs/companions-assets.lock.json` |
+| RECKON K9 | `assets/models/reckon-k9/` | `ab4642de` | `docs/companions-assets.lock.json` |
+| K0-TECH-01 | `assets/models/k0-tech/` | `cd0b1349` | `docs/companions-assets.lock.json` (per-entry `baseUrl`) |
+| FEIDS-26 delivery capsule | `assets/models/feids26/` | `38eed564` | `docs/feids26-assets.lock.json` |
+| MX-06 Ridgeback | `assets/models/ridgeback/` | `38eed564` | `docs/feids26-assets.lock.json` |
