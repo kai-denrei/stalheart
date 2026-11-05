@@ -79,6 +79,14 @@ console.log('PASS the heading turned through the coil (the stalks keep their wor
     assert.equal(s.erratic, false); assert.equal(s.jink, false);
   }
   assert.equal(pearlSpeed({ speed: 1, r0: 2, sectorPace: 1.5, metresPerCell: 10 }), 1, 'no cap without radii');
+  // THE LADDER BACK (owner, 2026-11-05, round 5, note 8: "white fastest, yellow second; masses sort themselves by speed"): in metres a second, every type of a
+  // tier walks faster than every type of the next (white > yellow > blue > orange > green > purple > brown > black), by at least 0.05 m/s; the tier's `mps` caps
+  // its types whatever their size
+  close(pearlSpeed({ speed: 9, radii: 1, metres: 1.5, r0: 4, sectorPace: 1.5, metresPerCell: 10 }), 0.1, 1e-12, 'the metres cap under the radii cap');
+  const ORDER = ['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'], mps = (t) => pearlSpec(t).speed * PEARL_GAIT.sectorPace * 10, byTier = {};
+  for (const [type, b] of Object.entries(PEARL_BODIES)) (byTier[b.tier] ??= []).push(mps(type));
+  for (let k = 1; k < ORDER.length; k++) assert(Math.min(...byTier[ORDER[k - 1]]) >= Math.max(...byTier[ORDER[k]]) + 0.05, `${ORDER[k - 1]} (${byTier[ORDER[k - 1]].map((v) => v.toFixed(2))} m/s) over ${ORDER[k]} (${byTier[ORDER[k]].map((v) => v.toFixed(2))})`);
+  assert(PEARL_PACE.white.hop > PEARL_GAIT.hop && PEARL_PACE.white.timing.transfer > PEARL_GAIT.config.timing.transfer, 'the white walks its 1.2 radii on a longer stride and transfer (the follow audit below runs them)');
   const W = PEARL_GAIT.wait;
   assert.equal(pearlWait(0, 6, W), 1); assert.equal(pearlWait(6 * W.from, 6, W), 1); close(pearlWait(6 * W.to, 6, W), W.min, 1e-12, 'held back two hops behind');
   assert(pearlWait(9, 6, W) < 1 && pearlWait(9, 6, W) > W.min, 'eased between');
@@ -88,7 +96,7 @@ console.log('PASS the paced records (every tier at most its radii a second, no b
 
 // ---- THE SOFT HUNT'S WALK, AUDITED (owner, 2026-10-18, round three, note 2: "the weaker units (white and yellows) need to be faster and more aggressive"; src/fx/soft-hunt.js) ----
 // The caps re-based for the hunt only, by name. BEFORE: a white's and a yellow's walk was its PEARL_PACE `radii` (5 and 2.8 radii a second at the
-// sector's pace; the glide's audit above holds no upper bound since 2026-10-16, only no pop). HUNTING: x SOFT_HUNT.pace (white 1.35, yellow 1.25) at the
+// sector's pace; the glide's audit above holds no upper bound since 2026-10-16, only no pop). HUNTING: x SOFT_HUNT.pace (white 1.6 since 2026-11-02, yellow 1.25) at the
 // widest pace jitter (1.12), and on the ring the jab's lunge, faster than the walk: HUNT_CAP below. The pop is 0.25 radii in a 60 fps frame (15 radii a
 // second). The walk is the real one (createSoftHunt on a grid of 10 m cells), the bodies the real ones (gliding blobs until 2026-10-30, Sky's hoppers since).
 // THE CAP IS SET FROM THE MEASUREMENT (review, 2026-10-19: the first cap, 9 / 6, was only checked from a formula, and the measured drawn centre ran

@@ -43,10 +43,12 @@ export function squadSpots(n, r, { gap, stagger }) {
 }
 
 // round four: `speed` the spec's (cells/s at pace 1), `mult` and `radii` the tier's (PEARL_PACE), `r0` the body's radius (m), `sectorPace` the pace the
-// cap is set at, `metresPerCell` the planet's -> the paced speed (cells/s at pace 1): the record then walks at most `radii` body radii a second
-export function pearlSpeed({ speed, mult = 1, radii = Infinity, r0, sectorPace, metresPerCell }) {
-  const s = speed * mult;
-  return radii > 0 && radii < Infinity && r0 > 0 ? Math.min(s, (radii * r0) / (sectorPace * metresPerCell)) : s;
+// cap is set at, `metresPerCell` the planet's -> the paced speed (cells/s at pace 1): the record then walks at most `radii` body radii a second;
+// round 5 (note 8, the ladder): and at most `metres` metres a second (the tier's `mps`), whatever its size
+export function pearlSpeed({ speed, mult = 1, radii = Infinity, metres = Infinity, r0, sectorPace, metresPerCell }) {
+  let s = speed * mult;
+  if (radii > 0 && radii < Infinity && r0 > 0) s = Math.min(s, (radii * r0) / (sectorPace * metresPerCell));
+  return metres > 0 && metres < Infinity ? Math.min(s, metres / (sectorPace * metresPerCell)) : s;
 }
 
 const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a || 1e-9))); return t * t * (3 - 2 * t); };

@@ -184,7 +184,7 @@ export const PEARL_FOLLOW = freeze({
 // test the BODY's point (src/fx/creature-bodies.js point, src/fx/lance-follow.js bodyAt), not the record's, so the white's cap at 1 is safe. The
 // bias is WALK_BIAS (src/content/story-defaults.js)
 // 2026-10-16 (the owner's note 8, then the split by size): the small tiers walk faster (`speed`) and their caps in radii a second are over much smaller bodies
-// (PEARL_BODY.scale white 0.4, yellow 0.6, blue 0.8). A hopping body is held to about 1.2 radii a second (test/pearl-motion.mjs: past it the hops pop; bursts too),
+// (PEARL_BODY.scale white 0.4, yellow 0.6, blue 0.8 then; 0.65 / 0.7 / 0.8 now). A hopping body is held to about 1.2 radii a second (test/pearl-motion.mjs: past it the hops pop; bursts too),
 // so a small hopping body is a slow one in metres: THE BLOB (owner: "get rid of the appendages for the little ones for now, just have them be swarms of amoeba
 // like blobs that move fast"): white and yellow `glide` (src/fx/creature-pearl.js: no hop, the body slides onto its record's point, PEARL_GAIT.glideSeconds)
 // with caps in radii that read about 5.5 m/s on their small bodies (the swarm lab's bound is a few metres a second), twice the hopping pace they had (the
@@ -200,7 +200,19 @@ export const PEARL_FOLLOW = freeze({
 // `heart` (an ivory's tenth of a bite): the difficulty, not the body. The motion audit (test/pearl-motion.mjs) stays the ceiling: 1 radius a second hopping;
 // the cored tiers, the bigger bodies, at 0.9 (orange's and green's as they were): at 1 the audit's onyx stepped 15.01 radii a second once in 1,715 frames and its amethyst
 // 15.24 (the pop is 15; Sky passes at 1 by its margin), so the soft tiers walk at Sky's 1 and the cored a tenth under it, a slight variation the audit asked for.
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1.08, radii: ['orange', 'green', 'purple', 'brown', 'black'].includes(id) ? 0.9 : 1, glide: false, hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, erratic: false, jink: false }])));
+// THE LADDER BACK (owner, 2026-11-05, round 5, note 8: "enemy differential speeds back: white fastest, yellow second; masses sort themselves by speed and
+// behaviour"). Under THE SKY MODEL every cap bound, so a tier's metres a second followed its body's size: the small ivory crept (amoeba 1.82 m/s, phage 1.46)
+// behind the blue gslime (2.24) and every cored tier (1.97 to 3.33, the onyx knot 7.26). Now the ladder in metres, white > yellow > blue > orange > green >
+// purple > brown > black, every type of a tier at most its tier's `mps` (metres a second at the sector's pace, PEARL_GAIT.sectorPace; src/domain/pearl-bodies.js
+// pearlSpeed `metres`), under its `radii` as before. The white walks at the audit's ceiling, 1.2 radii a second (amoeba 2.18 m/s, phage 1.75), on a longer
+// stride (`hop` 3.6 radii, the ivory's of 2026-10-15) and a longer transfer (`timing`, the kit's stage shares: transfer 0.52 -> 0.62 of the cycle): past 1
+// radius a second the gait's own stride popped in test/pearl-motion.mjs's follow audit (1.1: 9 pops in three runs), with the two the white pops less than
+// at 1 on the old gait (a ten-run sweep: 8 against 21). The yellow keeps its 1.0 (1.65 m/s); the rest are under it in steps of 0.1 m/s, so a mixed column
+// draws apart a body's radius every 20-40 s. The radii a pace cannot reach (the onyx knot, 8 m, at 1 m/s walks 0.12 radii a second) hop at their cycle
+// and wait for their record. Measured before/after in the round-5 stream-A entry.
+const LADDER = { white: { radii: 1.2, hop: 3.6, timing: { coil: 0.08, extend: 0.17, anchor: 0.03, transfer: 0.62, settle: 0.1 } }, yellow: { radii: 1 }, blue: { radii: 1, mps: 1.5 },
+  orange: { radii: 0.9, mps: 1.4 }, green: { radii: 0.9, mps: 1.3 }, purple: { radii: 0.9, mps: 1.2 }, brown: { radii: 0.9, mps: 1.1 }, black: { radii: 0.9, mps: 1.0 } };
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1.08, ...LADDER[id], glide: false, hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, erratic: false, jink: false }])));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a

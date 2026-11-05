@@ -45,7 +45,7 @@ export const ALARM_HUES = {
 export const CREATURE_TINTS = {
   // --- rammable, up the safe belts -----------------------------------------
   amoeba: SAFE_HUES.white,         // wave 1 swarm — the white belt (owner, 2026-09-14: the amoeba leads)
-  phage: SAFE_HUES.grey,           // slow crawler
+  phage: SAFE_HUES.grey,           // a crawler once; a white over the yellows since round 5, note 8
   ghost: SAFE_HUES.yellowPale,     // agile flyer
   scoutufo: SAFE_HUES.yellow,      // fast scout
   saucer: SAFE_HUES.bluePale,      // interceptor — jinks
@@ -124,10 +124,12 @@ export const isAlarmHue = (hex) => Object.values(ALARM_HUES).includes(hex);
 // healOOC (hp/s while unhit for 1.2 s); heavy = epic tier, spawns sparse.
 // bounty = HK's credit values, verbatim — the TD economy pays them as biomass.
 export const ENEMY_SPEC = {
-  amoeba:    { hp: 1, speed: 1.15, size: 0.5,  rammable: true,  heartDmg: 1, erratic: true, bounty: 3 },
+  // THE LADDER, THE DOT CLOUDS TOO (owner, 2026-11-05, round 5, note 8: "white fastest, yellow second"; the Pearl set's is PEARL_PACE): amoeba 1.15 -> 1.5 and
+  // phage 0.75 -> 1.45 over the yellows (scoutufo 1.4, ghost 1.25), the blue saucer 1.55 -> 1.2 under them, so ?creatures=dots agrees with the Pearl ladder
+  amoeba:    { hp: 1, speed: 1.5, size: 0.5,   rammable: true,  heartDmg: 1, erratic: true, bounty: 3 },
   ghost:     { hp: 1, speed: 1.25, size: 0.42, rammable: true,  heartDmg: 1, erratic: true, bounty: 6 },
   scoutufo:  { hp: 1, speed: 1.4,  size: 0.42, rammable: true,  heartDmg: 1, erratic: true, bounty: 7 },
-  phage:     { hp: 1, speed: 0.75, size: 0.4,  rammable: true,  heartDmg: 1, bounty: 16 },
+  phage:     { hp: 1, speed: 1.45, size: 0.4,  rammable: true,  heartDmg: 1, bounty: 16 },
   jellyfish: { hp: 1, speed: 0.95, size: 0.45, rammable: true,  heartDmg: 1, bounty: 14 },
   gslime:    { hp: 2, speed: 0.7,  size: 0.5,  rammable: true,  heartDmg: 1, regen: 0.25, bounty: 12 },
   drifter:   { hp: 2, speed: 0.85, size: 0.52, rammable: false, heartDmg: 1, erratic: true, bounty: 15 },
@@ -152,7 +154,7 @@ export const ENEMY_SPEC = {
   // at the edge of tower coverage until minions arrive as cover, then
   // bursts; cloaked runs optical camo — hazy on screen, a radar contact
   // only in brief decloak windows.
-  saucer:    { hp: 1, speed: 1.55, size: 0.36, rammable: true,  heartDmg: 1, erratic: true, jink: true, bounty: 9 },
+  saucer:    { hp: 1, speed: 1.2,  size: 0.36, rammable: true,  heartDmg: 1, erratic: true, jink: true, bounty: 9 },
   shellback: { hp: 3, speed: 0.9,  size: 0.55, rammable: false, heartDmg: 2, tactician: true, bounty: 24 },
   phantom:   { hp: 2, speed: 1.05, size: 0.48, rammable: false, heartDmg: 2, cloaked: true, bounty: 28 },
   // THE CREATURES (owner, 2026-10-12: "replace some of the enemies with the Reed and the Cutis-Maku"; src/content/creature-enemies.js):

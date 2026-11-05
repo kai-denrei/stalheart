@@ -191,9 +191,11 @@ check('wave plan is deterministic', JSON.stringify(computeWavePlan(7, 2, 4)) ===
 check('all wave-plan counts are >= 1', [1, 4, 8, 12, 20].every((w) => computeWavePlan(w, 2, 4).entries.every((e) => e.count >= 1)));
 check('typesByWave grows with wave, caps at the roster', typesByWave(1).length === 1 && typesByWave(5).length === 5 && typesByWave(99).length === INTROS.length);
 
-check('the first enemy is the white amoeba, the phage the grey crawler',
-  INTROS[0].type === 'amoeba' && CREATURE_TINTS.amoeba === 0xf4f8ff && ENEMY_SPEC.amoeba.speed === 1.15 && ENEMY_SPEC.amoeba.erratic === true
-  && ENEMY_SPEC.amoeba.bounty === 3 && ENEMY_SPEC.amoeba.size === 0.5 && ENEMY_SPEC.phage.speed === 0.75 && ENEMY_SPEC.phage.bounty === 16
+// round 5 (owner, 2026-11-05, note 8: "white fastest, yellow second"): the amoeba 1.15 -> 1.5 and the phage 0.75 -> 1.45 over the yellows (the Pearl set draws
+// both as the ivory), so the dot clouds' A/B agrees with the Pearl ladder; the phage is no longer the crawler
+check('the first enemy is the white amoeba, the phage a white too, both over the yellows',
+  INTROS[0].type === 'amoeba' && CREATURE_TINTS.amoeba === 0xf4f8ff && ENEMY_SPEC.amoeba.speed === 1.5 && ENEMY_SPEC.amoeba.erratic === true
+  && ENEMY_SPEC.amoeba.bounty === 3 && ENEMY_SPEC.amoeba.size === 0.5 && ENEMY_SPEC.phage.speed === 1.45 && ENEMY_SPEC.phage.speed > ENEMY_SPEC.scoutufo.speed && ENEMY_SPEC.saucer.speed < ENEMY_SPEC.ghost.speed && ENEMY_SPEC.phage.bounty === 16
   && ENEMY_SPEC.phage.size === 0.4 && !ENEMY_SPEC.phage.erratic && INTROS.find((i) => i.wave === 4).type === 'phage');
 
 if (failures > 0) { console.error(`\n${failures} failure(s)`); process.exit(1); }
