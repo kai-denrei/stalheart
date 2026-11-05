@@ -21,7 +21,10 @@ export const ISLANDS = Object.freeze([
   { id: 'landing', w: 16, d: 16, x: 0, z: -60, stage: 2 },
   { id: 'solar', w: 20, d: 20, x: 44, z: -60, stage: 3 },
   { id: 'hugin', w: 40, d: 40, x: -52, z: -40, stage: 5 },
-  { id: 'stalheart', w: 48, d: 56, x: 0, z: 0, stage: 6 },
+  // THE PAD UNDER THE WHOLE MODEL (owner, 2026-11-05, round 5 note 2: "the Stalheart's base is not under it; half the rails are off"): the model
+  // stands 14.5 m +X of the old pad's centre (its offset, 2026-09-11), so its rails and sleepers (x -3.2..+32.2) ran 8.2 m off the old slab's
+  // +X edge (+24). The slab grows toward +X only (-24..+33) and the structure's offset shrinks by the same 4.5 m: the model stays where it stood
+  { id: 'stalheart', w: 57, d: 56, x: 4.5, z: 0, stage: 6 },
   { id: 'bay', w: 36, d: 32, x: 0, z: 62, stage: 7 },          // behind the Stalheart, doors toward the gate
   { id: 'assembly', w: 20, d: 32, x: 56, z: 6, stage: 8 },
   { id: 'radar', w: 20, d: 20, x: -56, z: 34, stage: 8 },
@@ -52,7 +55,7 @@ export const STRUCTURES = Object.freeze([
   { id: 'solar', asset: 'assets/models/astro/solar_power_complex_lod1_d0.glb', far: 'assets/models/astro/solar_power_complex_lod2_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },
   { id: 'rotor', asset: 'assets/models/sentries/rotor_t1.glb', island: null, anchor: 'wall', stage: 3, scale: 3, offset: [0, 0, 0] },   // high ground: the rock beside the tunnel mouth
   { id: 'hugin', asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', far: 'assets/models/far/hugin.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
-  { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [14.5, 0, 0], clips: ['Terraforming_Cycle'],
+  { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [10, 0, 0], clips: ['Terraforming_Cycle'],
     // Runtime LOD candidates pinned at c827eda for game-camera review (docs/landmark-tiers-assets.lock.json). Only
     // ?landmarks=candidate reads them; asset and far above stay what ships, and far-tiers.mjs keeps deriving that far.
     candidate: { asset: 'assets/models/astro/terraformer_3000_d0_lod1.glb', far: 'assets/models/astro/terraformer_3000_d0_lod2.glb' } },

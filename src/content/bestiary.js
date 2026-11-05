@@ -265,7 +265,7 @@ export const UNIT_ENTRIES = freeze([
     ] },
   // --- the base: each structure as the layout pins it, at the layout's scale, its first clip looping where it has one --------------------------
   { id: 'stalheart', section: 'base', name: 'STÅLHEART · TERRAFORMER', label: 'THE BASE · THE HEART', needs: { perk: 'stalheart' },
-    model: built('stalheart', 'stalheart', { url: structure('stalheart').candidate.asset }), facts: [['PLOT', '48 × 56 m · drive under the gantry'], ...printed('stalheart')], isao: [
+    model: built('stalheart', 'stalheart', { url: structure('stalheart').candidate.asset }), facts: [['PLOT', '57 × 56 m · drive under the gantry'], ...printed('stalheart')], isao: [
       'The heart of it. Forty-eight metres of terraformer with a gantry you can drive under, and the terminal you are reading this on.',
       'If it stops, we stop. The sentries know this better than you do.',
     ] },
