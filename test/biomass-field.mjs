@@ -27,5 +27,7 @@ const dist = (a, b) => Math.abs(a - b);   // a line of cells: the caller's metri
   f.drop(1, 10, 0); f.drop(2, 20, 1); const v = f.version(); f.drop(3, 30, 2);
   assert.deepEqual(f.piles().map((p) => p.cell), [2, 3]); assert.equal(f.rotted(), 10); assert.equal(f.total(), 50); assert.ok(f.version() > v, 'the scene sees the change');
   f.drop(2, 5, 3); assert.equal(f.size(), 2, 'an existing cell never evicts'); }
+{ const f = createField(); f.drop(1, 50, 0); f.drop(10, 30, 0); f.drop(12, 30, 0); f.drop(13, 5, 0);
+  assert.deepEqual(f.richest(3, dist), { cell: 10, kg: 65 }, 'the richest ground: 10, 12 and 13 within 3 of cell 10'); assert.equal(createField().richest(3, dist), null); }
 assert.ok(FIELD.decaySeconds === 240 && FIELD.maxPiles === 400, 'the content numbers');
 console.log('Biomass field: drop, aggregate, near, take, decay and the cap hold.');

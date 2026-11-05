@@ -17,7 +17,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createRoverRun(tune, home, heading = 0) {
   return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null,
-    skip: new Set(), trips: 0, delivered: 0, harvested: 0, note: '', events: [] };
+    skip: new Set(), trips: 0, delivered: 0, harvested: 0, note: '', events: [], rake: 0, pour: 0 };
 }
 
 const note = (run, now, ev, extra = {}) => { run.events.push({ t: +now.toFixed(2), ev, mode: run.mode, cargo: Math.round(run.cargo), ...extra }); if (run.events.length > 64) run.events.shift(); };
@@ -84,8 +84,12 @@ export function stepRover(run, dt, now, host) {
       if (path) { setOff(run, path, host); return run; }
     }
     if (run.cell !== run.pile) return run;
-    const n = host.take(run.pile, Math.min(T.harvestRate * dt, T.capacity - run.cargo));
-    run.cargo += n; run.harvested += n;
+    // WHOLE KILOS (the bank is an integer the HUD prints): the rake and the pour carry their fractions from step to step
+    run.rake += T.harvestRate * dt;
+    const ask = Math.min(Math.floor(run.rake), T.capacity - run.cargo);
+    if (ask < 1) return run;
+    const n = host.take(run.pile, ask);
+    run.rake -= ask; run.cargo += n; run.harvested += n;
     if (!(n > 0)) run.pile = null;   // the pile is gone (taken or rotted): the next one
     return run;
   }
@@ -95,7 +99,11 @@ export function stepRover(run, dt, now, host) {
     return run;
   }
   if (run.mode === 'unload' || run.mode === 'full') {
-    const want = Math.min(T.unloadRate * dt, run.cargo), got = Math.max(0, Math.min(want, host.deposit(want)));
+    run.pour = Math.min(run.pour + T.unloadRate * dt, T.unloadRate);
+    const want = Math.min(Math.floor(run.pour), Math.ceil(run.cargo));
+    if (want < 1) return run;
+    const got = Math.max(0, Math.min(want, host.deposit(want)));
+    run.pour -= want;
     run.cargo -= got; run.delivered += got;
     if (run.cargo <= 1e-6) { run.cargo = 0; run.trips++; run.mode = 'idle'; note(run, now, 'unloaded', { delivered: Math.round(run.delivered) }); return run; }
     const full = got < want - 1e-9;

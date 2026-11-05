@@ -13,6 +13,7 @@ import { PEARLS } from '../src/content/rover.js';
   assert.equal(p.fill(1000), 180, 'only what fits'); assert.equal(p.room(), 0);
   assert.equal(p.spend(400), 300, 'only what is there');
   assert.equal(p.settle(170), 170); assert.equal(p.settle(90), 90); assert.equal(p.settle(9999), 300, 'clamped to the capacity'); assert.equal(p.settle(-5), 0);
+  p.settle(0); assert.equal(p.fillAt(1, 120), 120); assert.deepEqual(p.list().map((v) => v.stored), [20, 100, 0], 'into vessel 1 first, the rest into the most room'); p.settle(0);
   assert.equal(p.add(), 4); assert.equal(p.capacity(), 400, 'the fourth pearl'); }
 // the economy's cap: credits clamp (the rest lost), kills held off the bank, the rover's deposit takes what fits
 { const eco = makeEconomy({ startBiomass: 100, cap: 1000 });

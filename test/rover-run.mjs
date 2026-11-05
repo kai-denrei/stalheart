@@ -30,7 +30,7 @@ function world({ capacity = 1000, room = 1e9, wall = null } = {}) {
   w.step(15); assert.ok(Math.abs(w.run.cargo - 600) < 1, `then 19 and 22, not 30 (out of reach): ${w.run.cargo}`); assert.ok(w.field.piles().every((p) => p.cell === 30));
   assert.ok(['home', 'unload', 'idle'].includes(w.run.mode), 'the ground bare, home');
   w.step(30); assert.equal(w.run.mode, 'idle'); assert.equal(w.run.cell, 0); assert.equal(w.run.cargo, 0); assert.ok(Math.abs(w.pearls.stored() - 600) < 1, 'unloaded into the pearl');
-  assert.equal(w.run.trips, 1); assert.ok(Math.abs(w.run.delivered - 600) < 1); assert.ok(w.run.events.map((e) => e.ev).join(' ').startsWith('out arrive home dock unloaded'), w.run.events.map((e) => e.ev).join(' '));
+  assert.equal(w.run.trips, 1); assert.equal(w.run.delivered, 600, 'whole kilos: the bank is an integer'); assert.ok(Number.isInteger(w.pearls.stored())); assert.ok(w.run.events.map((e) => e.ev).join(' ').startsWith('out arrive home dock unloaded'), w.run.events.map((e) => e.ev).join(' '));
   w.step(2); assert.equal(w.run.mode, 'idle', 'a standing flare with nothing left within reach is no order'); }
 // the hold fills: home with the capacity, then back out for the rest while the flare stands
 { const w = world({ capacity: 250 }); w.field.drop(20, 400, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 20 });

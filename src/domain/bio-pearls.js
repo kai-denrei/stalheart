@@ -8,6 +8,7 @@
 //     add()           one more vessel (the board's fourth pearl), empty
 //     mostRoom()      the index of the vessel with the most room (the rover docks there)
 //     fill(kg)        into the vessel with the most room, the rest into the next: returns what fitted
+//     fillAt(i, kg)   into vessel i first (the one the rover's hose is in), the rest as fill(): returns what fitted
 //     spend(kg)       out of the fullest first: returns what was taken
 //     settle(total)   fills or spends until stored() equals total (clamped to [0, capacity()]): the economy's number is the truth, the vessels follow it
 export function createPearls({ count = 3, capacity = 12000 } = {}) {
@@ -28,6 +29,11 @@ export function createPearls({ count = 3, capacity = 12000 } = {}) {
         if (left <= 0) break;
       }
       return Math.max(0, kg) - left;
+    },
+    fillAt(i, kg) {
+      const v = vessels[i]; if (!v) return api.fill(kg);
+      const n = Math.max(0, Math.min(kg, v.capacity - v.stored)); v.stored += n;
+      return n + (kg > n ? api.fill(kg - n) : 0);
     },
     spend(kg) {
       let left = Math.max(0, kg);

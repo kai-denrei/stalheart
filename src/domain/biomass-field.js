@@ -10,6 +10,7 @@
 //     near(cell, reach, dist) the piles within `reach` (dist's unit) of `cell`, nearest first; dist(a, b) is the caller's metric
 //     take(cell, kg, now)     up to `kg` off that cell's pile (touching it), returns what was taken; an emptied pile is gone
 //     tick(now)               rots the piles older than decaySeconds, returns the kg that rotted this call
+//     richest(reach, dist)    { cell, kg } the pile whose ground within `reach` holds the most (the reference player's flare), or null
 //     total()                 kg on the ground; rotted() kg lost to the rot so far; version() changes whenever a pile does (the scene redraws)
 export function createField({ decaySeconds = 240, maxPiles = 400 } = {}) {
   const byCell = new Map();   // cell -> { cell, kg, at }, insertion order = the order laid
@@ -40,6 +41,11 @@ export function createField({ decaySeconds = 240, maxPiles = 400 } = {}) {
       p.kg -= n; total -= n; p.at = now; version++;
       if (p.kg <= 1e-6) { total -= p.kg; byCell.delete(cell); }
       return n;
+    },
+    richest(reach, dist) {
+      let best = null;
+      for (const p of byCell.values()) { let kg = 0; for (const q of byCell.values()) if (dist(p.cell, q.cell) <= reach) kg += q.kg; if (!best || kg > best.kg) best = { cell: p.cell, kg }; }
+      return best;
     },
     tick(now) {
       let lost = 0;
