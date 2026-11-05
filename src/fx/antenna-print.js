@@ -50,7 +50,7 @@ export function createAntennaPrint(h) {
       said = true; h.want(STEP.brief); done = true; begin(0); if (!run) return false;
       run.replay = true; h.print().progress?.(STEP, 0); return true;
     },
-    state: () => ({ why, cuts, skips, said, last, cut: run ? { t: +run.t.toFixed(2), dur: +run.dur.toFixed(2), angle: cu.angle(), eyeM: +(h.camera.position.distanceTo(run.origin) / run.m).toFixed(1) } : null, lens: cu.lens(), hint: cu.hint() }),
+    state: () => ({ why, cuts, skips, said, last, print: h.print()?.pieces?.(STEP)?.[STEP?.structures?.[0]] ?? null, cut: run ? { t: +run.t.toFixed(2), dur: +run.dur.toFixed(2), angle: cu.angle(), eyeM: +(h.camera.position.distanceTo(run.origin) / run.m).toFixed(1) } : null, lens: cu.lens(), hint: cu.hint() }),
     restore() { if (run) cu.end(); cu.restore(); run = null; },
   };
 }

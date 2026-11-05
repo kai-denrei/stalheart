@@ -196,7 +196,10 @@ export function createDiscoParty(h) {
     if (cut.seg >= 0) { cut.lens ??= h.camera.near; h.camera.near = DAY_42.shot.near; } else if (cut.lens != null) { h.camera.near = cut.lens; cut.lens = null; }
     h.camera.updateProjectionMatrix();
   }
-  let lastCut = null;
+  let lastCut = null, hintEl = null;
+  // the cut's one line, ESC · SKIP, from its start to its end (the print close-ups' hint, src/fx/print-closeup.js)
+  function hintOn(S) { if (hintEl || typeof document === 'undefined') return; hintEl = document.createElement('div'); hintEl.id = S.hintId; hintEl.innerHTML = `<footer><span>${S.hint}</span></footer>`; document.body.append(hintEl); }
+  function hintOff() { hintEl?.remove(); hintEl = null; }
   function cutOff() { if (cut?.lens != null) { h.camera.near = cut.lens; h.camera.updateProjectionMatrix(); } if (cut) lastCut = { dur: cut.dur, shown: cut.segs.map((i) => COMPANIONS.units[i].id) }; cut = null; }
   function shot() {
     if (h.seated() || h.shotActive()) return;
@@ -206,7 +209,8 @@ export function createDiscoParty(h) {
     const dur = pets.length ? Math.max(S.seconds, S.petsAt + pets.length * S.petSecs) : S.seconds;
     cut = { seg: -1, shown: -1, lens: null, pets, dur, segs: [], sides: [] };
     const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();
-    h.startShot({ id: S.id, dur, skippable: true, onEnd: () => { cutOff(); h.snapCamera(); }, poseAt(u, out) {
+    hintOn(S);
+    h.startShot({ id: S.id, dur, skippable: true, skipKey: S.skipKey, passKeys: S.passKeys, onEnd: () => { hintOff(); cutOff(); h.snapCamera(); }, poseAt(u, out) {
       const ts = u * dur, seg = ts >= S.petsAt ? Math.floor((ts - S.petsAt) / S.petSecs) : -1;
       if (cut && seg >= 0 && seg < pets.length && petPose(pets[seg], out, eye, look, cut.sides[seg] ??= {})) { cut.seg = seg; if (!cut.segs.includes(pets[seg])) cut.segs.push(pets[seg]); return; }
       if (cut) cut.seg = -1;
@@ -372,6 +376,6 @@ export function createDiscoParty(h) {
     },
     force() { clock.force(); fetchBall(); },
     state: () => { const c = clock.state(); return { ...c, t: c.phase === 'countdown' ? c.t : +t.toFixed(2), loaded: !!ball, failed, hanging: !!ball?.parent, lights: ball?.parent ? spots.filter((s) => s.parent === parts.halo).length : 0, music: !!music, cut: cut ? { dur: cut.dur, seg: cut.seg, pets: cut.pets.map((i) => COMPANIONS.units[i].id), shown: cut.segs.map((i) => COMPANIONS.units[i].id), near: h.camera.near } : { last: lastCut } }; },   // the countdown's t is the clock's own; cut: the reveal's companions (round 4)
-    restore() { replayStop(); rep = null; finish(); clock.reset(); held = []; cutOff(); },
+    restore() { replayStop(); rep = null; finish(); clock.reset(); held = []; cutOff(); hintOff(); },
   };
 }

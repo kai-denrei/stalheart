@@ -1520,12 +1520,18 @@ try{
  assert.equal(await evaluate(`${T}.antennaPrint()`),true,'the close-up forced');
  {const s=await st();console.log(`  antenna-print: cut ${JSON.stringify(AN(s))}, shot ${s.shot}`);assert.equal(s.shot,'antennaPrint');assert.ok(AN(s).lens&&AN(s).lens.near===ANTENNA_CLOSEUP.shot.near,'the near plane lowered');assert.equal(AN(s).said,true,'the line asked');}
  await keyEv({key:'x',code:'KeyX'});{const s=await st();assert.equal(s.shot,'antennaPrint','a plain key inside the lock leaves it running');assert.equal(AN(s).hint,false,'no hint inside the lock');}
- for(let k=0;k<4;k++){const A=ANTENNA_CLOSEUP.angles[k];await until(`(${T}.state().antenna.cut?.t??99)>=${A.from+Math.min(2.2,(A.to-A.from)*0.6)}`,30000).catch(()=>{});const s=await st();console.log(`  antenna-print: angle ${k+1}: ${JSON.stringify(AN(s).cut)}, shot ${s.shot}`);if(!AN(s).cut)break;assert.equal(AN(s).cut.angle,k,`angle ${k+1}`);await frame(`antenna-print-${k+1}`);}
+ for(let k=0;k<4;k++){const A=ANTENNA_CLOSEUP.angles[k];await until(`(${T}.state().antenna.cut?.t??99)>=${A.from+Math.min(2.2,(A.to-A.from)*0.6)}`,30000).catch(()=>{});const s=await st();console.log(`  antenna-print: angle ${k+1}: ${JSON.stringify(AN(s).cut)}, shot ${s.shot}`);if(!AN(s).cut)break;assert.equal(AN(s).cut.angle,k,`angle ${k+1}`);await frame(`antenna-print-${k+1}`);
+  // THE WIRE FIRST, THE SKIN AFTER (owner, 2026-11-05, round 5 notes 4 + 5): mid-print the radar is its wire ghost clipped at the print's height over a
+  // hidden solid (src/fx/structure-print.js); from the print's end the solid stands (skinning in over 0.8 s)
+  console.log(`  antenna-print: angle ${k+1} print ${JSON.stringify(AN(s).print)}`);
+  if(k===1){const p=AN(s).print;assert.ok(p?.ghost&&!p.skinning&&!p.solid&&p.k>0&&p.k<1,`mid-print: the wire, no solid (${JSON.stringify(p)})`);}
+  if(k===3&&AN(s).cut.t>=12){const p=AN(s).print;assert.ok(p?.solid,`at the print's end the solid stands (${JSON.stringify(p)})`);}}
  {const s=await st();assert.ok(AN(s).hint,'the hint after the lock');assert.equal(await evaluate(`document.getElementById('antenna-skip-hint')?.textContent??null`),ANTENNA_CLOSEUP.shot.hint);}
  await keyEv({key:' ',code:'Space'});
  {const s=await st();console.log(`  antenna-print: after Space ${JSON.stringify(AN(s))}, shot ${s.shot}`);assert.notEqual(s.shot,'antennaPrint','Space skips after the lock');assert.equal(AN(s).lens,null,'the lens put back');assert.equal(AN(s).skips,1,'a skip');assert.equal(await evaluate(`!!document.getElementById('antenna-skip-hint')`),false,'the hint node removed');}
  await until(`(window.__seen?.briefs||[]).some(b=>/Eight days out/.test(b))`,40000).catch(async()=>assert.fail(`Isao's antenna line (${JSON.stringify((await evaluate('window.__seen.briefs')).slice(-6))})`));
- await delay(1500);current='antenna-print-end';await finish();
+ await delay(1500);{const p=AN(await st()).print;console.log(`  antenna-print: after the cut, print ${JSON.stringify(p)}`);assert.ok(p&&!p.ghost&&p.solid,`the ghost gone, the radar solid (${JSON.stringify(p)})`);}
+ current='antenna-print-end';await finish();
  } else if(args.includes('--pet-print')) {
  // ISAO PRINTS THE COMPANIONS (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable
  // scene where Isao whimsically prints the cat ... Close up on the creation, showing various angles." / "same with the Cheetah later."): on the finished base
@@ -1889,6 +1895,11 @@ try{
  await until(`${T}.state().shot==='${DAY_42.shot.id}'`,8000).catch(async()=>assert.fail(`the reveal cut (${JSON.stringify((await st()).party)})`));
  {const s=await st();assert.equal(s.paused,false,'a live cut: the world runs');
   const c0=s.sector.clock;await delay(3000);const s2=await st();assert.equal(s2.party.phase,'party');assert.equal(s2.sector.clock,c0,`the sector clock holds through the party (${c0} -> ${s2.sector.clock})`);}
+ // ONLY ESC SKIPS (owner, 2026-11-05, round 5 note 9): W held under the reveal drives the tank and leaves the cut running; the hint reads ESC · SKIP
+ {const p0=(await st()).playerPosition;await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW'});await delay(1200);await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW'});await delay(300);
+  const s=await st(),p1=s.playerPosition,moved=p0&&p1?Math.hypot(p1[0]-p0[0],p1[1]-p0[1],p1[2]-p0[2]):null;console.log(`  day-42 W under the reveal: shot ${s.shot}, the hull moved ${moved?.toFixed?.(4)} (world units), hint ${JSON.stringify(await evaluate(`document.querySelector('#${DAY_42.shot.hintId}')?.textContent||null`))}`);
+  assert.equal(s.shot,DAY_42.shot.id,'W does not skip the reveal');assert.ok(moved>0,`W reached the tank (moved ${moved})`);assert.equal(s.paused,false);
+  assert.equal(await evaluate(`document.querySelector('#${DAY_42.shot.hintId}')?.textContent||''`),DAY_42.shot.hint,'the hint names Esc');}
  await until(`${T}.state().party.hanging===true && ${T}.state().party.lights===4`,10000).catch(async()=>assert.fail(`the ball hangs and the lights are on (${JSON.stringify((await st()).party)})`));
  // the track: a loop voice once it has decoded (asked again until the cut, src/fx/disco-party.js)
  {const s=await st();assert.equal(s.party.music,true,`the track plays (${JSON.stringify({party:s.party,loopVoices:s.loopVoices})})`);assert.ok((s.loopVoices||[]).includes(DAY_42.music.key),`the music voice is live (${JSON.stringify(s.loopVoices)})`);}
@@ -1901,6 +1912,10 @@ try{
  for(const [seg,id] of [[0,'c07'],[1,'k9']]){await until(`${T}.state().party.cut?.seg===${seg}`,12000).catch(()=>{});await delay(1800);const s=await st(),c=s.party.cut,u=s.companions.units.find(x=>x.id===id);
   console.log(`  day-42 highlight ${id}: cut ${JSON.stringify(c)}, ${id} ${u.mode} ${u.clip} ${u.speed} m/s ${u.eyeM} m from the eye, far ${u.far}`);
   assert.equal(c?.seg,seg,`the cut on ${id}`);assert.equal(c.near,DAY_42.shot.near,'the near plane lowered');assert.ok(u.eyeM<=8,`${id} close (${u.eyeM} m)`);current=`day-42-${id}`;await finish();}
+ if((await st()).shot===DAY_42.shot.id){await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await delay(400);   // Escape skips the rest of the cut, and does not pause
+  const s=await st();console.log(`  day-42 Escape: shot ${s.shot}, paused ${s.paused}`);assert.notEqual(s.shot,DAY_42.shot.id,'Escape skips the reveal');assert.equal(s.paused,false,'Escape under the reveal does not pause');
+  assert.equal(await evaluate(`!!document.querySelector('#${DAY_42.shot.hintId}')`),false,'the hint goes with the cut');}
+ else console.log('  day-42: the cut ended on its own before the Escape check');
  await until(`${T}.state().shot!=='${DAY_42.shot.id}'`,20000);
  {const s=await st();console.log(`  day-42 after the cut: ${JSON.stringify(s.party.cut)}`);assert.deepEqual(s.party.cut?.last?.shown,['c07','k9'],'both highlights shown');}
  {const s=await st();assert.equal(s.party.phase,'party','the party goes on after the cut');assert.equal(s.party.hanging,true,'the ball still hangs');}

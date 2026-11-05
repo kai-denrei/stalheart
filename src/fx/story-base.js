@@ -8,6 +8,7 @@ import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
 import { cloneSkinned } from './skinned-clone.js';
+import { createStructurePrints } from './structure-print.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = new Map();
@@ -87,6 +88,8 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     .multiply(new THREE.Matrix4().makeScale(i.w / kit.slabReference * metres, metres, i.d / kit.slabReference * metres)).multiply(src);
   const wallMatrix = (w, src, k) => basisAt(placer, w.x, w.z, w.heading).multiply(new THREE.Matrix4().makeTranslation(0, w.y * metres, 0)).multiply(rise(k)).multiply(new THREE.Matrix4().makeScale(metres, metres, metres)).multiply(src);
   const lift = (holder, k) => { holder.visible = k > 0; holder.matrix.copy(holder.userData.placed).multiply(rise(k)); holder.matrixWorldNeedsUpdate = true; };
+  // A STRUCTURE'S PRINT (round 5 notes 4 + 5): its wire first, then its skin (src/fx/structure-print.js); `prints.at` replaces the Y rise of a structure
+  const prints = createStructurePrints({ lift, print: kit.print ?? {} }), printAt = prints.at;
   function driveGate(g, dt) {
     if (!g.action || !g.built) return;   // an unprinted gate plays no hydraulics
     const before = g.t;
@@ -145,6 +148,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       // the files each tier came from ride on the record: a review switch that quietly loaded the shipped tiers should
       // fail an assertion, and without them lod() could only say which tier is SHOWN, never which file it is
       if (s.far) { const rec = { id: s.id, holder, far: root, near: null, loading: false, shown: 'far', files: { far: s.far, near: s.asset }, at: new THREE.Vector3().setFromMatrixPosition(holder.matrix) }; lod.push(rec); records.set(s.id, rec); }
+      if (s.pending) { const k = kOf(grown.structures, s.id, s); if (k > 0 && k < 1) printAt(s.id, records.get(s.id), k); }   // mounted mid-print: the wire, not the solid
       counts.structures++;
     }).catch((e) => errors.push(`${s.id}: ${e}`))),
   ]);
@@ -190,13 +194,15 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       if (!l.near && !l.loading && d < lodSwitch * lodHyst) { l.loading = true; const s = plan.structures.find((x) => x.id === l.id); load(s.asset).then((gltf) => { if (!gltf) return; const near = mount(s, gltf, l.holder); near.visible = false; return Promise.resolve(warm?.compile(near)).then(() => { l.near = near; }); }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
       if (!l.near) continue;
       const near = l.shown === 'near' ? d < lodSwitch * lodHyst : d < lodSwitch;
-      l.shown = near ? 'near' : 'far'; l.near.visible = near; l.far.visible = !near;
+      l.shown = near ? 'near' : 'far'; if (prints.holds(l.id)) continue;   // mid-print the tiers hold: hidden under the wire, or the one skinning
+      l.near.visible = near; l.far.visible = !near;
     }
   }
   return {
     ready, group, counts, errors,
     tick(dt, near = null, force = null, eye = null) {
       for (const m of mixers) m.update(dt);
+      prints.tick(records);
       driveLod(eye);
       for (const g of gates) {
         const f = force && typeof force === 'object' ? force[g.id] : force;   // `force` may be one flag for every door or a flag per gate id
@@ -225,7 +231,8 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // counts as built (it opens for the tank, it holds the swarm) once it reaches the top
     growIsland: (id, k) => { const n = plan.islands.findIndex((i) => i.id === id); if (n < 0) return; grown.islands.set(n, k); for (const s of slabs) { s.inst.setMatrixAt(n, islandMatrix(plan.islands[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
     growWall: (n, k) => { if (!plan.walls[n]) return; grown.walls.set(n, k); for (const s of wallMeshes) { s.inst.setMatrixAt(n, wallMatrix(plan.walls[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
-    grow: (id, k) => { grown.structures.set(id, k); const r = records.get(id); if (r) lift(r.holder, k); },
+    grow: (id, k) => { grown.structures.set(id, k); const r = records.get(id); if (r) printAt(id, r, k); },
+    printState: (id) => prints.state(id, records.get(id)),
     growGate: (k, id = null) => { const n = id ? gates.findIndex((x) => x.id === id) : 0, g = gates[n]; if (!g) return; grown.gates[n] = k; if (n === 0) grown.gate = k; if (g.obj) lift(g.obj, k); if (k >= 1) g.built = true; },
     // a beat's hand on a landmark: show or hide it, or take its shown tier and clip actions
     reveal: (id) => { const r = records.get(id); if (r) r.holder.visible = true; },
@@ -345,6 +352,6 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       .map((s) => ({ id: s.id, cell: s.cell, pos: placer.toWorld([s.x, s.y ?? 0, s.z]).toArray() })),
     anchors: () => new Set([...plan.structures, ...(plan.sockets || [])].map((s) => s.cell).filter((c) => Number.isInteger(c) && c >= 0)),
     lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, visible: l.holder.visible, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
-    dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
+    dispose() { prints.dispose(); for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }
