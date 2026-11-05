@@ -145,6 +145,22 @@ export const LORE = {
     visual: 'orbital laser combat satellite, long central pulse store, wide cryocooler wings, black radiator vanes, a single '
       + 'large downward aperture on a gimbal, lit from below by a white beam striking a planet, hard sci-fi, 8k',
   },
+  // --- THE DEPOT (owner, 2026-11-05, round 8 note 7; the owner's A6 settlement models, assets/models/yushi-rover, yushi045, sai92) ----------
+  'yushi-rover': {
+    name: 'YŪSHI ROVER', tag: 'the six-wheeled biomass recovery rover',
+    body: 'A cream and graphite truck on six independent swing arms. A root rake at the nose feeds a cleated conveyor that lifts the fallen into a processor and two cylindrical tanks; at home it couples to a Bio-Pearl and unloads them as binder. It goes where the hull drops a flare and nowhere else.',
+    visual: 'six-wheeled autonomous recovery rover, cream and graphite panels with amber trim, root rake and cleated conveyor at the front, twin cylindrical storage tanks with gauges, independent swing-arm suspension',
+  },
+  yushi045: {
+    name: 'YŪSHI045 BIO-PEARL', tag: 'the organic-resource container, version 045',
+    body: 'A squat vessel on three stout legs: a pale ceramic upper shell over an armoured dark bowl, eight shoulder segments that light with what it holds and a sight chamber of olive slurry. Isao builds foundations, walls and repairs from the binder inside; together the pearls are everything the colony owns.',
+    visual: 'squat tripod storage vessel, pale ceramic upper shell, dark armored lower bowl, eight glowing cyan shoulder segments, narrow sight window with olive green slurry, side filling port and front dispensing coupling',
+  },
+  sai92: {
+    name: 'SAI-92', tag: 'the autonomous mineral-recovery gas hopper',
+    body: 'A cream, graphite and amber hopper on four shock-damped legs with anchor spikes, a central ore tank and cold-gas pods on jointed booms. It flies to a seam, lands, anchors and drills with a hybrid mining head, then flies the ore home to its service bay. Its name keeps the play on sai ku tsuu, to dig.',
+    visual: 'four-legged cold-gas hopper drone, cream graphite and amber, central ore tank with a window, four thruster pods on jointed booms, folding mining head with twin augers, landed on a hexagonal service bay',
+  },
   sol88: {
     name: 'SOL-88 SYZYGY', tag: 'the automated orbital laser the ARC-01 put up',
     body: 'Three nested containment cages turning round a central power core, converging only when they fire so a clear polar '

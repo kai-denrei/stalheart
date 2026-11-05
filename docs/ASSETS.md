@@ -35,3 +35,6 @@ Models by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/, reused w
 | Nih-Dairia mech (tripad v1.1, no clips; `runtime.js` kept, ported as `src/domain/mech-pose.js`; creature reference kai-denrei/lab-creatures) | `assets/models/nih-dairia-mech/` | `cd0b1349` | `docs/companions-assets.lock.json` (per-entry `baseUrl`) |
 | FEIDS-26 delivery capsule | `assets/models/feids26/` | `38eed564` | `docs/feids26-assets.lock.json` |
 | MX-06 Ridgeback | `assets/models/ridgeback/` | `38eed564` | `docs/feids26-assets.lock.json` |
+| YushiRover biomass recovery rover (LOD1 driven by its unchanged `runtime.js`, `src/fx/rover.js`; LOD2 pinned, not shown: a frozen pose) | `assets/models/yushi-rover/` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| Yūshi045 Bio-Pearl (LOD1 near, LOD2 far, the capacity shader through its unchanged `runtime.js`, `src/fx/bio-pearls.js`; ships UNPACKED: gltfpack drops its `_YUSHI` attribute, `scripts/build.mjs`) | `assets/models/yushi045/` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |
+| SAI-92 mining hopper and its service bay (LOD1 near, LOD2 far, static on the depot island this round) | `assets/models/sai92/` | `40c23fa4` | `docs/a6-settlement-assets.lock.json` |

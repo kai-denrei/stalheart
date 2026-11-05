@@ -263,6 +263,21 @@ export const BRIEFS = {
     id: 'build_chips', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['Every guidance chip we own came down with us.', 'Printing the chip plant. Its first run goes to the uplink: SOL passes closer together.'],
   },
+  // THE ROVER AND THE BIO-PEARLS (owner, 2026-11-05, round 8 note 7): the depot's print, the fourth pearl's, his hint the first time bodies lie on
+  // the ground with the depot standing (src/fx/rover-glue.js), and the word when the pearls are full
+  build_depot: {
+    id: 'build_depot', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['Printing the depot: three Bio-Pearls and a pad for the Yushi Rover.', 'From now on the biomass waits on the ground. The rover fetches it.'],
+  },
+  build_pearl: { id: 'build_pearl', face: 'glee', title: 'ISAO · THE DEPOT', lines: ['A fourth Bio-Pearl. Twelve tonnes more room.'] },
+  rover_flare: {
+    id: 'rover_flare', face: 'curious', title: 'COMMS · ISAO', once: true,
+    lines: ['Drop a flare where the bodies lie, F. The rover comes.', 'It brings the biomass home to the pearls. Nothing else does now.'],
+  },
+  storage_full: {
+    id: 'storage_full', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['The pearls are full. The rover waits with its load.', 'Spend some, or buy me a fourth pearl.'],
+  },
   build_launcher: {
     id: 'build_launcher', face: 'determined', title: 'COMMS · ISAO', once: true,
     lines: ['Printing the ARC-01 mass driver, pointed away from us.', 'When it stands I load SOL-88 on the sled and we put it up.'],

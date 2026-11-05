@@ -16,7 +16,7 @@ import { thumbSource, thumbKey, fitScale } from '../domain/board-thumbs.js';
 
 const T = BUILD_BOARD.thumb;
 const entry = (pred) => UNIT_ENTRIES.find((e) => pred(e) && e.model?.url)?.model ?? null;
-const modelOf = (src) => (src.draw === 'structure' ? entry((e) => e.needs?.perk === src.step)
+const modelOf = (src) => (src.draw === 'structure' ? entry((e) => (e.board ?? e.needs?.perk) === src.step)   // `board`: an entry that draws a card whose step has no perk of its own (the fourth Bio-Pearl, round 8)
   : src.draw === 'hull' ? entry((e) => e.id === 'mork')
   : src.draw === 'pet' && COMPANIONS.units?.[src.index]?.model ? { url: COMPANIONS.units[src.index].model } : null);
 
