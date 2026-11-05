@@ -4490,7 +4490,7 @@ export function initTdTab(root) {
     });
   }
   function terminalWorld() { return { perks: [...storyApi.perks()], sentries: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(wave), mechs: reinforcements?.state()?.phase === 'landed', pets: companions?.born() ?? [],
-      sector: sectorRun?.state()?.n ?? 0, sol88: !!story?.launch, ball: /^(party|over|done)$/.test(discoParty?.state()?.phase ?? '') }; }   // THE WHOLE TERMINAL (2026-10-27): what the run has reached, for the colony's entries (src/domain/bestiary.js unitState)
+      sector: sectorRun?.state()?.n ?? 0, base: storyQuery.base, sol88: !!story?.launch, ball: /^(party|over|done)$/.test(discoParty?.state()?.phase ?? '') }; }   // THE WHOLE TERMINAL (2026-10-27): what the run has reached, for the colony's entries (src/domain/bestiary.js unitState)
   const storyApi = {
     // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
     // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels

@@ -9,6 +9,7 @@ import { CREATURE_TIERS, tierSize } from './creature-enemies.js';
 import { SENTRIES } from './sentries.js';
 import { BASE_PROGRAMME } from './base-programme.js';
 import { STRUCTURES, KIT } from './base-layout.js';
+import { DOME_ISLANDS, DOME_STRUCTURES } from './dome-city.js';
 import { REINFORCEMENTS } from './reinforcements.js';
 import { COMPANIONS } from './companions.js';
 import { LASER_PLATFORMS, LASER_ORBIT } from './orbital-laser.js';
@@ -252,6 +253,14 @@ export const UNIT_ENTRIES = freeze([
     facts: [['SERIES', 'ISAO FIELDWORK / BIOMIMETIC SERIES 001'], ['SIZE', '6.6 x 1.8 x 7.6 m'], ['GAIT', `alternating tripod · ${COMPANIONS.units[3].top} m/s`], ['PLAY', 'roams · reaches · anchors · watches']], isao: [
       'Six limbs. One borrowed idea. I watched a Nih-Dairia for a long time, and the Builder Robot translated what I understood into carbon sleeves and ivory pads.',
       'It does not run and it does not dance. It walks to the hull when the hull is still, and stands off, the way she never did.',
+    ] },
+  // THE DOME CITY (owner, 2026-11-05, round 8 note 6: "a new layout for the main base: the dome city"; src/content/dome-city.js): on the books on
+  // the base that has it (?base=dome); the stage shows the habitat dome's one-draw distance tier
+  { id: 'dome-city', section: 'colony', name: 'DOME CITY', label: 'COLONY · THE SETTLEMENT', needs: { base: 'dome' },
+    model: { url: 'assets/models/dome-colony/habitat_d0_lod2.glb', clip: null },
+    facts: [['DOMES', `${DOME_ISLANDS.length} · ${[...new Set(DOME_STRUCTURES.filter((s) => s.island).map((s) => s.module))].join(' · ')}`], ['BRIDGES', `${DOME_STRUCTURES.filter((s) => s.anchor === 'frame').length} · 52 m, the deck 7.5 m up, the hull drives under`], ['THE SEVENTH', 'the Stålheart stands where the power dome would']], isao: [
+      'Six domes round the Stålheart: two habitats, two logistics halls, a biosphere and a fabrication dome. The colony came with them; I only had to unfold them.',
+      'Four bridges, fifty-two metres each, the deck seven and a half up. The hull goes under. Please go under.',
     ] },
   // --- the eight sentries, through the game's own look at the top tier (the stats rows come from src/towers.js on the card, not here) -----------
   ...SENTRIES.map((s) => ({ id: s.key, section: 'sentries', name: `${s.name.toUpperCase()} · SENTRY ${s.number}`, label: 'SENTRY', needs: { sentry: s.key }, tower: s.key,

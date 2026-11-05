@@ -151,7 +151,7 @@ export function noteSighting(record, id, date) {
 //   unitState       'full' once the run has what the entry needs (`needs`: always; perk, a programme perk held; sentry, an unlocked key; mechs, the
 //                   four landed; sector, a sector number reached; sol88, the launch; ball, the DAY 42 party; pet, the companion printed), else 'unseen'; the lab's host says full
 //   unitCard        what the card shows for a colony entry: the head, the name, the facts, the text, the locked note
-export const UNIT_NEEDS = Object.freeze(['always', 'perk', 'sentry', 'mechs', 'sector', 'sol88', 'ball', 'pet']);
+export const UNIT_NEEDS = Object.freeze(['always', 'perk', 'sentry', 'mechs', 'sector', 'sol88', 'ball', 'pet', 'base']);
 
 export function terminalRoster(hostile, units, sections) {
   const order = new Map(sections.map((s, k) => [s.id, k]));
@@ -164,7 +164,8 @@ export function terminalRoster(hostile, units, sections) {
 }
 
 // `world` { perks: iterable of perk ids, sentries: unlocked keys, mechs: the four landed, sector: the sector number reached, sol88: launched, ball: the party,
-//   pets: the companions' ids Isao has printed (2026-10-30) }
+//   pets: the companions' ids Isao has printed (2026-10-30), base: the base's layout, 'classic' or 'dome' (round 8 note 6: the dome city's entry is on
+//   the books on the base that has it) }
 export function unitState(entry, world = null, all = false) {
   if (all) return 'full';
   const n = entry.needs ?? {}, w = world ?? {}, has = (list, id) => !!list && (typeof list.has === 'function' ? list.has(id) : Array.from(list).includes(id));
@@ -176,6 +177,7 @@ export function unitState(entry, world = null, all = false) {
   if (n.sol88) return w.sol88 ? 'full' : 'unseen';
   if (n.ball) return w.ball ? 'full' : 'unseen';
   if (n.pet) return has(w.pets, n.pet) ? 'full' : 'unseen';
+  if (n.base) return w.base === n.base ? 'full' : 'unseen';
   return 'unseen';
 }
 

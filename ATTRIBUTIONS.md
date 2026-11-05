@@ -107,3 +107,7 @@ Models and animations by **jelaludo** — https://jelaludo.github.io/SentryTower
 - **K0-TECH-01** (`assets/models/k0-tech/`), revision `cd0b1349168beef51fef2601f93a8e4d612072c3`; pins `docs/companions-assets.lock.json`.
 - **The Nih-Dairia mech** (Nih-Dairia / Isao mechanical study, tripad v1.1; `assets/models/nih-dairia-mech/`, with its unchanged `runtime.js` pose script, ported as `src/domain/mech-pose.js`), revision `cd0b1349168beef51fef2601f93a8e4d612072c3`; pins `docs/companions-assets.lock.json`. Mechanical model by jelaludo; creature concept reference: kai-denrei / lab-creatures (https://kai-denrei.github.io/lab-creatures/?specimen=nih-dairia).
 - **FEIDS-26 delivery capsule** and **MX-06 Ridgeback** (`assets/models/feids26/`, `assets/models/ridgeback/`), revision `38eed564831b1be30e406f261da7052485eeeb87`; pins `docs/feids26-assets.lock.json`.
+
+## Models by jelaludo — the Dome Colony (the Dome City)
+
+Models by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/ ([source repository](https://github.com/jelaludo/SentryTowers_A6)), the owner's own, reused with attribution under the upstream `ASSET-LICENSE.md`. The Dome Colony modules the base's dome city is composed of (`?base=dome`, round 8 note 6): the habitat, biosphere, fabrication, logistics, research and power domes and the 52 m long bridge (`assets/models/dome-colony/`, D0, LOD1 and LOD2), revision `40c23fa4c732178efd7c36c6557216ea76b3ccb7`; pins `docs/a6-settlement-assets.lock.json`. The city's composition follows the author's `assets/dome-city/layout.json` at the same revision.

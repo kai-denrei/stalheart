@@ -2583,6 +2583,44 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const l1=(await st()).laser;console.log(`  round9: SOL ${JSON.stringify(seen.filter(x=>x.b).slice(0,4))} burned ${JSON.stringify(l1.burned)}`);
  assert.ok(seen.some(x=>x.b&&x.s),'an automated burn leaves from a source in the sky');
  for(const k of ['towers','walls','tank','structures','heart'])assert.equal(l1.burned[k]??0,0,`the automated pass burned no ${k}`);
+ } else if(args.includes('--dome-look')) {
+ // THE DOME CITY, LOOKED AT (round 8 note 6, src/content/dome-city.js; no assertions but a page error): run it once with BASE=classic and once
+ // with BASE=dome. The frame's cost on the base camera a skipped opening starts on (the perf readout's draw calls, triangles, frame and gpu ms,
+ // the median of SAMPLES half-second samples), then the hull set down at each spot below with the chase camera behind it, a still each, and
+ // whether that eye stands inside a dome (within its 14.6 m, under its 36 m). A spot is frame metres (x, z) and a heading; a hull 22 m out of a
+ // dome facing away from it puts the chase camera between the two, the worst case for the camera's clip
+ const T='window.__stalheartTest',tag=process.env.BASE||'classic',n=+process.env.SAMPLES||12;
+ await go(`dome-look-${tag}`,'index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&fps=1#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(6000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ const perf=[];for(let k=0;k<n;k++){await delay(700);const p=await evaluate(`(()=>{const p=${T}.state().performance;return p&&{calls:p.calls,triangles:p.triangles,frameMs:p.frameMs,gpuMs:p.gpuMs}})()`);if(p)perf.push(p);}
+ const med=(k)=>{const v=perf.map(p=>p[k]).filter(x=>x!=null).sort((a,b)=>a-b);return v.length?+v[v.length>>1].toFixed(2):null;};
+ const lod=await evaluate(`JSON.stringify((${T}.state().storyLod||[]).filter(l=>/^(dome|bridge)/.test(l.id)).map(l=>l.id+':'+l.shown))`);
+ console.log(`DOME LOOK ${tag} base camera: ${perf.length} samples, median ${med('calls')} calls, ${med('triangles')} triangles, ${med('frameMs')} ms frame, gpu ${med('gpuMs')} ms; tiers ${lod}`);
+ current=`dome-look-${tag}-base`;await finish();
+ // and from above (--base-look's still): every island and dome in the frame on both layouts, so the difference is the city's own cost
+ await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);perf.length=0;
+ for(let k=0;k<n;k++){await delay(700);const p=await evaluate(`(()=>{const p=${T}.state().performance;return p&&{calls:p.calls,triangles:p.triangles,frameMs:p.frameMs,gpuMs:p.gpuMs}})()`);if(p)perf.push(p);}
+ console.log(`DOME LOOK ${tag} from above: ${perf.length} samples, median ${med('calls')} calls, ${med('triangles')} triangles, ${med('frameMs')} ms frame, gpu ${med('gpuMs')} ms; tiers ${await evaluate(`JSON.stringify((${T}.state().storyLod||[]).filter(l=>/^(dome|bridge)/.test(l.id)).map(l=>l.id+':'+l.shown))`)}`);
+ current=`dome-look-${tag}-top`;await finish();
+ // the frame's radius and yaw off two holders (src/core/breach-surface.js: unit = (x' sin(d/R)/d, cos(d/R), z' sin(d/R)/d), (x', z') the frame turned by the yaw)
+ const spots=[['corridor',0,-34,[0,-1]],['under-bridge-w1',-80,-40,[1,0]],['dome-nw',-58,-80,[1,0]],['dome-w',-58,0,[1,0]],['dome-sw',-58,80,[1,0]],['dome-ne',58,-80,[-1,0]],['dome-e',58,0,[-1,0]],['dome-se',58,80,[-1,0]],['ne-court',62,-46,[0,1]],['cargo-court',44,40,[0,-1]],['launch-court',-30,-70,[-1,0]]];
+ const domes=await evaluate(`JSON.stringify(['dome-nw','dome-w','dome-sw','dome-ne','dome-e','dome-se','stalheart'].map(id=>${T}.showcase.footprint(id)?.at??null))`).then(JSON.parse);
+ if(tag==='dome'&&domes[4]){
+  const [ex,ey,ez]=domes[4],th=Math.acos(Math.min(1,ey/Math.hypot(ex,ey,ez))),R=80/th,yaw=Math.atan2(-ez,ex),cy=Math.cos(yaw),sy=Math.sin(yaw);
+  const unit=(x,z)=>{const xr=x*cy+z*sy,zr=-x*sy+z*cy,d=Math.hypot(xr,zr),a=d/R,k=d>1e-9?Math.sin(a)/d:1/R;return [xr*k,Math.cos(a),zr*k];};
+  const frameOf=(u)=>{const l=Math.hypot(...u),a=Math.acos(Math.min(1,u[1]/l)),h=Math.hypot(u[0],u[2])||1,d=a*R,xr=u[0]/h*d,zr=u[2]/h*d;return [xr*cy-zr*sy,xr*sy+zr*cy,(l-1)*R];};
+  const dc=[[-80,-80],[-80,0],[-80,80],[80,-80],[80,0],[80,80]];
+  for(const [name,x,z,h] of spots){
+   const u=unit(x,z),to=unit(x+h[0]*10,z+h[1]*10),dir=to.map((v,i)=>v-u[i]);
+   const placed=await evaluate(`${T}.showcase.placeAt(${JSON.stringify(u)})`);
+   await evaluate(`${T}.showcase.look(${JSON.stringify(dir)});${T}.showcase.follow()`);await delay(2500);
+   const ss=await evaluate(`${T}.seatState()`),eye=frameOf(ss.pos),tank=frameOf(ss.tankPos);
+   const inside=dc.map(([cx,cz],k)=>Math.hypot(eye[0]-cx,eye[1]-cz)<14.6&&eye[2]<36?['dome-nw','dome-w','dome-sw','dome-ne','dome-e','dome-se'][k]:null).filter(Boolean);
+   console.log(`DOME LOOK ${name}: hull at (${tank[0].toFixed(1)}, ${tank[1].toFixed(1)}) cell ${placed}, eye (${eye[0].toFixed(1)}, ${eye[1].toFixed(1)}) ${eye[2].toFixed(1)} m up${inside.length?' INSIDE '+inside.join(','):''}`);
+   current=`dome-look-${tag}-${name}`;await finish();
+  }
+ }
  } else if(args.includes('--base-look')) {
  // a still of the finished base from above, for placing things (no assertions)
  const T='window.__stalheartTest';
