@@ -2426,6 +2426,35 @@ try{
  console.log(`  round16: lance re-aims ${calls} in 3 s, its start travelled ${moved.toExponential(2)} with the muzzle`);
  assert.ok(calls>=10,'an automated Lancer\'s held beam is re-aimed every frame');
  await evaluate(`${T}.showcase.ground(${sock[0]},1.2,2.4)`);await delay(1200);current='round16-lancer';await finish();
+ } else if(args.includes('--director')) {
+ // THE DIRECTOR BOARD (owner, 2026-11-05, round 5 note 3; labs.html#director, src/labs/director-tab.js): the axis and the six lanes as the tables have
+ // them, every source the board names found in the served files (the hover's file:line), the door redrawn at 8 and back at 7, 0 page errors.
+ // DIRECTOR_SHOTS=<dir> also saves the whole board at its full width (director-board-7.png, director-board-8.png) and the hover (director-hover.png)
+ const D='window.__stalheartDirectorTest',shotsDir=process.env.DIRECTOR_SHOTS||null;if(shotsDir)mkdirSync(shotsDir,{recursive:true});
+ const {directorTables}=await import('../src/labs/director-tab.js'),{directorBoard}=await import('../src/domain/director-board.js'),tables=directorTables();
+ const full=async(file)=>{if(!shotsDir)return;const m=await evaluate('(()=>{const b=document.querySelector("#tab-director .dl-board"),l=document.querySelector("#tab-director .director-lab");return {w:Math.ceil(b.scrollWidth+40),h:Math.ceil(l.scrollHeight)};})()');
+  await send('Emulation.setDeviceMetricsOverride',{width:m.w,height:Math.min(m.h,6000),deviceScaleFactor:1,mobile:false});await delay(400);
+  writeFileSync(join(shotsDir,file),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));console.log(`  director: ${join(shotsDir,file)} ${m.w}x${Math.min(m.h,6000)}`);
+  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});await delay(300);};
+ await go('director-tab','labs.html?sw=0&acceptance=1#director');
+ await until(`!!${D}`,30000);
+ for(const door of [7,8]){
+  const want=directorBoard(tables,{doorAt:door}).counts,got=await evaluate(`(${D}.door(${door}),${D}.counts())`);
+  console.log(`  director: door ${door}: axis ${got.axis.length} columns, lanes ${JSON.stringify(got.lanes)}`);
+  assert.equal(got.axis.length,want.columns,`door ${door}: the axis has every column`);
+  for(const l of ['sectors','prints','drops','cutscenes','isao','jumps'])assert.equal(got.lanes[l],want[l],`door ${door}: the ${l} lane draws every row`);
+  assert.ok(got.lanes.prints>=16&&got.lanes.cutscenes>=19&&got.lanes.jumps===13,`door ${door}: sixteen prints, the shots, the jumps`);
+  const names=await evaluate(`${D}.door(${door})`);assert.equal(names[door-1],`${door}:THE BACK DOOR`,`door ${door}: the door at ${door}`);assert.equal(names.at(-1),`${door+2}:BOTH WALLS`,'BOTH WALLS two after it');
+  await evaluate('document.querySelector("#tab-director").scrollTop=0');await delay(200);current=`director-door-${door}`;await finish();await full(`director-board-${door}.png`);
+ }
+ const src=await evaluate(`${D}.sources()`);console.log(`  director: ${src.total} sources in ${src.files} files, missing ${src.missing.length}`);
+ assert.equal(src.missing.length,0,`every source is found in the served files (${src.missing.join('; ')})`);
+ await evaluate(`${D}.door(7)`);await delay(200);
+ const tipText=await evaluate(`${D}.hover("print-radar")`);console.log(`  director: hover RADAR: ${tipText.replace(/\s+/g,' ').slice(0,160)}`);
+ assert.match(tipText,/src\/content\/base-programme\.js:\d+/,'the hover names the step\'s file:line');assert.match(tipText,/"sector":2/,'and its raw when');
+ current='director-hover';await finish();if(shotsDir)writeFileSync(join(shotsDir,'director-hover.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+ // a jump is a link into the game
+ assert.match(await evaluate('document.querySelector("#tab-director [data-row=jump-arena]").getAttribute("href")'),/index\.html\?skip=defence&sector=8&boss=1#td/,'the ARENA jump opens the game there');
  } else if(args.includes('--voice')) {
  // ISAO'S VOICE (owner, 2026-10-03): the Workshop's voice tab lists every trigger with the moments that raise it, plays a line, and its
  // switches are the game's own picks; in the story Isao says a recorded line when his moment comes

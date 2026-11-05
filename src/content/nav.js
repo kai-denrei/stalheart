@@ -48,7 +48,7 @@ export const NAV_GROUPS = Object.freeze([
 // the label as before; `row` is the drawer's row (src/fx/shell-nav.js ROW_LABELS)
 const LABS = [['units', 'units', 'creatures'], ['swarm', 'swarm', 'creatures'], ['boss', 'boss', 'creatures'], ['voice', 'voice', 'creatures'], ['audio', 'audio', 'creatures'],
   ['sentry', 'sentry / impact', 'weapons'], ['laser', 'orbital laser', 'weapons'], ['gunship', 'gunship', 'weapons'], ['beam', 'beam', 'weapons'], ['portal', 'breach', 'weapons'],
-  ['story', 'story', 'world'], ['metal', 'metal', 'world'], ['debrief', 'debrief', 'world'], ['sim', 'sim', 'world']];
+  ['story', 'story', 'world'], ['director', 'director', 'world'], ['metal', 'metal', 'world'], ['debrief', 'debrief', 'world'], ['sim', 'sim', 'world']];
 
 export const NAV_ENTRIES = Object.freeze([
   { id: 'story', label: 'Story', title: 'the story opening: land, print the Rotor, hold the gate', mode: 'playtest', group: 'story', target: { page: 'index.html', hash: 'td', params: { story: '1', grow: '1' } } },
