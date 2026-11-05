@@ -3486,6 +3486,45 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const k1=(await st()).kicks;console.log(`  round13: drove ${moved.toFixed(4)} units in 12 s, ${still} still samples of 119, kicks ${k1-k0}`);
  assert.ok(moved>0.05,'the hull drives');assert.ok(still<40,`it never sits ground against a wall for long (${still} still samples)`);
  current='round13-drive';await finish();
+ } else if(args.includes('--nest-lag')) {
+ // THE NEST COMES ROUND THE LANDER (owner, 2026-11-05, round 7, note 1: "a lag between clearing a nest and the cargo being available"; src/domain/guard-aggro.js
+ // hullField, src/fx/enemy-step.js guardField). Measured first: with the hull parked at a site's stand and a player killing what comes within reach, the swarm
+ // went down in ~25 s and the last three to ten guards milled on the lander's far side, out of sight, holding the cargo another 40 s; nothing else lagged (the
+ // flag, the pickup and the state all on the frame the count fell under STORY_EXPEDITIONS.clearBelow, automated() true every frame, no queued guard).
+ // ?lab=1: the lab's immortal hull (src/lab.js), so the parked hull is not lost to the touches while it waits. WATCH: the hull parked, nobody killing for WATCH_S: every guard comes to the hull (none left beyond FAR cells). PLAY: the nearest guard within KILL_CELLS
+ // killed every 0.3 s: the cargo is picked up within PLAY_S, on the frame the count fell (tPickup - tLastKill under 1.5 s). Timeline JSON in NEST_OUT.
+ const T='window.__stalheartTest',site=process.env.SITE||'rocket-a',K=+(process.env.KILL_CELLS||3),FAR=+(process.env.FAR||3.5),out=process.env.NEST_OUT||join(output,'nest-lag.json'),{STORY_EXPEDITIONS}=await import('../src/content/story-defaults.js');
+ await go('nest-lag',`index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition&lab=1${process.env.NEST_QUERY||''}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`${T}.showcase.nest("${site}").guards.length>0 && ${T}.showcase.nest("${site}").queued===0`,60000);
+ const stand=await evaluate(`${T}.cargoStand("site","${site}")`);assert.ok(stand>=0,`a stand cell for ${site}`);
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
+ await evaluate(`${T}.placeTank(${stand})`);await delay(300);
+ const ring=(g)=>{const h=[0,0,0,0,0];for(const x of g)h[Math.min(4,Math.floor(x.hull/1.5))]++;return h.join('/');};   // guards by hull distance: <1.5 / <3 / <4.5 / <6 / beyond, cells
+ const w0=await evaluate(`${T}.showcase.nest("${site}")`);
+ await delay(+(process.env.WATCH_S||20)*1000);
+ const w1=await evaluate(`${T}.showcase.nest("${site}")`),far=w1.guards.filter(x=>x.hull>FAR);
+ console.log(`NEST LAG watch ${site}: ${w1.guards.length} guards; by hull distance (1.5-cell rings) ${ring(w0.guards)} -> ${ring(w1.guards)}; beyond ${FAR} cells ${far.length} (${far.map(x=>`${x.type}@nest${x.nest}/hull${x.hull}`).join(' ')})`);
+ await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__nestLog=[],t0=performance.now();const tick=()=>{const p=T.showcase.nest(${JSON.stringify(site)});L.push({w:+((performance.now()-t0)/1000).toFixed(3),n:p.guards.length,q:p.queued,st:p.state,fl:p.flag,ca:!!p.carrying,auto:p.auto,hull:p.hull});if(L.length<20000&&!p.carrying)requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
+ const kills=[],k0=Date.now();
+ while(Date.now()-k0<+(process.env.PLAY_S||60)*1000){
+  if(await evaluate(`!!${T}.showcase.nest("${site}").carrying`))break;
+  if(await evaluate(`${T}.showcase.killGuards("${site}",${K})`))kills.push(await evaluate('window.__nestLog.at(-1)?.w??0'));
+  await delay(300);
+ }
+ await delay(1000);
+ const L=await evaluate('window.__nestLog'),first=(f)=>L.find(f)??null,cb=STORY_EXPEDITIONS.clearBelow;
+ const tLastKill=first(x=>x.n<cb),tCleared=first(x=>x.st!=='guarded'),tFlag=first(x=>x.fl),tPickup=first(x=>x.ca),ten=first(x=>x.n<=10);
+ const res={site,K,watch:{before:ring(w0.guards),after:ring(w1.guards),beyond:far.length},kills:kills.length,lastKill:kills.at(-1)??null,tenLeft:ten?.w??null,tLastKill:tLastKill?.w??null,tCleared:tCleared?.w??null,tFlag:tFlag?.w??null,tPickup:tPickup?.w??null,
+  autoFalse:L.filter(x=>!x.auto).length,queued:Math.max(0,...L.map(x=>x.q)),frames:L.length,hull:L[0]?.hull,trace:L.filter((x,i,a)=>i===0||x.n!==a[i-1].n||x.st!==a[i-1].st).map(x=>[x.w,x.n,x.q,x.st,x.fl?1:0,x.ca?1:0])};
+ writeFileSync(out,JSON.stringify(res,null,1));
+ console.log('NEST LAG '+JSON.stringify({...res,trace:undefined}));
+ assert.equal(far.length,0,`the nest comes for the parked hull: no guard left beyond ${FAR} cells after the watch (${far.map(x=>`${x.type}@nest${x.nest}/hull${x.hull}`).join(' ')})`);
+ assert.ok(tPickup,`the cargo is picked up within the play (${JSON.stringify(res.trace.slice(-6))})`);
+ assert.ok(tPickup.w-tLastKill.w<1.5,`the pickup on the count's fall: ${(tPickup.w-tLastKill.w).toFixed(2)} s (target under 1.5)`);
+ assert.ok(tPickup.w-ten.w<+(process.env.TAIL_S||6),`the last ten guards come and go within ${process.env.TAIL_S||6} s: ${(tPickup.w-ten.w).toFixed(2)} s (6.4 s on the base without the field, 2.4-2.5 s with it)`);
+ current='nest-lag';await finish();
  } else if(args.includes('--nest-guards')) {
  // THE SMALL REED AT EACH NEST (owner, 2026-10-16: 'let's put a small Reed at each cargo spot too'; STORY_EXPEDITIONS.sites guards with family/tier,
  // src/fx/expedition-glue.js openSite): on the expedition page each open site has its guards up, one of them a Reed of the small tier with a creature

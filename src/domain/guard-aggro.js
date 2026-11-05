@@ -10,14 +10,26 @@
 // NEVER UNDER THE LANDER (owner, 2026-10-07: the first 'nest cleared' took 20 s+ "as if an invisible enemy remained"): the nest's
 // cells include the ones under the lander's own solid footprint, where a guard is drawn inside the model and the hull cannot drive in to
 // ram it; `guard.avoid(point)` (the base's solidAt) strikes those cells off the exits, unless they are all there is.
+// ROUND THE LANDER (owner, 2026-11-05, round 7, note 1: "a lag between clearing a nest and the cargo being available"; measured with --nest-lag): the
+// chase took only the exits nearer the hull as the crow flies, so a guard on the lander's far side, whose nearer cells are all under the lander, found
+// none and milled in the nest out of sight; with the hull parked at the site the last three to ten guards held the cargo 40 s after the swarm was down,
+// dying one by one as they wandered into reach. `field` (hullField: walking hops to the hull's cell over the floor a guard may stand on) gives such a
+// guard the exits that are fewer hops from the hull, round the lander; without a field, or off it, the crow's exits as before.
+export function hullField(adj, from, walkable, maxHops) {
+  const hops = new Map([[from, 0]]); let ring = [from];
+  for (let k = 1; k <= maxHops && ring.length; k++) { const next = []; for (const c of ring) for (const nb of adj(c)) if (!hops.has(nb) && walkable(nb)) { hops.set(nb, k); next.push(nb); } ring = next; }
+  return hops;
+}
+
 const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
 
-export function guardExits({ exits: all, centers, guard, cur, hull, aggro }) {
+export function guardExits({ exits: all, centers, guard, cur, hull, aggro, field = null }) {
   if (!all.length) return [cur];
   const clear = guard.avoid ? all.filter((c) => !guard.avoid(centers[c])) : all, exits = clear.length ? clear : all;
   const r2 = (guard.r * aggro) ** 2, inNest = (c) => d2(centers[c], guard.c) < guard.r * guard.r;
   if (hull && d2(hull, guard.c) < r2) {
-    const here = d2(centers[cur], hull), closer = exits.filter((c) => d2(centers[c], hull) < here);
+    const here = d2(centers[cur], hull), h = field?.get(cur), walk = h == null ? [] : clear.filter((c) => (field.get(c) ?? Infinity) < h);
+    const closer = walk.length ? walk : exits.filter((c) => d2(centers[c], hull) < here);
     if (closer.length) { if (!inNest(cur) || closer.some((c) => !inNest(c))) { guard.trail ??= []; if (guard.trail.at(-1) !== cur) guard.trail.push(cur); } return closer; }
   }
   const stay = exits.filter(inNest);

@@ -14,7 +14,7 @@ import { METRES_PER_CELL } from '../core/stage-units.js';
 import { holeFloor, lipDepth } from '../domain/hole-floor.js';   /* the bowl's depth under a body: nothing hovers over a hole (round 5, note 6a) */
 import { CONTENT } from '../content/runtime.js';
 import { record } from '../diagnostics.js';
-import { guardExits } from '../domain/guard-aggro.js';
+import { guardExits, hullField } from '../domain/guard-aggro.js';
 import * as THREE from '../../vendor/three.module.js';
 import { BLOCKED, bfsDist } from '../dungeon.js';
 import { huntExits } from '../domain/hunters.js';
@@ -294,6 +294,17 @@ export function createEnemyStep(host) {
     if (hunt && huntCur === cur && tNow - huntAt < 1) return;
     hunt = bfsDist(host.graph().adj, [cur], (i) => host.dungeon().tags[i] !== BLOCKED); huntAt = tNow; huntCur = cur;
   }
+  // THE NEST'S WAY ROUND THE LANDER (round 7, note 1; src/domain/guard-aggro.js hullField): the walking hops from the hull's cell over the floor a guard
+  // may stand on (no rock, nothing solid of the base), out to the farthest nest's aggro reach; made when a guard first asks after the hull changes cell
+  let nestField = null, nestFieldCur = -1, nestFieldHops = 0;
+  function guardField(guard) {
+    const cur = host.player?.cur, hops = Math.ceil(guard.r * STORY_EXPEDITIONS.aggro / host.cellSide()) + 4;
+    if (!(cur >= 0)) return null;
+    if (nestField && nestFieldCur === cur && nestFieldHops >= hops) return nestField;
+    const C = host.graph().centers, tags = host.dungeon().tags;
+    nestField = hullField((c) => host.graph().adj[c], cur, (c) => tags[c] !== BLOCKED && !guard.avoid?.(C[c]), hops); nestFieldCur = cur; nestFieldHops = hops;
+    return nestField;
+  }
   // THE SOFT HUNT (owner, 2026-10-18, round three, note 2: "the weaker units (white and yellows) need to be faster and more aggressive towards a) priority 1
   // the Tank, they flank and surround and try to attack it although they cannot, or b) the gates, whichever is closer"; src/fx/soft-hunt.js, SOFT_HUNT). It
   // replaces PEARL_HUNT (2026-10-16: within 10 cells by the crow's flight, at the tank's cell): the goal by walking distance, the faster walk at the hull, the ring
@@ -438,7 +449,7 @@ export function createEnemyStep(host) {
         if (!pool && hunt && (e.hunter || softHunt.wants(e))) { const h = huntExits(exits, hunt, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js); a soft one too, when the hull is its goal (SOFT_HUNT)
         if (!pool) pool = seekExits(exits, host.dungeon().distToHeart, e.cur, host.whim()(), WALK_BIAS);   // the walk leans on the heart (WALK_BIAS; owner, 2026-10-15: "a much stronger bias to head towards the base")
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
-        if (e.guard) pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull: host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, aggro: STORY_EXPEDITIONS.aggro }); else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }
+        if (e.guard) { const hull = host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, near = hull && Math.hypot(hull[0] - e.guard.c[0], hull[1] - e.guard.c[1], hull[2] - e.guard.c[2]) < e.guard.r * STORY_EXPEDITIONS.aggro; pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull, aggro: STORY_EXPEDITIONS.aggro, field: near ? guardField(e.guard) : null }); } else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }
         e.next = pool.length ? pool[Math.floor(host.whim()() * pool.length)] : e.cur;
       }
       const a = host.graph().centers[e.cur];

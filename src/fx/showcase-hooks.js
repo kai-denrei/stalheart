@@ -20,7 +20,7 @@ import { dioramaCast } from './finale-diorama.js';
 
 export function createShowcaseHooks(host) {
   const { camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall, explosions, gameBreaches, storyApi,
-    gunshipFar, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao } = host;
+    gunshipFar, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, killCreature } = host;
   const hooks = {
     ready: () => {
       if (!host.story() || !host.storyBase() || !automated() || host.playerMesh()?.userData.loading || host.deploy()) return false;
@@ -228,6 +228,21 @@ export function createShowcaseHooks(host) {
     // a structure's holder point (its pad or its body), whether the base calls it solid, and how many lattice cells within `cells` of it are
     footprint: (id, cells = 4) => { const sb = host.storyBase(), st = sb?.structure?.(id); if (!st?.holder) return null; const at = st.holder.getWorldPosition(new THREE.Vector3()).toArray(), g = host.graph(), r = cells * host.cellSide(); let n = 0, near = 0; for (const c of g.centers) { if (Math.hypot(c[0] - at[0], c[1] - at[1], c[2] - at[2]) > r) continue; near++; if (sb.solidAt(c)) n++; } return { id, atSolid: !!sb.solidAt(at), solid: n, near }; },
     strays: (hops = 60) => { const d = host.dungeon()?.distToHeart ?? []; let near = 0, far = 0; for (const e of enemies) if (e.alive && !e.guard && !e.harmless) { if (d[e.cur] > hops) far++; else near++; } return { near, far }; },   // hostiles by walking hops from the heart (--canyon-again TIMELINE)
+    // A NEST AND ITS CARGO (--nest-lag; round 7, note 1): a site's state, flag and carry, its live guards (soft or hard, how far from the nest's
+    // centre in nest radii and from the hull in cells) and its queued ones, the hull's distance and reach in cells, the clock, automated()
+    nest: (id) => {
+      const st = host.story(), s = st?.siteCells?.[id], cs = host.cellSide(), at = s && host.graph().centers[s.cell], d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+      const guards = enemies.filter((e) => e.alive && e.guard?.site === id).map((e) => ({ type: e.type, ram: !!e.spec.rammable, nest: +(d(e.pos, e.guard.c) / e.guard.r).toFixed(2), hull: +(d(e.pos, player.pos) / cs).toFixed(2), cur: e.cur }));
+      return { state: st?.expeditions?.sites.find((x) => x.id === id)?.state ?? null, flag: !!st?.glue?.state().flags.some((f) => f.id === id), carrying: st?.expeditions?.carrying ?? null, auto: automated(), shot: shotId() ?? null,
+        queued: spawnQueue.filter((q) => q.guard?.site === id).length, hull: at ? +(d(player.pos, at) / cs).toFixed(2) : -1, reach: st?.glue?.reachOf?.(id) ?? null, guards };
+    },
+    // a site's guards killed: every one (the old killGuards, no death fx), or with `cells` the nearest within that many cells of the hull, of a
+    // kind ('soft' rammable, 'hard' not, 'any'), as a kill (fx); returns how many
+    killGuards: (id, cells = Infinity, kind = 'any') => {
+      const d = (e) => Math.hypot(e.pos[0] - player.pos[0], e.pos[1] - player.pos[1], e.pos[2] - player.pos[2]), mine = enemies.filter((e) => e.alive && e.guard?.site === id && (kind === 'any' || (kind === 'soft') === !!e.spec.rammable));
+      if (!Number.isFinite(cells)) { for (const e of mine) killCreature(e, false); return mine.length; }
+      const e = mine.filter((x) => d(x) < cells * host.cellSide()).sort((a, b) => d(a) - d(b))[0]; if (e) killCreature(e, true); return e ? 1 : 0;
+    },
     // THE ARC-01'S MAGNETS (round 7, note 6; --colony): the launch beat's state (its `lit` levels and `glow` intensities) and what the standing
     // launcher's two magnet meshes wear between launches, the emissiveIntensity of each material on them
     launch: () => host.story()?.launch?.state() ?? null,
