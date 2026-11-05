@@ -495,6 +495,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         sw.life[i * 4 + 1] = impactStep(sw, i, j, t);
       }
       hubTable(sw); sw.advance(dt);
+      // IN THE BOWL (owner, 2026-11-05, round 5, note 6a): each body lowered by the ground's depth under its drawn centre (the seam's hubs.sink; 0 off the holes)
+      if (hubs?.sink) for (let i = 0; i < sw.count; i++) if (sw.active[i]) { const pos = sw.positionInto(i, POS); sw.sink[i] = hubs.sink(sw.hub[i], pos[0], pos[2]); }
       if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); p.backs?.sync(); }
     }
     motion?.sample(pools, dt);

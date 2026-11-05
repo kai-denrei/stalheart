@@ -88,3 +88,39 @@ print('Enemy step: the queue released on its clock, the walk, a kill and the boa
   bodyAt = 16; t += 1 / 30; k.updateEnemies(1 / 30, t); assert.equal(e.cur, 16, 'and follows it');
   print('Enemy step: a body-led record takes its body\'s point and the cell under it, and does not walk.');
 }
+
+// OUT OF THE HOLE, ROUND 5 (owner, 2026-11-05, note 6; EMERGENCE, src/domain/hole-floor.js): at a breach's own cell a record is born where it rises (past the lip,
+// not in the hole's centre, where a body made with it crossed the hole to reach it), hidden for `climb` after its delay, then rises over `pop` from the
+// bowl's depth under the lip to where it stands, with no step at the end; a dot cloud is announced by a blob at the lip, a Pearl body is not (it is its own)
+{
+  const { EMERGENCE } = await import(R + 'src/content/story-defaults.js'), { holeFloor } = await import(R + 'src/domain/hole-floor.js'), { CONTENT } = await import(R + 'src/content/runtime.js');
+  assert.deepEqual([EMERGENCE.climb, EMERGENCE.pop, EMERGENCE.rim, EMERGENCE.out], [0.5, 0.25, 0.95, 1.35], 'faster: climb 1.1 -> 0.5, pop 0.3 -> 0.25 (the rim and the start as they were)');
+  const go = (spec) => {
+    const log = [], w = world(log), host = { ...w.fixed }, emerged = [];
+    for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); }
+    const c = w.st.graph.centers[20], sp = { ci: 20, alive: true, obj: new THREE.Object3D(), hp: 3 }, s = w.st.cellSide;
+    sp.obj.userData.breach = {}; sp.obj.userData.cells = 1;
+    const hole = { c, x: [0, 0, 1], z: [-c[1], c[0], 0], s, open: CONTENT.breach.craterRadius };
+    host.gameBreaches = { ready: () => true, floors: () => [hole], craters: () => [{ p: c, r: CONTENT.breach.craterRadius }] };
+    host.spawnPoints = [sp]; host.spawnQueue = [{ type: 'phage', sp, at: 0, spread: 0.6, ...(spec ? { spec } : {}) }]; host.emerge = (o) => emerged.push(o);
+    if (spec) host.creatures = () => ({ full: () => false, dress: (q) => q, step() {}, kill() {}, proxy: () => { const o = new THREE.Object3D(); o.material = { opacity: 1 }; o.userData.lift = 0; return o; }, spawn: () => true });
+    const k = createEnemyStep(host); let t = 0;
+    k.updateEnemies(1 / 60, (t += 1 / 60));
+    const e = w.fixed.enemies[0], born = e.pos.slice(), d = Math.hypot(...born.map((v, i) => v - c[i])) / (CONTENT.breach.craterRadius * s);
+    const track = [];
+    while (e.emergeAge < 1.2 && t < 5) { k.updateEnemies(1 / 60, (t += 1 / 60)); track.push([t, e.obj.position.length() - 1, e.obj.material.opacity]); }
+    k.updateEnemies(1 / 60, (t += 1 / 60)); const after = e.obj.position.length() - 1;
+    return { e, emerged, d, track, after, hole };
+  };
+  const dots = go(null), ENEMY = imps.ENEMY_SPEC, pearl = go({ ...ENEMY.phage, body: 'pearl', pearl: 'white' });
+  assert.equal(dots.emerged.length, 1, 'a dot cloud is announced by a blob at the lip'); assert.equal(pearl.emerged.length, 0, 'a Pearl body rises without the blob');
+  for (const r of [dots, pearl]) {
+    assert(r.d >= EMERGENCE.out * 0.999, `born where it rises, past the lip (${r.d.toFixed(2)} crater radii), not in the hole's centre`);
+    const lipFloor = r.e.riseFrom + r.e.scale0;
+    assert(lipFloor < 0 && lipFloor > -0.2 * r.hole.s, `the rise starts one body under the bowl's depth below the lip (${(lipFloor / r.hole.s).toFixed(3)} crater radii), not the throat's -0.55`);
+    const seen = r.track.find(([, , o]) => o >= 0.5), hidden = r.track.filter(([, , o]) => o === 0).length / 60;
+    assert(Math.abs(hidden - EMERGENCE.climb) < 0.05, `hidden for the climb (${hidden.toFixed(3)} s)`); assert(seen[0] - r.track[0][0] < EMERGENCE.climb + EMERGENCE.pop, 'seen within climb + pop');
+    const last = r.track.at(-1)[1]; assert(Math.abs(r.after - last) < 0.02 * r.hole.s, `no step at the end of the rise (${((r.after - last) / r.hole.s).toFixed(4)} crater radii)`);
+  }
+  print('Enemy step: out of the hole, a record born past the lip, hidden for the climb, rising from the lip\'s wall with no step; the blob for a dot cloud only.');
+}

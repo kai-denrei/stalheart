@@ -187,6 +187,10 @@ assert.equal(phaseState(.3), 'EXTEND');
   assert.equal(model.levels[2].core, null, 'no inner core at the lowest level');
   assert(model.levels[0].coreGeometry.index === model.levels[1].geometry.index && model.levels[1].coreGeometry.index === model.levels[2].geometry.index, 'each inner core one resolution down');
   const tris = model.levels.map((l) => l.geometry.index.count / 3); assert(tris[0] > 10000 && tris[1] > 2000 && tris[2] < 600, `hulls ${tris}`);
+  // round 5 (note 6a): the bowl's depth under a body rides in iParams.x (the shader's iSink: the whole body lowered), the shadow on the bowl's floor with it
+  { const before = model.shadows.instanceMatrix.array[13]; swarm.sink[2] = -2.5; model.update(camera, 800); const at = model.levels.flatMap((l) => Array.from({ length: l.count }, (_, n) => l.attributes.iParams.array[n * 4]));
+    assert(at.includes(-2.5) && at.includes(0), `the sink packed per instance (${at})`); assert(Math.min(model.shadows.instanceMatrix.array[13], model.shadows.instanceMatrix.array[29]) < before - 2, 'the shadow sunk with it'); swarm.sink[2] = 0; }
+  assert(MEMBRANE_VERT.includes('#define iSink iParams.x') && MEMBRANE_VERT.includes('p.y+=drop+iSink;'), 'the shader lowers the whole body by it');
   // without culling (a second view up) all four are packed, at their levels
   model.update(camera, 800, 0, false, false, false); assert.equal(model.lodCounts[3], 0); assert.equal(model.levels[0].count + model.levels[1].count + model.levels[2].count, 4);
   // the high cap: two bodies over the threshold, a cap of one keeps the larger

@@ -25,7 +25,7 @@ export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
     x = cx + (x - cx) * spread; z = cz + (z - cz) * spread;
     y = .009 * s + (y - .009 * s) * (1 - .92 * squash);
   }
-  y += phase >= .85 ? 0 : phase >= .62 ? lift * (1 - c.u) * (1 - c.u) : lift;
+  y += (phase >= .85 ? 0 : phase >= .62 ? lift * (1 - c.u) * (1 - c.u) : lift) + (swarm.sink?.[i] ?? 0);   // round 5: the whole body in the bowl (./shaders.js iSink)
   bendPoint(x, y, z, planetR, out);
   const hub = swarm.hub?.[i] ?? 0;   // round two: its hub (./shaders.js HUB_TURN)
   if (planetR > 0 && swarm.hubTable && swarm.hubTable[hub * 4 + 3] !== 1) hubPoint(out[0], out[1], out[2], planetR, swarm.hubTable, hub * 4, out);

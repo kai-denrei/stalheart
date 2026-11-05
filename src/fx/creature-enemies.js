@@ -313,10 +313,10 @@ export function createCreatureEnemies(host) {
     // spawnOne), so an apply during the arena does not put them back to 1x
     retune: (e, { size = 1, hp = 1 } = {}) => { if (!e?.alive) return; const os = e.sizeMul ?? 1, oh = e.hpMul ?? 1, ns = size * (e.ownSize ?? 1); if (ns !== os) { e.sizeMul = ns; e.size = e.size * ns / os; } if (hp !== oh) { e.hpMul = hp; e.hp = e.hp * hp / oh; } },
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
-    step(dt) {
+    step(dt, holes = null) {   // holes: the open holes' frames (src/game-breaches.js floors()), the bowl's depth under a body (round 5, note 6a)
       standGarrison();
       clock += dt;
-      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.() && !uncull);
+      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.() && !uncull, holes);
       // round four: a body that walked into the hull where it stands is shoved out of it
       if (pearl && bodies && host.tank?.()?.pos) hullContact.settle(host.tank().pos);
       probe?.step(dt);
