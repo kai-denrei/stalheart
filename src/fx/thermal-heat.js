@@ -9,9 +9,11 @@ import { createFlir } from './flir-pass.js';
 export const HEAT = Object.freeze({ warm: 0.55, hot: 1 });
 const WHITE = new THREE.Color(1, 1, 1);
 
-// one material toward white by `level` (0..1), remembering where it started
+// one material toward white by `level` (0..1), remembering where it started. A material whose owner heats it itself (`userData.ownHeat`: the Pearl
+// bodies' membranes, src/fx/creature-pearl.js thermal, a cored tier hot and a soft one cold) is left alone: two writers of one emissive with their own
+// saved copies left every membrane 55 % toward white after the first gunship seat (owner, 2026-11-05: the white amethyst; test/pearl-thermal.mjs)
 export function heatMaterial(material, level, saved) {
-  if (!material || (!material.color && !material.emissive)) return;
+  if (!material || (!material.color && !material.emissive) || material.userData?.ownHeat) return;
   if (!saved.has(material)) saved.set(material, { color: material.color?.clone(), emissive: material.emissive?.clone(), emissiveIntensity: material.emissiveIntensity });
   const o = saved.get(material);
   if (material.emissive) { material.emissive.copy(o.emissive).lerp(WHITE, level); material.emissiveIntensity = Math.max(o.emissiveIntensity ?? 1, level); }

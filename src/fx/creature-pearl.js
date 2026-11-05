@@ -113,6 +113,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     if (cores && def.values.pearlShow != null) for (const m of cores.meshes) { m.renderOrder = order + 0.5; m.material.opacity = def.values.pearlShow; }
     p = { id, def, swarm, geo, cores, backs, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0, absorbed: 0 };
     pools.set(id, p);
+    heatPool(p);   // its membranes' heat: cold, or the seat's if it is on (THE THERMALS, below)
     return p;
   }
   // the free slots: a binary min-heap, so a new body takes the lowest free slot without sorting the list each spawn (the fable review)
@@ -419,16 +420,26 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   const hash01 = (n) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
   const paceOf = (h) => (h && !h.dead && gait && !pace?.[h.p.id]?.glide ? h.wait ?? 1 : 1);   // a gliding blob never holds its record back
   // THE THERMALS (owner, 2026-10-16): under the gunship's FLIR a cored tier's membrane and core run hot (a white emissive the pass reads as heat), a soft tier's
-  // stay cold; off again when the view leaves (the materials' own emissive put back)
-  function thermal(on) {
-    for (const [id, p] of pools) {
-      const cored = !!byId[id]?.cored;
-      for (const l of p.geo.levels ?? []) for (const m of [l.material, l.coreMaterial]) {
-        if (!m?.emissive) continue;
-        m.userData.cold ??= { c: m.emissive.clone(), i: m.emissiveIntensity };
-        if (on) { m.emissive.setRGB(cored ? 1 : 0, cored ? 1 : 0, cored ? 1 : 0); m.emissiveIntensity = cored ? 1.4 : 0; } else { m.emissive.copy(m.userData.cold.c); m.emissiveIntensity = m.userData.cold.i; }
-      }
+  // stay cold; off again when the view leaves (the materials' own emissive put back).
+  // ONE WRITER (owner, 2026-11-05: "CUTIS-CORE AMETHYST ... a plain white mass with a hint of purple in the nest and the waves", fine in the Quiver's
+  // seeker, which comes before the first seat). The base's heat (src/fx/thermal-heat.js, over this family's roots) wrote the same emissive, the
+  // shader's uHeat, with its own saved copy: it ran first and warmed every membrane to .55, this function's lazy 'cold' snapshot took that warm value,
+  // and its restore after the seat left every skin 55 % toward white for the rest of the game (measured headless: uHeat 000000 before, c4c4c4 after
+  // one seat; the base's re-apply every second also took the hot skins to warm). Now the membranes are the family's alone (`userData.ownHeat`, which
+  // thermal-heat skips), their cold is taken when the pool is made, and a pool made while the seat is on takes the seat's state (heatPool).
+  let hot = false;
+  function heatPool(p) {
+    const cored = !!p.def?.cored;
+    for (const l of p.geo.levels ?? []) for (const m of [l.material, l.coreMaterial]) {
+      if (!m?.emissive) continue;
+      m.userData.ownHeat = true;
+      m.userData.cold ??= { c: m.emissive.clone(), i: m.emissiveIntensity };
+      if (hot) { m.emissive.setRGB(cored ? 1 : 0, cored ? 1 : 0, cored ? 1 : 0); m.emissiveIntensity = cored ? 1.4 : 0; } else { m.emissive.copy(m.userData.cold.c); m.emissiveIntensity = m.userData.cold.i; }
     }
+  }
+  function thermal(on) {
+    hot = !!on;
+    for (const p of pools.values()) heatPool(p);
   }
 
   function kill(h, imp = null) {
