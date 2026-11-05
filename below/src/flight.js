@@ -18,6 +18,22 @@ const wrap=(a)=>Math.atan2(Math.sin(a),Math.cos(a));
 export function chaseYaw(camYaw,heading,dt,follow=CHASE.follow){return camYaw+wrap(heading-camYaw)*(1-Math.exp(-Math.max(0,dt)*follow));}
 // the boom for the clearance behind ISAO (m, along the camera's own azimuth): its length (boom down to minBoom) and how far it rises for the metres lost
 export function boomFor(clearance,{boom=CHASE.boom,minBoom=CHASE.minBoom,rise=CHASE.rise}=CHASE){const length=Math.max(minBoom,Math.min(boom,clearance));return {length,lift:(boom-length)*rise};}
+// THE MOUSE ORBITS THE CAMERA (Stålheart round 8, note 4, owner 2026-11-05: "moving the mouse should move the camera but without hindering the Isao
+// movement"): a drag over the view swings the chase camera round ISAO (`yawRate` / `pitchRate` rad a pixel: a 400 px drag is 1.8 rad) and NEVER writes his
+// yaw or pitch, so W S A D Space Shift stay his, along HIS heading, whatever the view shows. The orbit is an offset on the chase camera's own azimuth and
+// pitch (isao.js update), up to `maxYaw` either way (half a turn: his face). Let go and it HOLDS for `hold` s, then decays to his back at 1 - exp(-k dt):
+// k 3.2, not the design's 2.6, which leaves a 1.8 rad orbit 0.08 rad off 2 s after the drag (the design's own bar is 0.05); 3.2 leaves 0.04.
+export const ORBIT=Object.freeze({yawRate:.0045,pitchRate:.0045,hold:.8,k:3.2,maxYaw:Math.PI});
+export const createOrbit=()=>({yaw:0,pitch:0,idle:0});
+// one step of the orbit: dx/dy the pointer's pixels since the last step (a drag's movementX/Y), dragging the button held, basePitch the chase pitch it adds to
+// (camera pitch + orbit pitch stays in [CHASE.above, CHASE.below]); with no movement and no button, `hold` s of stillness, then the decay
+export function orbitStep(o,dx,dy,dt,{dragging=false,basePitch=0}={}){
+  const moved=!!(dx||dy);
+  if(moved){o.yaw=Math.max(-ORBIT.maxYaw,Math.min(ORBIT.maxYaw,o.yaw-dx*ORBIT.yawRate));o.pitch-=dy*ORBIT.pitchRate;}   // right swings the view right, up looks up (the old mouse's signs)
+  if(moved||dragging)o.idle=0;else{o.idle+=Math.max(0,dt);if(o.idle>ORBIT.hold){const k=Math.exp(-ORBIT.k*Math.max(0,dt));o.yaw*=k;o.pitch*=k;}}
+  o.pitch=Math.max(CHASE.above-basePitch,Math.min(CHASE.below-basePitch,o.pitch));
+  return o;
+}
 export function createFlight(position){return {position:{...position},velocity:{x:0,y:0,z:0},acceleration:{x:0,y:0,z:0},roll:0,pitch:0};}
 export function fly(f,dt,input,yaw,loaded){
   const speed=loaded?6.7:8.6,climb=loaded?6.4:8.0;

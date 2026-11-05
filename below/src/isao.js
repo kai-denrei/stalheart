@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import {GLTFLoader} from '../vendor/GLTFLoader.js';
 import {confine} from './mission.js';
-import {CHASE,chaseYaw,boomFor} from './flight.js';
+import {CHASE,chaseYaw,boomFor,chasePitch} from './flight.js';
 
 export async function createIsao(scene,camera){
   const gltf=await new GLTFLoader().loadAsync('./assets/models/isao_birudoron_lod1.glb');
@@ -29,7 +29,7 @@ export async function createIsao(scene,camera){
     return last;
   }
   let initialized=false,camYaw=0,reach=0,rise=0;const anchor=new THREE.Vector3();
-  function update(time,dt,position,yaw,orbitPitch,flight,mission){
+  function update(time,dt,position,yaw,orbitPitch,flight,mission,orbit=null){
     const hitAge=time-hitAt;haloUniforms.strength.value=hitAge>=0&&hitAge<.9?(1-hitAge/.9)*(.8+.2*Math.sin(hitAge*24)):0;hitHalo.visible=haloUniforms.strength.value>0;
     lamp.intensity=mission.lampState==='working'?38:0;spill.intensity=mission.lampState==='working'?.8:0;bulb.visible=mission.lampState==='working';
     rig.position.copy(position);rig.rotation.set(flight.pitch,yaw,flight.roll,'YXZ');payload.visible=mission.payload;
@@ -41,8 +41,12 @@ export async function createIsao(scene,camera){
     // the smoothing never cuts a chord round him. A jump no flight makes in a frame (a teleport: the harness's place/pose, a restart) puts it straight behind him
     const teleported=initialized&&seen.distanceTo(position)>3;seen.copy(position);
     if(!initialized||teleported)camYaw=yaw;else camYaw=chaseYaw(camYaw,yaw,dt);
-    const sy=Math.sin(camYaw),cy=Math.cos(camYaw);
-    back.set(sy*Math.cos(orbitPitch),-Math.sin(orbitPitch),cy*Math.cos(orbitPitch));
+    // THE MOUSE ORBITS THE CAMERA (round 8, note 4, owner 2026-11-05: "moving the mouse should move the camera but without hindering the Isao movement"): the
+    // drag's orbit (flight.js orbitStep) is added HERE ONLY, to the azimuth and pitch the camera is built on; his yaw, the follow and the boom's rules are untouched,
+    // so the wall still pulls the boom in along his ray and the view still looks along the camera's own azimuth (now his heading plus the orbit)
+    const az=camYaw+(orbit?.yaw||0),pitch=chasePitch(orbitPitch+(orbit?.pitch||0));
+    const sy=Math.sin(az),cy=Math.cos(az);
+    back.set(sy*Math.cos(pitch),-Math.sin(pitch),cy*Math.cos(pitch));
     desired.copy(position).addScaledVector(back,CHASE.boom);desired.y+=.5;
     const {length,lift}=boomFor(clipBoom(position,desired).distanceTo(position));
     goal.copy(position).addScaledVector(back,length);goal.y+=.5+lift;desired.copy(clipBoom(position,goal));   // clipped along ISAO's own ray: the wall pulls it in, never round him
