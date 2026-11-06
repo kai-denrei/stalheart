@@ -171,7 +171,7 @@ export const LANDING_GAME = Object.freeze({
   pad: Object.freeze({ reach: 14 }),   // m from the island's centre a foot may land and still be on the pad (the landing island is 16 x 16)
   // the arrival's clock around the window: the approach is the arrival's own sequence from higher, the override at `overrideAt` s of it
   approach: Object.freeze({ descent: 7, startAltitude: 900, overrideAt: 4.2, deployAltitude: 700 }),
-  override: Object.freeze({ seconds: 3, glare: 2.4, offerSeconds: 3 }),   // the alarm beat; the glare's length; the SPACE offer on a later start
+  override: Object.freeze({ seconds: 3, glare: Object.freeze({ seconds: 2.4, dim: 1000, peak: 8 }), offerSeconds: 3 }),   // the alarm beat; the glare's length and its exposure (the shader divides by it: dim is the quad plume's default, peak the height); the SPACE offer on a later start
   camera: Object.freeze({ back: 60, up: 34, ahead: 18, down: 10, fov: 46, lag: 0.12, jolt: 0.8 }),   // the chase: behind along -z, above, looking ahead and down
   reticle: Object.freeze({ metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), square: 10, segments: 48 }),
   hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10 }), predictorSeconds: 35, predictorDt: 0.15 }),
@@ -898,7 +898,7 @@ In `src/fx/arrival.js`:
         if (flying && t >= overrideAt && !flying.pose()) {   // OVERRIDE: the sequence's altitude and rate at this instant seed the flight
           const alt = shot.stateAt(t).altitude, rate = (shot.stateAt(t + 0.05).altitude - alt) / 0.05;
           flying.begin(alt, rate); api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
-          glare = startLandingGlare(globalThis.document?.body, { seconds: LANDING_GAME.override.glare, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });
+          glare = startLandingGlare(globalThis.document?.body, { ...LANDING_GAME.override.glare, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });   // the glare's seconds, dim and peak exposure are the tune's (Task 6's fix: the shader divides by the exposure)
           api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: true, onEnd: () => { if (!cutting && phase === 'landing') flying?.skip(); } });
           overrideT = 0;
         }
