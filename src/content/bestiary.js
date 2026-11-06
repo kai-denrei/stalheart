@@ -259,9 +259,10 @@ export const UNIT_ENTRIES = freeze([
   // the base that has it (?base=dome); the stage shows the habitat dome's one-draw distance tier
   { id: 'dome-city', section: 'colony', name: 'DOME CITY', label: 'COLONY · THE SETTLEMENT', needs: { base: 'dome' },
     model: { url: 'assets/models/dome-colony/habitat_d0_lod2.glb', clip: null },
-    facts: [['DOMES', `${DOME_ISLANDS.length} · ${[...new Set(DOME_STRUCTURES.filter((s) => s.island).map((s) => s.module))].join(' · ')}`], ['BRIDGES', `${DOME_STRUCTURES.filter((s) => s.anchor === 'frame').length} · 52 m, the deck 7.5 m up, the hull drives under`], ['THE SEVENTH', 'the Stålheart stands where the power dome would']], isao: [
-      'Six domes round the Stålheart: two habitats, two logistics halls, a biosphere and a fabrication dome. The colony came with them; I only had to unfold them.',
-      'Four bridges, fifty-two metres each, the deck seven and a half up. The hull goes under. Please go under.',
+    facts: [['DOMES', `${DOME_ISLANDS.length} · ${[...new Set(DOME_STRUCTURES.filter((s) => s.island).map((s) => s.module))].join(' · ')}`], ['BRIDGES', `${DOME_STRUCTURES.filter((s) => s.anchor === 'frame').length} · 52 m, the deck about 4.5 m up, the hull drives under`], ['THE SEVENTH', 'the Stålheart stands where the power dome would']], isao: [
+      // the owner's note of 2026-11-07 (THE BASE FROM SCRATCH): Isao prints the domes in play, paid on the board, and the bridges at 0.65 in height
+      'Six domes round the Stålheart: two habitats, two logistics halls, a biosphere and a fabrication dome. Nothing came unfolded. You pay for each one, and I print it from the ground up.',
+      'Four bridges, fifty-two metres each, the deck about four and a half up. A bridge comes once both its domes stand. The hull goes under, with a metre to spare. Please go under.',
     ] },
   // --- THE DEPOT (owner, 2026-11-05, round 8 note 7: the Yushi Rover "brings the biomass back to the Yushi045 biopearl, these are where the
   // biomass is stored ... the yushi rover is also a buildable unit, but not used for now"; note 5, "we import new models"), on the books once the

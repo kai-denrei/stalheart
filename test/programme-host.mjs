@@ -151,4 +151,14 @@ function storyApiOf(c) {
   const host = k.s.story.hullHost; k.api.build(); assert.equal(k.s.story.hullHost, host, 'one hull host per story');
   assert.equal(k.s.story.hull.out(), true);
 }
+// THE BRIDGES FOLLOW THEIR DOMES (the owner's note of 2026-11-07): the host hands the story's stands(id) (the story base's record: shown, not
+// mid-print, src/platform/story-world.js) to the programme as `standing`, so a bridge comes due once its two domes stand, and never without it
+{
+  const make = (stands) => { const k = controller({ at: 'backgate', phase: 'expedition' }); k.s.story.programme = makeBuildProgramme(BASE_PROGRAMME, { standing: (x) => !x.id.startsWith('bridge-') });
+    Object.assign(k.s.story, { grow: true, sectorN: 2, stands }); k.s.dungeon.tags[4] = k.s.dungeon.tags[5] = BLOCKED; return k; };
+  const none = make(undefined); none.api.build(); assert.deepEqual(none.orders, [], 'no stands() on the story: no bridge');
+  const one = make((id) => id === 'dome-nw'); one.api.build(); assert.deepEqual(one.orders, [], 'one dome standing: no bridge');
+  const both = make((id) => id === 'dome-nw' || id === 'dome-w'); both.api.build();
+  assert.deepEqual(both.orders.map((x) => [x.kind, x.step.id, x.bed]), [['structure', 'bridge-w1', 'bed:bridge-w1']], 'both west domes stand: Isao prints bridge-w1');
+}
 console.log('Programme host: one order at a time with his line, the gate\'s walls in both worlds, repairs between waves (the worst door first), the back gate only once held, the perks in the world, the rebuilt hull, the first hull through the same host.');

@@ -9,6 +9,7 @@ import { resolve, join } from 'node:path';
 import { launchChrome } from './chrome-proc.mjs';
 import assert from 'node:assert/strict';
 import { SENTRIES } from '../src/content/sentries.js';
+import { DOME_STRUCTURES } from '../src/content/dome-city.js';
 import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
@@ -2642,11 +2643,81 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const l1=(await st()).laser;console.log(`  round9: SOL ${JSON.stringify(seen.filter(x=>x.b).slice(0,4))} burned ${JSON.stringify(l1.burned)}`);
  assert.ok(seen.some(x=>x.b&&x.s),'an automated burn leaves from a source in the sky');
  for(const k of ['towers','walls','tank','structures','heart'])assert.equal(l1.burned[k]??0,0,`the automated pass burned no ${k}`);
+ } else if(args.includes('--dome-print')) {
+ // THE DOME CITY PRINTED IN PLAY (the owner's note of 2026-11-07, THE BASE FROM SCRATCH; spec docs/superpowers/specs/2026-11-07-base-from-scratch-design.md 2.A):
+ // the grown base the tutorial ends on (?skip=sector-1, a growing base whose spine stands to the solar array) has no dome; sector 1 held by the ledger's
+ // defender as --board holds it, its CONTINUE opens the board before sector 2, which deals dome-nw (the first four structure cards in the programme's
+ // order: the board, the garage, the armory, dome-nw), picked by its key and paid at ENTER. Sector 2 kept quiet so the idle gate holds; dome-w (sector 2) is
+ // bought through the programme's own buy (T.programmeBuy: no board deals it before the colony's own cards are bought). Isao prints the spine owed
+ // ahead of them, then dome-nw (a still mid-print, artifacts/browser/dome-print-mid.png, framed from k 0.5, asserted between 0.3 and 0.7), then dome-w; bridge-w1 (when.stand:
+ // dome-nw + dome-w) prints by itself after both stand, unbought; dome-ne and the other bridges stay unprinted
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),P=(s)=>s.programme,t0=Date.now(),mark=(what)=>console.log(`  DOME PRINT ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
+ const domes=(s)=>(s.storyLod||[]).filter(l=>/^(dome|bridge)-/.test(l.id)).map(l=>({id:l.id,visible:l.visible,shown:l.shown}));
+ const stands=(s,id)=>!!(s.storyLod||[]).find(l=>l.id===id)?.visible;
+ await go('dome-print',`index.html?sw=0&acceptance=1&cine=0&skip=sector-1#td`);await evaluate(SEEN_LOG);
+ await until(`!!${T} && ${T}.state().sector?.n===1`,120000).catch(async()=>assert.fail(`sector 1 opens on the grown base (${JSON.stringify((await st()).sector)})`));mark('sector 1');
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ {const s=await st(),p=P(s);console.log(`  at the start: grow ${p.grow}, done ${p.done.join(',')}, bought ${JSON.stringify(p.bought)}; ${JSON.stringify(domes(s))}`);
+  assert.equal(p.grow,true,'the grown base');assert(domes(s).length===10,`the six domes and four bridges are on the plan (${domes(s).length})`);
+  assert.deepEqual(domes(s).filter(d=>d.visible).map(d=>d.id),[],'no dome and no bridge stands at the start');
+  assert(!p.done.some(id=>/^(dome|bridge)-/.test(id))&&!p.bought.some(id=>/^dome-/.test(id)),'none printed, none bought');}
+ // sector 1 played and held by the ledger's ideal defender (--board's), the debrief up; then its real CONTINUE opens the board
+ await until(`(()=>{const S=${T}.state().sector;if(S.phase==='fighting')${T}.sectorCull(999,'tank');${T}.rover?.collect?.();document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return S.debriefOpen;})()`,600000).catch(async()=>assert.fail(`sector 1 is held (${JSON.stringify((await st()).sector)})`));
+ mark('sector 1 held');await delay(1200);
+ await evaluate(`document.querySelector('.sdb-acts [data-act=continue]').click()`);
+ await until(`${T}.state().board.open`,8000).catch(async()=>assert.fail(`CONTINUE opens the build board (${JSON.stringify((await st()).board)})`));
+ const bd=(await st()).board;console.log(`  board before sector ${bd.n}: bank ${bd.bank} kg; ${bd.offers.map(o=>`${o.label} ${o.price} kg`).join(' · ')}`);
+ const dn=bd.offers.find(o=>o.id==='build:dome-nw');assert(dn,`the board deals dome-nw on the grown base (${bd.offers.map(o=>o.id)})`);assert.equal(dn.price,2400,'a habitat dome is 2400 kg');
+ assert(dn.price<=bd.bank,`the bank buys it (${bd.bank} kg)`);
+ await until(`(()=>{const b=${T}.state().board;return b.thumbs===b.offers.length;})()`,8000).catch(()=>{});
+ {const th=await evaluate(`(()=>{const t=document.querySelector('.build-board .bb-tile[data-offer="build:dome-nw"]'),i=t?.querySelector('img.bb-thumb');return {name:t?.querySelector('.bb-name')?.textContent,effect:t?.querySelector('.bb-effect')?.textContent,src:(i?.src||'').slice(0,22),w:i?.naturalWidth||0};})()`);
+  console.log(`  the dome's card: ${JSON.stringify(th)}`);assert(th.src.startsWith('data:image/png')&&th.w>0,`the dome's card has its thumbnail, drawn from its LOD2 (${JSON.stringify(th)})`);}
+ current='dome-print-board';await finish();
+ const key=async(k)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code:/^\d$/.test(k)?'Digit'+k:k,text:/^\d$/.test(k)?k:undefined});await send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code:/^\d$/.test(k)?'Digit'+k:k});await delay(120);};
+ await key(String(bd.offers.indexOf(bd.offers.find(o=>o.id==='build:dome-nw'))+1));
+ assert.deepEqual((await st()).board.picked,['build:dome-nw'],'dome-nw picked by its key');
+ const bank0=bd.bank;await key('Enter');
+ await until(`!${T}.state().board.open && ${T}.state().sector.n===2`,15000).catch(async()=>assert.fail(`ENTER orders and sector 2 begins (${JSON.stringify((await st()).board)})`));
+ await evaluate(`${T}.sectorQuiet(true)`);mark('sector 2, quiet');
+ {const s=await st();console.log(`  ordered: ${JSON.stringify(s.board.last)}; bank ${bank0} -> ${s.biomass}`);assert(P(s).bought.includes('dome-nw'),'dome-nw bought on the programme');assert(bank0-s.biomass>=2400-1,`paid at the pick (${bank0} -> ${s.biomass})`);}
+ assert.equal(await evaluate(`${T}.programmeBuy('dome-w')`),true,'dome-w bought through the programme');
+ assert.equal(await evaluate(`${T}.programmeBuy('dome-w')`),false,'a step is bought once');
+ {const p=P(await st());console.log(`  owed ${p.owed.join(',')}; active ${p.active}; printed ${p.printed.join(',')}`);assert(!p.owed.includes('bridge-w1')&&!p.bought.includes('bridge-w1'),'the bridge is neither bought nor owed');}
+ // dome-nw: Isao reaches it once the spine owed ahead of it stands; the still mid-print, framed on the dome
+ await until(`${T}.state().programme.active==='dome-nw'`,600000).catch(async()=>assert.fail(`Isao begins dome-nw (${JSON.stringify(P(await st()))})`));mark('dome-nw print begins');
+ {const s=await st();console.log(`  printed before it: ${P(s).printed.join(',')}; ${JSON.stringify(domes(s).filter(d=>d.id==='dome-nw'))}`);}
+ await until(`(p=>p.print?.step==='dome-nw'&&p.print.k>=0.5)(${T}.state().programme)`,120000).catch(async()=>assert.fail(`dome-nw's print under way (${JSON.stringify(P(await st()).print)})`));
+ {const at=await evaluate(`${T}.showcase.footprint('dome-nw')?.at??null`);assert(at,'dome-nw has a holder');
+  const ci=await evaluate(`(()=>{const T=${T},a=${JSON.stringify(at)},l=Math.hypot(...a),u=a.map(v=>v/l),n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}return best;})()`);
+  console.log(`  the dome's cell ${ci}`);await evaluate(`${T}.showcase.ground(${ci},6,7)`);await delay(1200);}
+ {const s=await st(),pr=P(s).print;console.log(`  mid-print: ${JSON.stringify(pr)}, shot ${s.shot}; ${JSON.stringify(domes(s).filter(d=>d.id==='dome-nw'))}`);
+  assert.equal(pr.step,'dome-nw','dome-nw in the still');assert(pr.k>=0.3&&pr.k<=0.7,`mid-print (k ${pr.k})`);}
+ current='dome-print-mid';await finish();
+ await evaluate(`${T}.focusHeart()`);
+ await until(`${T}.state().programme.printed.includes('dome-nw')`,180000).catch(async()=>assert.fail(`dome-nw printed (${JSON.stringify(P(await st()))})`));mark('dome-nw stands');
+ await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-nw')?.visible===true`,20000).catch(async()=>assert.fail(`dome-nw shown (${JSON.stringify(domes(await st()))})`));
+ {const s=await st();assert(!stands(s,'bridge-w1')&&!P(s).printed.includes('bridge-w1'),'no bridge with one dome');}
+ // THE CAP FOLLOWS ITS BRIDGE (the final review, 2026-11-07; src/content/dome-city.js caps): the lone dome's port is capped until bridge-w1 begins
+ const cap=(id,name)=>evaluate(`${T}.showcase.capShown(${JSON.stringify(id)},${JSON.stringify(name)})`),capIs=async(id,name,want,why)=>{const v=await cap(id,name);console.log(`  ${id} ${name}: ${JSON.stringify(v)}`);assert(Array.isArray(v)&&v.length>0&&v.every(x=>x===want),`${why} (${id} ${name} ${JSON.stringify(v)})`);};
+ await capIs('dome-nw','PORT_CAP_N',true,'the lone dome keeps its port capped');
+ await until(`${T}.state().programme.printed.includes('dome-w')`,400000).catch(async()=>assert.fail(`dome-w printed (${JSON.stringify(P(await st()))})`));mark('dome-w stands');
+ await until(`${T}.state().programme.printed.includes('bridge-w1')`,240000).catch(async()=>assert.fail(`bridge-w1 prints by itself after both domes (${JSON.stringify(P(await st()))}; ${JSON.stringify(domes(await st()))})`));mark('bridge-w1 stands');
+ await until(`(${T}.state().storyLod||[]).find(l=>l.id==='bridge-w1')?.visible===true`,20000).catch(async()=>assert.fail(`bridge-w1 shown (${JSON.stringify(domes(await st()))})`));
+ {const s=await st(),p=P(s),pr=p.printed;console.log(`  printed ${pr.join(',')}; bought ${JSON.stringify(p.bought)}; ${JSON.stringify(domes(s))}`);
+  assert(pr.indexOf('dome-nw')<pr.indexOf('dome-w')&&pr.indexOf('dome-w')<pr.indexOf('bridge-w1'),'dome-nw, dome-w, then the bridge');
+  assert(!p.bought.includes('bridge-w1'),'the bridge was never bought');
+  assert.deepEqual(domes(s).filter(d=>d.visible).map(d=>d.id).sort(),['bridge-w1','dome-nw','dome-w'],'only what was bought and its bridge stands');
+  await capIs('dome-nw','PORT_CAP_N',false,'bridge-w1 opens the port it meets');await capIs('dome-w','PORT_CAP_S',false,'bridge-w1 opens dome-w\'s south port');
+  await capIs('dome-w','PORT_CAP_N',true,'dome-w\'s north port waits for bridge-w2');
+  const said=await evaluate('window.__seen.briefs');console.log(`  Isao: ${JSON.stringify(said.filter(b=>/DOME|BRIDGE/i.test(b)))}`);}
+ await evaluate(`(()=>{const T=${T},a=T.showcase.footprint('bridge-w1')?.at;if(!a)return;const l=Math.hypot(...a),u=a.map(v=>v/l),n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}T.showcase.ground(best,8,10);})()`);await delay(2500);
+ current='dome-print-end';await finish();
  } else if(args.includes('--dome-look')) {
  // THE DOME CITY, LOOKED AT (round 8 note 6, src/content/dome-city.js; no assertions but a page error): run it once with BASE=classic and once
  // with BASE=dome. The frame's cost on the base camera a skipped opening starts on (the perf readout's draw calls, triangles, frame and gpu ms,
  // the median of SAMPLES half-second samples), then the hull set down at each spot below with the chase camera behind it, a still each, and
- // whether that eye stands inside a dome (its glass shell is 13.2 m high, its sentry mast 2.2 m across to the 32 m platform) or over one. A spot is frame metres (x, z) and a heading; a hull 22 m out of a
+ // whether that eye stands inside a dome (its glass shell is 13.2 m high, its sentry mast 2.2 m across to the 32 m platform, both at DOME_SCALE 0.65
+ // since the owner's note of 2026-11-07: 8.6 m, 1.4 m, 20.8 m, the shell 9.5 m round, the outer domes at z +-70.2, the bridges at +-35.1) or over one. A spot is frame metres (x, z) and a heading; a hull 22 m out of a
  // dome facing away from it puts the chase camera between the two, the worst case for the camera's clip
  const T='window.__stalheartTest',tag=process.env.BASE||'dome',n=+process.env.SAMPLES||12;
  await go(`dome-look-${tag}`,'index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&fps=1#td');
@@ -2656,6 +2727,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const med=(k)=>{const v=perf.map(p=>p[k]).filter(x=>x!=null).sort((a,b)=>a-b);return v.length?+v[v.length>>1].toFixed(2):null;};
  const lod=await evaluate(`JSON.stringify((${T}.state().storyLod||[]).filter(l=>/^(dome|bridge)/.test(l.id)).map(l=>l.id+':'+l.shown))`);
  console.log(`DOME LOOK ${tag} base camera: ${perf.length} samples, median ${med('calls')} calls, ${med('triangles')} triangles, ${med('frameMs')} ms frame, gpu ${med('gpuMs')} ms; tiers ${lod}`);
+ // a static page stands every bridge, so every cap a bridge meets is open on every mounted tier (the caps follow their bridges since the final review, 2026-11-07)
+ if(tag==='dome')for(const d of DOME_STRUCTURES.filter(x=>x.caps))for(const [name,bridge] of d.caps){const v=await evaluate(`${T}.showcase.capShown(${JSON.stringify(d.id)},${JSON.stringify(name)})`);assert(Array.isArray(v)&&v.length>0&&v.every(x=>x===false),`${d.id} ${name} open under ${bridge} on a static page (${JSON.stringify(v)})`);}
+ if(tag==='dome')console.log(`DOME LOOK caps: every cap a bridge meets is open (${DOME_STRUCTURES.flatMap(d=>d.caps??[]).length})`);
  current=`dome-look-${tag}-base`;await finish();
  // and from above (--base-look's still): every island and dome in the frame on both layouts, so the difference is the city's own cost
  await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);perf.length=0;
@@ -2663,30 +2737,45 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  console.log(`DOME LOOK ${tag} from above: ${perf.length} samples, median ${med('calls')} calls, ${med('triangles')} triangles, ${med('frameMs')} ms frame, gpu ${med('gpuMs')} ms; tiers ${await evaluate(`JSON.stringify((${T}.state().storyLod||[]).filter(l=>/^(dome|bridge)/.test(l.id)).map(l=>l.id+':'+l.shown))`)}`);
  current=`dome-look-${tag}-top`;await finish();
  // the frame's radius and yaw off two holders (src/core/breach-surface.js: unit = (x' sin(d/R)/d, cos(d/R), z' sin(d/R)/d), (x', z') the frame turned by the yaw)
- const spots=[['corridor',0,-34,[0,-1]],['under-bridge-w1',-80,-40,[1,0]],['dome-nw',-58,-80,[1,0]],['dome-w',-58,0,[1,0]],['dome-sw',-58,80,[1,0]],['dome-ne',58,-80,[-1,0]],['dome-e',58,0,[-1,0]],['dome-se',58,80,[-1,0]],['ne-court',62,-46,[0,1]],['cargo-court',44,40,[0,-1]],['launch-court',-30,-70,[-1,0]]];
+ const spots=[['corridor',0,-34,[0,-1]],['under-bridge-w1',-80,-35.1,[1,0]],['dome-nw',-58,-70.2,[1,0]],['dome-w',-58,0,[1,0]],['dome-sw',-58,70.2,[1,0]],['dome-ne',58,-70.2,[-1,0]],['dome-e',58,0,[-1,0]],['dome-se',58,70.2,[-1,0]],['ne-court',62,-46,[0,1]],['cargo-court',44,40,[0,-1]],['launch-court',-30,-70,[-1,0]]];
  const domes=await evaluate(`JSON.stringify(['dome-nw','dome-w','dome-sw','dome-ne','dome-e','dome-se','stalheart'].map(id=>${T}.showcase.footprint(id)?.at??null))`).then(JSON.parse);
  if(tag==='dome'&&domes[4]){
   const [ex,ey,ez]=domes[4],th=Math.acos(Math.min(1,ey/Math.hypot(ex,ey,ez))),R=80/th,yaw=Math.atan2(-ez,ex),cy=Math.cos(yaw),sy=Math.sin(yaw);
   const unit=(x,z)=>{const xr=x*cy+z*sy,zr=-x*sy+z*cy,d=Math.hypot(xr,zr),a=d/R,k=d>1e-9?Math.sin(a)/d:1/R;return [xr*k,Math.cos(a),zr*k];};
   const frameOf=(u)=>{const l=Math.hypot(...u),a=Math.acos(Math.min(1,u[1]/l)),h=Math.hypot(u[0],u[2])||1,d=a*R,xr=u[0]/h*d,zr=u[2]/h*d;return [xr*cy-zr*sy,xr*sy+zr*cy,(l-1)*R];};
-  const dc=[[-80,-80],[-80,0],[-80,80],[80,-80],[80,0],[80,80]];
+  const dc=[[-80,-70.2],[-80,0],[-80,70.2],[80,-70.2],[80,0],[80,70.2]],K=0.65;   // src/content/dome-city.js DOME_ISLANDS, DOME_SCALE
   for(const [name,x,z,h] of spots){
    const u=unit(x,z),to=unit(x+h[0]*10,z+h[1]*10),dir=to.map((v,i)=>v-u[i]);
    const placed=await evaluate(`${T}.showcase.placeAt(${JSON.stringify(u)})`);
    await evaluate(`${T}.showcase.look(${JSON.stringify(dir)});${T}.showcase.follow()`);await delay(2500);
    const ss=await evaluate(`${T}.seatState()`),eye=frameOf(ss.pos),tank=frameOf(ss.tankPos);
-   const inside=dc.map(([cx,cz],k)=>{const r=Math.hypot(eye[0]-cx,eye[1]-cz);return (r<14.6&&eye[2]<13.2)||(r<2.4&&eye[2]<36)?['dome-nw','dome-w','dome-sw','dome-ne','dome-e','dome-se'][k]:null;}).filter(Boolean),over=dc.some(([cx,cz])=>Math.hypot(eye[0]-cx,eye[1]-cz)<14.6);   // the shell (to 13.2 m, 14.6 at its foot) or the 2.2 m sentry mast to the 32 m platform and its cradle
+   const inside=dc.map(([cx,cz],k)=>{const r=Math.hypot(eye[0]-cx,eye[1]-cz);return (r<14.6*K&&eye[2]<13.2*K)||(r<2.4*K&&eye[2]<36*K)?['dome-nw','dome-w','dome-sw','dome-ne','dome-e','dome-se'][k]:null;}).filter(Boolean),over=dc.some(([cx,cz])=>Math.hypot(eye[0]-cx,eye[1]-cz)<14.6*K);   // the shell (to 13.2 m, 14.6 at its foot) or the 2.2 m sentry mast to the 32 m platform and its cradle
    console.log(`DOME LOOK ${name}: hull at (${tank[0].toFixed(1)}, ${tank[1].toFixed(1)}) cell ${placed}, eye (${eye[0].toFixed(1)}, ${eye[1].toFixed(1)}) ${eye[2].toFixed(1)} m up${inside.length?' INSIDE '+inside.join(','):over?' over a dome, beside its sentry mast':''}`);
    current=`dome-look-${tag}-${name}`;await finish();
   }
  }
  } else if(args.includes('--base-look')) {
  // a still of the finished base from above, for placing things (no assertions)
- const T='window.__stalheartTest';
- await go('base-look','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td');
+ // GANTRY=kidou (the owner's note of 2026-11-07, call C; src/platform/game-flags.js gantryMode): the page with &gantry=kidou, the wheeled Stålheart
+ // parked in the rail one's place, the still named base-look-top-kidou, and a second one later (base-look-kidou-above). A rig that throws at
+ // mount lands in the story base's errors, not as a page error, so those must be empty here, and the Stålheart's tiers must be the KIDOU's
+ // files (a flag that quietly stood the rail model would otherwise pass as a still)
+ const T='window.__stalheartTest',kidou=process.env.GANTRY==='kidou',tag=kidou?'-kidou':'';
+ await go(`base-look${tag}`,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4${kidou?'&gantry=kidou':''}#td`);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(4000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
- await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);current='base-look-top';await finish();
+ await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);current=`base-look-top${tag}`;await finish();
+ if(kidou){
+  const lodOf=async()=>(await evaluate(`${T}.state().storyLod`)).find(l=>l.id==='stalheart');
+  assert.deepEqual((await lodOf()).files,{far:'assets/models/stalheart-kidou/stalheart_kidou_d0_lod2.glb',near:'assets/models/stalheart-kidou/stalheart_kidou_d0_lod1.glb'},'the Stålheart is the KIDOU');
+  // the hull parks under it: the console's and the repair's box (src/fx/story-base.js inside) is the KIDOU's own holder box
+  const cell=await evaluate(`${T}.parkHull('stalheart')`);assert(cell>=0,`the hull parks under the KIDOU's gantry (${cell})`);
+  const errs=await evaluate(`${T}.state().storyBaseErrors`);assert.deepEqual(errs,[],`the story base mounted the KIDOU without an error (${JSON.stringify(errs)})`);
+  // the second still is the same dive arrived (headless barely advances the game clock, so the first still is taken near its start): the base
+  // from above with the gantry on its slab among the domes
+  await delay(4000);console.log(`  KIDOU: ${JSON.stringify(await lodOf())}, the hull parked under it at cell ${cell}`);
+  current='base-look-kidou-above';await finish();
+ }
  } else if(args.includes('--round10')) {
  // THE OWNER'S TENTH NOTES (2026-10-03): the purple pad before the bays opens the paint shop over a paused game; a sentry's level on its
  // pedestal; the boards bigger, west of the Stålheart; the debrief on one screen with CONTINUE on it

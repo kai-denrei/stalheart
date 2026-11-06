@@ -9,6 +9,7 @@ import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
 import { cloneSkinned } from './skinned-clone.js';
 import { createStructurePrints } from './structure-print.js';
+import { createKidouRig } from './kidou-rig.js';
 import { plateFloor } from '../domain/slab-floor.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -64,15 +65,19 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const solidV = new THREE.Vector3(), slabInv = new Map(), slabPlates = new Map();
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
+  // A LANDMARK WITH A RIG (the owner's note of 2026-11-07, call C): a tier no clip moves, posed by its author's adapter instead (s.rig 'kidou', the
+  // wheeled Stålheart behind ?gantry=kidou: src/fx/kidou-rig.js), one per mounted tier, built at mount and ticked with the mixers
+  const rigs = [], RIGS = { kidou: createKidouRig };
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
   let alsoNear = null;   // more friendlies a door opens for, beside the hull (nearAlso: the Yushi Rover, round 8 note 7)
   const patches = new Map();   // cell -> the meshes of a wall printed where the plan had rock (patchWall)
   const dropped = new Set(), ZERO = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);   // kit wall segments burned away (walls(), dropWall())
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
-  // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base
-  const place = (obj, x, z, y, heading, scale = 1, tilt = 0, lift = 0) => {
+  // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base;
+  // scaleY a structure's own height scale beside `scale` (the dome city's bridges, 0.65 in height only: src/content/dome-city.js)
+  const place = (obj, x, z, y, heading, scale = 1, tilt = 0, lift = 0, scaleY = scale) => {
     obj.matrixAutoUpdate = false;
-    obj.matrix.copy(basisAt(placer, x, z, heading)).multiply(new THREE.Matrix4().makeTranslation(0, (y + lift) * metres, 0)).multiply(new THREE.Matrix4().makeRotationX(tilt * Math.PI / 180)).multiply(new THREE.Matrix4().makeScale(scale * metres, scale * metres, scale * metres));
+    obj.matrix.copy(basisAt(placer, x, z, heading)).multiply(new THREE.Matrix4().makeTranslation(0, (y + lift) * metres, 0)).multiply(new THREE.Matrix4().makeRotationX(tilt * Math.PI / 180)).multiply(new THREE.Matrix4().makeScale(scale * metres, scaleY * metres, scale * metres));
     obj.matrixWorldNeedsUpdate = true;
   };
   const counts = { islands: plan.islands.length, walls: plan.walls.length, structures: 0, gate: !!plan.gate, gates: (plan.gates ?? (plan.gate ? [plan.gate] : [])).length };
@@ -143,7 +148,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // kit.lod.metres, then the two swap by camera distance with hysteresis. Far away (the map, the orbit) the whole base is cheap.
     ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.far ?? s.asset).then((gltf) => {
       if (!gltf) return;
-      const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0); group.add(holder);
+      const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0, s.scaleY ?? s.scale); group.add(holder);
       if (s.shown != null && plan.stage < s.shown) holder.visible = false;   // a structure a beat reveals before the stage that shows it outright
       holder.userData.placed = holder.matrix.clone(); if (s.pending) lift(holder, kOf(grown.structures, s.id, s));   // a grown base's landmark waits for its print
       const root = mount(s, gltf, holder); records.set(s.id, s.far ? null : { holder, far: null, near: root });
@@ -159,11 +164,13 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       // cloneSkinned, not clone(true): a rigged landmark (the foundry) keeps the CACHED glTF's bones otherwise, and
       // nothing updates those, so its skin resolves into a huge sheet over the base instead of the model
       // a batched tier welds on a clone, round the nodes named afterwards: the hidden, the darkened, and `keep`, what an effect drives by name (the launcher's sled and clamps)
-      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations, [...(s.hide ?? []), ...(s.dark ?? []), ...(s.keep ?? [])]) : cloneSkinned(gltf.scene);
+      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations, [...(s.hide ?? []), ...(s.caps ?? []).map(([name]) => name), ...(s.dark ?? []), ...(s.keep ?? [])]) : cloneSkinned(gltf.scene);
       own(root); root.name = s.id;
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
+      shutCaps(s, root);
       for (const name of s.dark ?? []) { const n = root.getObjectByName(name); if (n?.material?.emissive) { n.material = n.material.clone(); n.material.emissiveIntensity = 0; owned.add(n.material); } }   // its own copy, dark: the cached glTF's material is shared
       holder.add(root); root.position.set(...s.offset);
+      if (s.rig) { const make = RIGS[s.rig]; if (!make) throw new Error(`no rig '${s.rig}'`); rigs.push(make(THREE, root)); }   // posed at once, before a warm or a print reads it
       const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null, held = {};
       if (mixer) {
         for (const clip of gltf.animations) {
@@ -189,7 +196,13 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       bays.sort((a, b) => a.n - b.n);
       return root;
   }
+  // THE CAP FOLLOWS ITS BRIDGE (src/content/dome-city.js caps; the final review, 2026-11-07): a port cap [name, bridge] is hidden once its bridge
+  // stands or has begun printing (k > 0); a static page, where nothing is pending, hides it at once as before. A bridge this plan has not got,
+  // or skips, leaves the port capped
+  const capOpen = (bridge) => { const b = plan.structures.find((x) => x.id === bridge); return !!b && !skip.includes(bridge) && kOf(grown.structures, bridge, b) > 0; };
+  function shutCaps(s, root) { for (const [name, bridge] of s.caps ?? []) { const n = root?.getObjectByName(name); if (n) n.visible = !capOpen(bridge); } }
   const lodSwitch = (kit.lod?.metres ?? 150) * metres, lodHyst = kit.lod?.hysteresis ?? 1.3;
+  let clock = 0;   // the rigs' time, seconds of ticks
   function driveLod(eye) {
     if (!eye) return;
     for (const l of lod) {
@@ -206,6 +219,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     ready, group, counts, errors,
     tick(dt, near = null, force = null, eye = null) {
       for (const m of mixers) m.update(dt);
+      clock += dt; for (const r of rigs) r.tick(clock);
       prints.tick(records);
       driveLod(eye);
       for (const g of gates) {
@@ -237,7 +251,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // counts as built (it opens for the tank, it holds the swarm) once it reaches the top
     growIsland: (id, k) => { const n = plan.islands.findIndex((i) => i.id === id); if (n < 0) return; grown.islands.set(n, k); for (const s of slabs) { s.inst.setMatrixAt(n, islandMatrix(plan.islands[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
     growWall: (n, k) => { if (!plan.walls[n]) return; grown.walls.set(n, k); for (const s of wallMeshes) { s.inst.setMatrixAt(n, wallMatrix(plan.walls[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
-    grow: (id, k) => { grown.structures.set(id, k); const r = records.get(id); if (r) printAt(id, r, k); },
+    grow: (id, k) => {
+      grown.structures.set(id, k); const r = records.get(id); if (r) printAt(id, r, k);
+      for (const s of plan.structures) if (s.caps?.some(([, b]) => b === id)) { const d = records.get(s.id); if (d) for (const t of [d.far, d.near]) shutCaps(s, t); }   // a bridge begun opens the ports it meets, on every mounted tier
+    },
     printState: (id) => prints.state(id, records.get(id)),
     growGate: (k, id = null) => { const n = id ? gates.findIndex((x) => x.id === id) : 0, g = gates[n]; if (!g) return; grown.gates[n] = k; if (n === 0) grown.gate = k; if (g.obj) lift(g.obj, k); if (k >= 1) g.built = true; },
     // a beat's hand on a landmark: show or hide it, or take its shown tier and clip actions
@@ -375,6 +392,6 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       .map((s) => ({ id: s.id, cell: s.cell, pos: placer.toWorld([s.x, s.y ?? 0, s.z]).toArray() })),
     anchors: () => new Set([...plan.structures, ...(plan.sockets || [])].map((s) => s.cell).filter((c) => Number.isInteger(c) && c >= 0)),
     lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, visible: l.holder.visible, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
-    dispose() { prints.dispose(); for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
+    dispose() { prints.dispose(); for (const r of rigs) r.dispose(); for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }

@@ -6,9 +6,11 @@ import { planBase } from '../src/domain/base-plan.js';
 import { BLOCKED } from '../src/dungeon.js';
 import { findBackMouth } from '../src/domain/back-door.js';
 import { STORY_BACK_DOOR } from '../src/content/story-defaults.js';
+import { DOME_STRUCTURES } from '../src/content/dome-city.js';
 const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
 // BOTH LAYOUTS (round 8 note 6, src/content/dome-city.js): every rule below holds for the classic base and for the dome city round it; the
-// stage-1 list is the same on both (the domes and bridges are stage 2, founded: never pending, standing from a grown base's first frame)
+// dome city's stage-1 list is the classic one and then its six domes and four bridges (stage 2; no longer founded since the owner's note of
+// 2026-11-07, "the base should not be built yet": a grown base prints them in play)
 for (const mode of BASE_LAYOUT_MODES) {
 const { islands: ISLANDS, structures: STRUCTURES } = withBaseLayout(CLASSIC_ISLANDS, CLASSIC_STRUCTURES, mode);
 const layout = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
@@ -113,7 +115,7 @@ for (let n = 0; n < STAGES.length; n++) {
   assert.equal(g.stage, 1); assert.equal(g.reach, STAGES.length - 1);
   assert.deepEqual(ids(g.islands), ISLANDS.filter((i) => !i.founded).map((i) => i.id), 'every island is still to print at stage 1');
   assert.ok([...g.islands, ...g.structures].filter((x) => x.founded).every((x) => !x.pending) && g.islands.filter((i) => i.founded).length === ISLANDS.filter((i) => i.founded).length, 'the founded pieces stand from the first frame');
-  assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'garage', 'chips', 'ammo-a', 'ammo-b', 'ammo-c', 'launcher', 'pearl-a', 'pearl-b', 'pearl-c', 'pearl-d', 'sai92-bay', 'sai92'], 'every later structure is pending');
+  assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'garage', 'chips', 'ammo-a', 'ammo-b', 'ammo-c', 'launcher', 'pearl-a', 'pearl-b', 'pearl-c', 'pearl-d', 'sai92-bay', 'sai92', ...(mode === 'dome' ? DOME_STRUCTURES.map((s) => s.id) : [])], 'every later structure is pending');
   assert.ok(g.structures.some((s) => s.id === 'sh02' && !s.pending), 'the intact SH02 still stands at stage 1');
   assert.ok(g.gate.pending && g.walls.length === KIT.wallsPerSide * 2 && g.walls.every((w) => w.pending), 'the gate and its walls wait');
   assert.deepEqual(g.bays.map((b) => [b.n, !!b.pending]), [[1, true], [2, true], [3, true]], 'the bays are pending berths');

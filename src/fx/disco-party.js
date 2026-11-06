@@ -96,7 +96,11 @@ export function createDiscoParty(h) {
     }
     return st.near ?? st.root;
   }
+  // NO CLIP, NO POSE (the owner's note of 2026-11-07, call C): the crane-hook pose is the rail terraformer's, blended from its paused
+  // Terraforming_Cycle; a Stålheart without that clip (the wheeled KIDOU behind ?gantry=kidou, posed parked by its adapter, src/fx/kidou-rig.js)
+  // keeps its own pose through the whole party and its release, and the ball still hangs under its EXTRUSION_TIP (hang(), tipNow())
   function pose(r, j) {
+    if (!r.act) return;
     r.last = j;
     for (const [, tr, axis, key] of JOINTS) if (r.nodes[key] && j[key] !== undefined) r.nodes[key][tr][axis] = j[key];
     r.root.updateWorldMatrix(true, true);

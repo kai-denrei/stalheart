@@ -229,6 +229,9 @@ export function createShowcaseHooks(host) {
     // THE FOOTPRINTS (--footprints; owner, 2026-10-07: "collision ON, but not so much that its entire perimeter becomes an invisible wall"):
     // a structure's holder point (its pad or its body), whether the base calls it solid, and how many lattice cells within `cells` of it are
     footprint: (id, cells = 4) => { const sb = host.storyBase(), st = sb?.structure?.(id); if (!st?.holder) return null; const at = st.holder.getWorldPosition(new THREE.Vector3()).toArray(), g = host.graph(), r = cells * host.cellSide(); let n = 0, near = 0; for (const c of g.centers) { if (Math.hypot(c[0] - at[0], c[1] - at[1], c[2] - at[2]) > r) continue; near++; if (sb.solidAt(c)) n++; } return { id, at, atSolid: !!sb.solidAt(at), solid: n, near }; },
+    // A PORT CAP ON EACH MOUNTED TIER (--dome-print, --dome-look; src/content/dome-city.js caps): [far, near] node visibility, null for a tier
+    // without the node; null when the structure has not mounted
+    capShown: (id, name) => { const st = host.storyBase()?.structure?.(id); return st ? [st.far, st.near].filter(Boolean).map((t) => t.getObjectByName(name)?.visible ?? null) : null; },
     strays: (hops = 60) => { const d = host.dungeon()?.distToHeart ?? []; let near = 0, far = 0; for (const e of enemies) if (e.alive && !e.guard && !e.harmless) { if (d[e.cur] > hops) far++; else near++; } return { near, far }; },   // hostiles by walking hops from the heart (--canyon-again TIMELINE)
     // A NEST AND ITS CARGO (--nest-lag; round 7, note 1): a site's state, flag and carry, its live guards (soft or hard, how far from the nest's
     // centre in nest radii and from the hull in cells) and its queued ones, the hull's distance and reach in cells, the clock, automated()

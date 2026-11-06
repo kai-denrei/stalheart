@@ -14,7 +14,8 @@ import { LASER_AUDIO } from '../content/orbital-laser.js';
 // the story world's cues, with SOL-82's burning ground once the orbital laser is in the arsenal (src/fx/laser-arsenal.js)
 const STORY_WORLD_SOUNDS = Object.freeze({ ...STORY_SOUNDS, ...LASER_AUDIO, ...voiceSounds() });   // Isao's lines, lazy (src/fx/isao-voice.js)
 export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
-import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode, withBaseLayout, baseLayoutMode, BASE_LAYOUT_DEFAULT } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode, withBaseLayout, baseLayoutMode, BASE_LAYOUT_DEFAULT, stalheartEntry } from '../content/base-layout.js';
+import { gantryMode } from './game-flags.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
 import { createStoryBase, basisAt } from '../fx/story-base.js';
 import { createArrival } from '../fx/arrival.js';
@@ -35,9 +36,13 @@ import { ARENA } from '../content/sectors.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
 // THE BASE'S LAYOUT (round 8 note 6, src/content/dome-city.js): 'classic' is STORY_LAYOUT itself, 'dome' the dome city round the same base
-export function storyLayout(base = 'classic') {
-  if (base !== 'dome') return STORY_LAYOUT;
-  const { islands, structures } = withBaseLayout(ISLANDS, STRUCTURES, base);
+// THE WHEELED STÅLHEART, A LOOK (the owner's note of 2026-11-07, call C): gantry 'kidou' stands the KIDOU in the `stalheart` entry's place
+// (src/content/base-layout.js stalheartEntry), swapped before the layout so the dome city's mapping and planBase see it as any landmark; 'rail'
+// is the layout exactly as it was (STORY_LAYOUT itself on the classic base)
+export function storyLayout(base = 'classic', gantry = 'rail') {
+  const own = gantry === 'kidou' ? STRUCTURES.map((s) => (s.id === 'stalheart' ? stalheartEntry('kidou') : s)) : STRUCTURES;
+  if (base !== 'dome') return own === STRUCTURES ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: own };
+  const { islands, structures } = withBaseLayout(ISLANDS, own, base);
   return { ...STORY_LAYOUT, islands, structures };
 }
 
@@ -124,7 +129,9 @@ function laneBerth(planet, dungeon, from, to, [a, b]) {
   return ci === exit || dungeon.tags[ci] === BLOCKED || dungeon.tags[exit] === BLOCKED ? null : { ci, exit, pos, out };
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', base: baseMode = BASE_LAYOUT_DEFAULT, phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
+// `gantry`: ?gantry=kidou (src/platform/game-flags.js gantryMode), read here off the page's own query and not passed by the controller, so the
+// look costs src/td-tab.js nothing (the owner's note of 2026-11-07, call C)
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', base: baseMode = BASE_LAYOUT_DEFAULT, gantry = gantryMode(globalThis.location?.search), phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -136,7 +143,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // THE COLONY GROWS PAST THE FINISHED BASE (2026-10-01): a growing page reaches every stage; the finished base (SKIP TUTORIAL and a
   // stage-8 link) reaches the colony's stage too, pending, so Isao prints the armory, the farm, the chip plant and the ARC-01 in play
   const reach = grow || stage >= STORY_SKIP.stage ? STAGES.length - 1 : stage;
-  const layout = storyLayout(baseMode);
+  const layout = storyLayout(baseMode, gantry);
   const plan = planBase(planet, landmarks === 'shipped' ? layout : { ...layout, structures: withLandmarkTiers(layout.structures, landmarks) }, stage, { reach, backMouth });
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
@@ -225,6 +232,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // a beat that prints nothing (Isao working the standing foundry) has no piece to be standing: it is owed on a base that grows and
     // already past on a static stage, which is exactly where the rest of the opening it belongs to is
     grow, programme: makeBuildProgramme(steps, { standing: (s) => (pieces(s).length ? !pieces(s).some((p) => p.pending) : !grow) }), print: createBasePrint({ base, plan, placer }),
+    // A STRUCTURE STANDS (the owner's note of 2026-11-07: the bridges follow their domes): its record is mounted, its holder shown (a pending
+    // piece waits hidden at zero, a burned one is concealed) and no print of it is under way (the wire, or the skin rising over it), so a bridge
+    // never starts toward a dome still printing; the programme host and the build board hand it to `when.stand` as `standing`
+    stands: (id) => { const r = base.structure(id); return !!r && r.holder.visible !== false && !base.printState(id).ghost; },
     lost: new Set(),   // buildings SOL-82 burned away (src/content/orbital-laser.js LASER_STRUCTURES): they do not come back this run
     wallCells: [...new Set(plan.walls.filter((w) => w.cell >= 0).map((w) => w.cell))],   // every wall cell, printed on a grown base or standing on a static one: Isao mends either, and the side breach (src/domain/side-breach.js) goes for one
     shot: new Set(),   // every cell a tank shell opened: Isao mends the ones inside the base (src/domain/repair-orders.js shotHoles)

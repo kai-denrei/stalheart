@@ -43,7 +43,7 @@ export function createProgrammeHost(c) {
       if (orders.some((o) => !o.worker)) return;
       // THE BACK GATE IS NEVER PRE-BUILT (owner, 2026-09-18): a static base prints nothing, except this one door, which only exists
       // once the player has held the surprise
-      const backAt = c.story().backOpen ? (c.sectorRun()?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: c.story().beats.phase(), sector, waveActive: c.waveActive(), back: backAt, manned };
+      const backAt = c.story().backOpen ? (c.sectorRun()?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: c.story().beats.phase(), sector, waveActive: c.waveActive(), back: backAt, manned, standing: c.story().stands };   // standing: a bridge's domes (2026-11-07, src/platform/story-world.js stands)
       // A WALL THAT WAS NEVER PRINTED IS NOT A HOLE (owner, 2026-09-16: "he builds ROCKS instead of WALLS ... before building the
       // gate"): story.wallCells are every wall cell (open floor on a grown base until the gate step stands), so a grown base read all of them
       // as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice

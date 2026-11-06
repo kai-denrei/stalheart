@@ -16,6 +16,15 @@ export function createBasePrint({ base, plan, placer }) {
       const [pw, pd] = step.plot ?? [4, 4];
       return { x: s.x, z: s.z, hw: pw, hd: pd, heading: s.heading ?? [0, 1], cell: islandOf(s.island)?.cell ?? plan.cells?.[s.island] ?? -1 };
     }
+    // A STRUCTURE ON NATURAL GROUND (`frame`, the dome city's bridges, the owner's note of 2026-11-07): no island under it, so the plot is the
+    // plan's own structure (src/domain/base-plan.js anchor 'frame': its frame x, z, heading and nearest cell). Its `plot` is the strip the
+    // placement rule reads (src/content/dome-city.js BRIDGE_PLOT, test/dome-city.mjs: metres in frame x, then z), so it is turned into half
+    // extents across and along the heading: a bridge turned [-1, 0] runs its 54 m across that heading, along frame z between its domes
+    if (step.frame) {
+      const s = plan.structures.find((x) => x.id === step.structures[0]); if (!s) return null;
+      const [px, pz] = step.plot ?? [4, 4], [hx, hz] = s.heading ?? [0, 1], ax = Math.abs(hx), az = Math.abs(hz);
+      return { x: s.x, z: s.z, hw: (az * px + ax * pz) / 2, hd: (ax * px + az * pz) / 2, heading: s.heading ?? [0, 1], cell: s.cell ?? -1 };
+    }
     // `gate: true` is the front door with its runs of walls; `gate: '<id>'` is any other door on the plan (the BACK GATE), whose
     // plot is the door's own footprint on the mouth it seals — there are no walls flanking it
     if (step.gate) {
@@ -30,7 +39,8 @@ export function createBasePrint({ base, plan, placer }) {
   }
   const clamp = (v) => Math.max(0, Math.min(1, v));
   // the share of a step's time spent on its slabs (or on its gate) before its structures (or walls) rise
-  const split = (step) => (step.gate ? (step.walls ? 0.35 : 1) : step.structures.length ? 0.3 : 1);   // a door with no walls behind it takes the whole print
+  // a door with no walls behind it takes the whole print; a structure with no slab (`frame`, 2026-11-07) rises from the print's first second
+  const split = (step) => (step.gate ? (step.walls ? 0.35 : 1) : step.frame ? 0 : step.structures.length ? 0.3 : 1);
   return {
     cellOf: (step) => plotOf(step)?.cell ?? -1,
     // (ox, oy) in -1..1 across and along the plot, k the print's progress: a host point on the plot at the height the print has reached
@@ -53,7 +63,7 @@ export function createBasePrint({ base, plan, placer }) {
     },
     progress(step, k) {
       at.step = step.id; at.k = k;
-      const s = split(step), first = clamp(k / s), second = s < 1 ? clamp((k - s) / (1 - s)) : 1;
+      const s = split(step), first = s > 0 ? clamp(k / s) : 1, second = s < 1 ? clamp((k - s) / (1 - s)) : 1;
       for (const id of step.islands) base.growIsland(id, first);
       if (step.gate) base.growGate(Math.min(0.999, first), gateOf(step)?.id ?? null);   // built only when the whole step stands: its walls block the swarm too
       if (step.walls) { const n = plan.walls.length; plan.walls.forEach((w, i) => base.growWall(i, clamp(second * n - i))); }   // one after another
