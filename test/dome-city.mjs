@@ -104,11 +104,13 @@ for (const b of boxes.filter((x) => !x.city)) for (const i of city.islands) if (
 { const L = city.structures.find((s) => s.id === 'launcher'), at = byId.get('launcher'), [hx, hz] = L.heading;
   for (let d = 15; d < R; d += 1) { const x = at.x + hx * d, z = at.z + hz * d, y = 22.7 + (d - 14.7) * Math.tan(1.05); for (const c of boxes.filter((b) => b.city)) if (x > c.x0 - 3 && x < c.x1 + 3 && z > c.z0 - 3 && z < c.z1 + 3) assert.ok(y > 36, `the payload clears ${c.id}`); } }
 
-// THE DECK ON THE PORTS (R 753 m; each placement is tangent at its own centre). The sag arithmetic: the dome's slab 35.1 m out sags
-// sag(35.1) = 0.82 m below the bridge's centre tangent, the bridge's end 26 m out 0.45 m above the sphere there; `lift` lowers the deck by
-// the difference, rounded to the centimetre, negative = down along the bridge's own up (the sign the shipped -0.33 had)
+// THE DECK ON THE PORTS (R 753 m; each placement is tangent at its own centre). The bridge's end (26 m out) and the dome's port
+// (14 * DOME_SCALE m out of the dome's centre) are measured over the same sphere point; each sags below its own tangent by sag(d), and `lift`
+// lowers the deck by the difference (negative = down along the bridge's own up). The relation is the guide within 5 cm; the measured check
+// below is the binding guard (the shipped -0.37 against the relation's -0.39)
 const sag = (d) => d * d / (2 * 753);
-for (const b of bridges) assert.equal(b.lift, +(-(sag(35.1) - sag(26))).toFixed(2), `${b.id}: lift from the sag`);
+for (const b of bridges) { assert.ok(Math.abs(b.lift - (-(sag(26) - sag(14 * DOME_SCALE)))) < 0.05, `${b.id}: lift ${b.lift} from the sag of the end and the port`);
+  assert.ok(7.5 * DOME_SCALE + b.lift >= 3.016 + 1.0, `${b.id}: the deck, lowered by its lift, clears the MÖRK by a metre`); }
 // ...and measured on the sphere (src/fx/story-base.js basisAt on the game's frame, src/domain/story-planet.js frameToWorld at 753.3 m): the
 // bridge's end columns stand on the domes' slabs within a decimetre, and each socket (read from the models' nodes) meets its scaled port within
 // 5 cm in height (along the deck, the frame's projection leaves them ~0.2 m apart; 0.45 m at the old 80 m spacing)

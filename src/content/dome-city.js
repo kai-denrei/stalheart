@@ -43,13 +43,15 @@ export const DOME_STRUCTURES = Object.freeze([
   // THE BRIDGES: the 52 m bridge_long (ends +-27 m, its sockets +-26 m at y 9.7, the deck's underside 7.5 m, columns at +-10 and +-26 m, a 19 m
   // opening between the middle pair). The author's yaw -pi/2 lays its X along +Z: heading [-1, 0] here. 0.65 IN HEIGHT ONLY (the owner, 2026-11-07:
   // room for the tank under the bridges): `scale: 1` keeps its 54 m length and 4.4 m width, `scaleY: DOME_SCALE` (src/fx/story-base.js place)
-  // brings the sockets to y 6.3, onto the scaled ports, and the deck's underside to 4.9 m: the MÖRK's 3.0 m and its hover with 1.4 m to spare
-  // (the rule: 7.5 x 0.65 >= 3.016 + 1.0). NO SLAB UNDER A BRIDGE: its ends stand inside the two domes' plots (26 m out of 35.1, the dome's
-  // plot reaches 25.1 m), so a bridge island could never keep the 4 m between islands; and none is needed. Each placement is tangent at its own
-  // centre (R 753 m), so the dome's slab 35.1 m out sags 35.1^2 / 1506 = 0.82 m below the bridge's tangent, its end 26 m out stands
-  // 26^2 / 1506 = 0.45 m above the sphere there: `lift` -(0.82 - 0.45) = -0.37 (NEGATIVE = DOWN, along the bridge's own up) sets the deck on
-  // both ports at once. Measured on the sphere (test/dome-city.mjs): the end columns stand 2.5 cm over the domes' slabs and each socket 4 cm
-  // under its port; the middle pair sinks into the ground, unseen. (At the old 80 m spacing the same reading gave -0.33.)
+  // brings the sockets to y 6.3, onto the scaled ports, and the deck's underside to 4.9 m, 4.5 m once `lift` has lowered it: 1.49 m over the
+  // MÖRK's 3.016 m, 0.49 m over the rule's 1.0 m (7.5 x 0.65 - 0.37 >= 3.016 + 1.0). NO SLAB UNDER A BRIDGE: its ends stand inside the two
+  // domes' plots (26 m out of 35.1, the dome's plot reaches 25.1 m), so a bridge island could never keep the 4 m between islands; and none is
+  // needed. Each placement is tangent at its own centre (R 753 m). `lift` (NEGATIVE = DOWN, along the bridge's own up) brings the bridge's end
+  // and the dome's port to one height: the end stands 26 m out and the port 14 x DOME_SCALE = 9.1 m out of the dome's centre, both measured over
+  // the same sphere point, so each sags below its own tangent by sag(d) = d^2 / 1506; `lift` ~ -(sag(26) - sag(9.1)) = -(0.449 - 0.055) = -0.39.
+  // -0.37 is kept: measured on the sphere (test/dome-city.mjs) the end columns stand 2.5 cm over the domes' slabs and each socket 4 cm under its
+  // port, within the design's decimetre; the middle pair sinks into the ground, unseen. (The same relation gives -0.32 at the old 80 m spacing,
+  // which is where -0.33 came from.)
   // `anchor: 'frame'`: placed at its own x, z on natural ground (src/domain/base-plan.js)
   ...[['bridge-w1', 'LINK_N_11', -80, -35.1], ['bridge-w2', 'LINK_N_21', -80, 35.1], ['bridge-e1', 'LINK_N_13', 80, -35.1], ['bridge-e2', 'LINK_N_23', 80, 35.1]].map(([id, author, x, z]) => Object.freeze({
     id, author, batch: true, module: 'bridge_long', asset: `${dir}/bridge_long_d0_lod1.glb`, far: `${dir}/bridge_long_d0_lod2.glb`, anchor: 'frame', x, z, stage: 2, scale: 1, scaleY: DOME_SCALE, offset: [0, 0, 0], heading: [-1, 0], lift: -0.37,
