@@ -270,6 +270,10 @@ export const BRIEFS = {
     lines: ['Printing the depot: three Bio-Pearls and a pad for the Yushi Rover.', 'From now on the biomass waits on the ground. The rover fetches it.'],
   },
   build_pearl: { id: 'build_pearl', face: 'glee', title: 'ISAO · THE DEPOT', lines: ['A fourth Bio-Pearl. Twelve tonnes more room.'] },
+  // THE DOME CITY FROM SCRATCH (the owner's note of 2026-11-07): a dome bought on the board, and a bridge once both its domes stand; said at each
+  // (not once), captions until recorded
+  build_dome: { id: 'build_dome', face: 'glee', title: 'ISAO · THE DOMES', lines: ['A dome for the colony. Everyone wants a window.'] },
+  build_bridge: { id: 'build_bridge', face: 'glee', title: 'ISAO · THE BRIDGES', lines: ['And a bridge between them. No helmets indoors.'] },
   rover_flare: {
     id: 'rover_flare', face: 'curious', title: 'COMMS · ISAO', once: true,
     lines: ['Drop a flare where the bodies lie, F. The rover comes.', 'It brings the biomass home to the pearls. Nothing else does now.'],

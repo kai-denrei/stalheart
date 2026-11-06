@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { thumbSource, thumbKey, fitScale } from '../src/domain/board-thumbs.js';
 import { BUILD_BOARD } from '../src/content/build-board.js';
 import { UNIT_ENTRIES } from '../src/content/bestiary.js';
+import { DOME_STRUCTURES } from '../src/content/dome-city.js';
+import { thumbModel } from '../src/fx/board-thumbs.js';
 
 // the fit: three boxes brought to the frame on their largest side, an empty box left alone
 const F = BUILD_BOARD.thumb.frame;
@@ -25,7 +27,12 @@ assert.equal(thumbKey({ draw: 'tower', look: 'sentry', key: 'rotor', tier: 1 }),
 assert.equal(thumbKey({ draw: 'hull' }), 'bb-hull');
 
 // every board structure has a bestiary model to draw (its perk names the entry, or the entry's `board` names the step), and so does the hull
-for (const step of Object.keys(BUILD_BOARD.structures)) assert(UNIT_ENTRIES.some((e) => (e.board ?? e.needs?.perk) === step && e.model?.url), `${step} has a bestiary model`);
+// THE DOMES (the owner's note of 2026-11-07, the base from scratch): a dome card has no bestiary entry; it draws its own dome's one-draw LOD2
+const domes = new Map(DOME_STRUCTURES.filter((s) => !s.anchor).map((s) => [s.id, s]));
+for (const step of Object.keys(BUILD_BOARD.structures).filter((id) => !domes.has(id))) assert(UNIT_ENTRIES.some((e) => (e.board ?? e.needs?.perk) === step && e.model?.url), `${step} has a bestiary model`);
+for (const step of Object.keys(BUILD_BOARD.structures)) { const m = thumbModel({ draw: 'structure', step }); assert(m?.url && existsSync(new URL(`../${m.url}`, import.meta.url)), `${step}: its card draws a model that exists (${m?.url})`); }
+for (const [id, d] of domes) if (BUILD_BOARD.structures[id]) assert.deepEqual(thumbModel({ draw: 'structure', step: id }), { url: d.far }, `${id}: the card draws the dome's LOD2, caps closed (a dome alone)`);
+assert.equal(thumbModel({ draw: 'structure', step: 'bridge-w1' }), null, 'a bridge is never a card: no model');
 assert(UNIT_ENTRIES.find((e) => e.id === 'mork')?.model?.url, 'the MÖRK has a model');
 
 // the wiring: the board's tiles carry the thumbnail, td-tab hands the board the sprite rig and the look

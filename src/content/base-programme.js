@@ -4,6 +4,8 @@
 // one after another. `when` is the earliest a step may start: `phase` a story beat reached (STORY_PHASES in src/domain/automation.js),
 // `sector` a sector number reached (story.sectorN), `idle` only between waves. `seconds` is the print once Isao is over the plot,
 // `metres` how high the print beam climbs, `brief` his line when he starts, `perk` what switches on when it stands.
+import { BRIDGE_PLOT } from './dome-city.js';
+
 export const BASE_PROGRAMME = Object.freeze([
   // ISAO WORKS THE RECYCLER FIRST (owner, 2026-09-16: "before building the gates, Isao should use his beam to work on the recycle
   // factory we first see"). `over` is a structure that already stands: nothing is printed, he flies to the AFR-01's own cell and holds
@@ -75,6 +77,26 @@ export const BASE_PROGRAMME = Object.freeze([
   // where an ideal bank first passes the three pearls' 36,000 kg); standing, it adds its vessel to the bank's cap (src/fx/rover-glue.js reads the
   // step done, not a perk: the depot's perk opens the pearl's entry in the terminal, and the card's thumbnail is that entry's, `board: 'pearl'`)
   { id: 'pearl', label: 'Bio-Pearl', structures: ['pearl-d'], board: true, when: { sector: 3, idle: true }, seconds: 8, metres: 4, brief: 'build_pearl', perk: null },
+  // THE DOME CITY FROM SCRATCH (the owner's note of 2026-11-07: "The base should not be built yet. Isao comes out and starts a base from scratch
+  // ... they need biomass to do so"; spec docs/superpowers/specs/2026-11-07-base-from-scratch-design.md 2.A). The six domes are no longer founded
+  // (src/content/dome-city.js): each is a board step, its 20 x 20 island then its module, bought between sectors (src/content/build-board.js) and
+  // printed at its gate between waves: the mouth's pair from sector 1, the middle pair from 2, the far pair from 3. After the colony's own cards,
+  // because the board takes the first four in this order and a dome has no mechanical effect yet; a column before the other, so a pair's bridge
+  // comes sooner. The label carries the column and the side (two habitat and two logistics domes could share a board). On the classic base the plan holds no dome, and src/platform/story-world.js keeps none of these steps
+  { id: 'dome-nw', label: 'habitat dome NW', islands: ['dome-nw'], structures: ['dome-nw'], board: true, when: { sector: 1, idle: true }, seconds: 18, metres: 10, brief: 'build_dome', perk: null },
+  { id: 'dome-w', label: 'biosphere dome W', islands: ['dome-w'], structures: ['dome-w'], board: true, when: { sector: 2, idle: true }, seconds: 18, metres: 10, brief: 'build_dome', perk: null },
+  { id: 'dome-sw', label: 'habitat dome SW', islands: ['dome-sw'], structures: ['dome-sw'], board: true, when: { sector: 3, idle: true }, seconds: 18, metres: 10, brief: 'build_dome', perk: null },
+  { id: 'dome-ne', label: 'logistics dome NE', islands: ['dome-ne'], structures: ['dome-ne'], board: true, when: { sector: 1, idle: true }, seconds: 18, metres: 10, brief: 'build_dome', perk: null },
+  { id: 'dome-e', label: 'fabrication dome E', islands: ['dome-e'], structures: ['dome-e'], board: true, when: { sector: 2, idle: true }, seconds: 18, metres: 10, brief: 'build_dome', perk: null },
+  { id: 'dome-se', label: 'logistics dome SE', islands: ['dome-se'], structures: ['dome-se'], board: true, when: { sector: 3, idle: true }, seconds: 18, metres: 10, brief: 'build_dome', perk: null },
+  // THE BRIDGES FOLLOW THEIR DOMES (2026-11-07): not for sale; each prints by itself once both domes it joins stand (`when.stand`, answered by the
+  // host's standing(id): the dome shown and its print done, src/platform/story-world.js stands). No island under a bridge, so `frame` makes its
+  // plot the plan's own frame x, z and heading, and `plot` the deck's strip (src/fx/base-print.js). `passable`: a bridge whose domes were never
+  // bought holds nothing up, not even the other bridges, and is not owed. Last on the programme, so nothing waits behind them
+  { id: 'bridge-w1', label: 'bridge W1', structures: ['bridge-w1'], frame: true, plot: BRIDGE_PLOT, when: { stand: ['dome-nw', 'dome-w'] }, passable: true, seconds: 8, metres: 6, brief: 'build_bridge', perk: null },
+  { id: 'bridge-w2', label: 'bridge W2', structures: ['bridge-w2'], frame: true, plot: BRIDGE_PLOT, when: { stand: ['dome-w', 'dome-sw'] }, passable: true, seconds: 8, metres: 6, brief: 'build_bridge', perk: null },
+  { id: 'bridge-e1', label: 'bridge E1', structures: ['bridge-e1'], frame: true, plot: BRIDGE_PLOT, when: { stand: ['dome-ne', 'dome-e'] }, passable: true, seconds: 8, metres: 6, brief: 'build_bridge', perk: null },
+  { id: 'bridge-e2', label: 'bridge E2', structures: ['bridge-e2'], frame: true, plot: BRIDGE_PLOT, when: { stand: ['dome-e', 'dome-se'] }, passable: true, seconds: 8, metres: 6, brief: 'build_bridge', perk: null },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
 // ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the

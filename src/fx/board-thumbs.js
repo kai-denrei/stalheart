@@ -1,7 +1,7 @@
 // THE BUILD BOARD'S THUMBNAILS (owner, 2026-11-05, round 7 note 4: "the build board gets small wireframe thumbnails like the glossary's"; the
 // rules src/domain/board-thumbs.js, the frame BUILD_BOARD.thumb). Each card's picture is one frame of the real thing through the glossary's
 // sprite rig (td-tab's spriteShot, src/fx/wave-card.js), drawn as the bestiary's tinted wireframe (model-fixture setWireframe): a structure
-// its bestiary model, a sentry its own look (an upgrade one tier up), a companion its model, the hull's cards the MÖRK, the shield a drawn
+// its bestiary model (a dome its own LOD2, 2026-11-07), a sentry its own look (an upgrade one tier up), a companion its model, the hull's cards the MÖRK, the shield a drawn
 // dome. A GLB lands later than the card: the <img> gets its src when it does, and a landing after the board closed (or after a newer board
 // opened: the generation token) is dropped. The geometry is the clone's own, so the sprite rig's dispose never frees a model the game draws.
 //   createBoardThumbs({ spriteShot(key, build), towerLook(), towers() }) -> { fill(offer, img) -> drawn or pending (false: nothing to draw), close() }
@@ -12,11 +12,16 @@ import { TOWER_BY_KEY } from '../towers.js';
 import { UNIT_ENTRIES } from '../content/bestiary.js';
 import { COMPANIONS } from '../content/companions.js';
 import { BUILD_BOARD } from '../content/build-board.js';
+import { DOME_STRUCTURES } from '../content/dome-city.js';
 import { thumbSource, thumbKey, fitScale } from '../domain/board-thumbs.js';
 
 const T = BUILD_BOARD.thumb;
 const entry = (pred) => UNIT_ENTRIES.find((e) => pred(e) && e.model?.url)?.model ?? null;
-const modelOf = (src) => (src.draw === 'structure' ? entry((e) => (e.board ?? e.needs?.perk) === src.step)   // `board`: an entry that draws a card whose step has no perk of its own (the fourth Bio-Pearl, round 8)
+// THE DOMES (the owner's note of 2026-11-07, the base from scratch): a dome card has no bestiary entry; it draws its own dome's one-draw LOD2 with
+// its port caps on (a dome alone on the card, no bridge to open them for)
+const domeOf = (step) => DOME_STRUCTURES.find((s) => s.id === step && !s.anchor && s.far) ?? null;
+//   thumbModel(src) -> { url, hide? } the GLB a card's picture is drawn from, or null (the node test checks every board structure has one)
+export const thumbModel = (src) => (src.draw === 'structure' ? entry((e) => (e.board ?? e.needs?.perk) === src.step) ?? (domeOf(src.step) ? { url: domeOf(src.step).far } : null)   // `board`: an entry that draws a card whose step has no perk of its own (the fourth Bio-Pearl, round 8)
   : src.draw === 'hull' ? entry((e) => e.id === 'mork')
   : src.draw === 'pet' && COMPANIONS.units?.[src.index]?.model ? { url: COMPANIONS.units[src.index].model } : null);
 
@@ -49,7 +54,7 @@ export function createBoardThumbs(h) {
     const put = (build) => { if (my === gen && img.isConnected) img.src = h.spriteShot(key, build); };
     if (src.draw === 'tower') { put(() => framed(buildTowerLook(src.look, src.def, src.tier))); return true; }
     if (src.draw === 'dome') { put(dome); return true; }
-    const model = modelOf(src); if (!model) return false;
+    const model = thumbModel(src); if (!model) return false;
     loadModelFixture(model.url).then((scene) => put(() => framed(cloneFixture(scene), model.hide)), () => {});
     return true;
   }

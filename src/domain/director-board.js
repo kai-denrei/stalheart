@@ -42,10 +42,11 @@ export function whenText(w = {}) {
   if (w.days) out.push(`${w.days} days after the print before`);
   if (w.back === 'held') out.push('once the back mouth is held (THE BACK DOOR)');
   if (w.manned) out.push(`after ${w.manned} manned SOL-82 passes`);
+  if (w.stand?.length) out.push(`once ${w.stand.join(' and ')} stand`);   // a bridge after its two domes (2026-11-07)
   if (w.idle) out.push('at the lull, between waves');
   if (w.delay) out.push(`${w.delay} s on, at the first quiet moment`);
   if (w.patience) out.push(`a fight holds it ${w.patience} s at most`);
-  for (const [k, v] of Object.entries(w)) if (!['phase', 'sector', 'perk', 'boss', 'days', 'back', 'manned', 'idle', 'delay', 'patience', 'brief'].includes(k)) out.push(`${k}: ${JSON.stringify(v)}`);
+  for (const [k, v] of Object.entries(w)) if (!['phase', 'sector', 'perk', 'boss', 'days', 'back', 'manned', 'idle', 'delay', 'patience', 'brief', 'stand'].includes(k)) out.push(`${k}: ${JSON.stringify(v)}`);
   return out.join(', ');
 }
 
@@ -73,7 +74,9 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   const arcCol = (a) => ({ canyonAgain: `s:${doorAt - 1}`, door: `s:${doorAt}`, arena: `s:${doorAt + 1}`, both: `s:${doorAt + 2}`, descent: 'descent', ending: 'ending', endless: 'endless' })[a] ?? null;
   const order = (id) => columns.findIndex((c) => c.id === id);
   const later = (a, b) => (a === null ? b : b === null ? a : order(a) >= order(b) ? a : b);
-  const stepCol = (s) => (s.when.back === 'held' ? `s:${doorAt}` : later(s.when.phase ? phaseCol(s.when.phase) : null, s.when.sector ? `s:${s.when.sector}` : null));
+  // a step that waits for structures to stand (`when.stand`, the dome city's bridges, 2026-11-07) sits with the latest step that prints them
+  const standCol = (w) => (w.stand ?? []).map((id) => t.programme.find((x) => x.structures?.includes(id))).filter(Boolean).reduce((a, x) => later(a, stepCol(x)), null);
+  const stepCol = (s) => (s.when.back === 'held' ? `s:${doorAt}` : later(later(s.when.phase ? phaseCol(s.when.phase) : null, s.when.sector ? `s:${s.when.sector}` : null), standCol(s.when)));
   const perkStep = (perk) => t.programme.find((s) => s.perk === perk) ?? null;
   const pets = (t.companions.prints.triggers ?? []).map((tr, i) => {
     const unit = t.companions.units.find((u) => u.id === t.companions.prints.order[i]);
@@ -122,7 +125,7 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   const boardFrom = (s) => Math.max(2, s.when.sector ?? 2), price = (s) => t.buildBoard?.structures?.[s.id]?.price ?? null;
   const offers = t.programme.filter((s) => s.board).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: `${price(s)} kg · offered from sector ${boardFrom(s)}`,
     rule: `on THE BUILD BOARD before sector ${boardFrom(s)} (the debrief's CONTINUE); once bought Isao prints it ${whenText(s.when)}`, when: s.when, tags: ['bought on the board', s.passable && 'passable', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
-    src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }, { file: 'src/content/build-board.js', find: `${s.id}: Object.freeze({ price` }] }));
+    src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }, { file: 'src/content/build-board.js', find: `${/^\w+$/.test(s.id) ? s.id : `'${s.id}'`}: Object.freeze({ price` }] }));   // a dome's key is quoted (2026-11-07)
 
   // DROPS & COMPANIONS: the day-gated moments, the day rule written on them
   const dayS = t.storyDay?.seconds ?? 30;

@@ -225,6 +225,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // a beat that prints nothing (Isao working the standing foundry) has no piece to be standing: it is owed on a base that grows and
     // already past on a static stage, which is exactly where the rest of the opening it belongs to is
     grow, programme: makeBuildProgramme(steps, { standing: (s) => (pieces(s).length ? !pieces(s).some((p) => p.pending) : !grow) }), print: createBasePrint({ base, plan, placer }),
+    // A STRUCTURE STANDS (the owner's note of 2026-11-07: the bridges follow their domes): its record is mounted, its holder shown (a pending
+    // piece waits hidden at zero, a burned one is concealed) and no print of it is under way (the wire, or the skin rising over it), so a bridge
+    // never starts toward a dome still printing; the programme host and the build board hand it to `when.stand` as `standing`
+    stands: (id) => { const r = base.structure(id); return !!r && r.holder.visible !== false && !base.printState(id).ghost; },
     lost: new Set(),   // buildings SOL-82 burned away (src/content/orbital-laser.js LASER_STRUCTURES): they do not come back this run
     wallCells: [...new Set(plan.walls.filter((w) => w.cell >= 0).map((w) => w.cell))],   // every wall cell, printed on a grown base or standing on a static one: Isao mends either, and the side breach (src/domain/side-breach.js) goes for one
     shot: new Set(),   // every cell a tank shell opened: Isao mends the ones inside the base (src/domain/repair-orders.js shotHoles)

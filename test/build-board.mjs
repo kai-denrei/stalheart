@@ -5,15 +5,23 @@ import { BASE_PROGRAMME } from '../src/content/base-programme.js';
 import { BUILD_BOARD } from '../src/content/build-board.js';
 import { boardOffers, pickable, toggle, totalOf, jumpBought, emptiestLaneSite } from '../src/domain/build-board.js';
 import { makeBuildProgramme, due, begin, finish, buy, snapshot } from '../src/domain/build-programme.js';
+import { DOME_STRUCTURES } from '../src/content/dome-city.js';
 
-const BOARD_STEPS = ['board', 'garage', 'armory', 'farm', 'chips', 'launcher', 'pearl'];   // round 8 note 7: the fourth Bio-Pearl
+const COLONY_STEPS = ['board', 'garage', 'armory', 'farm', 'chips', 'launcher', 'pearl'];   // round 8 note 7: the fourth Bio-Pearl
+// THE DOME CITY ON THE BOARD (the owner's note of 2026-11-07: the base from scratch): the six domes are board steps after the colony's own
+const DOME_STEPS = ['dome-nw', 'dome-w', 'dome-sw', 'dome-ne', 'dome-e', 'dome-se'];
+const BOARD_STEPS = [...COLONY_STEPS, ...DOME_STEPS];
+// the programme a CLASSIC plan holds (src/platform/story-world.js keeps only the steps whose pieces the plan has: no dome, no bridge), which the
+// colony's cards below were written against; the dome city's own pool is its block after them
+const CITY = new Set(DOME_STRUCTURES.map((s) => s.id)), CLASSIC = BASE_PROGRAMME.filter((s) => !s.structures.some((id) => CITY.has(id)));
 const SENTRIES = [{ key: 'rotor', name: 'Rotor', cost: 45 }, { key: 'quiver', name: 'Quiver', cost: 90 }, { key: 'mortar', name: 'Mortar', cost: 110 }];
-const world = (over = {}) => ({ steps: BASE_PROGRAMME, done: new Set(), bought: new Set(), ctx: { phase: 'expedition', sector: 2, back: null, manned: 0 }, bank: 300, sentryRoom: true, sentries: SENTRIES,
+const world = (over = {}) => ({ steps: CLASSIC, done: new Set(), bought: new Set(), ctx: { phase: 'expedition', sector: 2, back: null, manned: 0 }, bank: 300, sentryRoom: true, sentries: SENTRIES,
   upgrade: { ci: 7, name: 'Rotor', tier: 0, cost: 31 }, hull: { dents: 4, max: 4, hulls: 3, maxHulls: 3 }, shield: { rack: 4, cap: 4 }, pets: [], ...over });
 
 // the content: exactly the six non-spine steps are the board's, each priced; the spine stays automatic
 {
-  assert.deepEqual(BASE_PROGRAMME.filter((s) => s.board).map((s) => s.id), BOARD_STEPS, 'the seven structures that left the automatic programme');
+  assert.deepEqual(BASE_PROGRAMME.filter((s) => s.board).map((s) => s.id), BOARD_STEPS, 'the seven structures that left the automatic programme, then the six domes');
+  assert.deepEqual(CLASSIC.filter((s) => s.board).map((s) => s.id), COLONY_STEPS, 'a classic plan holds the seven');
   for (const id of BOARD_STEPS) assert.ok(BUILD_BOARD.structures[id]?.price > 0 && BUILD_BOARD.structures[id].effect, `${id}: a price and an effect`);
   assert.equal(BUILD_BOARD.offers, 6); assert.equal(BUILD_BOARD.picks, 2);
 }
@@ -55,6 +63,21 @@ const world = (over = {}) => ({ steps: BASE_PROGRAMME, done: new Set(), bought: 
   assert.ok(!boardOffers(world({ ctx: { phase: 'expedition', sector: 1 }, pets: [{ id: 'k0', index: 2, label: 'K0' }] }), BUILD_BOARD).some((o) => o.kind === 'pet'), '...not before its sector');
 }
 
+// THE DOME CITY'S POOL (the owner's note of 2026-11-07): on the dome city's programme the domes join the pool at their sector gates, after the
+// colony's cards (the first structuresMax in programme order), so a board never fills with domes; a standing or bought dome is not offered
+{
+  const ids = (w) => boardOffers(world({ steps: BASE_PROGRAMME, ...w }), BUILD_BOARD).map((o) => o.id).filter((id) => id.startsWith('build:'));
+  const at = (n, w = {}) => ids({ ctx: { phase: 'expedition', sector: n, back: null, manned: 0 }, ...w });
+  assert.deepEqual(at(2), ['build:board', 'build:garage', 'build:armory', 'build:dome-nw'], 'before sector 2: the colony\'s three, then the first dome');
+  const colony = new Set(COLONY_STEPS);
+  assert.deepEqual(at(1, { done: colony }), ['build:dome-nw', 'build:dome-ne'], 'sector 1: the two domes on the mouth\'s side');
+  assert.deepEqual(at(2, { done: colony }), ['build:dome-nw', 'build:dome-w', 'build:dome-ne', 'build:dome-e'], 'sector 2: the middle pair too, four at most');
+  assert.deepEqual(at(3, { done: colony, bought: new Set(['dome-nw', 'dome-w']) }), ['build:dome-sw', 'build:dome-ne', 'build:dome-e', 'build:dome-se'], 'sector 3: the far pair; bought domes are not offered again');
+  assert.ok(!at(9, { done: colony }).some((id) => /build:bridge-/.test(id)), 'a bridge is never on the board');
+  const card = boardOffers(world({ steps: BASE_PROGRAMME, done: colony }), BUILD_BOARD).find((o) => o.id === 'build:dome-w');
+  assert.deepEqual([card.kind, card.step, card.label, card.price], ['structure', 'dome-w', BASE_PROGRAMME.find((s) => s.id === 'dome-w').label.toUpperCase(), BUILD_BOARD.structures['dome-w'].price], 'a dome card: its step, its label, its price at index 1');
+}
+
 // the pick: up to two, affordable after the first is paid; a toggle takes a pick back
 {
   const offers = [{ id: 'a', price: 100 }, { id: 'b', price: 150 }, { id: 'c', price: 60 }, { id: 'd', price: 400 }];
@@ -90,9 +113,16 @@ const world = (over = {}) => ({ steps: BASE_PROGRAMME, done: new Set(), bought: 
 
 // a jump stands in for the boards before it: every board step whose sector gate the jump has reached
 {
-  assert.deepEqual(jumpBought(BASE_PROGRAMME, 1), ['board', 'garage']);
+  assert.deepEqual(jumpBought(CLASSIC, 1), ['board', 'garage']);
+  assert.deepEqual(jumpBought(CLASSIC, 4), COLONY_STEPS);
+  assert.deepEqual(jumpBought(CLASSIC, 3), ['board', 'garage', 'armory', 'farm', 'pearl']);   // the fourth pearl's gate is sector 3 (round 8)
+  // the dome city's programme: the domes whose gate the jump has reached too (a skipped opening is a stage-8 base, where they already stand, so
+  // the programme's buy() refuses them and the bought set the --board step reads stays the board and the garage)
+  assert.deepEqual(jumpBought(BASE_PROGRAMME, 1), ['board', 'garage', 'dome-nw', 'dome-ne']);
   assert.deepEqual(jumpBought(BASE_PROGRAMME, 4), BOARD_STEPS);
-  assert.deepEqual(jumpBought(BASE_PROGRAMME, 3), ['board', 'garage', 'armory', 'farm', 'pearl']);   // the fourth pearl's gate is sector 3 (round 8)
+  { const pg = makeBuildProgramme(BASE_PROGRAMME, { standing: (st) => st.id.startsWith('dome-') || st.id.startsWith('bridge-') });
+    for (const id of jumpBought(BASE_PROGRAMME, 1)) buy(pg, id);
+    assert.deepEqual([...pg.bought].sort(), ['board', 'garage'], 'standing domes are not bought by a jump'); }
 }
 // Isao's sentry: the door whose lane holds the fewest sentries, its nearest free socket
 {
@@ -117,7 +147,7 @@ const world = (over = {}) => ({ steps: BASE_PROGRAMME, done: new Set(), bought: 
   const log = [], root = { children: [], appendChild(c) { root.children.push(c); return c; } };
   let biomass = 10000, armour = 2;
   const eco = { get biomass() { return biomass; }, spend(n, o) { if (n > biomass) return false; biomass -= n; log.push(['spend', n, o.category]); return true; } };
-  const programme = makeBuildProgramme(BASE_PROGRAMME, { standing: (st) => !st.board });
+  const programme = makeBuildProgramme(CLASSIC, { standing: (st) => !st.board });
   const story = { programme, gateCell: 0, socketToward: { 2: [0, 1], 3: [0, 1] }, beats: { phase: () => 'expedition' }, expeditions: null };
   const towers = [{ ci: 3, tier: 0, def: { key: 'rotor', name: 'Rotor', cost: 45, upgradeCost: [31, 54] } }];
   const bb = createBuildBoard({ root, endShot: () => log.push(['endShot']), eco: () => eco, story: () => story, towers: () => towers, orders: [], placeError: (ci) => (ci === 3 ? 'occupied' : null), graph: () => ({ centers: [[0, 0, 0], [5, 0, 0], [1, 0, 0], [2, 0, 0]] }), cellSide: () => 1,

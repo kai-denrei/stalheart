@@ -70,6 +70,6 @@ const meshes = (o) => { const l = []; o.traverse((x) => { if (x.isMesh) l.push(x
   const r = rec(); lifts.length = 0; prints.at('garage', r, 1); assert.equal(prints.holds('garage'), false); assert.deepEqual(lifts, [1]); assert.equal(r.far.visible, true);
 }
 // every structure the programme prints has a tier to copy (an asset), so no structure falls back to the Y rise
-const { STRUCTURES } = await import('../src/content/base-layout.js');
-for (const st of BASE_PROGRAMME.flatMap((s) => s.structures)) assert.ok(STRUCTURES.find((x) => x.id === st)?.asset, `${st} has a model`);
+const { STRUCTURES } = await import('../src/content/base-layout.js'), { DOME_STRUCTURES } = await import('../src/content/dome-city.js');   // the dome city's domes and bridges are printed too (2026-11-07)
+for (const st of BASE_PROGRAMME.flatMap((s) => s.structures)) assert.ok([...STRUCTURES, ...DOME_STRUCTURES].find((x) => x.id === st)?.asset, `${st} has a model`);
 console.log('structure-print: the wire first, clipped up from the plot with the print; the skin over it at the end; no ghost for a skip; a replay starts over');
