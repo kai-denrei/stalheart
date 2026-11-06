@@ -4766,6 +4766,9 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 #landing-hud .lh-throttle { flex: 1; accent-color: #4fae63; writing-mode: horizontal-tb; }
 /* #landing-hud sits in the body, not in #td-app, so the arrival's chrome-hiding rule does not reach it; :not([hidden]) keeps show(false) true */
 body.arrival-on #landing-hud:not([hidden]) { display: block; }
+/* THE LANDING'S GLARE (src/fx/landing-glare.js): the override beat's full-screen launch shader, or its CSS fade */
+#landing-glare { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 39; pointer-events: none; mix-blend-mode: screen; }
+#landing-glare.fade { background: radial-gradient(circle at 50% 60%, rgba(255,203,133,0.9), rgba(255,120,60,0.4) 40%, transparent 70%); opacity: 0; }
 
 #showcase {
   position: absolute; inset: 0; z-index: 90;
