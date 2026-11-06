@@ -1590,8 +1590,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK (`off-pad` on this seed: the entry's 8-12 m/s
  // drift carries it ~95 m out before the sink can; `sink` would be the reason on the pad), two sections, the wreck's fourth caption. 3. the skip
  // mid-flight (the still at ~200 m first: the rocket, the reticle on the ground): CLEAN · skipped, the plain talk, three sections. 4-5. a later start's
- // offer on the START gate (`?landing=offer` stands in for the store's flag, `?gate=1` shows the gate on an acceptance page): taken through the
- // harness before START it flies; START alone lands itself, no flight. Stills: landing-manual, landing-verdict, landing-wreck (+ each page's end).
+ // offer on the START gate (`?landing=offer` stands in for the store's flag, `?gate=1` shows the gate on an acceptance page): taken by its FLY THE
+ // LANDING button it flies; START alone lands itself, no flight. Stills: landing-manual, landing-verdict, landing-wreck (+ each page's end).
  const T='window.__stalheartTest',A=`${T}.state().arrival`,L=`${A}.landing`,st=()=>evaluate(`${T}.state()`),briefs=()=>evaluate('window.__seen?.briefs??[]');
  const FLY='index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',OFFER='index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td';
  const why=async(what)=>assert.fail(`${what} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,cut:a.cut,gate:a.gate,manual:a.manual,offer:a.offer,offered:a.offered,landing:a.landing})(${A})`))})`);
@@ -1617,8 +1617,13 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],`${name}: on the cut the rocket is the salvage and the AFR-01 (${JSON.stringify(s.arrival)})`);
   await until(`${A}.phase==='done'`,30000).catch(()=>why(`${name}: the talk ends`));const e=await st();assert.deepEqual(errors,[],`${name}: browser errors`);
   assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,`${name}: the panel removed at the end`);return {s:e,said:await briefs()};};
- {const t0=Date.now();await toManual('landing-clean');await evaluate(PILOT);
-  const a=await toContact('the pilot to the contact'),g=a.landing;console.log(`  clean: ${JSON.stringify(g)}, panel "${await evaluate(`document.querySelector('#landing-hud')?.innerText.replace(/\\s+/g,' ')`)}", ${((Date.now()-t0)/1000).toFixed(0)} s`);
+ // the phases the clean flight passed through, once a frame in the page (2026-11-07, the final review: the flare was not asserted, so an
+ // unaided clean flight would have passed): FLARE must be seen before the contact
+ const PHASES=`(()=>{const T=window.__stalheartTest,P=window.__landingPhases=[];(function f(){const L=T.state().arrival?.landing;if(L&&P.at(-1)!==L.phase)P.push(L.phase);if(!L||L.phase!=='done')requestAnimationFrame(f);})();})()`;
+ {const t0=Date.now();await toManual('landing-clean');await evaluate(PHASES);await evaluate(PILOT);
+  const a=await toContact('the pilot to the contact'),g=a.landing;
+  {const P=await evaluate('window.__landingPhases');console.log(`  clean: phases ${P.join(' > ')}`);const f=P.indexOf('flare'),end=P.findIndex(p=>p==='touched'||p==='done');
+   assert.ok(f>=0&&(end<0||f<end),`the auto-lander's FLARE before the touch (${P.join(' > ')})`);}console.log(`  clean: ${JSON.stringify(g)}, panel "${await evaluate(`document.querySelector('#landing-hud')?.innerText.replace(/\\s+/g,' ')`)}", ${((Date.now()-t0)/1000).toFixed(0)} s`);
   assert.equal(g.grade,'CLEAN',`the scripted pilot lands CLEAN (${JSON.stringify(g)})`);assert.notEqual(g.reason,'skipped','flown, not skipped');assert.ok(g.landed&&Math.hypot(g.landed[0],g.landed[2])<14,`on the pad (${JSON.stringify(g.landed)})`);
   assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/CLEAN/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_clean');
   current='landing-verdict';await finish();
@@ -1646,10 +1651,12 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.equal(await evaluate(`!!document.querySelector('#start-gate [data-start]')`),true,'START on the gate');
   assert.match(await evaluate(`document.querySelector('#start-gate [data-fly]')?.innerText??''`),/FLY THE LANDING/,'the gate offers the flight');
   assert.deepEqual(await evaluate(`[${A}.offer,${A}.offered,${A}.phase]`),[true,false,'waiting'],'offered, not yet taken');
-  if(take){assert.equal(await evaluate(`${T}.landing('override')`),true,'the offer taken before START');assert.equal(await evaluate(`${A}.offered`),true);}
-  await evaluate(`document.querySelector('#start-gate [data-start]').scrollIntoView({block:'center'})`);await delay(300);await click('#start-gate [data-start]');
+  // taken: the gate's own FLY THE LANDING button, clicked (2026-11-07, the final review: the harness's landing('override') stood in for it), which
+  // opens the gate as START does; left: START alone
+  const btn=take?'#start-gate [data-fly]':'#start-gate [data-start]';
+  await evaluate(`document.querySelector('${btn}').scrollIntoView({block:'center'})`);await delay(300);await click(btn);
   await until(`${A}.phase==='landing'`,30000).catch(()=>why(`${name}: START opens the landing`));
-  assert.equal(await evaluate(`${A}.manual`),take,take?'START flies after the offer was taken':'START alone lands itself');
+  assert.deepEqual(await evaluate(`[${A}.manual,${A}.offered]`),[take,take],take?'FLY THE LANDING flies it':'START alone lands itself');
   if(take){await until(`${L}?.phase==='manual'`,30000).catch(()=>why('the offered flight'));assert.equal(await evaluate(`${T}.state().shot`),'arrivalFlight','the chase shot');assert.equal(await evaluate(`${T}.landing('skip')`),true);}
   else{await delay(5000);assert.equal(await evaluate(L),null,'no flight without the ask');assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,'no panel');}
   await until(`${A}.phase==='done'`,60000).catch(()=>why(`${name}: the arrival ends`));

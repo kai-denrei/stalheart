@@ -4742,12 +4742,15 @@ body.arrival-on #td-app > *:not(canvas),
 body.arrival-on #td-app > canvas.minimap { display: none !important; }
 
 /* THE LANDING'S INSTRUMENTS (src/fx/landing-hud.js): the HUD's monochrome green on black, as #td-stats.hud-panel */
-#landing-hud { position: fixed; left: 18px; top: 64px; z-index: 40; pointer-events: none; font-family: var(--font-ui); color: #b8ffca; letter-spacing: 0.06em; text-shadow: 0 0 6px rgba(110, 255, 140, 0.22); }
+/* the backing is #td-stats.hud-panel's (2026-11-07, the final review: the bare text washed out over the nebula) */
+#landing-hud { position: fixed; left: 18px; top: 64px; z-index: 40; pointer-events: none; font-family: var(--font-ui); color: #b8ffca; letter-spacing: 0.06em; text-shadow: 0 0 6px rgba(110, 255, 140, 0.22);
+  background: rgba(3, 14, 7, 0.62); border: 1px solid rgba(110, 255, 140, 0.28); border-radius: 8px; padding: 7px 12px 8px; }
 #landing-hud[hidden] { display: none; }
 #landing-hud .lh-ann { font-size: 13px; color: #4fae63; margin-bottom: 8px; min-height: 16px; }
 #landing-hud .lh-ann.alarm { color: #ff6a5a; animation: lh-blink 0.6s steps(2) infinite; }
 #landing-hud .lh-ann.ok { color: #b8ffca; }
 @keyframes lh-blink { to { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { #landing-hud .lh-ann.alarm { animation: none; } }   /* the alarm stays red, still (2026-11-07) */
 #landing-hud .lh-grid { display: grid; grid-template-columns: auto auto auto; gap: 2px 10px; font-size: 12px; }
 #landing-hud .lh-k { color: #4fae63; }
 #landing-hud .lh-v { font-size: 16px; color: #b8ffca; text-align: right; min-width: 5ch; }

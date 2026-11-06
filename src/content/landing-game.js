@@ -19,7 +19,7 @@ export const LANDING_GAME = Object.freeze({
   flare: Object.freeze({
     altitude: 30, sink: 8, drift: 5, tilt: 0.25, sinkFinal: 1.8,
     settle: 2.5,       // s: the time scale of the ease (each step closes dt / settle * settleGain of the gap), so drift and tilt are gone in about this long
-    settleGain: 3,     // the ease's gain over dt / settle: an exponential ease at rate 1/settle only reaches 63% in `settle` s; at 3x it is 99.9%, "gone"
+    settleGain: 3,     // the ease's gain over dt / settle: an exponential ease at rate 1/settle only reaches 63% in `settle` s; at 3x it is e^-3, about 95 % closed, "gone" (2026-11-07, the final review: the comment said 99.9 %)
     plumeMargin: 0.05, // throttle above the balance point (g / thrust) shown on the plume while the flare burns, for the picture: the auto-lander spends no fuel
   }),
   // the 2D game's grades: the worst axis decides; drift in m/s on the ground, tilt in radians (4° and 11°)
@@ -65,7 +65,9 @@ export const LANDING_GAME = Object.freeze({
     square: 10,           // m: under this height the hard square shows (the last call before contact)
     squareSize: 4,        // m, its half-width: about the legs' stance, the footprint a CLEAN contact lands in
   }),
-  hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10 }), predictorSeconds: 35, predictorDt: 0.15 }),
+  // the altitude ping's gap (src/fx/manual-landing.js sounds): `far` s at `nearAt + nearOver` m and above, ramping to `near` s at `nearAt` m.
+  // nearOver 300 (2026-11-07, out of the logic at the final review): the ramp spans the entry's 300-400 m, so the ping quickens over the whole flight
+  hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10, nearOver: 300 }), predictorSeconds: 35, predictorDt: 0.15 }),
   input: Object.freeze({ step: 0.1, skipKey: 'Escape', offerKey: ' ' }),
   // the contact (2026-11-07, review of Task 7): the rail that resumes at the touchdown, the shock clip, the shake and a wreck's marks
   touchdown: Object.freeze({

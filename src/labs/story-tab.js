@@ -208,7 +208,8 @@ export function initStoryTab(root) {
     renderer.render(scene, camera);
   }
   const api = {
-    setActive(on) { active = on; if (on) { resize(); last = performance.now(); loop(); } else cancelAnimationFrame(frameId); },
+    // a switched-away tab ends a flight (2026-11-07, the final review): the host's capture key listeners never outlive the tab
+    setActive(on) { active = on; if (on) { resize(); last = performance.now(); loop(); } else { cancelAnimationFrame(frameId); if (flight) endFlight(); } },
     dispose() {
       if (disposed) return; disposed = true; active = false; cancelAnimationFrame(frameId);
       removeEventListener('resize', resize); removeEventListener('keydown', onKey);

@@ -80,6 +80,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   const R = 1 / metres;
   const floorAt = (x, z) => { const l = Math.hypot(x / R, 1, z / R); return { y: -(x * x + z * z) / (2 * R), normal: [x / R / l, 1 / l, z / R / l] }; };
   const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;   // a phone: the touch rail, and the glare's plain fade (spec 8)
+  const still = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;   // reduced motion: the glare's plain fade, no rail jolt (2026-11-07, the final review)
   const talkBrief = () => (grade && grade.reason !== 'skipped' ? LANDING_GAME.lines[grade.grade] : tune.talk.brief);   // a skip is the plain talk (spec 7)
   // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
   // an acceptance run lands without it unless it asks (?gate=1)
@@ -192,7 +193,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     const p = shot.camera(Math.min(t, shot.cut));
     if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); }
     pose(out, toWorld(atLanded(p.pos), a), toWorld(atLanded(p.look), b), up);   // the rail moves with the rocket where it touched
-    if (jolt > 0) out.pos.addScaledVector(up, Math.sin(jolt * LANDING_GAME.touchdown.shakeHz) * jolt * LANDING_GAME.camera.jolt * metres);   // the shake on a hard contact (spec 4)
+    if (jolt > 0 && !still) out.pos.addScaledVector(up, Math.sin(jolt * LANDING_GAME.touchdown.shakeHz) * jolt * LANDING_GAME.camera.jolt * metres);   // the shake on a hard contact (spec 4)
   }
   function talkPose(u, out) {
     const o = drone.obj, f = isaoFace(o.position.toArray(), drone.dir, o.getWorldDirection(a).toArray(), o.scale.x, u);
@@ -237,9 +238,11 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
     flying.begin(0);   // the flown approach keeps the legs stowed (apply): they are the player's
     api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
-    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare, reducedMotion: coarse || !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });   // a phone never builds the WebGL2 glare (spec 8): the plain fade
+    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare, reducedMotion: coarse || still });   // a phone never builds the WebGL2 glare (spec 8): the plain fade
     cutting = true;   // starting a shot ends the rail's, whose onEnd would finish the arrival
-    api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: true, onEnd: () => { if (!cutting && phase === 'landing' && flying) { flying.skip(); touchdown(); } } });   // Esc: the rail back in this same call, no frame without a shot
+    // passKeys off (2026-11-07, the final review): the host's capture listener (flying.begin above, registered before the shot's) takes the
+    // flight keys itself; every other key is eaten during the flight, Escape still skips
+    api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: false, onEnd: () => { if (!cutting && phase === 'landing' && flying) { flying.skip(); touchdown(); } } });   // Esc: the rail back in this same call, no frame without a shot
     cutting = false; overrideT = 0;
   }
   // TOUCHDOWN: the grade to the foundry, the sequence resumes at its touchdown where the rocket stands, the rail shot back
@@ -252,10 +255,13 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     }
     jolt = LANDING_GAME.touchdown.jolt[grade.grade] ?? 0;
     t = shot.seq.touchdown; overrideAt = Infinity; if (heard) heard.legs = true;   // the legs are down: no second pneumatics cue
-    beats.salvage?.(LANDING_GAME.salvage[grade.grade]);
+    // the grade is for a flown landing (the owner's call 1; 2026-11-07, the final review): a skip is graded CLEAN for the record but
+    // pays nothing, or taking the offer and pressing Esc would beat a flown HARD landing by the CLEAN bonus barrel; the foundry as today
+    if (grade.reason !== 'skipped') beats.salvage?.(LANDING_GAME.salvage[grade.grade]);
     endFlight(false);
-    // the rail locked for touchdown.lockSeconds, then Esc alone (2026-11-07): a flight key held through the contact must not skip the door and the rise
-    cutting = true; api.startShot({ id: 'arrival', dur: shot.cut - t + 2, poseAt: railPose, lockFor: LANDING_GAME.touchdown.lockSeconds, skipKey: LANDING_GAME.input.skipKey, onEnd: () => { if (!cutting) finish(true); } }); cutting = false;
+    // the rail locked for touchdown.lockSeconds, then Esc alone (2026-11-07): a flight key held through the contact must not skip the door and the rise.
+    // A phone has no Esc: after the lock any tap skips it (2026-11-07, the final review; the lock and the repeat rule already stop a held key)
+    cutting = true; api.startShot({ id: 'arrival', dur: shot.cut - t + 2, poseAt: railPose, lockFor: LANDING_GAME.touchdown.lockSeconds, skipKey: coarse ? null : LANDING_GAME.input.skipKey, onEnd: () => { if (!cutting) finish(true); } }); cutting = false;
   }
   function landingTick(dt) {   // the landing branch; while the flight holds the clock `t` stands still (the rail and the sequence wait)
     t += dt;

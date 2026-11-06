@@ -50,6 +50,12 @@ hud.set({ altitude: 5, sink: 1, driftAlong: 5, driftAcross: 0, tilt: 0, tw: 1, h
 assert.ok(root.querySelector('#lh-stop').classList.contains('hot'), 'a stopping distance past the altitude reads hot'); assert.ok(root.querySelector('#lh-drift').classList.contains('hot'), 'a drift over HARD reads hot');
 assert.equal(root.querySelector('#lh-legs').textContent, 'LEGS DOWN'); assert.ok(root.querySelector('#lh-legs').classList.contains('ok'));
 assert.equal(LANDING_GAME.verdict.hard.sink, 6, 'the hot lines are the verdict\'s own');
+// FUEL reads red when it cannot pay for a full stop, sink / (thrust - g) s of full burn (2026-11-07, the final review; 30 m/s / 8.8 = 3.4 s)
+{ const need = 30 / (LANDING_GAME.vehicle.thrust - LANDING_GAME.sim.gravity);
+  hud.set({ altitude: 200, sink: 30, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 51, fuel: need - 0.1, legs: 0, phase: 'manual' }); assert.ok(root.querySelector('#lh-fuel').classList.contains('hot'), 'too little fuel for the stop reads hot');
+  hud.set({ altitude: 200, sink: 30, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 51, fuel: need + 0.1, legs: 0, phase: 'manual' }); assert.ok(!root.querySelector('#lh-fuel').classList.contains('hot'), 'enough for the stop is not'); }
+// the live regions are the annunciator and the verdict, not the whole panel (its numbers change every frame)
+assert.equal(root.querySelector('#landing-hud').attrs['aria-live'], undefined); assert.equal(root.querySelector('#lh-ann').attrs['aria-live'], 'polite'); assert.equal(root.querySelector('#lh-verdict').attrs['aria-live'], 'polite');
 
 // clear(): a new flight starts with no verdict and no annunciation left from an earlier one (Task 7, 2026-11-07)
 hud.clear(); assert.equal(root.querySelector('#lh-verdict').textContent, ''); assert.equal(root.querySelector('#lh-verdict').className, 'lh-verdict');
@@ -64,6 +70,7 @@ btn('tilt-fwd').handlers.pointerdown[0]({ preventDefault() {} }); btn('tilt-fwd'
 btn('legs').handlers.pointerdown[0]({ preventDefault() {} }); btn('skip').handlers.pointerdown[0]({ preventDefault() {} });
 const slider = rail.children.find((c) => c.className.includes('lh-throttle')); slider.value = '50'; slider.handlers.input[0]();
 assert.deepEqual(got, [['tilt', 1], ['tilt', 0], ['legs'], ['skip'], ['throttle', 0.5]]);
+assert.deepEqual([btn('tilt-back').textContent, btn('tilt-fwd').textContent], ['TILT ◂', 'TILT ▸'], 'the small triangles, not the emoji-prone ◀ ▶');
 hud.touch(false); assert.equal(rail.hidden, true); assert.equal(rail.children.length, 0);
 
 hud.dispose(); assert.equal(root.querySelector('#landing-hud'), null);

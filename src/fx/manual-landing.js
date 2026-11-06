@@ -21,7 +21,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   const reticle = new THREE.Group(); reticle.name = 'LandingReticle'; reticle.renderOrder = 999;
   const altRing = ring(0x7dff5a), fixed = game.reticle.rings.map(() => ring(0x4fae63)), square = ring(0xffffff); square.geometry.setFromPoints([[-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1], [-1, 0, -1]].map((p) => new THREE.Vector3(...p)));
   reticle.add(altRing, ...fixed, square); root.add(reticle); reticle.visible = false;
-  const keys = (ev, down) => {   // the flight keys; the shot passes keys and keeps Escape as the skip (camera-shot passKeys/skipKey)
+  const keys = (ev, down) => {   // the flight keys, taken here in capture before the shot's listener; the shot eats the rest and keeps Escape as the skip (camera-shot skipKey; passKeys off since 2026-11-07)
     if (phase !== 'manual' && phase !== 'override' && phase !== 'flare') return;   // FLARE eats them too (2026-11-07): the auto-lander has the stick, no flight key reaches the tank
     const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
     if (k === 'w' || k === 'ArrowUp') { if (down) input.throttle = Math.min(1, (input.throttle ?? s?.set ?? 0) + (ev.shiftKey ? 1 : game.input.step)); }
@@ -80,7 +80,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   function sounds(dt) {
     if (s.throttle > game.hud.audibleThrottle) { thrust ??= sfx?.loop('rocket_thrust', { dist: 0, gain: 0 }); thrust?.set(0.4 + 0.6 * s.throttle, 0.96 + 0.06 * s.throttle); }
     else if (thrust) { thrust.stop(0.08); thrust = null; }
-    const p = pred, gap = p.reached ? game.hud.ping.far + (game.hud.ping.near - game.hud.ping.far) * Math.max(0, Math.min(1, 1 - (s.y - game.hud.ping.nearAt) / 300)) : game.hud.ping.far;
+    const p = pred, gap = p.reached ? game.hud.ping.far + (game.hud.ping.near - game.hud.ping.far) * Math.max(0, Math.min(1, 1 - (s.y - game.hud.ping.nearAt) / game.hud.ping.nearOver)) : game.hud.ping.far;
     pingAt += dt; if (pingAt >= gap) { pingAt = 0; sfx?.play('laser_click', { dist: 0, gain: 0.5 }); }
   }
   function plumesAt() {   // each engine on its own cadence, its sheet turned to the chase eye about the hull's axis

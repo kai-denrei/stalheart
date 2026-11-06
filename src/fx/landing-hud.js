@@ -6,9 +6,10 @@ const ROWS = [['alt', 'ALT', 'm'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', '
 const INERT = { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, clear() {}, touch() {}, dispose() {} };
 export function createLandingHud(root, tune = LANDING_GAME) {
   if (!root || typeof document === 'undefined') return { ...INERT };
-  const hard = tune.verdict.hard;
-  const el = document.createElement('div'); el.id = 'landing-hud'; el.setAttribute('aria-live', 'polite'); el.hidden = true;
-  const ann = document.createElement('div'); ann.id = 'lh-ann'; ann.className = 'lh-ann'; el.append(ann);
+  const hard = tune.verdict.hard, brake = tune.vehicle.thrust - tune.sim.gravity;   // m/s² a full burn takes off the sink
+  // only the annunciator and the verdict are live regions (2026-11-07, the final review): the numbers change every frame and would chatter
+  const el = document.createElement('div'); el.id = 'landing-hud'; el.hidden = true;
+  const ann = document.createElement('div'); ann.id = 'lh-ann'; ann.className = 'lh-ann'; ann.setAttribute('aria-live', 'polite'); el.append(ann);
   const grid = document.createElement('div'); grid.className = 'lh-grid';
   const cells = {};
   for (const [id, label, unit] of ROWS) {
@@ -19,7 +20,7 @@ export function createLandingHud(root, tune = LANDING_GAME) {
   }
   el.append(grid);
   const legs = document.createElement('div'); legs.id = 'lh-legs'; legs.className = 'lh-legs'; legs.textContent = 'LEGS UP'; el.append(legs);
-  const verdictEl = document.createElement('div'); verdictEl.id = 'lh-verdict'; verdictEl.className = 'lh-verdict'; el.append(verdictEl);
+  const verdictEl = document.createElement('div'); verdictEl.id = 'lh-verdict'; verdictEl.className = 'lh-verdict'; verdictEl.setAttribute('aria-live', 'polite'); el.append(verdictEl);
   const rail = document.createElement('div'); rail.id = 'lh-touch'; rail.className = 'lh-touch'; rail.hidden = true; el.append(rail);
   root.append(el);
   const num = (v, d = 0) => (Number.isFinite(v) ? v.toFixed(d) : '—');
@@ -32,7 +33,8 @@ export function createLandingHud(root, tune = LANDING_GAME) {
       const drift = Math.hypot(r.driftAlong, r.driftAcross); cells.drift.textContent = `${r.driftAlong < 0 ? '←' : '→'} ${num(drift, 1)}`; hot(cells.drift, drift > hard.drift);
       cells.tilt.textContent = num(r.tilt * 180 / Math.PI, 1); hot(cells.tilt, Math.abs(r.tilt) > hard.tilt);
       cells.tw.textContent = num(r.tw, 2); cells.stop.textContent = num(r.hStop); hot(cells.stop, r.hStop > r.altitude);
-      cells.fuel.textContent = num(r.fuel); hot(cells.fuel, r.fuel < r.hStop / Math.max(1, r.sink));
+      // FUEL red when it cannot pay for a full stop: the seconds of full burn the sink needs, sink / (thrust - g) (2026-11-07, the final review)
+      cells.fuel.textContent = num(r.fuel); hot(cells.fuel, r.fuel < r.sink / brake);
       legs.textContent = r.legs >= 1 ? 'LEGS DOWN' : r.legs > 0 ? `LEGS ${Math.round(r.legs * 100)}%` : 'LEGS UP'; legs.classList.toggle('ok', r.legs >= 1);
     },
     annunciate(text, kind = 'info') { ann.textContent = text; ann.className = `lh-ann ${kind}`; },
@@ -41,12 +43,12 @@ export function createLandingHud(root, tune = LANDING_GAME) {
       verdictEl.className = `lh-verdict ${grade.toLowerCase()}`;
     },
     clear() { verdictEl.textContent = ''; verdictEl.className = 'lh-verdict'; ann.textContent = ''; ann.className = 'lh-ann'; },   // a fresh flight reads nothing from an earlier one
-    touch(on, h = {}) {   // phones: a throttle slider, two tilt buttons, LEGS, SKIP (spec section 5)
+    touch(on, h = {}) {   // phones: a throttle slider, two tilt buttons, LEGS, SKIP (spec section 5); the small triangles ◂ ▸, not the emoji-prone ◀ ▶ (2026-11-07)
       rail.hidden = !on; rail.replaceChildren();
       if (!on) return;
       const mk = (cls, text, down, up) => { const b = document.createElement('button'); b.type = 'button'; b.className = `lh-btn ${cls}`; b.textContent = text; b.addEventListener('pointerdown', (e) => { e.preventDefault(); down?.(); }); if (up) { b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); } return b; };
       const slider = document.createElement('input'); slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.value = '0'; slider.className = 'lh-throttle'; slider.addEventListener('input', () => h.throttle?.(+slider.value / 100));
-      rail.append(mk('tilt-back', 'TILT ◀', () => h.tilt?.(-1), () => h.tilt?.(0)), mk('tilt-fwd', 'TILT ▶', () => h.tilt?.(1), () => h.tilt?.(0)), slider, mk('legs', 'LEGS', () => h.legs?.()), mk('skip', 'SKIP', () => h.skip?.()));
+      rail.append(mk('tilt-back', 'TILT ◂', () => h.tilt?.(-1), () => h.tilt?.(0)), mk('tilt-fwd', 'TILT ▸', () => h.tilt?.(1), () => h.tilt?.(0)), slider, mk('legs', 'LEGS', () => h.legs?.()), mk('skip', 'SKIP', () => h.skip?.()));
     },
     dispose() { el.remove(); },
   };

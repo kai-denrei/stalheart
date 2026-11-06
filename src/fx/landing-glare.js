@@ -6,6 +6,8 @@
 // Launch shader by Pulkit (MIT), adapted from the Onkochishin Launch lab.
 // Source: https://github.com/pulkitxm/claude-directory/tree/main/shaders/launch-shader
 // License: ./licenses/launch-shader-MIT.txt
+// (2026-11-07: the line above is the 2D game's own header, kept verbatim; this repository carries no licenses/ folder, the MIT notice
+// and the credit are in ATTRIBUTIONS.md)
 // The field/ray march is retained; loop accumulators are explicitly initialized.
 const FRAGMENT = `#version 300 es
 precision highp float;
