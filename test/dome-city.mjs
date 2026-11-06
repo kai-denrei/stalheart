@@ -4,9 +4,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { ISLANDS, STRUCTURES, SOLID_STRUCTURES, BASE_LAYOUT_MODES, BASE_LAYOUT_DEFAULT, withBaseLayout, baseLayoutMode } from '../src/content/base-layout.js';
-import { DOME_ISLANDS, DOME_STRUCTURES, DOME_PLACEMENT, DOME_SOLIDS, BRIDGE_PLOT } from '../src/content/dome-city.js';
+import { DOME_ISLANDS, DOME_STRUCTURES, DOME_PLACEMENT, DOME_SOLIDS, BRIDGE_PLOT, DOME_SCALE } from '../src/content/dome-city.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
-import { buildStoryPlanet } from '../src/domain/story-planet.js';
+import { buildStoryPlanet, frameToWorld } from '../src/domain/story-planet.js';
 import { planBase } from '../src/domain/base-plan.js';
 import { KIT, STAGES } from '../src/content/base-layout.js';
 
@@ -37,23 +37,33 @@ assert.ok(DOME_PLACEMENT.depot, 'the depot has its dome-city centre (the NE cour
   const dp = withDepot.islands.find((i) => i.id === 'depot'); assert.deepEqual([dp.x, dp.z, dp.w, dp.d, dp.stage], [DOME_PLACEMENT.depot.x, DOME_PLACEMENT.depot.z, 36, 16, 8]); }
 
 // SIX DOMES AND FOUR BRIDGES, the author's (src/content/dome-city.js header: the Stålheart is the power dome, the north and south centre domes
-// give way to the mouth corridor and the bays): his coordinates, his modules, both tiers pinned on disk, stage 2 and founded
+// give way to the mouth corridor and the bays): his modules, both tiers pinned on disk, stage 2. RESIZED AND UNFOUNDED (the owner, 2026-11-07:
+// "the base should not be built yet ... the Domes, which need to be resized, but still must leave room for the tank to go under the bridges"):
+// the domes at 0.65 on 20 x 20 islands, moved in along their columns so a bridge's socket meets the scaled port, and nothing founded: a growing
+// base prints them in play
+assert.equal(DOME_SCALE, 0.65);
+assert.ok(7.5 * DOME_SCALE >= 3.016 + 1.0, 'the deck\'s underside, scaled in height, clears the MÖRK by a metre');
 assert.deepEqual(DOME_ISLANDS.map((i) => i.id), ['dome-nw', 'dome-w', 'dome-sw', 'dome-ne', 'dome-e', 'dome-se']);
-assert.deepEqual(Object.fromEntries(DOME_ISLANDS.map((i) => [i.id, [i.x, i.z, i.w, i.d]])), { 'dome-nw': [-80, -80, 30, 30], 'dome-w': [-80, 0, 30, 30], 'dome-sw': [-80, 80, 30, 30], 'dome-ne': [80, -80, 30, 30], 'dome-e': [80, 0, 30, 30], 'dome-se': [80, 80, 30, 30] });
+assert.deepEqual(Object.fromEntries(DOME_ISLANDS.map((i) => [i.id, [i.x, i.z, i.w, i.d]])), { 'dome-nw': [-80, -70.2, 20, 20], 'dome-w': [-80, 0, 20, 20], 'dome-sw': [-80, 70.2, 20, 20], 'dome-ne': [80, -70.2, 20, 20], 'dome-e': [80, 0, 20, 20], 'dome-se': [80, 70.2, 20, 20] });
+assert.ok(DOME_ISLANDS.every((i) => !i.founded) && DOME_STRUCTURES.every((s) => !s.founded), 'nothing of the dome city is founded');
+for (const s of DOME_STRUCTURES.filter((x) => x.island)) assert.equal(s.scale, DOME_SCALE, `${s.id} at the dome scale`);
+for (const s of DOME_STRUCTURES.filter((x) => x.anchor === 'frame')) { assert.equal(s.scale, 1, `${s.id} keeps its length and width`); assert.equal(s.scaleY, DOME_SCALE, `${s.id} scaled in height only`); }
 assert.deepEqual(Object.fromEntries(DOME_STRUCTURES.filter((s) => s.island).map((s) => [s.id, s.module])), { 'dome-nw': 'habitat', 'dome-w': 'biosphere', 'dome-sw': 'habitat', 'dome-ne': 'logistics', 'dome-e': 'fabrication', 'dome-se': 'logistics' });
-for (const s of DOME_STRUCTURES) { assert.ok(existsSync(s.asset) && existsSync(s.far), `${s.id}: both tiers pinned`); assert.ok(/_lod1\.glb$/.test(s.asset) && /_lod2\.glb$/.test(s.far)); assert.equal(s.stage, 2); assert.equal(s.founded, true); }
-const bridges = DOME_STRUCTURES.filter((s) => s.anchor === 'frame'), domeAt = (x, z) => DOME_ISLANDS.find((i) => i.x === x && i.z === z);
+for (const s of DOME_STRUCTURES) { assert.ok(existsSync(s.asset) && existsSync(s.far), `${s.id}: both tiers pinned`); assert.ok(/_lod1\.glb$/.test(s.asset) && /_lod2\.glb$/.test(s.far)); assert.equal(s.stage, 2); }
+const bridges = DOME_STRUCTURES.filter((s) => s.anchor === 'frame'), domeAt = (x, z) => DOME_ISLANDS.find((i) => i.x === x && Math.abs(i.z - z) < 1e-9);
 assert.equal(bridges.length, 4);
+// THE PAIR SPACING IS THE BRIDGE'S: its socket 26 m from its centre, the scaled port 14 * DOME_SCALE m from the dome's
+const half = 26 + 14 * DOME_SCALE;
 for (const b of bridges) {
-  // each bridge runs north-south between two domes 80 m apart, its 52 m between their ports (14 m out of each)
-  const a = domeAt(b.x, b.z - 40), c = domeAt(b.x, b.z + 40); assert.ok(a && c, `${b.id} links two domes`);
+  // each bridge runs north-south between two domes 2 * 35.1 m apart, its 52 m between their ports (9.1 m out of each)
+  const a = domeAt(b.x, b.z - half), c = domeAt(b.x, b.z + half); assert.ok(a && c, `${b.id} links two domes`);
   assert.deepEqual(b.heading, [-1, 0], `${b.id}: the author's yaw -pi/2, its length along Z`);
   // the caps on the linked side are hidden (the author's N is +Z), and only those
   const hides = (d) => DOME_STRUCTURES.find((s) => s.island === d.id).hide;
   assert.ok(hides(a).includes('PORT_CAP_N') && hides(c).includes('PORT_CAP_S'), `${b.id}: the ports it meets are open`);
 }
 for (const d of DOME_STRUCTURES.filter((s) => s.island)) { const isl = DOME_ISLANDS.find((i) => i.id === d.island);
-  const want = [['PORT_CAP_N', 40], ['PORT_CAP_S', -40]].filter(([, dz]) => bridges.some((b) => b.x === isl.x && b.z === isl.z + dz)).map(([n]) => n);
+  const want = [['PORT_CAP_N', half], ['PORT_CAP_S', -half]].filter(([, dz]) => bridges.some((b) => b.x === isl.x && Math.abs(b.z - (isl.z + dz)) < 1e-9)).map(([n]) => n);
   assert.deepEqual([...d.hide].sort(), want.sort(), `${d.id} hides exactly the caps a bridge meets`); }
 // the cap nodes exist in the near tier by those names (the GLB's JSON chunk starts at byte 20)
 const gltf = (f) => { const b = readFileSync(f), n = b.readUInt32LE(12); return JSON.parse(b.subarray(20, 20 + n).toString()); };
@@ -94,13 +104,35 @@ for (const b of boxes.filter((x) => !x.city)) for (const i of city.islands) if (
 { const L = city.structures.find((s) => s.id === 'launcher'), at = byId.get('launcher'), [hx, hz] = L.heading;
   for (let d = 15; d < R; d += 1) { const x = at.x + hx * d, z = at.z + hz * d, y = 22.7 + (d - 14.7) * Math.tan(1.05); for (const c of boxes.filter((b) => b.city)) if (x > c.x0 - 3 && x < c.x1 + 3 && z > c.z0 - 3 && z < c.z1 + 3) assert.ok(y > 36, `the payload clears ${c.id}`); } }
 
+// THE DECK ON THE PORTS (R 753 m; each placement is tangent at its own centre). The sag arithmetic: the dome's slab 35.1 m out sags
+// sag(35.1) = 0.82 m below the bridge's centre tangent, the bridge's end 26 m out 0.45 m above the sphere there; `lift` lowers the deck by
+// the difference, rounded to the centimetre, negative = down along the bridge's own up (the sign the shipped -0.33 had)
+const sag = (d) => d * d / (2 * 753);
+for (const b of bridges) assert.equal(b.lift, +(-(sag(35.1) - sag(26))).toFixed(2), `${b.id}: lift from the sag`);
+// ...and measured on the sphere (src/fx/story-base.js basisAt on the game's frame, src/domain/story-planet.js frameToWorld at 753.3 m): the
+// bridge's end columns stand on the domes' slabs within a decimetre, and each socket (read from the models' nodes) meets its scaled port within
+// 5 cm in height (along the deck, the frame's projection leaves them ~0.2 m apart; 0.45 m at the old 80 m spacing)
+{ const W = (p) => frameToWorld(p, 753.3, 0.37), sub = (a, c) => a.map((v, k) => v - c[k]), unitV = (a) => { const l = Math.hypot(...a); return a.map((v) => v / l); }, cross = (a, c) => [a[1] * c[2] - a[2] * c[1], a[2] * c[0] - a[0] * c[2], a[0] * c[1] - a[1] * c[0]], dot = (a, c) => a[0] * c[0] + a[1] * c[1] + a[2] * c[2];
+  const basis = (x, z, h) => { const o = W([x, 0, z]), up = unitV(sub(W([x, 1, z]), o)), fwd = unitV(sub(W([x + h[0], 0, z + h[1]]), o)), right = unitV(cross(up, fwd)), f2 = unitV(cross(right, up));
+    return { to: ([a, c, e]) => o.map((v, k) => v + right[k] * a + up[k] * c + f2[k] * e), from: (p) => { const d = sub(p, o); return [dot(d, right), dot(d, up), dot(d, f2)]; } }; };
+  const nodeAt = (file, name) => { const j = gltf(file); let at = null; const walk = (i, parent) => { const n = j.nodes[i], m = mul(parent, trs(n)); if (n.name === name) at = [m[12], m[13], m[14]]; for (const c of n.children ?? []) walk(c, m); };
+    for (const r of j.scenes[j.scene ?? 0].nodes) walk(r, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]); assert.ok(at, `${name} in ${file}`); return at; };   // the node's model-space position
+  for (const b of bridges) { const at = basis(b.x, b.z, b.heading), foot = bounds(b.asset).lo[1];
+    for (const [end, cap] of [[-1, 'N'], [1, 'S']]) { const d = domeAt(b.x, b.z + end * half), s = DOME_STRUCTURES.find((x) => x.island === d.id), dome = basis(d.x, d.z, [0, 1]);
+      const sock = nodeAt(b.asset, end < 0 ? 'SOCKET_LINK_W' : 'SOCKET_LINK_E'), port = nodeAt(s.asset, `SOCKET_LINK_${cap}`);   // model +X along the deck is frame +Z (heading [-1, 0])
+      const sockW = at.to([sock[0], b.lift + sock[1] * b.scaleY, sock[2]]), portW = dome.to(port.map((v, k) => v * s.scale + (k === 1 ? 0.06 : 0))), inDome = dome.from(sockW), portIn = dome.from(portW);
+      assert.ok(Math.abs(inDome[1] - portIn[1]) < 0.05, `${b.id}: its ${end < 0 ? 'west' : 'east'} socket ${(inDome[1] - portIn[1]).toFixed(3)} m from ${d.id}'s port in height`);
+      assert.ok(Math.hypot(...sub(sockW, portW)) < 0.3, `${b.id} meets ${d.id}'s port (${Math.hypot(...sub(sockW, portW)).toFixed(2)} m)`);
+      const col = dome.from(at.to([end * 26, b.lift + foot * b.scaleY, 0]));
+      assert.ok(Math.abs(col[1]) < 0.1, `${b.id}: its end column ${col[1].toFixed(3)} m over ${d.id}'s slab`); } } }
+
 // EVERY ISLAND IS REACHABLE BY THE HULL: a flood on a 2 m grid from the bays' roll-out, over the clearing, stopped by the domes' discs, the
 // bridges' columns (+-10 and +-26 m along the deck, the middle pair 19 m apart) and every solid structure's model box (conservative: the game's
 // footprint is the geometry's, src/domain/footprint.js), reaches the edge of every island and the gate's side of the clearing
 { const M = 2, N = Math.ceil(2 * R / M), cellOf = (x, z) => [Math.floor((x + R) / M), Math.floor((z + R) / M)], blocked = new Uint8Array(N * N);
   const block = (x0, x1, z0, z1) => { for (let x = x0; x <= x1; x += M / 2) for (let z = z0; z <= z1; z += M / 2) { const [i, j] = cellOf(x, z); if (i >= 0 && j >= 0 && i < N && j < N) blocked[j * N + i] = 1; } };
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (Math.hypot(-R + (i + 0.5) * M, -R + (j + 0.5) * M) > R - 4) blocked[j * N + i] = 1;
-  for (const d of DOME_ISLANDS) block(d.x - 14.6, d.x + 14.6, d.z - 14.6, d.z + 14.6);
+  for (const d of DOME_ISLANDS) { const r = 14.6 * DOME_SCALE; block(d.x - r, d.x + r, d.z - r, d.z + r); }   // the model's +-14.6 m at the dome scale
   for (const b of bridges) for (const t of [-26, -10, 10, 26]) block(b.x - 2.2, b.x + 2.2, b.z + t - 1.2, b.z + t + 1.2);
   for (const b of boxes) if (SOLID_STRUCTURES.includes(b.id) && !b.city) block(b.x0, b.x1, b.z0, b.z1);
   const start = cellOf(0, 30), seen = new Uint8Array(N * N), q = [start[1] * N + start[0]]; seen[q[0]] = 1;
@@ -109,10 +141,13 @@ for (const b of boxes.filter((x) => !x.city)) for (const i of city.islands) if (
   for (const i of city.islands.filter((x) => !x.id.startsWith('dome'))) { let ok = false; for (let t = -1; t <= 1 && !ok; t += 0.25) for (const [x, z] of [[i.x + t * i.w / 2, i.z - i.d / 2 - 3], [i.x + t * i.w / 2, i.z + i.d / 2 + 3], [i.x - i.w / 2 - 3, i.z + t * i.d / 2], [i.x + i.w / 2 + 3, i.z + t * i.d / 2]]) if (reach(x, z)) { ok = true; break; } assert.ok(ok, `the hull reaches ${i.id}`); }
   assert.ok(reach(0, -R + 10), 'the hull reaches the mouth'); assert.ok(reach(-40, -40) || reach(-40, -70), 'the launch court'); assert.ok(reach(40, 40), 'the cargo court'); }
 
-// THE PLAN: the bridges stand at their own frame point on natural ground, and the founded pieces stand from a grown base's first frame
+// THE PLAN: the bridges stand at their own frame point on natural ground; a grown base from stage 1 has every dome and bridge still to print
+// (the owner, 2026-11-07: "the base should not be built yet"), and a static page at stage 2 or above stands them
 { const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
-  const layout = { ...dome, kit: KIT, stages: STAGES }, g = planBase(planet, layout, 1, { reach: STAGES.length - 1 });
-  for (const b of bridges) { const p = g.structures.find((s) => s.id === b.id); assert.ok(p && !p.pending && p.x === b.x && p.z === b.z && p.y === 0 && p.cell >= 0, `${b.id} placed at its own point`); }
-  for (const d of DOME_ISLANDS) { assert.ok(!g.islands.find((i) => i.id === d.id).pending, `${d.id} stands at stage 1`); assert.ok(!g.structures.find((s) => s.id === d.id).pending); }
+  const layout = { ...dome, kit: KIT, stages: STAGES }, g = planBase(planet, layout, 1, { reach: STAGES.length - 1 }), two = planBase(planet, layout, 2);
+  for (const b of bridges) { const p = g.structures.find((s) => s.id === b.id); assert.ok(p && p.pending && p.x === b.x && p.z === b.z && p.y === 0 && p.cell >= 0, `${b.id} placed at its own point, to print`);
+    const q = two.structures.find((s) => s.id === b.id); assert.ok(q && !q.pending && q.scaleY === DOME_SCALE && q.lift === b.lift, `${b.id} stands at stage 2 with its height scale and lift`); }
+  for (const d of DOME_ISLANDS) { assert.ok(g.islands.find((i) => i.id === d.id).pending && g.structures.find((s) => s.id === d.id).pending, `${d.id} to print in a grown base`);
+    assert.ok(!two.islands.find((i) => i.id === d.id).pending && !two.structures.find((s) => s.id === d.id).pending, `${d.id} stands at stage 2`); }
   assert.ok(!planBase(planet, layout, 1).islands.length, 'a plain stage 1 is still the bare landing'); }
 console.log(`Dome city: ${DOME_ISLANDS.length} domes, ${bridges.length} bridges, ${Object.keys(DOME_PLACEMENT).length} islands moved (${Object.keys(DOME_PLACEMENT).filter((id) => !ISLANDS.some((i) => i.id === id)).join(', ') || 'none'} not in this tree), every island reachable.`);

@@ -69,10 +69,11 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const patches = new Map();   // cell -> the meshes of a wall printed where the plan had rock (patchWall)
   const dropped = new Set(), ZERO = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);   // kit wall segments burned away (walls(), dropWall())
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
-  // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base
-  const place = (obj, x, z, y, heading, scale = 1, tilt = 0, lift = 0) => {
+  // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base;
+  // scaleY a structure's own height scale beside `scale` (the dome city's bridges, 0.65 in height only: src/content/dome-city.js)
+  const place = (obj, x, z, y, heading, scale = 1, tilt = 0, lift = 0, scaleY = scale) => {
     obj.matrixAutoUpdate = false;
-    obj.matrix.copy(basisAt(placer, x, z, heading)).multiply(new THREE.Matrix4().makeTranslation(0, (y + lift) * metres, 0)).multiply(new THREE.Matrix4().makeRotationX(tilt * Math.PI / 180)).multiply(new THREE.Matrix4().makeScale(scale * metres, scale * metres, scale * metres));
+    obj.matrix.copy(basisAt(placer, x, z, heading)).multiply(new THREE.Matrix4().makeTranslation(0, (y + lift) * metres, 0)).multiply(new THREE.Matrix4().makeRotationX(tilt * Math.PI / 180)).multiply(new THREE.Matrix4().makeScale(scale * metres, scaleY * metres, scale * metres));
     obj.matrixWorldNeedsUpdate = true;
   };
   const counts = { islands: plan.islands.length, walls: plan.walls.length, structures: 0, gate: !!plan.gate, gates: (plan.gates ?? (plan.gate ? [plan.gate] : [])).length };
@@ -143,7 +144,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // kit.lod.metres, then the two swap by camera distance with hysteresis. Far away (the map, the orbit) the whole base is cheap.
     ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.far ?? s.asset).then((gltf) => {
       if (!gltf) return;
-      const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0); group.add(holder);
+      const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0, s.scaleY ?? s.scale); group.add(holder);
       if (s.shown != null && plan.stage < s.shown) holder.visible = false;   // a structure a beat reveals before the stage that shows it outright
       holder.userData.placed = holder.matrix.clone(); if (s.pending) lift(holder, kOf(grown.structures, s.id, s));   // a grown base's landmark waits for its print
       const root = mount(s, gltf, holder); records.set(s.id, s.far ? null : { holder, far: null, near: root });
