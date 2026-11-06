@@ -158,7 +158,8 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   function mount(s, gltf, holder) {
       // cloneSkinned, not clone(true): a rigged landmark (the foundry) keeps the CACHED glTF's bones otherwise, and
       // nothing updates those, so its skin resolves into a huge sheet over the base instead of the model
-      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations) : cloneSkinned(gltf.scene);
+      // a batched tier welds on a clone, round the nodes named afterwards: the hidden, the darkened, and `keep`, what an effect drives by name (the launcher's sled and clamps)
+      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations, [...(s.hide ?? []), ...(s.dark ?? []), ...(s.keep ?? [])]) : cloneSkinned(gltf.scene);
       own(root); root.name = s.id;
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
       for (const name of s.dark ?? []) { const n = root.getObjectByName(name); if (n?.material?.emissive) { n.material = n.material.clone(); n.material.emissiveIntensity = 0; owned.add(n.material); } }   // its own copy, dark: the cached glTF's material is shared

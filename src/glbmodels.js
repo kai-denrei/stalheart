@@ -134,7 +134,10 @@ export function toFloatAttributes(g) {
   return g;
 }
 
-export function mergeByMaterial(root, pivotNames = [], exclude = []) {
+// keepShared (2026-11-06, the base batched): an attribute every part of a batch carries at one item size survives the weld, as uv
+// does, instead of only position, normal and uv; the loader's vertex colours (COLOR_0) and a model's custom attributes rode on
+// that. Off by default: the other callers' welds stay as they were.
+export function mergeByMaterial(root, pivotNames = [], exclude = [], { keepShared = false } = {}) {
   root.updateMatrixWorld(true);
   // Drop unwanted parts BEFORE merging — afterwards they are welded into a
   // shared mesh and can no longer be addressed individually.
@@ -174,7 +177,7 @@ export function mergeByMaterial(root, pivotNames = [], exclude = []) {
     // (fx/weathered-material.js) found every batch uv-less (2026-09-04). The board
     // binds no maps, so a kept uv is inert there.
     for (const name of Object.keys(g.attributes)) {
-      if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
+      if (keepShared ? name === 'skinIndex' || name === 'skinWeight' : name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
     }
     if (!g.attributes.normal) g.computeVertexNormals();
     // A part without uv gets a BOX PROJECTION in its own frame — the
@@ -194,10 +197,13 @@ export function mergeByMaterial(root, pivotNames = [], exclude = []) {
   for (const o of originals) o.parent?.remove(o);
   for (const [owner, byMat] of batches) {
     for (const [mat, geos] of byMat) {
-      // a batch keeps uv only if every part has it; one part without would
+      // a batch keeps an attribute only if every part has it; one part without would
       // make mergeGeometries return null and the model fall apart
-      if (!geos.every((g) => g.attributes.uv)) for (const g of geos) if (g.attributes.uv) g.deleteAttribute('uv');
-      const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+      const names = new Set(geos.flatMap((g) => Object.keys(g.attributes)));
+      for (const name of names) if (!geos.every((g) => g.attributes[name])) for (const g of geos) if (g.attributes[name]) g.deleteAttribute(name);
+      // an attribute of two item sizes (a colour as rgb in one part and rgba in another) cannot be welded: the parts stay apart, whole
+      const uneven = [...names].some((name) => geos[0].attributes[name] && geos.some((g) => g.attributes[name].itemSize !== geos[0].attributes[name].itemSize));
+      const merged = uneven ? null : geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
       if (!merged) { // defensive: keep the parts rather than lose the model
         for (const g of geos) owner.add(new THREE.Mesh(g, mat));
         continue;

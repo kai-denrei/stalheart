@@ -22,6 +22,8 @@ import { RenderPass } from '../vendor/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/UnrealBloomPass.js';
 import { ShaderPass } from '../vendor/ShaderPass.js';
 import { OutputPass } from '../vendor/OutputPass.js';
+import { OutputShader } from '../vendor/OutputShader.js';
+import { FullScreenQuad } from '../vendor/Pass.js';
 import * as THREE from '../vendor/three.module.js';
 import { buildWeightMap, materialConflicts, clampWeight, DEFAULT_BLOOM_WEIGHTS }
   from './bloomweights.js';
@@ -42,8 +44,40 @@ export function bloomTargetSize(cssW, cssH, pixelRatio, scale) {
   };
 }
 
-// base + bloom, in linear space, before OutputPass converts. Same place
-// the bloom was applied before this change.
+// THE ADD AND THE OUTPUT IN ONE PASS (2026-11-06). The sum scene + bloom used to go to a full-resolution half-float buffer and the
+// OutputPass then read that buffer back to convert it for the display: one whole-frame write and read a frame for an intermediate
+// nobody keeps. This pass sums the two textures and applies the same transfer in the same fragment. The OutputPass's own shader is the
+// source (its tone-mapping and colour-space includes, its defines set from the renderer at render time), with the bloom texture added
+// where it sampled the scene alone, so the two paths differ only by the half-float rounding of the intermediate the old one stored.
+// Measured at 3440x1353 (the owner's width) on the M4: see the 2026-11-06 entry.
+export function addOutputFragment() {
+  const src = OutputShader.fragmentShader;
+  const a = 'uniform sampler2D tDiffuse;', b = 'gl_FragColor = texture2D( tDiffuse, vUv );';
+  if (!src.includes(a) || !src.includes(b)) throw new Error('postfx: OutputShader changed shape; the add+output pass needs re-basing');
+  return src.replace(a, `${a}
+		uniform sampler2D tBloom;`).replace(b, 'gl_FragColor = texture2D( tDiffuse, vUv ) + texture2D( tBloom, vUv );');
+}
+export class AddOutputPass extends OutputPass {
+  render(renderer, writeBuffer, readBuffer, deltaTime, maskActive) {
+    if (this.tDiffuseOverride) { this.uniforms.tDiffuse.value = this.tDiffuseOverride; this.uniforms.toneMappingExposure.value = renderer.toneMappingExposure; renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer); this.fsQuad.render(renderer); return; }
+    super.render(renderer, writeBuffer, readBuffer, deltaTime, maskActive);
+  }
+  constructor() {
+    super();
+    // THE LAST PASS NEVER SWAPS: the composer swaps its two targets after each pass that asks, and this is the only pass after the
+    // scene pass; one swap a frame would alternate the scene pass between the multisampled target with the depth buffer and the
+    // depthless one, so every other frame would draw with no depth test (the floor lattice through the rock, the 2026-11-06 sheet).
+    // The old two-pass tail swapped twice, which kept the parity by accident.
+    this.needsSwap = false;
+    this.uniforms.tBloom = { value: null };
+    this.material.dispose();
+    this.material = new THREE.RawShaderMaterial({ name: 'AddOutputShader', uniforms: this.uniforms, vertexShader: OutputShader.vertexShader, fragmentShader: addOutputFragment() });
+    this.fsQuad.material = this.material;
+  }
+}
+
+// base + bloom, in linear space, before OutputPass converts: the OLD two-pass tail, kept only for the probe's 'separateAdd' split
+// (the pixel comparison against the one-pass tail, 2026-11-06); disabled, it costs nothing a frame
 const AddBloomShader = {
   uniforms: { tDiffuse: { value: null }, tBloom: { value: null } },
   vertexShader: /* glsl */`
@@ -70,7 +104,7 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
     scale: COARSE ? 0.5 : 1.0,
     ...opts,
   };
-  let enabled = o.enabled, tapNoWeights = false;
+  let enabled = o.enabled, tapMode = 'normal';
   const weights = { ...DEFAULT_BLOOM_WEIGHTS };
   let groupsFn = null;   // null => no weighting, i.e. the pre-change behaviour
   let warnedConflict = false;
@@ -107,15 +141,17 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
   finalComposer.renderTarget1.depthBuffer = false;
   finalComposer.renderTarget2.samples = 4;
   finalComposer.addPass(new RenderPass(scene, camera));
-  const addPass = new ShaderPass(AddBloomShader);
+  const addPass = new AddOutputPass();   // scene + bloom, then the display transfer: linear render targets -> without the output transfer the whole scene washes out
   finalComposer.addPass(addPass);
-  // linear render targets -> without OutputPass the whole scene washes out
-  finalComposer.addPass(new OutputPass());
+  const oldAdd = new ShaderPass(AddBloomShader), oldOut = new OutputPass(); oldAdd.enabled = oldOut.enabled = false;   // the probe's 'separateAdd' split
+  finalComposer.addPass(oldAdd); finalComposer.addPass(oldOut);
 
   bloomComposer.setSize(size.x, size.y);
   finalComposer.setSize(size.x, size.y);
 
   // --- weighting: applied before the bloom render, undone straight after
+  const copyQuad = new FullScreenQuad(new THREE.MeshBasicMaterial({ map: null }));   // the probe's 'showA' / 'showBloom'
+  const blackTex = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); blackTex.needsUpdate = true;   // the probe's 'noAdd' split: no bloom added
   const saved = [];          // { mat, r, g, b } and { obj, visible }
   const savedVis = [];
   const black = new THREE.Color(0, 0, 0);
@@ -182,13 +218,26 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
       const autoUpdate = scene.matrixWorldAutoUpdate;
       if (autoUpdate) { scene.updateMatrixWorld(); scene.matrixWorldAutoUpdate = false; }
       try {
-        const weighted = groupsFn && !tapNoWeights;
-        if (weighted) applyWeights();
-        bloomComposer.render();
-        if (weighted) restoreWeights();
+        const weighted = groupsFn && tapMode !== 'noWeights';
+        bloom.enabled = tapMode !== 'noBloomPass';
+        if (tapMode !== 'noPassA') {
+          if (weighted) applyWeights();
+          bloomComposer.render();
+          if (weighted) restoreWeights();
+        }
+        if (tapMode === 'showPassA') return;   // the probe: pass A itself on the screen (bloomComposer.renderToScreen, the mip chain off), nothing after it
+        if (tapMode === 'showA' || tapMode === 'showBloom') {   // the probe: pass A's own buffer, or the pure bloom, copied to the screen
+          copyQuad.material.map = tapMode === 'showA' ? bloomComposer.readBuffer.texture : bloom.renderTargetsHorizontal[0].texture;
+          renderer.setRenderTarget(null); copyQuad.render(renderer); return;
+        }
         // the PURE bloom, taken before UnrealBloomPass's additive blend
-        addPass.uniforms.tBloom.value = bloom.renderTargetsHorizontal[0].texture;
+        addPass.uniforms.tBloom.value = oldAdd.uniforms.tBloom.value = tapMode === 'noAdd' ? blackTex : tapMode === 'addBright' ? bloom.renderTargetBright.texture : tapMode === 'addA' ? bloomComposer.readBuffer.texture : tapMode === 'addSelf' ? finalComposer.readBuffer.texture : bloom.renderTargetsHorizontal[0].texture;   // 'noAdd': the probe sees pass B alone; 'addBright' / 'addA': the high-pass or pass A added instead of the bloom
+        if (tapMode === 'bloomOnlyOut') addPass.tDiffuseOverride = blackTex; else addPass.tDiffuseOverride = null;   // the probe: the add pass's own sampling of tBloom, alone
         finalComposer.render();
+        if (tapMode === 'showAAfterB' || tapMode === 'showBloomAfterB') {   // the probe: pass A's buffer, or the bloom, copied to the screen AFTER pass B ran
+          copyQuad.material.map = tapMode === 'showAAfterB' ? bloomComposer.readBuffer.texture : bloom.renderTargetsHorizontal[0].texture;
+          renderer.setRenderTarget(null); copyQuad.render(renderer);
+        }
       } finally { scene.matrixWorldAutoUpdate = autoUpdate; }
     },
     setSize(w, h) {
@@ -207,9 +256,25 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
     },
     setEnabled(v) { enabled = !!v; },
     get enabled() { return enabled; },
-    // a probe's split of the chain (2026-10-16, hunting a one-frame flash): 'normal', or 'noWeights' (pass A unweighted). The add pass cannot be switched off
-    // alone: the composer's buffers then alternate every other frame
-    tap(mode = 'normal') { tapNoWeights = mode === 'noWeights'; return mode; },
+    // a probe's split of the chain (2026-10-16, hunting a one-frame flash; 2026-11-06, pricing its parts at the owner's resolution): 'normal';
+    // 'noWeights' (pass A unweighted); 'noPassA' (pass A skipped, the last bloom texture kept: what the weighted scene render and the mip chain
+    // cost together); 'noBloomPass' (pass A drawn, the mip chain skipped: the chain's own cost); 'noMsaa' / 'msaa' (the final scene buffer's
+    // 4x samples off and back on: their cost); 'byteA' / 'halfFloatA' (pass A's buffers in 8-bit and back: the half-float traffic's cost; in
+    // 8-bit the bloom clips at 1.0); 'separateAdd' / 'onePass' (the old two-pass tail, add then output, and the one-pass tail back: the
+    // pixel comparison); 'halfA' / 'fullA' (pass A's scene at half the device resolution and back: NOT output-identical, a 1 px line
+    // rasterised at half size weighs twice as much in the bloom; priced for the owner). The add pass cannot be switched off alone: the
+    // composer's buffers then alternate every other frame
+    tap(mode = 'normal') {
+      if (mode === 'noMsaa' || mode === 'msaa') { const rt = finalComposer.renderTarget2; rt.samples = mode === 'msaa' ? 4 : 0; rt.dispose(); return mode; }
+      if (mode === 'byteA' || mode === 'halfFloatA') { const type = mode === 'byteA' ? THREE.UnsignedByteType : THREE.HalfFloatType; for (const rt of [bloomComposer.renderTarget1, bloomComposer.renderTarget2]) { rt.texture.type = type; rt.dispose(); } return mode; }
+      if (mode === 'showPassA' || mode === 'hidePassA') { const on = mode === 'showPassA'; bloomComposer.renderToScreen = on; bloom.enabled = !on; tapMode = on ? mode : 'normal'; return mode; }
+      if (mode === 'halfA' || mode === 'fullA') {   // pass A's scene at half the device resolution (the mip chain at its own size): the owner's knob, priced
+        const s = renderer.getSize(new THREE.Vector2()), k = mode === 'halfA' ? 0.5 : 1; bloomComposer.setSize(s.x * k, s.y * k);
+        const b = bloomTargetSize(s.x, s.y, renderer.getPixelRatio(), o.scale); bloom.setSize(b.w, b.h); return mode;
+      }
+      if (mode === 'separateAdd' || mode === 'onePass') { const old = mode === 'separateAdd'; oldAdd.enabled = oldOut.enabled = old; addPass.enabled = !old; return mode; }
+      tapMode = mode; return mode;
+    },
     // a pass AFTER the OutputPass, in display space (the cinematics' film
     // pass: letterbox, grain, titles). The composer renders its last
     // enabled pass to the screen, so appending is enough.

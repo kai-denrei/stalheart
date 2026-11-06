@@ -60,9 +60,9 @@ export const STRUCTURES = Object.freeze([
   // far: the tier shown beyond KIT.lod.metres; the near tier is only fetched once the camera comes close. Authored tiers where the
   // owner exports them (solar: LOD1 game, LOD2 distance); elsewhere derived under assets/models/far by npm run tiers (a tenth of the triangles)
   { id: 'solar', asset: 'assets/models/astro/solar_power_complex_lod1_d0.glb', far: 'assets/models/astro/solar_power_complex_lod2_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },
-  { id: 'rotor', asset: 'assets/models/sentries/rotor_t1.glb', island: null, anchor: 'wall', stage: 3, scale: 3, offset: [0, 0, 0] },   // high ground: the rock beside the tunnel mouth
-  { id: 'hugin', asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', far: 'assets/models/far/hugin.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
-  { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [10, 0, 0], clips: ['Terraforming_Cycle'],
+  { id: 'rotor', batch: true, asset: 'assets/models/sentries/rotor_t1.glb', island: null, anchor: 'wall', stage: 3, scale: 3, offset: [0, 0, 0] },   // high ground: the rock beside the tunnel mouth
+  { id: 'hugin', batch: true, asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', far: 'assets/models/far/hugin.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
+  { id: 'stalheart', batch: true, asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [10, 0, 0], clips: ['Terraforming_Cycle'],
     // Runtime LOD candidates pinned at c827eda for game-camera review (docs/landmark-tiers-assets.lock.json). Only
     // ?landmarks=candidate reads them; asset and far above stay what ships, and far-tiers.mjs keeps deriving that far.
     candidate: { asset: 'assets/models/astro/terraformer_3000_d0_lod1.glb', far: 'assets/models/astro/terraformer_3000_d0_lod2.glb' } },
@@ -72,7 +72,7 @@ export const STRUCTURES = Object.freeze([
   { id: 'bays', asset: 'assets/models/kit/mork_container_low_diorama.glb', island: 'bay', stage: 7, scale: STORY_SCALE.tankMetres / 13.28, offset: [0, 0, 0], heading: [0, -1], pose: { Tank_Roll_Out: 0 },
     bays: [{ n: 1, x: -11, doors: '01', like: '02' }, { n: 2, x: 0, vehicle: 'VEHICLE_02' }, { n: 3, x: 11, vehicle: 'VEHICLE_03', rollout: 'Tank_Roll_Out' }] },   // bay centres along the model's X, doors at +Z
   { id: 'assembly', asset: 'assets/models/astro/robotic_assembly_line_d0.glb', far: 'assets/models/far/assembly.glb', island: 'assembly', stage: 8, scale: 1, offset: [0, 0, 0], batch: true, clips: ['Assembly_Cycle'] },
-  { id: 'radar', asset: 'assets/models/kit/skyward_low_d0.glb', island: 'radar', stage: 8, scale: 1, offset: [0, 0, 0], clips: ['Array_Slew'] },
+  { id: 'radar', batch: true, asset: 'assets/models/kit/skyward_low_d0.glb', island: 'radar', stage: 8, scale: 1, offset: [0, 0, 0], clips: ['Array_Slew'] },
   // THE COLONY (docs/colony-assets.lock.json): the research outpost's garage as the armory (its far tier derived), the VER-01
   // greenhouse with three settlement cassettes as the bio containers along its island's edge, the LIT-01 chip writer, and the
   // ARC-01 mass driver (+Z is its launch direction, turned to fire west over the rim; the SEED-01 satellite rides its sled only during
@@ -92,7 +92,7 @@ export const STRUCTURES = Object.freeze([
   { id: 'ammo-c', asset: 'assets/models/astro/ammo_heavy_240_projectile_game.glb', island: 'assembly', stage: 9, scale: 1, offset: [-16, 0, 8], tilt: 90, lift: 0.15, heading: [0.6, 0.8], batch: true },
   // the ARC-01 has no distance tier on the base: its launch is engine-driven on ONE model, and a near/far swap put the animation on the hidden tier
   // `dark`: meshes whose glow stands off between launches (the magnets, owner 2026-11-05: NOT lit at the beginning; src/content/orbital-works.js LAUNCHER_LIGHTS)
-  { id: 'launcher', asset: 'assets/models/astro/arc01_launcher_d0_lod1.glb', island: 'launcher', stage: 9, scale: 1, offset: [0, 0, 0], heading: [-1, 0], dark: ['PASSAGE_GATES', 'ACCELERATOR_LIGHTS'] },
+  { id: 'launcher', batch: true, keep: ['LAUNCH_SLED', 'CLAMP_L', 'CLAMP_R'], asset: 'assets/models/astro/arc01_launcher_d0_lod1.glb', island: 'launcher', stage: 9, scale: 1, offset: [0, 0, 0], heading: [-1, 0], dark: ['PASSAGE_GATES', 'ACCELERATOR_LIGHTS'] },
   // THE DEPOT'S PIECES (round 8 note 7; docs/a6-settlement-assets.lock.json, the owner's A6 settlement models): the Yushi045 Bio-Pearls in a row
   // along the island's east edge (4 x 4 m plots, 4 m apart; their SOCKET_FILL faces -X, toward the rover's dock 8 m west, the author's dock),
   // three standing with the depot and the fourth the build board's card (stage 9, the `pearl` step); their fill is driven from the bank by
@@ -108,12 +108,12 @@ export const STRUCTURES = Object.freeze([
   // EARLIER LANDINGS, out past the clearing on open ground (anchor 'open' snaps to the nearest open cell): two HUGIN boosters standing
   // on their tripods and one wreck on its side. The flight GLBs sit on their mass reference, feet at -6.3 m, hence the offset; the wreck
   // is tilted onto its side and lifted by its hull radius. Draft placement, to be moved once the tank trip beat is written.
-  { id: 'rocket-a', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: -300, z: 140, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.6, 0.8] },
-  { id: 'rocket-b', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: 330, z: -90, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.5, -0.87] },
-  { id: 'wreck', asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', clear: 24, x: 120, z: -360, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.9, 0.44] },
-  { id: 'rocket-c', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: -430, z: -250, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.7, -0.7], shown: 9 },   // later site: above every stage, so it loads concealed until an expedition reveal shows it
-  { id: 'rocket-d', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: 400, z: 320, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.6, -0.8], shown: 9 },   // later site: above every stage, so it loads concealed until an expedition reveal shows it
-  { id: 'wreck-b', asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', clear: 24, x: -90, z: 520, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.2, -0.98], shown: 9 },   // later site: above every stage, so it loads concealed until an expedition reveal shows it
+  { id: 'rocket-a', batch: true, asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: -300, z: 140, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.6, 0.8] },
+  { id: 'rocket-b', batch: true, asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: 330, z: -90, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.5, -0.87] },
+  { id: 'wreck', batch: true, asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', clear: 24, x: 120, z: -360, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.9, 0.44] },
+  { id: 'rocket-c', batch: true, asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: -430, z: -250, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.7, -0.7], shown: 9 },   // later site: above every stage, so it loads concealed until an expedition reveal shows it
+  { id: 'rocket-d', batch: true, asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: 400, z: 320, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.6, -0.8], shown: 9 },   // later site: above every stage, so it loads concealed until an expedition reveal shows it
+  { id: 'wreck-b', batch: true, asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', clear: 24, x: -90, z: 520, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.2, -0.98], shown: 9 },   // later site: above every stage, so it loads concealed until an expedition reveal shows it
 ]);
 
 export const KIT = Object.freeze({
