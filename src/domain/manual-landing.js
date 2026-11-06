@@ -66,9 +66,10 @@ export function predictImpact(s, tune, groundY = 0) {
   return { x: p.x, z: p.z, t: tune.hud.predictorSeconds, reached: false };
 }
 
-export const touched = (s) => s.y <= 0;
+export const touched = (s, groundY = 0) => s.y <= groundY;
 
 // the grade at first contact (spec 3): the worst axis decides and names the reason; legs up, a slope or off the pad are wrecks
+// (a CLEAN verdict still names the nearest axis: the one with the greatest value / hard limit)
 export function verdict(s, slope, offPad, tune) {
   const sink = Math.max(0, -s.vy), drift = Math.hypot(s.vx, s.vz), tilt = Math.abs(s.tilt), V = tune.verdict;
   const axes = [['sink', sink, V.clean.sink, V.hard.sink], ['drift', drift, V.clean.drift, V.hard.drift], ['tilt', tilt, V.clean.tilt, V.hard.tilt]];
@@ -78,7 +79,7 @@ export function verdict(s, slope, offPad, tune) {
     if (grade > worst || (grade === worst && r > ratio)) { worst = grade; reason = name; ratio = r; }
   }
   if (!s.legsDown) { worst = 2; reason = 'legs'; }
-  else if (slope > tune.verdict.slope) { worst = 2; reason = 'slope'; }
+  else if (Math.abs(slope) > V.slope) { worst = 2; reason = 'slope'; }
   else if (offPad) { worst = 2; reason = 'off-pad'; }
   return { grade: ['CLEAN', 'HARD', 'WRECK'][worst], reason, sink, drift, tilt };
 }
@@ -91,12 +92,12 @@ export function flareDue(s, tune) {
 
 // the auto-lander's step: the tilt and the drift eased out over flare.settle, the sink eased to sinkFinal, the legs down, no fuel spent
 export function flareStep(s, dt, tune) {
-  const f = tune.flare, k = Math.min(1, dt / f.settle * 3);
+  const f = tune.flare, k = Math.min(1, dt / f.settle * f.settleGain);
   s.tilt += (0 - s.tilt) * k; s.tiltRate = 0;
   s.vx += (0 - s.vx) * k; s.vz += (0 - s.vz) * k;
   s.vy += (-f.sinkFinal - s.vy) * k;
   s.legs = Math.min(1, s.legs + dt / tune.vehicle.legTime); s.legsDown = s.legs >= 1;
-  s.throttle = s.set = Math.min(1, tune.sim.gravity / tune.vehicle.thrust + 0.05);   // the plume at a hover's worth, for the picture
+  s.throttle = s.set = Math.min(1, tune.sim.gravity / tune.vehicle.thrust + f.plumeMargin);   // the plume at a hover's worth, for the picture
   s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt; s.t += dt; s.phase = 'flare';
   return s;
 }

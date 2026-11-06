@@ -57,8 +57,9 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   const s = createLanding({ ...entry, sink: 30, drift: 0, tilt: 0 });
   assert.ok(Math.abs(hStop(s, T) - 30 * 30 / (2 * (T.vehicle.thrust - T.sim.gravity))) < 1e-9);
   // and a full burn started at exactly that height stops within a few metres of the ground (the integrator against the formula)
-  const f = createLanding({ ...entry, sink: 30, drift: 0, tilt: 0, fuelSeconds: 60 }); f.y = hStop(f, T) + 6; f.throttle = 1; f.set = 1;   // +6: the spool is not instant
+  const f = createLanding({ ...entry, sink: 30, drift: 0, tilt: 0, fuelSeconds: 60 }); f.y = hStop(f, T) + 6; f.throttle = 1; f.set = 1;   // +6: headroom for the integrator's discretisation (the throttle is already at full, so no spool lag)
   let lowest = f.y; for (let i = 0; i < 2400 && f.vy < 0; i++) { step(f, { throttle: 1, tiltRate: 0, legs: true }, DT, T); lowest = Math.min(lowest, f.y); }
+  assert.ok(f.vy >= 0, 'the loop ended because the rocket stopped, not on the step cap');
   assert.ok(lowest > 0 && lowest < 12, `stops above the ground and near it (${lowest.toFixed(1)} m)`);
 }
 { // the predictor lands where the integrator lands, at the current throttle
@@ -68,6 +69,17 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   assert.ok(p.reached); assert.ok(Math.abs(p.z - q.z) < 2, `predicted z ${p.z.toFixed(1)} against flown ${q.z.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3);
   const high = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 }); high.y = 1e6;
   assert.equal(predictImpact(high, T).reached, false, "beyond the predictor's horizon: not reached");
+}
+{ // the predictor holds the set point: with the throttle held at full it lands where a held-throttle flight lands
+  const mk = () => { const q = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0.1, fuelSeconds: 1 }); q.throttle = 1; q.set = 1; return q; };
+  const p = predictImpact(mk(), T);
+  const q = mk(); let t = 0; while (q.y > 0 && t < 60) { step(q, { throttle: null, tiltRate: 0, legs: false }, DT, T); t += DT; }
+  assert.ok(p.reached); assert.ok(Math.abs(p.z - q.z) < 2, `held throttle: predicted z ${p.z.toFixed(1)} against flown ${q.z.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3, `held throttle: predicted t ${p.t.toFixed(2)} against flown ${t.toFixed(2)}`);
+  assert.ok(q.z > 6 * t * 0.9, 'the thrust did push the flight (the held throttle is in the trajectory)');
+}
+{ // touched reads the ground it is given, as predictImpact does (default 0)
+  assert.equal(touched({ y: 0 }), true); assert.equal(touched({ y: 0.1 }), false);
+  assert.equal(touched({ y: 5 }, 5), true); assert.equal(touched({ y: 5.1 }, 5), false); assert.equal(touched({ y: -2 }, -3), false);
 }
 { // the verdict: the worst axis names the reason; legs up, a slope or off the pad are wrecks whatever the speeds
   const base = { ...createLanding(entry), vy: -1, vx: 0, vz: 0.5, tilt: 0.02, legs: 1, legsDown: true };
@@ -79,6 +91,29 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   assert.deepEqual(verdict({ ...base }, 0.2, false, T).reason, 'slope'); assert.deepEqual(verdict({ ...base }, 0, true, T).reason, 'off-pad');
   const v = verdict({ ...base, vy: -3.3, vz: -2.2, tilt: 0.05 }, 0, false, T);
   assert.equal(v.sink, 3.3); assert.equal(v.drift, 2.2); assert.ok(Math.abs(v.tilt - 0.05) < 1e-12, 'the readings are reported as flown');
+}
+{ // the verdict's tie-break, the limits' strictness and the precedence
+  const base = { ...createLanding(entry), vy: -1, vx: 0, vz: 0.5, tilt: 0.02, legs: 1, legsDown: true };
+  const g = (o, slope = 0, off = false) => { const v = verdict({ ...base, ...o }, slope, off, T); return [v.grade, v.reason]; };
+  // two axes at one grade: the one further over its hard limit (value / hard) names the reason
+  assert.deepEqual(g({ vy: -5, vz: 3 }), ['HARD', 'sink'], 'sink 5/6 against drift 3/4');
+  assert.deepEqual(g({ vy: -4, vz: 3.5 }), ['HARD', 'drift'], 'sink 4/6 against drift 3.5/4');
+  assert.deepEqual(g({ vy: -3, tilt: 0.1 }), ['HARD', 'tilt'], 'sink 3/6 against tilt 0.1/0.192');
+  // a worse grade beats a nearer ratio: a WRECK names the reason over a HARD axis, either way round
+  assert.deepEqual(g({ vy: -5, vz: 5 }), ['WRECK', 'drift'], 'HARD sink, WRECK drift');
+  assert.deepEqual(g({ vy: -7, vz: 3 }), ['WRECK', 'sink'], 'WRECK sink, HARD drift');
+  // exactly at a limit is the milder grade (strict >)
+  assert.deepEqual(g({ vy: -T.verdict.clean.sink }), ['CLEAN', 'sink'], 'a sink of exactly clean is CLEAN (and a CLEAN verdict still names the nearest axis)');
+  assert.deepEqual(g({ vy: -T.verdict.hard.sink }), ['HARD', 'sink'], 'a sink of exactly hard is HARD');
+  assert.deepEqual(g({ vy: -(T.verdict.hard.sink + 0.01) }), ['WRECK', 'sink'], 'just over hard is WRECK');
+  assert.deepEqual(g({ vz: T.verdict.hard.drift }), ['HARD', 'drift'], 'a drift of exactly hard is HARD');
+  // precedence: legs, then slope, then off the pad, over any speeds
+  assert.deepEqual(g({ legs: 0.4, legsDown: false }, 0.5, true), ['WRECK', 'legs'], 'legs up, a slope and off the pad: legs');
+  assert.deepEqual(g({}, 0.5, true), ['WRECK', 'slope'], 'legs down, a slope and off the pad: slope');
+  assert.deepEqual(g({}, 0, true), ['WRECK', 'off-pad'], 'legs down, a flat pad, off it: off-pad');
+  assert.deepEqual(g({ vy: -5 }, T.verdict.slope), ['HARD', 'sink'], 'a slope exactly at the limit is not over it');
+  // the slope is a magnitude: a downhill foot is as steep as an uphill one
+  assert.deepEqual(g({}, -0.2), ['WRECK', 'slope'], 'a negative slope past the limit is a wreck');
 }
 { // the flare: due below its altitude inside its corridor, never above it or outside; and it settles the rocket to the ground
   const s = { ...createLanding(entry), y: 25, vy: -5, vz: 2, tilt: 0.1 };

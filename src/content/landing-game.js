@@ -16,7 +16,12 @@ export const LANDING_GAME = Object.freeze({
   // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry)
   entry: Object.freeze({ altitude: [300, 400], sink: [30, 40], drift: [8, 12], tilt: [0.25, 0.35], fuelSeconds: [18, 22], wind: 0 }),
   // the auto-lander takes back under this height when the state is inside its corridor (spec 2.4)
-  flare: Object.freeze({ altitude: 30, sink: 8, drift: 5, tilt: 0.25, sinkFinal: 1.8, settle: 2.5 }),   // settle: s to kill drift and tilt
+  flare: Object.freeze({
+    altitude: 30, sink: 8, drift: 5, tilt: 0.25, sinkFinal: 1.8,
+    settle: 2.5,       // s: the time scale of the ease (each step closes dt / settle * settleGain of the gap), so drift and tilt are gone in about this long
+    settleGain: 3,     // the ease's gain over dt / settle: an exponential ease at rate 1/settle only reaches 63% in `settle` s; at 3x it is 99.9%, "gone"
+    plumeMargin: 0.05, // throttle above the balance point (g / thrust) shown on the plume while the flare burns, for the picture: the auto-lander spends no fuel
+  }),
   // the 2D game's grades: the worst axis decides; drift in m/s on the ground, tilt in radians (4° and 11°)
   verdict: Object.freeze({
     clean: Object.freeze({ sink: 2.5, drift: 1.5, tilt: 0.0698 }),
