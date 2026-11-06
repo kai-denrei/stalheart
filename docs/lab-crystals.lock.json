@@ -1,0 +1,31 @@
+{
+ "schema": 1,
+ "upstream": "https://github.com/jelaludo/lab-crystals",
+ "revision": "9dfb33c7fa38227bd2a4a7a4c887ae146e68bd53",
+ "baseUrl": "https://raw.githubusercontent.com/jelaludo/lab-crystals/9dfb33c7fa38227bd2a4a7a4c887ae146e68bd53/",
+ "credit": "Facet, the Crystal Lab, by jelaludo (the owner's own; https://jelaludo.github.io/lab-crystals/; original code MIT per its README), imported for a test (owner's note of 2026-11-07). THERE IS NO MODEL FILE UPSTREAM: the crystals are procedural. Pinned verbatim are the reusable kit the README names: dist/geometry.js (crystalGeometry(shape, sides, aspect, seed) and the seeded random(seed); non-indexed, flat normals, geometry.userData.planes = the outward convex planes, at most 40) and dist/shaders.js (the spectral-glass / energy ShaderMaterial GLSL). The lab's main.js (uniforms, procedural environment, cluster assembly, presets) is kept in the vault (projects/stalheart/a6-2026-11-07/lab-crystals/) as the reference, not shipped. Written against Three 0.186; the game vendors r160: see `facts`.",
+ "files": [
+  {
+   "path": "assets/models/crystals/geometry.js",
+   "sourcePath": "dist/geometry.js",
+   "sha256": "c2c00bb674b172a3351a5b425b896c76e8c0ebfdb2942078d950b6fcba122bec",
+   "bytes": 1627
+  },
+  {
+   "path": "assets/models/crystals/shaders.js",
+   "sourcePath": "dist/shaders.js",
+   "sha256": "bcfe80abd65dc7a4dc7859e18ad60ac00fe077cfeea87225b46d9d4565e23038",
+   "bytes": 3122
+  }
+ ],
+ "facts": {
+  "model": "no GLB, OBJ or texture upstream: the lab builds every crystal at runtime. The site can export a mesh-only OBJ of the current specimen; nothing exported is pinned here",
+  "shapes": "crystalGeometry(shape, sides, aspect, seed): 'quartz' (two rings of `sides` points at y -1 (r 0.65) and 0.67 (r 0.72), a jittered tip at y 1.48, a base point at y -1.32), 'gem' (four rings, girdle radius 1), 'octahedron' (4 + 2 points, +-1.35 tall), 'blade' (the quartz squashed x 0.68, z 0.3); every y scaled by `aspect`. The lab's 'cluster' is not a geometry: main.js places one quartz plus eight smaller (scale 0.42-0.72) tilted quartz around it at radius 0.62-0.82, seeds seed+index",
+  "units": "unitless, about 2.5 units tall at aspect 1 (quartz -1.32..1.48): not metres; a consumer scales it",
+  "geometry": "THREE.ConvexGeometry of the points: non-indexed, flat normals, no UVs, no colours; geometry.userData.planes = de-duplicated outward planes as Vector4 (n, d), at most 40 (the shader's uPlanes[40]); the upstream validate.mjs proves every vertex is inside every plane and the output is deterministic per seed",
+  "materials": "three methods in the lab: 'spectral' (shaders.js, uMode 0: per-channel IOR refraction against the convex planes, Fresnel, total internal reflection, Beer-Lambert absorption, 1-8 bounces, environment-only), 'energy' (shaders.js, uMode 1: animated emissive bands, Fresnel rim, uTime), 'physical' (THREE.MeshPhysicalMaterial transmission + dispersion, main.js). Uniforms: uPlanes[40], uPlaneCount, uEnvironment (an equirect DataTexture main.js generates), uColor, uIor, uDispersion, uRoughness, uAbsorption, uTime, uEnergy, uMode, uBounces, uWorldRotation (mat3 of the mesh's world rotation, set per frame). The ray shader assumes uniform object scale",
+  "presets": "amethyst (cluster, spectral, #b9a4ff, ior 1.54, dispersion 1.2, roughness 0.035, absorption 1.35, aspect 1.15, sides 6), ice (quartz, physical, #94e5f9), ember (cluster, energy, #ff8052, energy 2.4), diamond (gem, spectral, #edf6ff, ior 2.42, dispersion 2.7, 8 bounces)",
+  "threeVersion": "written for Three 0.186; the game vendors r160 (one version, AGENTS.md). Measured against vendor/: (1) geometry.js imports the bare specifiers 'three' and 'three/addons/geometries/ConvexGeometry.js' and the game's pages have no import map, so it does not load as it is: a consumer passes the game's Three in or rewrites the two imports to ../../../vendor/ paths in a game-side copy; (2) ConvexGeometry is not vendored (ConvexHull.js is; r160's ConvexGeometry is a ~50-line wrapper over it); (3) r160 has no MeshPhysicalMaterial.dispersion, so the 'physical' method loses its dispersion; (4) the fragment shader's #include <tonemapping_fragment> and <colorspace_fragment> exist in r160",
+  "pack": "nothing to pack: two JS modules, copied to dist with the rest of assets/ (their imports are bare, so the build's ?v= rewrite leaves them alone); never imported by the game yet"
+ }
+}
