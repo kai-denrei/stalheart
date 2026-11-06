@@ -10,6 +10,7 @@ export const LANDING_GAME = Object.freeze({
     torque: 3,           // rad/s² at full stick
     damping: 3.5,        // the tilt rate's decay a second
     legTime: 0.6,        // s to deploy the legs
+    legDrag: 0.0009,     // added to sim.drag once the legs are down: the splayed feet catch air (the 2D game's figure)
     autoLegsAltitude: 200,   // m: the legs come down here on their own if the player has not asked
   }),
   // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry)
