@@ -73,7 +73,9 @@ APPROACH -> OVERRIDE -> MANUAL -> FLARE -> TOUCHDOWN -> RESULT
    graded one (section 7), and the foundry's salvage is set from the grade (section 6). The game runs on from here exactly as today.
 
 A key or tap skips the shot today; during MANUAL only the skip key does (section 5). A skipped landing at any point lands itself at the
-sequence's end as today, graded CLEAN (the auto-lander never crashes), with the plain talk.
+sequence's end as today, graded CLEAN for the record (the auto-lander never crashes), with the plain talk, and pays no grade: the
+foundry is left as today, no salvage set (2026-11-07, the final review; the owner's call 1, the grade is for a flown landing: a skip
+paid the CLEAN bonus barrel, so taking the offer and pressing Esc beat a flown HARD landing).
 
 **Changed in the build (2026-11-07).** Three calls after the first browser flights (Task 7's report):
 
@@ -147,8 +149,9 @@ the sound, the input and the ground query, and the arrival's tick calls it while
   10 m).
 - **The chase camera**: behind and above the rocket along the approach, looking at a point ahead of it on the ground, with the disk
   low in the frame (section 1); the lens `camera.fov`; a small lag so the rocket leads the frame; the shake on a hard contact
-  (`camera.jolt`). It is a shot (`startShot`, `passKeys: true`, `skipKey`) so the seat and chase rules stay out of it as they do for
-  every shot.
+  (`camera.jolt`). It is a shot (`startShot`, `skipKey`) so the seat and chase rules stay out of it as they do for every shot; the
+  host's capture listener, registered before the shot's, takes the flight keys, the shot eats every other key and keeps `Esc` as the
+  skip (`passKeys: false` since the final review, 2026-11-07; the reduced-motion preference also drops the rail's jolt).
 - **The reticle**, a real projection on the terrain, not a sprite: a ring on the ground under the predicted impact point (the host's
   `floorAt`/`groundAt` query gives the height and the normal, as the pets and the burn marks use), its radius the altitude at
   `reticle.metresPerMetre`, stretched along the ground velocity, with the three fixed rings at 100 / 50 / 10 m that shrink past it and
@@ -156,8 +159,9 @@ the sound, the input and the ground query, and the arrival's tick calls it while
   so a slope skews it. On the pad it is green; off the island it is the alarm red.
 - **The HUD** (section 5's instruments), a panel in the existing HUD style (`styles.css`, the `arrival-on` class hides the game's
   chrome today; the landing panel is the one thing shown).
-- **The full-screen glare** at OVERRIDE: the 2D game's full-screen launch shader as one full-screen quad for `override.glare` seconds,
-  exposure up then down, under the alarm. On `prefers-reduced-motion` the glare is a plain fade.
+- **The full-screen glare** at OVERRIDE: the 2D game's full-screen launch shader as one full-screen quad, shaped by the
+  `override.glare` block `{ seconds, dim, peak }` (the beat's length, the exposure when nothing shows, the exposure at the glare's
+  height; 2026-11-07, it was a number of seconds in the first draft), exposure up then down, under the alarm. On `prefers-reduced-motion` the glare is a plain fade.
 
 ## 5. Controls and instruments
 
@@ -190,8 +194,9 @@ by touching the clips):
 | HARD | all three | 60 | today's start |
 | WRECK | two (the tank section is crushed) | 48 | slightly harder, the owner's call (1) |
 
-The salvage layout model shows the same sections on every grade (no crushed variant is made); the arm simply never cuts the lost one,
-and the HUD's `SALVAGE · 2 OF 3 SECTIONS` says so. Nothing else of the opening changes: the Stålheart print, the beacons, the first
+The salvage layout model shows the same sections on every grade (no crushed variant is made); the arm simply never cuts the lost one.
+~~and the HUD's `SALVAGE · 2 OF 3 SECTIONS` says so~~ (2026-11-07, the final review: not built; the verdict line and the wreck's fourth
+caption are what say it). Nothing else of the opening changes: the Stålheart print, the beacons, the first
 Rotor come as they do, later by one or two barrels on a wreck.
 
 ## 7. Isao
@@ -214,9 +219,9 @@ section for them, the recording order as before):
   START alone lands itself. `?landing=1` forces the mini-game, `?landing=0` never, `?landing=offer` shows the gate's offer on an
   acceptance page.
 - **The skip inside the flight** is `Esc` or the on-screen SKIP, not any key: the sequence resumes at its touchdown on the pad, grade
-  CLEAN, the plain talk, the rail back in the same frame. Before the override (the approach) any key or tap skips the whole arrival as
+  CLEAN for the record, no salvage (the foundry as today, section 2), the plain talk, the rail back in the same frame. Before the override (the approach) any key or tap skips the whole arrival as
   today, ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
-  contact), then `Esc` alone skips it; an auto-repeated key never skips any shot (`src/fx/camera-shot.js`). The tutorial card's skip
+  contact), then `Esc` alone skips it (on a phone, after the lock, a tap: 2026-11-07); an auto-repeated key never skips any shot (`src/fx/camera-shot.js`). The tutorial card's skip
   and the chapter links are unchanged (a chapter starts past the landing, as today).
 - **Acceptance runs** (`?acceptance=1`) land automatically unless they ask (`?landing=1`), and show the gate only with `?gate=1`.
 - **Phones** (`(pointer: coarse)`) fly it with the touch rail; the plume stays on quads as today and the glare is the plain fade (the
