@@ -49,12 +49,13 @@ APPROACH -> OVERRIDE -> MANUAL -> FLARE -> TOUCHDOWN -> RESULT
 
 1. **APPROACH** (auto, about 6 s). The arrival's orbit shot as it is, from higher: the rocket burning in from `start.altitude` on the
    sequence's own eased altitude. The start gate's START is still the first gesture.
-2. **OVERRIDE** (about 3 s). The auto-lander faults: the alarm, the HUD's annunciator `AUTO-LAND FAULT · MANUAL OVERRIDE`, Isao's
-   caption line (section 7), the full-screen plume glare swelling over the frame and clearing, and the hand-over: the flight state is
-   seeded from the sequence's altitude and rate at that instant plus the entry's drift and tilt (section 3), the chase camera takes over
-   from the rail, the HUD instruments come up. Velocity and attitude carry across untouched; the player inherits a problem, not a reset.
-   On a start that is not the first (section 8), OVERRIDE is also where the skip is offered: `AUTO-LAND · [SPACE] OVERRIDE` for
-   `skip.offer` seconds; no key, and the arrival lands itself as today.
+2. **OVERRIDE** (`override.seconds`, 3 s). At `approach.overrideAt` (3.5 s into the approach, the sequence at ~380 m) the auto-lander
+   faults: the alarm, the HUD's annunciator `AUTO-LAND FAULT · MANUAL OVERRIDE`, Isao's caption line (section 7), the full-screen
+   plume glare swelling over the frame and clearing (2.4 s), and the hand-over: under the glare the flight state is the planet's seeded
+   entry (`seedEntry`: 300-400 m, sink 30-40 m/s, drift ±8-12, tilt ±0.25-0.35, 18-22 s of fuel; section 3), not the sequence's own
+   altitude and rate; the chase camera takes over from the rail and the HUD instruments come up. The rocket holds where it is through
+   the beat; the throttle keys and L already set the throttle and arm the legs. There is no offer here: a later start's offer is the
+   start gate's (section 8).
 3. **MANUAL** (the player, 15-25 s by the tune). Throttle and tilt (section 5). Fuel is the clock (`vehicle.fuelSeconds` of full burn,
    starting around 20 s so a hover is a losing move). The reticle on the ground, the instruments, the plume under the throttle, the
    thrust bed under the burn.
@@ -91,6 +92,11 @@ sequence's end as today, graded CLEAN (the auto-lander never crashes), with the 
   own ground point when the prediction is more than `camera.lookReach` m off the pad), the eye behind along -z, above, and a little to
   +x for a three-quarter view (the tilt is about x and would lie along the line of sight from straight behind). The eye's distances
   grow with the height so the rocket stays in the upper half of the frame with the reticle below it from 350 m to the ground.
+- **D. The review of the build (2026-11-07).** A flight key held through the contact auto-repeated into the resumed rail's skip within
+  ~30 ms, so the door, Isao's rise and the graded talk's lead-in were lost: the rail after a flown touchdown is now locked
+  (`touchdown.lockSeconds`) and skips on `Esc` alone, and an auto-repeated key never skips any shot. The ground off the pad was the flat
+  tangent plane, so a far wreck stood in the air over the curving planet: `floorAt` now follows the sphere (the drop, the normal; the
+  slope and the tilt against the local normal in the verdict). The touchdown's numbers moved into `LANDING_GAME.touchdown`.
 
 ## 3. The flight model (`src/domain/manual-landing.js`, pure)
 
@@ -157,7 +163,8 @@ the sound, the input and the ground query, and the arrival's tick calls it while
 
 Throttle is SET, not held (the brief's rule): `W` / `S` step the set point by `input.step` (0.1), `Shift+W` to full, `Shift+S` to
 idle; `A` / `D` tilt back and forward (held: a rate); `L` legs (auto at `legs.autoAltitude` 200 m unless the player already did);
-`Space` nothing during MANUAL (so a reflex from the 2D game cannot cut the burn) — the override's accept key before MANUAL only.
+`Space` does nothing in flight (so a reflex from the 2D game cannot cut the burn); it is the start gate's FLY THE LANDING key, before
+START only (section 8). Under FLARE the flight keys are eaten and do nothing (the auto-lander has the stick; none reaches the tank).
 `Esc` is the skip (section 8). Touch: a throttle slider on the right rail, two tilt buttons on the left, LEGS, SKIP; the same seven
 things, nothing more. Six touchable things, a dozen readable:
 
@@ -200,19 +207,29 @@ section for them, the recording order as before):
 
 ## 8. The first start, the skip, the entries
 
-- **The first start on this browser flies the landing** (owner's call 2). `src/storage.js` keeps `landing.flown` once any MANUAL phase
-  has begun (skipped or not). After that every story start is the arrival as today, with the OVERRIDE offer (`[SPACE] OVERRIDE`,
-  `skip.offer` 3 s) during the approach; taking it flies the landing. `?landing=1` forces the mini-game, `?landing=0` never.
-- **The skip inside MANUAL** is `Esc` or the on-screen SKIP, not any key: the sequence jumps to its end, grade CLEAN, the plain talk. The
-  tutorial card's skip and the chapter links are unchanged (a chapter starts past the landing, as today).
-- **Acceptance runs** (`?acceptance=1`) land automatically unless they ask (`?landing=1`), as the start gate does.
-- **Phones** fly it with the touch rail; a phone that cannot hold the frame (`COARSE`) still gets the plume on quads as today and the
-  glare skipped.
+- **The first start on this browser flies the landing** (owner's call 2). `src/storage.js` keeps `td.landing.flown` once the OVERRIDE
+  has begun (skipped or not). After that every story start is the arrival as today, and the start gate offers the flight: beside
+  START A NEW PLANET a second, smaller button `FLY THE LANDING` with its key `SPACE` (`src/fx/start-gate.js`; Space is taken in capture,
+  never pressing the focused START). Taking it opens the gate as START does and the arrival flies the landing on the manual tune;
+  START alone lands itself. `?landing=1` forces the mini-game, `?landing=0` never, `?landing=offer` shows the gate's offer on an
+  acceptance page.
+- **The skip inside the flight** is `Esc` or the on-screen SKIP, not any key: the sequence resumes at its touchdown on the pad, grade
+  CLEAN, the plain talk, the rail back in the same frame. Before the override (the approach) any key or tap skips the whole arrival as
+  today, ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
+  contact), then `Esc` alone skips it; an auto-repeated key never skips any shot (`src/fx/camera-shot.js`). The tutorial card's skip
+  and the chapter links are unchanged (a chapter starts past the landing, as today).
+- **Acceptance runs** (`?acceptance=1`) land automatically unless they ask (`?landing=1`), and show the gate only with `?gate=1`.
+- **Phones** (`(pointer: coarse)`) fly it with the touch rail; the plume stays on quads as today and the glare is the plain fade (the
+  `reducedMotion` path): a phone never builds the WebGL2 glare.
 
 ## 9. The harness and the suites
 
-- `window.__stalheartTest`: `state().landing` ({ phase, grade, reason, sink, drift, tilt, fuel, altitude, flown, offered }),
-  `landingInput({ throttle, tiltRate, legs })` (held until the next call), `landingSkip()`, `landingOverride()` (accepts the offer).
+- `window.__stalheartTest`: `landing('input', { throttle, tiltRate, legs })` (the throttle and legs consumed by the next step, the tilt
+  rate held until the next call; true once the flight has begun), `landing('skip')` (Esc's skip), `landing('override')` (takes the
+  gate's offer before START); `state().arrival.landing` (in flight `{ phase, grade, reason, sink, drift, vz, tilt, fuel, altitude, x, z,
+  throttle, legs, t }`, after the contact `{ phase: 'done', grade, reason, sink, drift, tilt, landed }`, `landed` the island metres
+  where it stood to 0.1, null on a skip), and beside it `manual`, `offer`, `offered`, `flown`, `talkBrief`, `view` (NDC of the feet,
+  the hull's top and the reticle).
 - Node: `test/manual-landing.mjs` — determinism (two runs, one timeline, one outcome), the spool, the fuel clock, the predictor
   against the integrator, each verdict reason reached by a constructed state, the flare rule's corridor edges, `hStop` against a
   braked integration; `test/landing-game.mjs` — the tune's shape and that every grade's salvage is a valid foundry configuration.

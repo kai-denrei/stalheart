@@ -63,3 +63,23 @@ console.log('camera-shot-skip: a screenshot chord or a lone modifier never skips
   tapListeners.pointerdown({ target: {}, stopImmediatePropagation() {} }); assert.equal(ended, 2, 'an unlocked shot skips on a tap at once');
 }
 console.log('camera-shot-skip: the drop\'s cut holds through its 5 s lock, then skips on Space alone; other shots unchanged');
+
+// A HELD KEY IS NOT A SKIP (2026-11-07, the landing's review): an auto-repeated keydown never skips, on a plain shot, after a lock or on
+// the skip key itself; it is eaten (a locked shot keeps it from the game), or passed on a passKeys shot; the first press still skips
+{
+  let ended = 0, eaten = 0;
+  const ev = (o) => ({ preventDefault() {}, stopImmediatePropagation() { eaten++; }, ...o });
+  shots.start({ id: 'arrival', dur: 10, poseAt: () => {}, onEnd: () => { ended++; } });
+  listeners.keydown(ev({ key: 'a', repeat: true })); listeners.keydown(ev({ key: 'Escape', repeat: true }));
+  assert.equal(shots.id(), 'arrival', 'a repeat leaves a plain shot running'); assert.equal(eaten, 2, 'and is eaten');
+  listeners.keydown(ev({ key: 'a' })); assert.equal(ended, 1, 'a fresh press still skips');
+  shots.start({ id: 'arrival', dur: 10, poseAt: () => {}, onEnd: () => { ended++; }, lockFor: 1.5, skipKey: 'Escape' });
+  shots.step(2); listeners.keydown(ev({ key: 'Escape', repeat: true })); listeners.keydown(ev({ key: 'd', repeat: true }));
+  assert.equal(shots.id(), 'arrival', 'after the lock a held Esc or a held flight key does not skip'); assert.equal(ended, 1);
+  listeners.keydown(ev({ key: 'Escape' })); assert.equal(ended, 2, 'a fresh Esc skips');
+  eaten = 0; shots.start({ id: 'arrivalFlight', dur: 10, poseAt: () => {}, onEnd: () => { ended++; }, skipKey: 'Escape', passKeys: true });
+  listeners.keydown(ev({ key: 'w', repeat: true })); listeners.keydown(ev({ key: 'Escape', repeat: true }));
+  assert.equal(shots.id(), 'arrivalFlight'); assert.equal(eaten, 1, 'a passKeys shot passes a held flight key and eats a held Esc');
+  shots.end();
+}
+console.log('camera-shot-skip: an auto-repeated key never skips a shot; a fresh press does');

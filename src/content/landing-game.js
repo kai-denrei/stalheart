@@ -57,9 +57,25 @@ export const LANDING_GAME = Object.freeze({
   // 29: 2 left the rocket tinier for no gain), up 10 + 0.2/m (a little above the rocket shrinks the angle it shares with the ground),
   // side 0.8 (~39 degrees: the tilt reads at ~0.6 of itself; 0.45 left 9 degrees looking nearly upright), fov 58 (the brief's 46 could not hold both)
   camera: Object.freeze({ back: 60, backPerMetre: 1.8, up: 10, upPerMetre: 0.2, side: 0.8, lookReach: 40, fov: 58, lag: 0.12, jolt: 0.8 }),
-  reticle: Object.freeze({ metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), square: 10, segments: 48 }),
+  reticle: Object.freeze({
+    metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), segments: 48,
+    minRadius: 2,         // m: the altitude ring never shrinks below the rocket's own footprint (the legs splay to about 2 m)
+    stretchPerMps: 0.08,  // the ring's length along the ground velocity grows by this a m/s of drift (the 2D game's smear: 12 m/s reads ~2x)
+    stretchMax: 2,        // at most 1 + 2 = 3x: a wild drift still draws a ring, not a line
+    square: 10,           // m: under this height the hard square shows (the last call before contact)
+    squareSize: 4,        // m, its half-width: about the legs' stance, the footprint a CLEAN contact lands in
+  }),
   hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10 }), predictorSeconds: 35, predictorDt: 0.15 }),
   input: Object.freeze({ step: 0.1, skipKey: 'Escape', offerKey: ' ' }),
+  // the contact (2026-11-07, review of Task 7): the rail that resumes at the touchdown, the shock clip, the shake and a wreck's marks
+  touchdown: Object.freeze({
+    lockSeconds: 1.5,   // s the resumed rail cannot be skipped: the keys the player was holding at the contact must not skip the door and Isao's rise
+    shockRate: Object.freeze({ CLEAN: 1, HARD: 1.25, WRECK: 1.6 }),   // the Landing_Shock clip's rate (spec 2.5): as authored, faster, its hardest
+    jolt: Object.freeze({ CLEAN: 0, HARD: 0.5, WRECK: 1 }),           // s of the rail's shake (it decays at 1 a second), scaled by camera.jolt
+    shakeHz: 40,        // the shake's sine argument a second of the jolt's clock (rad/s, ~6.4 cycles): a judder, not a sway
+    wreckScorch: 14,    // m: a wreck's scorch (the arrival's own is 9): the burn spread wider by the hard contact (spec 2.5)
+    wreckDust: 840,     // a wreck's dust embers (the arrival's own 420, doubled; spec 2.5)
+  }),
   salvage: Object.freeze({   // what the foundry cuts after each grade (spec 6): sections of the SH02, a barrel's biomass, extra barrels at deploy
     CLEAN: Object.freeze({ sections: 3, feedstockPerBarrel: 60, bonus: 1 }),
     HARD: Object.freeze({ sections: 3, feedstockPerBarrel: 60, bonus: 0 }),

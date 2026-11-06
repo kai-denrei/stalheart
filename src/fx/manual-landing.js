@@ -15,7 +15,6 @@ const FLAT = () => ({ y: 0, normal: [0, 1, 0] });
 export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes, camera, sfx, hud, toWorld, up, floorAt = FLAT, root, clipScrub, coarse = false }) {
   const m4 = new THREE.Matrix4(), tiltM = new THREE.Matrix4(), q = new THREE.Quaternion(), a = new THREE.Vector3(), n = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3();
   const origin = toWorld([0, 0, 0], new THREE.Vector3()), follow = new THREE.Vector3(), aim = new THREE.Vector3(), aimTo = new THREE.Vector3();
-  const legClip = rocket.root?.userData.actions?.Legs_Deploy?.getClip().duration ?? game.vehicle.legTime * 4;   // the clip is 2.4 s, scrubbed by the legs' fraction
   let pred = null, s = null, phase = 'idle', acc = 0, input = { throttle: null, legs: false }, held = { back: false, fwd: false }, rate = 0, thrust = null, pingAt = 0, contact = null, legsHeard = false;
   // the reticle: three fixed rings and the altitude ring, a line loop each, and the hard square, laid on the ground under the predicted point
   const ring = (color) => { const g = new THREE.BufferGeometry().setFromPoints(Array.from({ length: game.reticle.segments + 1 }, (_, i) => { const t = i / game.reticle.segments * Math.PI * 2; return new THREE.Vector3(Math.cos(t), 0, Math.sin(t)); })); return new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85, depthTest: false })); };
@@ -23,7 +22,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   const altRing = ring(0x7dff5a), fixed = game.reticle.rings.map(() => ring(0x4fae63)), square = ring(0xffffff); square.geometry.setFromPoints([[-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1], [-1, 0, -1]].map((p) => new THREE.Vector3(...p)));
   reticle.add(altRing, ...fixed, square); root.add(reticle); reticle.visible = false;
   const keys = (ev, down) => {   // the flight keys; the shot passes keys and keeps Escape as the skip (camera-shot passKeys/skipKey)
-    if (phase !== 'manual' && phase !== 'override') return;
+    if (phase !== 'manual' && phase !== 'override' && phase !== 'flare') return;   // FLARE eats them too (2026-11-07): the auto-lander has the stick, no flight key reaches the tank
     const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
     if (k === 'w' || k === 'ArrowUp') { if (down) input.throttle = Math.min(1, (input.throttle ?? s?.set ?? 0) + (ev.shiftKey ? 1 : game.input.step)); }
     else if (k === 's' || k === 'ArrowDown') { if (down) input.throttle = Math.max(0, (input.throttle ?? s?.set ?? 0) - (ev.shiftKey ? 1 : game.input.step)); }
@@ -46,17 +45,17 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     const h = rocket.holder;
     toWorld([s.x, s.y, s.z], a).sub(origin);
     h.matrix.copy(h.userData.placed).premultiply(m4.makeTranslation(a.x, a.y, a.z)).multiply(tiltM.makeRotationX(s.tilt)); h.matrixWorldNeedsUpdate = true;
-    clipScrub('Legs_Deploy', s.legs * legClip);
+    clipScrub('Legs_Deploy', s.legs);   // the legs' fraction: the arrival scrubs the clip by it times the clip's own length
     if (s.legs > 0 && !legsHeard) { legsHeard = true; sfx?.play('tank_spool_up', { dist: 0 }); }   // the pneumatics as the legs start down, as the arrival's
   }
   function placeReticle() {
     const p = pred, g = floorAt(p.x, p.z);
     reticle.position.set(p.x, g.y + 0.05, p.z);
     q.setFromUnitVectors(a.set(0, 1, 0), n.fromArray(g.normal).normalize()); reticle.quaternion.copy(q);   // the terrain normal skews it on a slope
-    const r = Math.max(2, s.y * game.reticle.metresPerMetre), v = Math.hypot(s.vx, s.vz), stretch = 1 + Math.min(2, v * 0.08);
+    const R = game.reticle, r = Math.max(R.minRadius, s.y * R.metresPerMetre), v = Math.hypot(s.vx, s.vz), stretch = 1 + Math.min(R.stretchMax, v * R.stretchPerMps);
     altRing.scale.set(r, 1, r * stretch); altRing.rotation.y = Math.atan2(s.vx, s.vz);   // stretched along the ground velocity
     fixed.forEach((f, i) => { const at = game.reticle.rings[i]; f.visible = s.y > at; f.scale.setScalar(Math.max(1, (s.y - at) * game.reticle.metresPerMetre)); });
-    square.visible = s.y <= game.reticle.square; square.scale.setScalar(4);
+    square.visible = s.y <= R.square; square.scale.setScalar(R.squareSize);
     const onPad = Math.hypot(p.x, p.z) <= game.pad.reach; altRing.material.color.set(onPad ? 0x7dff5a : 0xff6a5a);   // green on the pad, the alarm red off it (spec 4; 2026-11-07: the brief's cyan was the lattice's own and vanished on it)
     reticle.visible = p.reached;   // a throttle that climbs or hovers past the predictor's horizon meets no ground: no ring
   }
@@ -127,8 +126,10 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       pred = predict(); aim.lerp(aimTarget(), Math.min(1, dt / game.camera.lag));
       poseRocket(); plumesAt(); hud.set(reading());
       if (phase === 'touched') {
-        const g = floorAt(s.x, s.z), slope = Math.acos(Math.max(-1, Math.min(1, g.normal[1])));
-        contact = verdict(s, slope, Math.hypot(s.x, s.z) > game.pad.reach, game);
+        // the ground's slope (the angle of its normal from the pad's up) and the tilt against the LOCAL normal along the drift axis (z):
+        // on the arrival's sphere that is s.tilt - atan2(z, R), the ground under a far wreck leaning away from the pad (2026-11-07)
+        const g = floorAt(s.x, s.z), ny = Math.max(-1, Math.min(1, g.normal[1])), slope = Math.acos(ny);
+        contact = verdict({ ...s, tilt: s.tilt - Math.atan2(g.normal[2], g.normal[1]) }, slope, Math.hypot(s.x, s.z) > game.pad.reach, game);
         if (contact.grade === 'WRECK') sfx?.play('mech_landing_impact', { dist: 0 });
         hud.verdict(contact); hud.annunciate(`LANDING · ${contact.grade}`, contact.grade === 'WRECK' ? 'alarm' : 'ok'); stopAll();
       } else { placeReticle(); sounds(dt); }

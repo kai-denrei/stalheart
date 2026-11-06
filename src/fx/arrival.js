@@ -57,7 +57,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   let shot = makeArrivalShot(tune);
   const holdOf = (id) => BRIEFS[id].lines.reduce((sum, _, i) => sum + lineDwell(BRIEFS[id], i), 0);
   let talkSeconds = holdOf(tune.talk.brief);   // the close-up holds every line (the owner's second playtest); a graded talk's own count (toTalk)
-  const m4 = new THREE.Matrix4(), up = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), eye = new THREE.Vector3();
+  const m4 = new THREE.Matrix4(), m5 = new THREE.Matrix4(), quat = new THREE.Quaternion(), up = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), eye = new THREE.Vector3();
   const inv = site ? site.clone().invert() : null;
   if (site) up.setFromMatrixColumn(site, 1).normalize();
   const toWorld = (p, out = new THREE.Vector3()) => out.set(p[0] * metres, p[1] * metres, p[2] * metres).applyMatrix4(site);
@@ -71,7 +71,15 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // from the contact to the cut the arrival's island-metre points all move by `landed`: the holder (`placedLanded`, its placement with the
   // offset baked in), the rail's eye and aim, Isao's rise and arc, the scorch and dust; settle() and deploy() stay on the plan's spots
   let placedLanded = null;
-  const atLanded = (p) => (landed ? [p[0] + landed[0], p[1], p[2] + landed[2]] : p);
+  const atLanded = (p) => (landed ? [p[0] + landed[0], p[1] + landed[1], p[2] + landed[2]] : p);
+  // THE GROUND OFF THE PAD (2026-11-07, review of Task 7; spec 4): the bare ground follows the planet, R its radius in island metres
+  // (`metres` is world units a metre on the unit sphere). At (x, z) it lies (x² + z²) / 2R below the pad's tangent plane (the host's y = 0;
+  // the landing island is not grown at the arrival, so the pad's top is that ground) and its outward normal leans AWAY from the pad,
+  // [x/R, 1, z/R] normalised (the sphere's centre is R below the pad). The rocket's pose at the contact, the reticle and the verdict read it.
+  // The islands' slabs off the pad are not modelled this round: a far wreck reads the bare sphere under it
+  const R = 1 / metres;
+  const floorAt = (x, z) => { const l = Math.hypot(x / R, 1, z / R); return { y: -(x * x + z * z) / (2 * R), normal: [x / R / l, 1 / l, z / R / l] }; };
+  const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;   // a phone: the touch rail, and the glare's plain fade (spec 8)
   const talkBrief = () => (grade && grade.reason !== 'skipped' ? LANDING_GAME.lines[grade.grade] : tune.talk.brief);   // a skip is the plain talk (spec 7)
   // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
   // an acceptance run lands without it unless it asks (?gate=1)
@@ -79,9 +87,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
 
   const drop = (o) => { o.removeFromParent(); o.geometry?.dispose(); o.material?.dispose(); };
   const hud = (on) => globalThis.document?.body.classList.toggle('arrival-on', on);   // styles.css hides the chrome while it plays
-  function clip(name, time) {   // held actions (story-base): a scrub sets the time; null takes the clip off the pose
+  function clip(name, time, fraction = false) {   // held actions (story-base): a scrub sets the time (`fraction`: of the clip's own length); null takes the clip off the pose
     const act = rocket.root?.userData.actions?.[name]; if (!act) return;
-    act.enabled = time !== null; if (time !== null) { act.paused = true; act.time = time; }
+    act.enabled = time !== null; if (time !== null) { act.paused = true; act.time = fraction ? time * act.getClip().duration : time; }
   }
   const cue = (key, o) => { cues.push(key); api.sfx?.play(key, { dist: 0, ...o }); };
   function sound(s) {   // `s`: the landing's state this frame; null: the landing is over
@@ -104,7 +112,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     h.matrix.copy((landed && placedLanded) || h.userData.placed).premultiply(m4.makeTranslation(c.x, c.y, c.z)); h.matrixWorldNeedsUpdate = true;
     clip('Legs_Deploy', s.clips.Landing_Shock === null ? (s.clips.Legs_Deploy ?? 0) : null);   // stowed until they deploy; the shock owns the legs after touchdown
     // the shock clip at a rate from the contact (spec 2.5): as authored on a clean one, faster on a hard one, hardest on a wreck
-    clip('Landing_Shock', s.clips.Landing_Shock === null ? null : s.clips.Landing_Shock * (grade?.grade === 'WRECK' ? 1.6 : grade?.grade === 'HARD' ? 1.25 : 1)); clip('Top_Door_Open', s.clips.Top_Door_Open ?? 0);
+    clip('Landing_Shock', s.clips.Landing_Shock === null ? null : s.clips.Landing_Shock * (LANDING_GAME.touchdown.shockRate[grade?.grade] ?? 1)); clip('Top_Door_Open', s.clips.Top_Door_Open ?? 0);
     rocket.root?.userData.mixer?.update(0);
     toWorld(atLanded(shot.camera(time).pos), eye); h.updateMatrixWorld(true); a.copy(eye); h.worldToLocal(a);   // this frame's eye, off the rail
     for (const p of plumes) {   // several engines, each on its own cadence (the lab's burn), each sheet turned to the camera about the hull's axis
@@ -112,9 +120,12 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       p.userData.setIntensity(s.plume * (1 - e.depth + e.depth * Math.sin(time * e.cadence + e.phase)) * 0.55); p.userData.tick(time + e.phase);
       p.rotation.set(0, Math.atan2(a.x - p.position.x, a.z - p.position.z), 0);
     }
-    const wreck = grade?.grade === 'WRECK', [lx, , lz] = atLanded([0, 0, 0]);   // a wreck: the scorch wider, the dust doubled (spec 2.5)
-    if (s.scorch && !scorch) { scorch = makeScorch({ ...IMPACT_TUNE, scorchSize: wreck ? 14 : 9, scorchLife: 1e9 }, 0x0a0806); scorch.rotation.x = -Math.PI / 2; scorch.position.set(lx, 0.02, lz); fxRoot.add(scorch); }
-    if (s.dust && !dust) { dust = makeEmbers({ ...IMPACT_TUNE, emberCount: wreck ? 840 : 420, emberLife: 2.6, emberDrag: 0.985, emberRise: 0.9 }, 0x9a8f7a, 11); dust.scale.setScalar(6); dust.position.set(lx, 0.4, lz); fxRoot.add(dust); }
+    const wreck = grade?.grade === 'WRECK', [lx, ly, lz] = atLanded([0, 0, 0]), td = LANDING_GAME.touchdown;   // a wreck: the scorch wider, the dust doubled (spec 2.5)
+    if (s.scorch && !scorch) {   // laid on the ground where it touched, along that ground's normal (the sphere off the pad)
+      scorch = makeScorch({ ...IMPACT_TUNE, scorchSize: wreck ? td.wreckScorch : 9, scorchLife: 1e9 }, 0x0a0806); scorch.position.set(lx, ly + 0.02, lz);
+      scorch.quaternion.setFromUnitVectors(c.set(0, 1, 0), b.fromArray(landed ? floorAt(lx, lz).normal : [0, 1, 0])).multiply(quat.setFromAxisAngle(c.set(1, 0, 0), -Math.PI / 2)); fxRoot.add(scorch);
+    }
+    if (s.dust && !dust) { dust = makeEmbers({ ...IMPACT_TUNE, emberCount: wreck ? td.wreckDust : 420, emberLife: 2.6, emberDrag: 0.985, emberRise: 0.9 }, 0x9a8f7a, 11); dust.scale.setScalar(6); dust.position.set(lx, ly + 0.4, lz); fxRoot.add(dust); }
     if (dust && dt > 0 && !dust.userData.tick(dt)) { drop(dust); dust = null; }
     const i = shot.isaoAt(time, to), o = drone.obj;
     o.visible = i.visible;
@@ -173,7 +184,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       const flightRoot = new THREE.Group(); flightRoot.name = 'LandingFlight'; flightRoot.position.y = pad; fxRoot.add(flightRoot);
       lhud = createLandingHud(globalThis.document?.body);
       flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
-        clipScrub: (name, time) => { clip(name, time); rocket.root?.userData.mixer?.update(0); }, coarse: !!globalThis.matchMedia?.('(pointer: coarse)').matches });
+        floorAt, clipScrub: (name, u) => { clip(name, u, true); rocket.root?.userData.mixer?.update(0); }, coarse });
     }
     api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
@@ -181,7 +192,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     const p = shot.camera(Math.min(t, shot.cut));
     if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); }
     pose(out, toWorld(atLanded(p.pos), a), toWorld(atLanded(p.look), b), up);   // the rail moves with the rocket where it touched
-    if (jolt > 0) out.pos.addScaledVector(up, Math.sin(jolt * 40) * jolt * LANDING_GAME.camera.jolt * metres);   // the shake on a hard contact (spec 4)
+    if (jolt > 0) out.pos.addScaledVector(up, Math.sin(jolt * LANDING_GAME.touchdown.shakeHz) * jolt * LANDING_GAME.camera.jolt * metres);   // the shake on a hard contact (spec 4)
   }
   function talkPose(u, out) {
     const o = drone.obj, f = isaoFace(o.position.toArray(), drone.dir, o.getWorldDirection(a).toArray(), o.scale.x, u);
@@ -226,20 +237,25 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
     flying.begin(0);   // the flown approach keeps the legs stowed (apply): they are the player's
     api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
-    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });
+    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare, reducedMotion: coarse || !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });   // a phone never builds the WebGL2 glare (spec 8): the plain fade
     cutting = true;   // starting a shot ends the rail's, whose onEnd would finish the arrival
-    api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: true, onEnd: () => { if (!cutting && phase === 'landing') flying?.skip(); } });
+    api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: true, onEnd: () => { if (!cutting && phase === 'landing' && flying) { flying.skip(); touchdown(); } } });   // Esc: the rail back in this same call, no frame without a shot
     cutting = false; overrideT = 0;
   }
   // TOUCHDOWN: the grade to the foundry, the sequence resumes at its touchdown where the rocket stands, the rail shot back
   function touchdown() {
-    const p = flying.pose(); grade = flying.contact(); landed = grade.reason === 'skipped' ? null : [p.x, 0, p.z];
-    if (landed) { toWorld(landed, c).sub(toWorld([0, 0, 0], b)); placedLanded = rocket.holder.userData.placed.clone().premultiply(m4.makeTranslation(c.x, c.y, c.z)); }
-    jolt = grade.grade === 'HARD' ? 0.5 : grade.grade === 'WRECK' ? 1 : 0;
+    const p = flying.pose(); grade = flying.contact(); landed = grade.reason === 'skipped' ? null : [p.x, floorAt(p.x, p.z).y, p.z];
+    if (landed) {   // the holder where it touched: dropped onto the sphere's ground there and stood along that ground's normal, about its feet
+      const placed = rocket.holder.userData.placed; a.setFromMatrixPosition(placed); toWorld(landed, c).sub(toWorld([0, 0, 0], b));
+      quat.setFromUnitVectors(up, b.fromArray(floorAt(p.x, p.z).normal).transformDirection(site));
+      placedLanded = placed.clone().premultiply(m4.makeTranslation(-a.x, -a.y, -a.z)).premultiply(m5.makeRotationFromQuaternion(quat)).premultiply(m4.makeTranslation(a.x + c.x, a.y + c.y, a.z + c.z));
+    }
+    jolt = LANDING_GAME.touchdown.jolt[grade.grade] ?? 0;
     t = shot.seq.touchdown; overrideAt = Infinity; if (heard) heard.legs = true;   // the legs are down: no second pneumatics cue
     beats.salvage?.(LANDING_GAME.salvage[grade.grade]);
     endFlight(false);
-    cutting = true; api.startShot({ id: 'arrival', dur: shot.cut - t + 2, poseAt: railPose, onEnd: () => { if (!cutting) finish(true); } }); cutting = false;
+    // the rail locked for touchdown.lockSeconds, then Esc alone (2026-11-07): a flight key held through the contact must not skip the door and the rise
+    cutting = true; api.startShot({ id: 'arrival', dur: shot.cut - t + 2, poseAt: railPose, lockFor: LANDING_GAME.touchdown.lockSeconds, skipKey: LANDING_GAME.input.skipKey, onEnd: () => { if (!cutting) finish(true); } }); cutting = false;
   }
   function landingTick(dt) {   // the landing branch; while the flight holds the clock `t` stands still (the rail and the sequence wait)
     t += dt;
@@ -289,7 +305,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
         manual, offer, offered, flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
-        view: flying?.view() ?? null, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed } : null) };
+        view: flying?.view() ?? null, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
     },
   };
 }

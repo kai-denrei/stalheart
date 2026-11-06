@@ -22,7 +22,10 @@ export const skipsOn = (ev) => !(ev && (ev.metaKey || ev.ctrlKey || ev.altKey ||
 // then a skip with spacebar is feasible"): `lockFor` seconds of the shot's own age during which nothing skips, `skipKey` the one key that skips
 // after it (taps never do). Such a shot eats the gestures it does not obey (a screenshot's chord still passes), so a stray key neither skips
 // nor reaches the game behind the cut. Every other shot keeps the rule above: any key, any tap
-export const skipsShot = (shot, ev, key) => (shot.age >= (shot.lockFor ?? 0)) && (shot.skipKey == null || (key && ev?.key === shot.skipKey));
+// A HELD KEY IS NOT A SKIP (2026-11-07, the landing's review: a flight key held through the touchdown auto-repeated into the resumed rail's
+// skip ~30 ms after the contact): an auto-repeated keydown (`ev.repeat`) never skips any shot; it is handled as a key the shot does not
+// obey (eaten, or passed with passKeys), not as the screenshot rule's pass-through, so a held key cannot leak into the game behind a locked cut
+export const skipsShot = (shot, ev, key) => !(key && ev?.repeat) && (shot.age >= (shot.lockFor ?? 0)) && (shot.skipKey == null || (key && ev?.key === shot.skipKey));
 // THE KEYS PASS (owner, 2026-11-05, round 5 note 9: "driving the tank must not skip the party; only Esc skips"): a shot with `passKeys` and a
 // `skipKey` lets every other key through to the game (the tank drives under a live cut) instead of eating it; taps are still eaten
 
