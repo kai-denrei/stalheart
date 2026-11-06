@@ -9,6 +9,7 @@ import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
 import { cloneSkinned } from './skinned-clone.js';
 import { createStructurePrints } from './structure-print.js';
+import { createKidouRig } from './kidou-rig.js';
 import { plateFloor } from '../domain/slab-floor.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -64,6 +65,9 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const solidV = new THREE.Vector3(), slabInv = new Map(), slabPlates = new Map();
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
+  // A LANDMARK WITH A RIG (the owner's note of 2026-11-07, call C): a tier no clip moves, posed by its author's adapter instead (s.rig 'kidou', the
+  // wheeled Stålheart behind ?gantry=kidou: src/fx/kidou-rig.js), one per mounted tier, built at mount and ticked with the mixers
+  const rigs = [], RIGS = { kidou: createKidouRig };
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
   let alsoNear = null;   // more friendlies a door opens for, beside the hull (nearAlso: the Yushi Rover, round 8 note 7)
   const patches = new Map();   // cell -> the meshes of a wall printed where the plan had rock (patchWall)
@@ -165,6 +169,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
       for (const name of s.dark ?? []) { const n = root.getObjectByName(name); if (n?.material?.emissive) { n.material = n.material.clone(); n.material.emissiveIntensity = 0; owned.add(n.material); } }   // its own copy, dark: the cached glTF's material is shared
       holder.add(root); root.position.set(...s.offset);
+      if (s.rig) { const make = RIGS[s.rig]; if (!make) throw new Error(`no rig '${s.rig}'`); rigs.push(make(THREE, root)); }   // posed at once, before a warm or a print reads it
       const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null, held = {};
       if (mixer) {
         for (const clip of gltf.animations) {
@@ -191,6 +196,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       return root;
   }
   const lodSwitch = (kit.lod?.metres ?? 150) * metres, lodHyst = kit.lod?.hysteresis ?? 1.3;
+  let clock = 0;   // the rigs' time, seconds of ticks
   function driveLod(eye) {
     if (!eye) return;
     for (const l of lod) {
@@ -207,6 +213,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     ready, group, counts, errors,
     tick(dt, near = null, force = null, eye = null) {
       for (const m of mixers) m.update(dt);
+      for (const r of rigs) r.tick(clock += dt);
       prints.tick(records);
       driveLod(eye);
       for (const g of gates) {
@@ -376,6 +383,6 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       .map((s) => ({ id: s.id, cell: s.cell, pos: placer.toWorld([s.x, s.y ?? 0, s.z]).toArray() })),
     anchors: () => new Set([...plan.structures, ...(plan.sockets || [])].map((s) => s.cell).filter((c) => Number.isInteger(c) && c >= 0)),
     lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, visible: l.holder.visible, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
-    dispose() { prints.dispose(); for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
+    dispose() { prints.dispose(); for (const r of rigs) r.dispose(); for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }

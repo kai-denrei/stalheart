@@ -2683,11 +2683,26 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  }
  } else if(args.includes('--base-look')) {
  // a still of the finished base from above, for placing things (no assertions)
- const T='window.__stalheartTest';
- await go('base-look','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td');
+ // GANTRY=kidou (the owner's note of 2026-11-07, call C; src/platform/game-flags.js gantryMode): the page with &gantry=kidou, the wheeled Stålheart
+ // parked in the rail one's place, the still named base-look-top-kidou, and a second one later (base-look-kidou-above). A rig that throws at
+ // mount lands in the story base's errors, not as a page error, so those must be empty here, and the Stålheart's tiers must be the KIDOU's
+ // files (a flag that quietly stood the rail model would otherwise pass as a still)
+ const T='window.__stalheartTest',kidou=process.env.GANTRY==='kidou',tag=kidou?'-kidou':'';
+ await go(`base-look${tag}`,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4${kidou?'&gantry=kidou':''}#td`);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(4000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
- await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);current='base-look-top';await finish();
+ await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);current=`base-look-top${tag}`;await finish();
+ if(kidou){
+  const lodOf=async()=>(await evaluate(`${T}.state().storyLod`)).find(l=>l.id==='stalheart');
+  assert.deepEqual((await lodOf()).files,{far:'assets/models/stalheart-kidou/stalheart_kidou_d0_lod2.glb',near:'assets/models/stalheart-kidou/stalheart_kidou_d0_lod1.glb'},'the Stålheart is the KIDOU');
+  // the hull parks under it: the console's and the repair's box (src/fx/story-base.js inside) is the KIDOU's own holder box
+  const cell=await evaluate(`${T}.parkHull('stalheart')`);assert(cell>=0,`the hull parks under the KIDOU's gantry (${cell})`);
+  const errs=await evaluate(`${T}.state().storyBaseErrors`);assert.deepEqual(errs,[],`the story base mounted the KIDOU without an error (${JSON.stringify(errs)})`);
+  // the second still is the same dive arrived (headless barely advances the game clock, so the first still is taken near its start): the base
+  // from above with the gantry on its slab among the domes
+  await delay(4000);console.log(`  KIDOU: ${JSON.stringify(await lodOf())}, the hull parked under it at cell ${cell}`);
+  current='base-look-kidou-above';await finish();
+ }
  } else if(args.includes('--round10')) {
  // THE OWNER'S TENTH NOTES (2026-10-03): the purple pad before the bays opens the paint shop over a paused game; a sentry's level on its
  // pedestal; the boards bigger, west of the Stålheart; the debrief on one screen with CONTINUE on it

@@ -49,6 +49,25 @@ export const ISLANDS = Object.freeze([
   { id: 'depot', w: 36, d: 16, x: -70, z: -78, stage: 8 },
 ]);
 
+// THE STÅLHEART, ON RAILS: the Terraformer 3000 gantry, the landmark the game ships
+const STALHEART_RAIL = { id: 'stalheart', batch: true, asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [10, 0, 0], clips: ['Terraforming_Cycle'],
+  // Runtime LOD candidates pinned at c827eda for game-camera review (docs/landmark-tiers-assets.lock.json). Only
+  // ?landmarks=candidate reads them; asset and far above stay what ships, and far-tiers.mjs keeps deriving that far.
+  candidate: { asset: 'assets/models/astro/terraformer_3000_d0_lod1.glb', far: 'assets/models/astro/terraformer_3000_d0_lod2.glb' } };
+// THE STÅLHEART, ON WHEELS (the owner's note of 2026-11-07: "We have a new Stalheart that has wheels instead of being on rails"; call C of
+// docs/superpowers/specs/2026-11-07-base-from-scratch-design.md): the KIDOU moving gantry (docs/a6-kidou-sai93-assets.lock.json), its LOD1 the game
+// tier and its static LOD2 the far tier, in metres (scale 1), the root at the ground under the plot's centre. No baked clips: its wheels, dampers,
+// arm and hoses are posed by the author's adapter, run parked by src/fx/kidou-rig.js (`rig`), so it is not batched (a weld would lose the named
+// nodes). It parks on the middle of the Stålheart's slab (offset 0: the rail model stood 10 m +X of it, where the KIDOU's 48 x 28 m plot would
+// run 5.5 m off the slab's +X edge; centred, the plot is -19.5..+28.5 on the slab's -24..+33 and its eight wheels at x +-16 m stand well inside), this
+// round only a LOOK behind ?gantry=kidou (src/platform/game-flags.js gantryMode); the rail model's review candidates stay with the rail model.
+// The story world substitutes it (src/platform/story-world.js storyLayout), so content stays data and the default stays the rail terraformer.
+export function stalheartEntry(mode = 'rail') {
+  if (mode !== 'kidou') return STALHEART_RAIL;
+  const { candidate, ...rail } = STALHEART_RAIL;
+  return { ...rail, asset: 'assets/models/stalheart-kidou/stalheart_kidou_d0_lod1.glb', far: 'assets/models/stalheart-kidou/stalheart_kidou_d0_lod2.glb', offset: [0, 0, 0], clips: [], batch: false, scale: 1, rig: 'kidou' };
+}
+
 // structures: asset, island they stand on, stage, model offset to centre the
 // authored origin on the plot, uniform scale, nodes to hide
 export const STRUCTURES = Object.freeze([
@@ -62,10 +81,7 @@ export const STRUCTURES = Object.freeze([
   { id: 'solar', asset: 'assets/models/astro/solar_power_complex_lod1_d0.glb', far: 'assets/models/astro/solar_power_complex_lod2_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },
   { id: 'rotor', batch: true, asset: 'assets/models/sentries/rotor_t1.glb', island: null, anchor: 'wall', stage: 3, scale: 3, offset: [0, 0, 0] },   // high ground: the rock beside the tunnel mouth
   { id: 'hugin', batch: true, asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', far: 'assets/models/far/hugin.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
-  { id: 'stalheart', batch: true, asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [10, 0, 0], clips: ['Terraforming_Cycle'],
-    // Runtime LOD candidates pinned at c827eda for game-camera review (docs/landmark-tiers-assets.lock.json). Only
-    // ?landmarks=candidate reads them; asset and far above stay what ships, and far-tiers.mjs keeps deriving that far.
-    candidate: { asset: 'assets/models/astro/terraformer_3000_d0_lod1.glb', far: 'assets/models/astro/terraformer_3000_d0_lod2.glb' } },
+  STALHEART_RAIL,   // the rail terraformer; ?gantry=kidou swaps it for the wheeled one in the story world (stalheartEntry above)
   // THE THREE HULLS ARE THE THREE LIVES. The kit's three-bay diorama: 01 sealed, 02 and 03 open with a
   // MÖRK parked inside; the first hull leaves 03, the next 02, the last opens 01. The diorama is authored
   // at the kit's 13.3 m MÖRK and scaled to the story's 10 m hull; its roll-out clip is held at 0 (all inside).

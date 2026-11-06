@@ -29,3 +29,11 @@ export function readGameFlags(search = globalThis.location?.search ?? '') {
   const shield = Object.freeze(Object.fromEntries(SHIELD_KNOBS.map((k) => [k.key, q.get(k.key)])));
   return Object.freeze({ ...Object.fromEntries(GAME_FLAG_KEYS.map((k) => [k, q.get(k)])), creatures: creaturesFlag(q.get('creatures'), search), shield });
 }
+
+// THE WHEELED STÅLHEART, A LOOK (the owner's note of 2026-11-07, call C; src/content/base-layout.js stalheartEntry): ?gantry=kidou stands the
+// KIDOU moving gantry in the Stålheart's place for the owner to look at in the morning; anything else (or nothing) is the rail terraformer, which
+// stays the game's until he says. Pure, read by the story world beside ?base= (src/platform/story-world.js), so src/td-tab.js does not grow.
+export const GANTRY_MODES = Object.freeze(['rail', 'kidou']);
+export function gantryMode(search) {
+  return new URLSearchParams(search || '').get('gantry') === 'kidou' ? 'kidou' : 'rail';
+}

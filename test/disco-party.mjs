@@ -231,3 +231,15 @@ console.log('disco-party: the companions in the cut (14 s with both, a close sho
   assert.ok(!(out.pos.x > at.x && out.pos.z > at.z), `not the hull's quarter (${out.pos.x - at.x}, ${out.pos.z - at.z})`);
 }
 console.log('disco-party: the close shot takes the quarter away from the hull');
+// NO CLIP, NO POSE (the owner's note of 2026-11-07, call C: the wheeled KIDOU behind ?gantry=kidou has the arm's names but no Terraforming_Cycle):
+// the party runs, the arm keeps the pose its own adapter gave it through the party and its end, and the ball still hangs 6.2 m under its tip
+{ const { h, scene, stal } = host(); delete stal.userData.actions; const p = createDiscoParty(h);
+  const joints = ['GANTRY_TRAVEL_Y', 'CARRIAGE_TRAVEL_X', 'TOOL_LIFT_Z', 'J1_BASE_YAW', 'J2_SHOULDER', 'J3_ELBOW', 'J5_WRIST_PITCH'].map((n) => stal.getObjectByName(n)), snap = () => joints.map((j) => [...j.position.toArray(), j.rotation.x, j.rotation.y, j.rotation.z]);
+  joints[2].position.y = -10.45; stal.updateWorldMatrix(true, true); const before = snap();
+  p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p); tickTo(p, 4);
+  assert.equal(p.state().phase, 'party'); assert.equal(p.state().hanging, true, 'the ball hangs from a Stålheart without the clip');
+  assert.deepEqual(snap(), before, 'no crane-hook pose without the Terraforming clip');
+  const tip = new THREE.Vector3(), bp = new THREE.Vector3(); stal.getObjectByName('EXTRUSION_TIP').getWorldPosition(tip); scene.getObjectByName('DISCO_BALL_ROOT').getWorldPosition(bp);
+  assert.ok(bp.distanceTo(tip.clone().sub(tip.clone().normalize().multiplyScalar(6.2))) < 0.05, 'under its EXTRUSION_TIP');
+  tickTo(p, DAY_42.seconds + DAY_42.lower); assert.equal(p.state().phase, 'done'); assert.deepEqual(snap(), before, 'nor at its end'); }
+console.log('disco-party: a Stålheart without Terraforming_Cycle (the KIDOU) keeps its own pose, the ball under its tip');
