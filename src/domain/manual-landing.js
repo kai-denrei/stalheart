@@ -2,7 +2,6 @@
 // fixed-step, deterministic: the same entry and input timeline give the same state. Ported from the owner's 2D game
 // (Stalsfar_Landing/landing/lander.js flightStep, evaluateTouchdown, predictImpact) onto the arrival's metres: x and z along the
 // ground, y up (the pad at 0), +z toward the pole; the tilt is about x, positive forward (+z); the rocket cannot hover at idle.
-import { LANDING_GAME } from '../core/landing-game.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const lerp = (a, b, u) => a + (b - a) * u;
@@ -17,7 +16,7 @@ function rng(seed) {
 const pick = (r, [lo, hi]) => lerp(lo, hi, r());
 
 // the problem the override hands over, from this planet's seed
-export function seedEntry(seed, tune = LANDING_GAME) {
+export function seedEntry(seed, tune) {
   const r = rng(seed), e = tune.entry;
   return { altitude: pick(r, e.altitude), sink: pick(r, e.sink), drift: pick(r, e.drift) * (r() < 0.5 ? -1 : 1), tilt: pick(r, e.tilt) * (r() < 0.5 ? -1 : 1), fuelSeconds: pick(r, e.fuelSeconds), wind: e.wind };
 }
@@ -32,7 +31,7 @@ export function overrideSeed(altitude, rate, entry) {
 }
 
 // one fixed step. input: { throttle: the set point 0..1 (null keeps it), tiltRate: -1..1 (back..forward), legs: true asks for the legs }
-export function step(s, input, dt, tune = LANDING_GAME) {
+export function step(s, input, dt, tune) {
   const v = tune.vehicle, g = tune.sim.gravity;
   if (input.throttle != null) s.set = clamp(input.throttle, 0, 1);
   s.throttle += clamp(s.set - s.throttle, -v.spool * dt, v.spool * dt);
