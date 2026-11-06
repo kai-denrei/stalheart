@@ -259,7 +259,7 @@ export const UNIT_ENTRIES = freeze([
   // the base that has it (?base=dome); the stage shows the habitat dome's one-draw distance tier
   { id: 'dome-city', section: 'colony', name: 'DOME CITY', label: 'COLONY · THE SETTLEMENT', needs: { base: 'dome' },
     model: { url: 'assets/models/dome-colony/habitat_d0_lod2.glb', clip: null },
-    facts: [['DOMES', `${DOME_ISLANDS.length} · ${[...new Set(DOME_STRUCTURES.filter((s) => s.island).map((s) => s.module))].join(' · ')}`], ['BRIDGES', `${DOME_STRUCTURES.filter((s) => s.anchor === 'frame').length} · 52 m, the deck 7.5 m up, the hull drives under`], ['THE SEVENTH', 'the Stålheart stands where the power dome would']], isao: [
+    facts: [['DOMES', `${DOME_ISLANDS.length} · ${[...new Set(DOME_STRUCTURES.filter((s) => s.island).map((s) => s.module))].join(' · ')}`], ['BRIDGES', `${DOME_STRUCTURES.filter((s) => s.anchor === 'frame').length} · 52 m, the deck about 4.5 m up, the hull drives under`], ['THE SEVENTH', 'the Stålheart stands where the power dome would']], isao: [
       'Six domes round the Stålheart: two habitats, two logistics halls, a biosphere and a fabrication dome. The colony came with them; I only had to unfold them.',
       'Four bridges, fifty-two metres each, the deck seven and a half up. The hull goes under. Please go under.',
     ] },

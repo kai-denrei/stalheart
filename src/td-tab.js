@@ -16,7 +16,7 @@ import { createExpeditionsHost } from './fx/expedition-glue.js';
 import { createRoverGlue } from './fx/rover-glue.js';
 import { CARGO_LOOK } from './content/cargo.js';
 import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, SHELL_WORDS, VERDICT_LOW, VERDICT_MID, VERDICT_HIGH } from './content/controller-copy.js';
-import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js';
+import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose, buy as programmeBuy } from './domain/build-programme.js';
 import { createProgramWarm } from './fx/program-warm.js';
 import { createControlsCard } from './fx/controls-card.js';
 import { createTutorialCard } from './fx/tutorial-card.js';
@@ -5111,7 +5111,7 @@ export function initTdTab(root) {
       aliveBodies: () => enemies.filter((e) => e.alive).map((e) => ({ type: e.type, tier: e.tier ?? null, hunter: !!e.hunter, guard: !!e.guard, harmless: !!e.harmless, blob: !!e.blob, cur: e.cur, hp: +e.hp.toFixed(1), members: e.members || 1 })),   // what still lives, for a probe
       postfxEnabled: (v) => { postfx.setEnabled(v !== false); return postfx.enabled; }, postfxTap: (m) => postfx.tap(m),   // the bloom chain on or off, or unweighted (a probe's splits, 2026-10-16: the one-frame flash was the print ghost, src/fx/isao-worker.js)
       sectorKeepHolding: () => sectorRun?.test.keepHolding(), board: buildBoard.test,   // the build board's hands (round 6: toggle, confirm, skip)
-      sectorQuiet: (on) => sectorRun?.test.quiet(on),
+      sectorQuiet: (on) => sectorRun?.test.quiet(on), programmeBuy: (id) => !!story?.programme && programmeBuy(story.programme, id),   // a board step bought as the board's pick does, unpaid (--dome-print, 2026-11-07: a card the board does not deal yet)
       sectorReport: () => sectorRun?.test.report() ?? null,
       breachScenario:()=>{endShot();paused=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveClock.setIn(-1);armWave();},
       shieldScenario: () => {

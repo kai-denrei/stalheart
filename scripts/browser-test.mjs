@@ -2642,6 +2642,70 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const l1=(await st()).laser;console.log(`  round9: SOL ${JSON.stringify(seen.filter(x=>x.b).slice(0,4))} burned ${JSON.stringify(l1.burned)}`);
  assert.ok(seen.some(x=>x.b&&x.s),'an automated burn leaves from a source in the sky');
  for(const k of ['towers','walls','tank','structures','heart'])assert.equal(l1.burned[k]??0,0,`the automated pass burned no ${k}`);
+ } else if(args.includes('--dome-print')) {
+ // THE DOME CITY PRINTED IN PLAY (the owner's note of 2026-11-07, THE BASE FROM SCRATCH; spec docs/superpowers/specs/2026-11-07-base-from-scratch-design.md 2.A):
+ // the grown base the tutorial ends on (?skip=sector-1, a growing base whose spine stands to the solar array) has no dome; sector 1 held by the ledger's
+ // defender as --board holds it, its CONTINUE opens the board before sector 2, which deals dome-nw (the first four structure cards in the programme's
+ // order: the board, the garage, the armory, dome-nw), picked by its key and paid at ENTER. Sector 2 kept quiet so the idle gate holds; dome-w (sector 2) is
+ // bought through the programme's own buy (T.programmeBuy: no board deals it before the colony's own cards are bought). Isao prints the spine owed
+ // ahead of them, then dome-nw (a still mid-print, artifacts/browser/dome-print-mid.png, framed from k 0.5, asserted between 0.3 and 0.7), then dome-w; bridge-w1 (when.stand:
+ // dome-nw + dome-w) prints by itself after both stand, unbought; dome-ne and the other bridges stay unprinted
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),P=(s)=>s.programme,t0=Date.now(),mark=(what)=>console.log(`  DOME PRINT ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
+ const domes=(s)=>(s.storyLod||[]).filter(l=>/^(dome|bridge)-/.test(l.id)).map(l=>({id:l.id,visible:l.visible,shown:l.shown}));
+ const stands=(s,id)=>!!(s.storyLod||[]).find(l=>l.id===id)?.visible;
+ await go('dome-print',`index.html?sw=0&acceptance=1&cine=0&skip=sector-1#td`);await evaluate(SEEN_LOG);
+ await until(`!!${T} && ${T}.state().sector?.n===1`,120000).catch(async()=>assert.fail(`sector 1 opens on the grown base (${JSON.stringify((await st()).sector)})`));mark('sector 1');
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ {const s=await st(),p=P(s);console.log(`  at the start: grow ${p.grow}, done ${p.done.join(',')}, bought ${JSON.stringify(p.bought)}; ${JSON.stringify(domes(s))}`);
+  assert.equal(p.grow,true,'the grown base');assert(domes(s).length===10,`the six domes and four bridges are on the plan (${domes(s).length})`);
+  assert.deepEqual(domes(s).filter(d=>d.visible).map(d=>d.id),[],'no dome and no bridge stands at the start');
+  assert(!p.done.some(id=>/^(dome|bridge)-/.test(id))&&!p.bought.some(id=>/^dome-/.test(id)),'none printed, none bought');}
+ // sector 1 played and held by the ledger's ideal defender (--board's), the debrief up; then its real CONTINUE opens the board
+ await until(`(()=>{const S=${T}.state().sector;if(S.phase==='fighting')${T}.sectorCull(999,'tank');${T}.rover?.collect?.();document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return S.debriefOpen;})()`,600000).catch(async()=>assert.fail(`sector 1 is held (${JSON.stringify((await st()).sector)})`));
+ mark('sector 1 held');await delay(1200);
+ await evaluate(`document.querySelector('.sdb-acts [data-act=continue]').click()`);
+ await until(`${T}.state().board.open`,8000).catch(async()=>assert.fail(`CONTINUE opens the build board (${JSON.stringify((await st()).board)})`));
+ const bd=(await st()).board;console.log(`  board before sector ${bd.n}: bank ${bd.bank} kg; ${bd.offers.map(o=>`${o.label} ${o.price} kg`).join(' · ')}`);
+ const dn=bd.offers.find(o=>o.id==='build:dome-nw');assert(dn,`the board deals dome-nw on the grown base (${bd.offers.map(o=>o.id)})`);assert.equal(dn.price,2400,'a habitat dome is 2400 kg');
+ assert(dn.price<=bd.bank,`the bank buys it (${bd.bank} kg)`);
+ await until(`(()=>{const b=${T}.state().board;return b.thumbs===b.offers.length;})()`,8000).catch(()=>{});
+ {const th=await evaluate(`(()=>{const t=document.querySelector('.build-board .bb-tile[data-offer="build:dome-nw"]'),i=t?.querySelector('img.bb-thumb');return {name:t?.querySelector('.bb-name')?.textContent,effect:t?.querySelector('.bb-effect')?.textContent,src:(i?.src||'').slice(0,22),w:i?.naturalWidth||0};})()`);
+  console.log(`  the dome's card: ${JSON.stringify(th)}`);assert(th.src.startsWith('data:image/png')&&th.w>0,`the dome's card has its thumbnail, drawn from its LOD2 (${JSON.stringify(th)})`);}
+ current='dome-print-board';await finish();
+ const key=async(k)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code:/^\d$/.test(k)?'Digit'+k:k,text:/^\d$/.test(k)?k:undefined});await send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code:/^\d$/.test(k)?'Digit'+k:k});await delay(120);};
+ await key(String(bd.offers.indexOf(bd.offers.find(o=>o.id==='build:dome-nw'))+1));
+ assert.deepEqual((await st()).board.picked,['build:dome-nw'],'dome-nw picked by its key');
+ const bank0=bd.bank;await key('Enter');
+ await until(`!${T}.state().board.open && ${T}.state().sector.n===2`,15000).catch(async()=>assert.fail(`ENTER orders and sector 2 begins (${JSON.stringify((await st()).board)})`));
+ await evaluate(`${T}.sectorQuiet(true)`);mark('sector 2, quiet');
+ {const s=await st();console.log(`  ordered: ${JSON.stringify(s.board.last)}; bank ${bank0} -> ${s.biomass}`);assert(P(s).bought.includes('dome-nw'),'dome-nw bought on the programme');assert(bank0-s.biomass>=2400-1,`paid at the pick (${bank0} -> ${s.biomass})`);}
+ assert.equal(await evaluate(`${T}.programmeBuy('dome-w')`),true,'dome-w bought through the programme');
+ assert.equal(await evaluate(`${T}.programmeBuy('dome-w')`),false,'a step is bought once');
+ {const p=P(await st());console.log(`  owed ${p.owed.join(',')}; active ${p.active}; printed ${p.printed.join(',')}`);assert(!p.owed.includes('bridge-w1')&&!p.bought.includes('bridge-w1'),'the bridge is neither bought nor owed');}
+ // dome-nw: Isao reaches it once the spine owed ahead of it stands; the still mid-print, framed on the dome
+ await until(`${T}.state().programme.active==='dome-nw'`,600000).catch(async()=>assert.fail(`Isao begins dome-nw (${JSON.stringify(P(await st()))})`));mark('dome-nw print begins');
+ {const s=await st();console.log(`  printed before it: ${P(s).printed.join(',')}; ${JSON.stringify(domes(s).filter(d=>d.id==='dome-nw'))}`);}
+ await until(`(p=>p.print?.step==='dome-nw'&&p.print.k>=0.5)(${T}.state().programme)`,120000).catch(async()=>assert.fail(`dome-nw's print under way (${JSON.stringify(P(await st()).print)})`));
+ {const at=await evaluate(`${T}.showcase.footprint('dome-nw')?.at??null`);assert(at,'dome-nw has a holder');
+  const ci=await evaluate(`(()=>{const T=${T},a=${JSON.stringify(at)},l=Math.hypot(...a),u=a.map(v=>v/l),n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}return best;})()`);
+  console.log(`  the dome's cell ${ci}`);await evaluate(`${T}.showcase.ground(${ci},6,7)`);await delay(1200);}
+ {const s=await st(),pr=P(s).print;console.log(`  mid-print: ${JSON.stringify(pr)}, shot ${s.shot}; ${JSON.stringify(domes(s).filter(d=>d.id==='dome-nw'))}`);
+  assert.equal(pr.step,'dome-nw','dome-nw in the still');assert(pr.k>=0.3&&pr.k<=0.7,`mid-print (k ${pr.k})`);}
+ current='dome-print-mid';await finish();
+ await evaluate(`${T}.focusHeart()`);
+ await until(`${T}.state().programme.printed.includes('dome-nw')`,180000).catch(async()=>assert.fail(`dome-nw printed (${JSON.stringify(P(await st()))})`));mark('dome-nw stands');
+ await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-nw')?.visible===true`,20000).catch(async()=>assert.fail(`dome-nw shown (${JSON.stringify(domes(await st()))})`));
+ {const s=await st();assert(!stands(s,'bridge-w1')&&!P(s).printed.includes('bridge-w1'),'no bridge with one dome');}
+ await until(`${T}.state().programme.printed.includes('dome-w')`,400000).catch(async()=>assert.fail(`dome-w printed (${JSON.stringify(P(await st()))})`));mark('dome-w stands');
+ await until(`${T}.state().programme.printed.includes('bridge-w1')`,240000).catch(async()=>assert.fail(`bridge-w1 prints by itself after both domes (${JSON.stringify(P(await st()))}; ${JSON.stringify(domes(await st()))})`));mark('bridge-w1 stands');
+ await until(`(${T}.state().storyLod||[]).find(l=>l.id==='bridge-w1')?.visible===true`,20000).catch(async()=>assert.fail(`bridge-w1 shown (${JSON.stringify(domes(await st()))})`));
+ {const s=await st(),p=P(s),pr=p.printed;console.log(`  printed ${pr.join(',')}; bought ${JSON.stringify(p.bought)}; ${JSON.stringify(domes(s))}`);
+  assert(pr.indexOf('dome-nw')<pr.indexOf('dome-w')&&pr.indexOf('dome-w')<pr.indexOf('bridge-w1'),'dome-nw, dome-w, then the bridge');
+  assert(!p.bought.includes('bridge-w1'),'the bridge was never bought');
+  assert.deepEqual(domes(s).filter(d=>d.visible).map(d=>d.id).sort(),['bridge-w1','dome-nw','dome-w'],'only what was bought and its bridge stands');
+  const said=await evaluate('window.__seen.briefs');console.log(`  Isao: ${JSON.stringify(said.filter(b=>/DOME|BRIDGE/i.test(b)))}`);}
+ await evaluate(`(()=>{const T=${T},a=T.showcase.footprint('bridge-w1')?.at;if(!a)return;const l=Math.hypot(...a),u=a.map(v=>v/l),n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}T.showcase.ground(best,8,10);})()`);await delay(2500);
+ current='dome-print-end';await finish();
  } else if(args.includes('--dome-look')) {
  // THE DOME CITY, LOOKED AT (round 8 note 6, src/content/dome-city.js; no assertions but a page error): run it once with BASE=classic and once
  // with BASE=dome. The frame's cost on the base camera a skipped opening starts on (the perf readout's draw calls, triangles, frame and gpu ms,
