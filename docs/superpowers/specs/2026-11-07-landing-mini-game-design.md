@@ -1,0 +1,237 @@
+# THE LANDING — the manual override in the arrival (2026-11-07, from `overnight-2026-10-23` at 387ee717)
+
+Owner, 2026-11-07, from `~/Documents/StalheartLandingMiniGame_ideas.md` ("To create a landing-the-rocket mini game instead of the
+initial cinematic. I especially like the full-screen booster rocket effects. Main story: the landing starts, but there's a problem and it
+requires a manual override. Hectic 20 seconds or so of adjusting trajectory, angle, booster fuel, re-entry speed, etc. for a smooth
+landing") and his four calls on the agent's reading of the options: **(1) the player can lose**, "but just in that the rocket crashes and
+there's less to salvage. Slightly harder start"; **(2) skippable after the first start**; **(3) curvature is fine**, "ideally I'd want the
+large cinematic wormhole in the background"; **(4) the cockpit view deferred**.
+
+The method chosen (the agent's recommendation, agreed): the brief's Idea 1 built INSIDE the existing arrival, in the game's own 3D, with
+Idea 2's instruments as a HUD. Not the owner's 2D game in a frame (Idea 0: BELOW showed what a second app costs, and the owner's round 5
+note 10 said what it feels like), not a modelled cockpit (nothing to build it from; the HUD already speaks the game's monochrome
+vocabulary). Every decision below is written so the owner can overturn it with one line.
+
+## 1. What exists and is reused
+
+- **The arrival is already a timeline-driven landing of the real SH02 on the real landing island.** `src/domain/landing-sequence.js`
+  (pure: altitude, the legs, shock and door clips, the plume, dust, scorch, Isao's rise, by one clock) under `STORY_ARRIVAL.landing`
+  (`src/content/story-defaults.js`: a 2.6 s descent from 150 m), the camera rail `STORY_ARRIVAL.rail`, Isao's way out
+  (`src/domain/arrival-shot.js`), and the host `src/fx/arrival.js` (the shot, the plumes, the swap of the intact rocket for its salvage
+  and the foundry off camera, the thrust bed and the pneumatics, the start gate it waits behind, the key or tap that skips). The
+  manual window is cut INTO this clock: the approach before it and the touchdown after it are the arrival as it is.
+- **The plume the owner likes is already in the game.** `src/fx/launch-plume.js` is the Onkochishin ray-marched launch plume on six
+  camera-facing quads under the skirt (`PLUME_CLUSTER`), with an intensity uniform; the throttle drives it. The full-screen version of the
+  same shader (the 2D game's `launch-plume.js`, MIT, attributed in `ATTRIBUTIONS.md`) is the override beat's glare (section 4).
+- **The flight model is the 2D game's, ported.** `Stalsfar_Landing/landing/lander.js` `flightStep` (throttle spool, gravity, drag, fuel),
+  `evaluateTouchdown` (sink, drift, tilt, slope grades) and `predictImpact` are about eighty lines, pure, tested in node
+  (`tests/physics.mjs`). They become `src/domain/manual-landing.js`. Nothing else of the 2D game comes over: no Canvas view, no six-entry
+  director, no wreck break-up, no site chips.
+- **The accretion disk is already in the sky**, world-fixed planes beyond the planet (`src/fx/sky-rig.js`, `galaxyseed.js` `SKY_HOLE`),
+  aimed low behind the Stålheart as seen from the bays. The landing island (`base-layout` `landing`, x 0, z -60) lies on the far side
+  of the base from the Stålheart (x 4.5, z 0): a chase camera behind the rocket on the island's -z side, looking +z across the base,
+  has the disk low in the frame behind the pad. This is a lab tuning of the approach heading, not new sky code.
+- **The seat and input patterns**: `src/platform/tank-input.js` (the keys, the throttle lever), `src/fx/camera-shot.js` (a shot with
+  `passKeys` and `skipKey`, so a shot can let the flight keys through and keep one key as the skip), the start gate
+  (`src/fx/start-gate.js`: the landing waits behind START), the tutorial card's `skipLanding`, the harness (`window.__stalheartTest`).
+- **The economy the grade feeds**: the AFR-01 foundry (`src/content/foundry.js` `FOUNDRY_TUNE`: three salvage sections consumed in
+  order, a 60-biomass barrel a cycle, 24 s cycles, the first barrel 9.4 s in) is the opening's whole feedstock.
+- **The rules of the house**: pure modules in `src/domain` and `src/content` tested in node, hosts in `src/fx`, nothing new in
+  `src/td-tab.js` (its budget is 0 lines), tunables in one content literal, the story lab (`labs.html#story`, `src/labs/story-landing.js`)
+  for the feel before the game.
+
+## 2. The beat, in order
+
+```
+APPROACH -> OVERRIDE -> MANUAL -> FLARE -> TOUCHDOWN -> RESULT
+   (auto)    (alarm)   (player)  (auto)    (clips)    (the arrival's talk, graded)
+```
+
+1. **APPROACH** (auto, about 6 s). The arrival's orbit shot as it is, from higher: the rocket burning in from `start.altitude` on the
+   sequence's own eased altitude. The start gate's START is still the first gesture.
+2. **OVERRIDE** (about 3 s). The auto-lander faults: the alarm, the HUD's annunciator `AUTO-LAND FAULT · MANUAL OVERRIDE`, Isao's
+   caption line (section 7), the full-screen plume glare swelling over the frame and clearing, and the hand-over: the flight state is
+   seeded from the sequence's altitude and rate at that instant plus the entry's drift and tilt (section 3), the chase camera takes over
+   from the rail, the HUD instruments come up. Velocity and attitude carry across untouched; the player inherits a problem, not a reset.
+   On a start that is not the first (section 8), OVERRIDE is also where the skip is offered: `AUTO-LAND · [SPACE] OVERRIDE` for
+   `skip.offer` seconds; no key, and the arrival lands itself as today.
+3. **MANUAL** (the player, 15-25 s by the tune). Throttle and tilt (section 5). Fuel is the clock (`vehicle.fuelSeconds` of full burn,
+   starting around 20 s so a hover is a losing move). The reticle on the ground, the instruments, the plume under the throttle, the
+   thrust bed under the burn.
+4. **FLARE** (auto, the last metres). When the rocket is below `flare.altitude` AND inside the corridor (sink under `flare.sink`, drift
+   under `flare.drift`, tilt under `flare.tilt`), the auto-lander takes back: the legs are already down (section 5), it kills the
+   residual drift and tilt and settles at `flare.sinkFinal` over the remaining height. Outside the corridor the player keeps the
+   stick to the ground and gets what they flew. The take-back is announced (`AUTO-LAND RESUMED`) so the player knows the rest is not
+   theirs.
+5. **TOUCHDOWN**. The sequence resumes at its `touchdown` with the real contact state: the shock clip plays at a rate from the sink
+   (clean: as authored; hard: faster, a camera jolt; wreck: the clip at its hardest, the crash sound, the dust doubled, the scorch
+   wider). There is no toppled SH02 model and none is made: the owner's rule from 2026-09-25 stands, the state change happens off
+   camera. On every grade the door opens, Isao rises and flies clear, and the cut to his face swaps the rocket for its salvage and the
+   foundry where no camera looks.
+6. **RESULT**. The grade is read on the HUD (`LANDING · CLEAN / HARD / WRECK`, sink, drift, tilt) through the cut, Isao's talk is the
+   graded one (section 7), and the foundry's salvage is set from the grade (section 6). The game runs on from here exactly as today.
+
+A key or tap skips the shot today; during MANUAL only the skip key does (section 5). A skipped landing at any point lands itself at the
+sequence's end as today, graded CLEAN (the auto-lander never crashes), with the plain talk.
+
+## 3. The flight model (`src/domain/manual-landing.js`, pure)
+
+Fixed-step, deterministic: the same seed and input timeline give the same outcome. Metres around the landing island as the arrival's
+clock already measures them (x and z along the ground, y up, +z toward the pole); the host maps that onto the planet. The planet's
+curvature is not simulated in the 15 s of flight; the ground is the island's tangent plane with the terrain height under the impact
+point read from the host (section 4).
+
+```
+state:  { x, y, z, vx, vy, vz, tilt (rad, about the approach's lateral axis), tiltRate, throttle (0-1, the set point reached),
+          fuel (s of full burn left), legs (0-1), phase, t }
+step(state, input, dt, tune) -> state'   input: { throttle: set point 0-1, tiltRate: -1..1, legs: boolean }
+```
+
+- Throttle follows its set point at `vehicle.spool` per second; no fuel, no thrust. Thrust `vehicle.thrust` m/s² at full along the
+  rocket's axis; gravity `sim.gravity` down; drag `sim.drag` quadratic (thin air, small). Mass is not simulated (the 2D game does
+  not either; the hoverslam reads the same with a fixed T/W).
+- Tilt rate from the input at `vehicle.torque`, damped at `vehicle.damping`. The tilt aims the thrust: forward tilt pushes +z. Lateral
+  motion is one axis (z, along the approach). A crosswind term `entry.wind` on x exists in the model and STARTS AT 0: with it on the
+  reticle slides sideways and the player has no stick for it, so the flare cancels x inside its corridor and x counts in the drift
+  only outside it. Whether the wind is turned on, or a second tilt axis added, is the lab's call once the one-axis flight reads.
+- **The corridor at the override** (`entry`): altitude, sink, drift, tilt and fuel are the entry's, seeded from a per-planet seed so
+  every new planet's landing is its own problem: `entry.altitude` 300-400 m, `entry.sink` 30-40 m/s, `entry.drift` ±8-12 m/s,
+  `entry.tilt` ±0.25-0.35 rad, `entry.fuelSeconds` 18-22. Starting values; the lab decides.
+- **The stopping distance** is the instrument the player flies by: `hStop = v² / (2 (T − g))` at full throttle, recomputed every
+  step; the HUD's T/W and the reticle's inner ring are built on it.
+- **The predictor** `predictImpact(state, tune)`: the state integrated at the current throttle to the ground; its point is the
+  reticle's centre and its time the ping's interval.
+- **The verdict** `verdict(state, slope, tune)` at the first ground contact (any foot, legs down or not), the 2D game's thresholds as
+  starting values: CLEAN sink ≤ 2.5 m/s, drift ≤ 1.5, tilt ≤ 4°; HARD sink ≤ 6, drift ≤ 4, tilt ≤ 11°, legs down; WRECK anything worse,
+  or legs up, or slope over 9°, or off the pad's island by more than `pad.reach` metres. The worst axis names the verdict's reason
+  (`sink`, `drift`, `tilt`, `legs`, `slope`, `off-pad`): the HUD says why, never "the game decided".
+- **The flare rule** `flareDue(state, tune)`: below `flare.altitude` and inside the flare corridor (section 2.4).
+
+The tune is one frozen literal `LANDING_GAME` in `src/content/landing-game.js` (`sim`, `vehicle`, `entry`, `flare`, `verdict`, `pad`,
+`hud`, `skip`, `salvage`), every number with its rationale beside it, nothing tunable hidden in logic.
+
+## 4. The host (`src/fx/manual-landing.js`), driven from the arrival
+
+`src/fx/arrival.js` owns the phases and keeps the sequence; the new host is handed the rocket, the plumes, the camera, the HUD root,
+the sound, the input and the ground query, and the arrival's tick calls it while OVERRIDE, MANUAL and FLARE are on. It writes:
+
+- **The rocket's pose**: position from the flight state in the island's basis, the tilt about the lateral axis; the sequence's
+  `altitudeAt` is not read while the player flies. Legs: the `Legs_Deploy` clip scrubbed by `state.legs`.
+- **The plumes**: intensity from the throttle (0 at idle, 1 at full), the cluster's own cadence kept; the thrust bed (`rocket_thrust`)
+  loops under any throttle above `hud.audibleThrottle` and cuts with it; the alarm on OVERRIDE; the crash sound on a WRECK; the
+  altitude ping (a short UI cue at an interval from the predictor's time to impact, `hud.ping`: from 1.2 s at the override to 0.15 s at
+  10 m).
+- **The chase camera**: behind and above the rocket along the approach, looking at a point ahead of it on the ground, with the disk
+  low in the frame (section 1); the lens `camera.fov`; a small lag so the rocket leads the frame; the shake on a hard contact
+  (`camera.jolt`). It is a shot (`startShot`, `passKeys: true`, `skipKey`) so the seat and chase rules stay out of it as they do for
+  every shot.
+- **The reticle**, a real projection on the terrain, not a sprite: a ring on the ground under the predicted impact point (the host's
+  `floorAt`/`groundAt` query gives the height and the normal, as the pets and the burn marks use), its radius the altitude at
+  `reticle.metresPerMetre`, stretched along the ground velocity, with the three fixed rings at 100 / 50 / 10 m that shrink past it and
+  the hard square at 10 m. Drawn in the game's wireframe vocabulary (the lattice's cyan, a line loop), projected on the terrain normal
+  so a slope skews it. On the pad it is green; off the island it is the alarm red.
+- **The HUD** (section 5's instruments), a panel in the existing HUD style (`styles.css`, the `arrival-on` class hides the game's
+  chrome today; the landing panel is the one thing shown).
+- **The full-screen glare** at OVERRIDE: the 2D game's full-screen launch shader as one full-screen quad for `override.glare` seconds,
+  exposure up then down, under the alarm. On `prefers-reduced-motion` the glare is a plain fade.
+
+## 5. Controls and instruments
+
+Throttle is SET, not held (the brief's rule): `W` / `S` step the set point by `input.step` (0.1), `Shift+W` to full, `Shift+S` to
+idle; `A` / `D` tilt back and forward (held: a rate); `L` legs (auto at `legs.autoAltitude` 200 m unless the player already did);
+`Space` nothing during MANUAL (so a reflex from the 2D game cannot cut the burn) — the override's accept key before MANUAL only.
+`Esc` is the skip (section 8). Touch: a throttle slider on the right rail, two tilt buttons on the left, LEGS, SKIP; the same seven
+things, nothing more. Six touchable things, a dozen readable:
+
+| Instrument | Reads | From |
+| --- | --- | --- |
+| ALT tape | altitude above the pad, rolling, overshooting on a rate spike | state.y, terrain |
+| SINK tape | vertical speed, red above the HARD sink | state.vy |
+| DRIFT needle | ground speed along and across, centred when straight down | vx, vz |
+| TILT | the attitude ball, the CLEAN and HARD cones drawn on it | tilt |
+| T/W | thrust over weight at the set point; `CAN STOP IN` hStop against ALT | throttle, hStop |
+| FUEL | burn seconds left; red under the stopping time | fuel |
+| ANNUNCIATOR | AUTO-LAND FAULT · MANUAL · LEGS DOWN · AUTO-LAND RESUMED · the verdict | phase |
+| RETICLE | on the ground (section 4) | predictor |
+
+## 6. The grade and the start
+
+The verdict sets the foundry's salvage for the run (`LANDING_GAME.salvage`, applied through the foundry's configuration at deploy, not
+by touching the clips):
+
+| Grade | Sections the arm consumes | Biomass a barrel | The start |
+| --- | --- | --- | --- |
+| CLEAN | all three, plus one extra barrel at the first cycle | 60 | a little easier than today |
+| HARD | all three | 60 | today's start |
+| WRECK | two (the tank section is crushed) | 48 | slightly harder, the owner's call (1) |
+
+The salvage layout model shows the same sections on every grade (no crushed variant is made); the arm simply never cuts the lost one,
+and the HUD's `SALVAGE · 2 OF 3 SECTIONS` says so. Nothing else of the opening changes: the Stålheart print, the beacons, the first
+Rotor come as they do, later by one or two barrels on a wreck.
+
+## 7. Isao
+
+The lines run on the panel and the drone's face as today (`src/isaobriefs.js`), captions until recorded (the voice list gets a
+section for them, the recording order as before):
+
+- OVERRIDE: `override` — "Auto-lander's gone. You have the stick."
+- CLEAN: `arrival_talk_clean` — "Textbook landing!", then the two existing lines.
+- HARD and WRECK: `arrival_talk` as it is — "Rough landing!", "So much to build!", "I'll cannibalize the rocket …"; a WRECK adds a fourth
+  caption after the third: "Less to cannibalize than I'd hoped."
+- A skipped or automatic landing: `arrival_talk` as today.
+
+## 8. The first start, the skip, the entries
+
+- **The first start on this browser flies the landing** (owner's call 2). `src/storage.js` keeps `landing.flown` once any MANUAL phase
+  has begun (skipped or not). After that every story start is the arrival as today, with the OVERRIDE offer (`[SPACE] OVERRIDE`,
+  `skip.offer` 3 s) during the approach; taking it flies the landing. `?landing=1` forces the mini-game, `?landing=0` never.
+- **The skip inside MANUAL** is `Esc` or the on-screen SKIP, not any key: the sequence jumps to its end, grade CLEAN, the plain talk. The
+  tutorial card's skip and the chapter links are unchanged (a chapter starts past the landing, as today).
+- **Acceptance runs** (`?acceptance=1`) land automatically unless they ask (`?landing=1`), as the start gate does.
+- **Phones** fly it with the touch rail; a phone that cannot hold the frame (`COARSE`) still gets the plume on quads as today and the
+  glare skipped.
+
+## 9. The harness and the suites
+
+- `window.__stalheartTest`: `state().landing` ({ phase, grade, reason, sink, drift, tilt, fuel, altitude, flown, offered }),
+  `landingInput({ throttle, tiltRate, legs })` (held until the next call), `landingSkip()`, `landingOverride()` (accepts the offer).
+- Node: `test/manual-landing.mjs` — determinism (two runs, one timeline, one outcome), the spool, the fuel clock, the predictor
+  against the integrator, each verdict reason reached by a constructed state, the flare rule's corridor edges, `hStop` against a
+  braked integration; `test/landing-game.mjs` — the tune's shape and that every grade's salvage is a valid foundry configuration.
+- Browser `--landing`: a scripted timeline (throttle set at the override, tilt to cancel the drift, legs, full burn at the stopping
+  distance) to a CLEAN landing, asserting the grade, the extra barrel, the clean talk, the swap and the foundry; a second timeline
+  that never burns to a WRECK, asserting the reason `sink`, two sections, the fourth caption; the skip mid-flight to a CLEAN; a still
+  mid-flight with the disk in frame (`artifacts/browser/landing-manual.png`). `--story` (the arrival cine) stays green: it runs
+  without `?landing=1`, so it lands automatically as today.
+
+## 10. The modules
+
+| File | Layer | Holds |
+| --- | --- | --- |
+| `src/content/landing-game.js` | content | `LANDING_GAME`, the tune |
+| `src/domain/manual-landing.js` | domain | `createLanding(seed, tune)`, `step`, `predictImpact`, `verdict`, `flareDue`, `hStop`, `seedEntry` |
+| `src/fx/manual-landing.js` | fx | the host: pose, plumes, camera, reticle, HUD, sounds, the glare |
+| `src/fx/landing-hud.js` | fx | the panel and its tapes (DOM, the HUD style) |
+| `src/fx/arrival.js` | fx | the phases OVERRIDE / MANUAL / FLARE cut into the clock, the offer, the grade handed to the foundry and the talk |
+| `src/labs/story-landing.js` | labs | the manual window in the story lab with the keys, for the feel |
+| `src/isaobriefs.js`, `src/content/foundry.js`, `src/storage.js`, `styles.css` | | the lines, the salvage table's application, the flag, the panel |
+
+`src/td-tab.js` does not grow: the arrival already has the host's hooks (storyApi: brief, camera, startShot, drone, sfx, the foundry
+deploy); the ground query and the input come through it.
+
+## 11. Build order
+
+1. The tune and the domain module, test-first (node): the step, the predictor, the verdict, the flare, `hStop`, the seeded entry.
+2. The story lab: the manual window on the existing arrival timeline with the keys and a plain HUD, the owner tunes the entry, the
+   fuel, the corridor and the camera there.
+3. The game host: the phases in the arrival, the chase shot, the plumes and the thrust bed, the reticle, the glare.
+4. The HUD panel and the sounds (alarm, ping, crash).
+5. The grade into the foundry, Isao's lines, the first-start flag and the offer.
+6. The harness hooks and the suites; `npm test`, `npm run check`, `--landing`, `--story`, the default suite.
+
+## 12. Not in this spec
+
+The cockpit interior and the first-person seat (owner's call 4, deferred); a toppled or broken SH02 (no model, the off-camera rule
+stands); multiple entries or boosters (the 2D game's six); a landing-site choice (one pad, the island the base is built on; the
+corridor and the fuel are the problem, not the map); mass loss; a retry loop (the arrival never replays in a run); any change to the
+chapters, the skip links or the acceptance routes beyond `?landing`.
