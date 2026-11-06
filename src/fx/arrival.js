@@ -48,11 +48,13 @@ const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 // `past`: the page starts past the landing (a tutorial chapter, a phase jump at stage 1): no shot, and the rocket is its salvage and
 // the foundry from the first frame, each landmark put in that end state as it loads.
 // THE LANDING (src/platform/story-world.js decideLanding): `manual` the player flies it (the longer approach, STORY_ARRIVAL_MANUAL,
-// unless a tune is passed), `offer` the landing is offered at the start, `seed` the override's entry (src/domain/manual-landing.js seedEntry, per planet). The parameters stay in this closure for the flown landing
+// unless a tune is passed), `offer` the start gate offers it (FLY THE LANDING beside START, 2026-11-07: taking it makes the start a
+// manual one, start() choosing the tune), `seed` the override's entry (src/domain/manual-landing.js seedEntry, per planet). The parameters stay in this closure for the flown landing
 export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet' } = {}) {
+  const given = tune;
   tune ??= manual ? STORY_ARRIVAL_MANUAL : STORY_ARRIVAL;
   let phase = on && base && beats && site ? 'waiting' : past && base ? 'done' : 'off';
-  const shot = makeArrivalShot(tune);
+  let shot = makeArrivalShot(tune);
   const holdOf = (id) => BRIEFS[id].lines.reduce((sum, _, i) => sum + lineDwell(BRIEFS[id], i), 0);
   let talkSeconds = holdOf(tune.talk.brief);   // the close-up holds every line (the owner's second playtest); a graded talk's own count (toTalk)
   const m4 = new THREE.Matrix4(), up = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), eye = new THREE.Vector3();
@@ -64,8 +66,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
   // THE LANDING FLOWN (2026-11-07, spec section 2): `flying` the host (src/fx/manual-landing.js) from the start when the landing may be flown,
   // `lhud` its panel (the arrival's: the verdict reads through the cut), `grade` the contact once the ground is met, `landed` where the
-  // rocket stood (island metres; null on a skip), `jolt` the rail's shake after a hard or wrecked contact, `onOffer` the offer's Space key
-  let flying = null, lhud = null, glare = null, overrideAt = manual ? LANDING_GAME.approach.overrideAt : Infinity, overrideT = 0, offered = false, offerLeft = offer ? LANDING_GAME.override.offerSeconds : 0, grade = null, landed = null, jolt = 0, onOffer = null;
+  // rocket stood (island metres; null on a skip), `jolt` the rail's shake after a hard or wrecked contact, `offered` the gate's offer taken
+  let flying = null, lhud = null, glare = null, overrideAt = Infinity, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0;
   const talkBrief = () => (grade && grade.reason !== 'skipped' ? LANDING_GAME.lines[grade.grade] : tune.talk.brief);   // a skip is the plain talk (spec 7)
   // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
   // an acceptance run lands without it unless it asks (?gate=1)
@@ -144,6 +146,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // around' the map after the beacon"; it was a free orbit camera since 2026-09-30); without a tour, the orbit camera on the base
   const look = () => (api.freeLook ? api.freeLook() : api.snapCamera());
   function start() {
+    // the flown landing is chosen here, not at creation: a first start (`manual`), or the gate's FLY THE LANDING on a later one (`offer`)
+    if (offer && (offered || gate?.choice === 'fly')) { offered = true; manual = true; }
+    if (manual && !given) { tune = STORY_ARRIVAL_MANUAL; shot = makeArrivalShot(tune); talkSeconds = holdOf(tune.talk.brief); }
+    overrideAt = manual ? LANDING_GAME.approach.overrideAt : Infinity;
     rocket = base.structure('sh02'); drone = api.drone(); camera = api.camera; fov = camera.fov; size = drone.obj.scale.x;
     // where he ends: `clear` metres toward the pole at his own hover height, so the game takes him back without a jump
     toWorld([0, 0, tune.isao.clear], a).normalize().multiplyScalar(drone.obj.position.length());
@@ -158,17 +164,12 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     hud(true);
     camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
     api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
-    if (manual || offer) {   // THE LANDING (2026-11-07): the host in island metres with the pad's top at 0, its reticle under a group lifted there
+    if (manual) {   // THE LANDING (2026-11-07): the host in island metres with the pad's top at 0, its reticle under a group lifted there
       const pad = new THREE.Vector3().setFromMatrixPosition(rocket.holder.userData.placed).applyMatrix4(inv).divideScalar(metres).y;
       const flightRoot = new THREE.Group(); flightRoot.name = 'LandingFlight'; flightRoot.position.y = pad; fxRoot.add(flightRoot);
       lhud = createLandingHud(globalThis.document?.body);
       flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
         clipScrub: (name, time) => { clip(name, time); rocket.root?.userData.mixer?.update(0); }, coarse: !!globalThis.matchMedia?.('(pointer: coarse)').matches });
-    }
-    if (offer) {   // the offer on a later start (spec 8): Space takes it; this capture listener goes in before the shot's, so it has Space first
-      lhud.show(true); lhud.offer(true, 'SPACE');
-      onOffer = (ev) => { if (ev.key !== LANDING_GAME.input.offerKey || !takeOffer()) return; ev.preventDefault(); ev.stopImmediatePropagation(); };
-      globalThis.addEventListener?.('keydown', onOffer, true);
     }
     api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
@@ -205,21 +206,21 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     const d = api.drone(); if (d) d.obj.visible = true;
     deploy(); look();
   }
-  // the host and the glare go at the touchdown; the panel (its verdict) and the offer's key at the end of the arrival
+  // the host and the glare go at the touchdown; the panel (its verdict) at the end of the arrival
   function endFlight(all) {
     flying?.dispose(); flying = null; glare?.dispose(); glare = null;
     if (!all) return;
-    lhud?.dispose(); lhud = null; if (onOffer) globalThis.removeEventListener?.('keydown', onOffer, true); onOffer = null;
+    lhud?.dispose(); lhud = null;
   }
+  // the offer taken before START (the harness's landing('override'), as the gate's FLY THE LANDING): start() flies the landing
   function takeOffer() {
-    if (!offer || offered || offerLeft <= 0 || phase !== 'landing' || !flying) return false;
-    offered = true; overrideAt = t + 0.01; return true;
+    if (!offer || offered || phase !== 'waiting') return false;
+    offered = true; return true;
   }
-  // OVERRIDE: the sequence's altitude, rate and legs at this instant seed the flight; the chase shot takes over from the rail
+  // OVERRIDE: the seeded entry under the glare (LANDING_GAME.approach says why not the sequence's own state); the chase shot takes over from the rail
   function override() {
-    const s = shot.stateAt(t), rate = (shot.stateAt(t + 0.05).altitude - s.altitude) / 0.05;
     if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
-    flying.begin(s.altitude, rate, manual || s.clips.Legs_Deploy === null ? 0 : Math.min(1, s.clips.Legs_Deploy / tune.landing.legsDeploy));
+    flying.begin(0);   // the flown approach keeps the legs stowed (apply): they are the player's
     api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
     if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });
     cutting = true;   // starting a shot ends the rail's, whose onEnd would finish the arrival
@@ -237,8 +238,6 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   }
   function landingTick(dt) {   // the landing branch; while the flight holds the clock `t` stands still (the rail and the sequence wait)
     t += dt;
-    if (offerLeft > 0) { offerLeft -= dt; if (offerLeft <= 0 && !offered) { lhud?.offer(false); lhud?.show(false); } }
-    if (offer && !offered && offerLeft > 0 && api.offerTaken?.()) { offered = true; overrideAt = Math.max(t, LANDING_GAME.approach.overrideAt); }
     if (flying && t >= overrideAt && !flying.pose()) override();
     if (flying?.pose()) {   // the window: OVERRIDE for override.seconds, then MANUAL / FLARE, until the ground
       glare?.tick(dt); if (glare?.done) glare = null;
@@ -259,7 +258,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       if (phase === 'waiting') {
         if (base.structure('sh02')?.holder.visible) base.conceal('sh02');   // nothing stands before it lands
         const d = api.drone(); if (d) d.obj.visible = false;
-        if (gated && !gate) { gate = createStartGate(globalThis.document?.body, { sfx: api.sfx }); hud(true); }
+        if (gated && !gate) { gate = createStartGate(globalThis.document?.body, { sfx: api.sfx, offer: offer && !offered }); hud(true); }
         if (gate && !gate.opened) return;   // the welcome holds the landing; its load clock starts on START
         waited += dt;
         if (d && IDS.every((id) => base.structure(id))) start();
@@ -271,7 +270,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
-    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip', 'override' (takes the offer)
+    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip', 'override' (takes the gate's offer before START)
     landing(cmd, arg) {
       if (cmd === 'input') { flying?.input(arg ?? {}); return !!flying?.pose(); }
       if (cmd === 'skip') { if (flying?.pose()) { flying.skip(); return true; } return false; }
@@ -284,8 +283,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
-        manual, offer, offered, offerLeft: +Math.max(0, offerLeft).toFixed(2), flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
-        landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed } : null) };
+        manual, offer, offered, flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
+        view: flying?.view() ?? null, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed } : null) };
     },
   };
 }

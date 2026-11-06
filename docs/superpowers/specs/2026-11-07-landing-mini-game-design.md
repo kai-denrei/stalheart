@@ -74,6 +74,24 @@ APPROACH -> OVERRIDE -> MANUAL -> FLARE -> TOUCHDOWN -> RESULT
 A key or tap skips the shot today; during MANUAL only the skip key does (section 5). A skipped landing at any point lands itself at the
 sequence's end as today, graded CLEAN (the auto-lander never crashes), with the plain talk.
 
+**Changed in the build (2026-11-07).** Three calls after the first browser flights (Task 7's report):
+
+- **A. The flight is seeded from the entry, under the glare.** The sequence's eased descent could not hand over a flyable state: at the
+  plan's tune (7 s from 900 m, the override at 4.2 s) it was 144 m sinking at 102 m/s with a 590 m stopping distance, and every flight
+  ended in a wreck. The override now hands over the seeded problem (`seedEntry`: 300-400 m, 30-40 m/s, the drift, the tilt, the fuel),
+  placed under the glare's 2.4 s; the approach before it is only the picture of a rocket coming in from orbit, retuned to
+  `{ descent: 10, startAltitude: 900, overrideAt: 3.5, deployAltitude: 700 }` so the sequence stands at ~380 m at the override and
+  the cut is small. The eased ~117 m/s there is dropped for the entry's sink: the auto-lander's braking burn is what failed.
+  "Velocity and attitude carry across untouched" in item 2 no longer holds.
+- **B. The offer moves to the start gate.** A later start shows a second, smaller call to action beside START A NEW PLANET:
+  `FLY THE LANDING`, its key `SPACE`. Taking it opens the gate as START does and the arrival flies the landing on the manual tune (the
+  arrival's `start()` chooses the tune). There is no offer during the approach any more (`override.offerSeconds` is gone). The harness's
+  `landing('override')` takes the offer before START; `?landing=offer` shows it on an acceptance page (which otherwise never offers).
+- **C. The chase camera looks at the predicted impact point.** The look target is the reticle's ground point (blended toward the rocket's
+  own ground point when the prediction is more than `camera.lookReach` m off the pad), the eye behind along -z, above, and a little to
+  +x for a three-quarter view (the tilt is about x and would lie along the line of sight from straight behind). The eye's distances
+  grow with the height so the rocket stays in the upper half of the frame with the reticle below it from 350 m to the ground.
+
 ## 3. The flight model (`src/domain/manual-landing.js`, pure)
 
 Fixed-step, deterministic: the same seed and input timeline give the same outcome. Metres around the landing island as the arrival's

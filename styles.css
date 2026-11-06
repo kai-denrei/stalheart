@@ -4759,8 +4759,7 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 #landing-hud .lh-verdict.clean { color: #b8ffca; }
 #landing-hud .lh-verdict.hard { color: #ffcb85; }
 #landing-hud .lh-verdict.wreck { color: #ff6a5a; }
-#landing-hud .lh-offer { position: fixed; left: 50%; bottom: 14vh; transform: translateX(-50%); font-size: 15px; color: #b8ffca; border: 1px solid #4fae63; padding: 6px 14px; background: rgba(4, 12, 8, 0.6); }
-#landing-hud .lh-offer[hidden], #landing-hud .lh-touch[hidden] { display: none; }
+#landing-hud .lh-touch[hidden] { display: none; }
 #landing-hud .lh-touch { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; justify-content: space-between; padding: 12px; pointer-events: auto; }
 #landing-hud .lh-btn { font: inherit; color: #b8ffca; background: rgba(4, 12, 8, 0.7); border: 1px solid #4fae63; padding: 14px 16px; min-width: 88px; }
 #landing-hud .lh-throttle { flex: 1; accent-color: #4fae63; writing-mode: horizontal-tb; }
@@ -5048,6 +5047,11 @@ body.seat-gliding #seat-vignette { display: none; }
 #start-gate .wg-cta:hover { background: #d8603a; transform: scale(1.04) rotate(-1deg); animation-play-state: paused; }
 #start-gate .wg-cta:hover span { transform: translateX(.25em); }
 @keyframes wg-beckon { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 4px var(--paper), 0 0 0 6px var(--orange), 0 10px 30px #c4543166; } 50% { transform: scale(1.035); box-shadow: 0 0 0 4px var(--paper), 0 0 0 9px #c4543188, 0 14px 44px #c4543199; } }
+/* FLY THE LANDING (2026-11-07): the second, smaller call to action on a later start, SPACE its key (src/fx/start-gate.js) */
+#start-gate .cta-row { gap: 18px; align-items: center; flex-wrap: wrap; }
+#start-gate .wg-fly { font: 800 clamp(14px, 1.7vw, 19px)/1 Arial, Helvetica, sans-serif; letter-spacing: .5px; color: var(--orange); background: var(--paper); border: 2px solid var(--orange); border-radius: 999px; padding: .7em 1.2em; transition: transform .15s, background .15s; }
+#start-gate .wg-fly:hover { background: #fff3df; transform: scale(1.03); }
+#start-gate .wg-fly kbd { font: 700 .72em/1 ui-monospace, monospace; margin-left: .5em; padding: .2em .45em; border: 1px solid currentColor; border-radius: 4px; }
 #start-gate .fineprint { font-size: 9px; line-height: 1.5; padding-top: 10px; color: #657266; }
 /* a keyword's wireframe: a small dark card, the unit turning in pale cyan (src/fx/wireframe-stage.js) */
 #start-gate .wg-pop { position: fixed; z-index: 2; width: 260px; padding: 8px 8px 10px; background: #0b1a1d; border: 1px solid #2f5a62; border-radius: 10px; box-shadow: 0 12px 36px #0006; color: #bfe6ea; pointer-events: none; }

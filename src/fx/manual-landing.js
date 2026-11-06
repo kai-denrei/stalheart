@@ -7,13 +7,14 @@
 // those same metres (the arrival's fxRoot, lifted to the pad's top), so the reticle is placed in it directly.
 import * as THREE from '../../vendor/three.module.js';
 import { LANDING_GAME } from '../content/landing-game.js';
-import { overrideSeed, step, hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../domain/manual-landing.js';
+import { SH02_WELL } from '../content/story-defaults.js';
+import { createLanding, step, hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../domain/manual-landing.js';
 
 const FLAT = () => ({ y: 0, normal: [0, 1, 0] });
 
 export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes, camera, sfx, hud, toWorld, up, floorAt = FLAT, root, clipScrub, coarse = false }) {
   const m4 = new THREE.Matrix4(), tiltM = new THREE.Matrix4(), q = new THREE.Quaternion(), a = new THREE.Vector3(), n = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3();
-  const origin = toWorld([0, 0, 0], new THREE.Vector3()), follow = new THREE.Vector3();
+  const origin = toWorld([0, 0, 0], new THREE.Vector3()), follow = new THREE.Vector3(), aim = new THREE.Vector3(), aimTo = new THREE.Vector3();
   const legClip = rocket.root?.userData.actions?.Legs_Deploy?.getClip().duration ?? game.vehicle.legTime * 4;   // the clip is 2.4 s, scrubbed by the legs' fraction
   let pred = null, s = null, phase = 'idle', acc = 0, input = { throttle: null, legs: false }, held = { back: false, fwd: false }, rate = 0, thrust = null, pingAt = 0, contact = null, legsHeard = false;
   // the reticle: three fixed rings and the altitude ring, a line loop each, and the hard square, laid on the ground under the predicted point
@@ -59,11 +60,22 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     const onPad = Math.hypot(p.x, p.z) <= game.pad.reach; altRing.material.color.set(onPad ? 0x7dff5a : 0xff6a5a);   // green on the pad, the alarm red off it (spec 4; 2026-11-07: the brief's cyan was the lattice's own and vanished on it)
     reticle.visible = p.reached;   // a throttle that climbs or hovers past the predictor's horizon meets no ground: no ring
   }
-  // the shot's poseAt: behind along -z and above, looking ahead and down (LANDING_GAME.camera), the follow point trailing the rocket by
-  // `camera.lag` so the rocket leads the frame; the disk sits low beyond the base from here
+  // the chase's look target (2026-11-07, the controller's call C): the reticle's ground point, the predicted impact, so the ground the
+  // player aims at is the frame's centre and the rocket above it; a prediction more than `camera.lookReach` m off the pad is blended
+  // toward the rocket's own ground point (all of it at twice that), and no prediction is the rocket's ground point, so the camera never
+  // swings off to the horizon. Eased at `camera.lag` like the follow point
+  function aimTarget() {
+    const c = game.camera, p = pred, off = p?.reached ? Math.hypot(p.x, p.z) - game.pad.reach : Infinity, w = Math.max(0, Math.min(1, (off - c.lookReach) / c.lookReach));
+    const x = p?.reached ? p.x + (s.x - p.x) * w : s.x, z = p?.reached ? p.z + (s.z - p.z) * w : s.z;
+    return aimTo.set(x, floorAt(x, z).y, z);
+  }
+  // the shot's poseAt: behind along -z, above, and a little to +x (a three-quarter view: the tilt is about x, so from straight behind it
+  // would lie along the line of sight), each distance growing with the height so the rocket and the ground under it share the frame
+  // (LANDING_GAME.camera); the follow point trails the rocket by `camera.lag`
   function chase(out) {
-    if (camera && camera.fov !== game.camera.fov) { camera.fov = game.camera.fov; camera.updateProjectionMatrix(); }
-    toWorld([follow.x, follow.y + game.camera.up, follow.z - game.camera.back], eye); toWorld([follow.x, Math.max(0, follow.y - game.camera.down), follow.z + game.camera.ahead], look);
+    const c = game.camera, h = Math.max(0, follow.y), back = c.back + c.backPerMetre * h, rise = c.up + c.upPerMetre * h;
+    if (camera && camera.fov !== c.fov) { camera.fov = c.fov; camera.updateProjectionMatrix(); }
+    toWorld([follow.x + c.side * back, follow.y + rise, follow.z - back], eye); toWorld([aim.x, aim.y, aim.z], look);
     m4.lookAt(eye, look, up); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye);
   }
   function sounds(dt) {
@@ -85,13 +97,14 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   function stopAll() { listen(false); hud.touch(false); if (thrust) { thrust.stop(0.4); thrust = null; } reticle.visible = false; }
   const host = {
     hud,
-    // OVERRIDE: seed from the sequence's state (and its legs' fraction), clear the panel, arm the keys; MANUAL starts when the arrival calls manual()
-    begin(altitude, rate, legs = 0) {
-      s = overrideSeed(altitude, rate, entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0;
+    // OVERRIDE: the seeded problem (the entry: src/domain/manual-landing.js seedEntry; 2026-11-07, the sequence's own altitude and rate were
+    // not flyable, LANDING_GAME.approach), placed under the glare; clear the panel, arm the keys; MANUAL starts when the arrival calls manual()
+    begin(legs = 0) {
+      s = createLanding(entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0;
       phase = 'override'; acc = 0; contact = null; follow.set(s.x, s.y, s.z);
-      hud.clear(); hud.show(true); hud.offer(false); hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); hud.set(reading()); listen(true);
+      hud.clear(); hud.show(true); hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); hud.set(reading()); listen(true);
       if (coarse) hud.touch(true, { throttle: (v) => { input.throttle = v; }, tilt: (d) => { held.back = d < 0; held.fwd = d > 0; }, legs: () => { input.legs = true; }, skip: () => host.skip() });
-      pred = predict(); sfx?.play('danger_alert', { dist: 0 }); poseRocket(); placeReticle();
+      pred = predict(); aim.copy(aimTarget()); sfx?.play('danger_alert', { dist: 0 }); poseRocket(); placeReticle();
     },
     manual() { if (phase === 'override') { phase = 'manual'; hud.annunciate('MANUAL', 'info'); } },
     tick(dt) {
@@ -111,7 +124,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
         if (touched(s, floorAt(s.x, s.z).y)) { phase = 'touched'; break; }
       }
       follow.lerp(a.set(s.x, s.y, s.z), Math.min(1, dt / game.camera.lag));
-      pred = predict();
+      pred = predict(); aim.lerp(aimTarget(), Math.min(1, dt / game.camera.lag));
       poseRocket(); plumesAt(); hud.set(reading());
       if (phase === 'touched') {
         const g = floorAt(s.x, s.z), slope = Math.acos(Math.max(-1, Math.min(1, g.normal[1])));
@@ -126,6 +139,12 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     // Esc or SKIP (spec 8): graded CLEAN, the auto-lander never crashes; the arrival resumes its sequence at the touchdown
     skip() { if (!s || phase === 'touched') return; phase = 'touched'; contact = { grade: 'CLEAN', reason: 'skipped', sink: 0, drift: 0, tilt: 0 }; hud.verdict(contact); hud.annunciate('AUTO-LAND RESUMED', 'ok'); stopAll(); },
     contact: () => contact, phase: () => phase, pose: () => (s ? { x: s.x, y: s.y, z: s.z, tilt: s.tilt } : null),
+    // the harness's frame check: where the rocket's feet, its top (the well's rim at the model's 1.5) and the reticle fall on screen, NDC (in frame within +-1)
+    view() {
+      if (!s || !camera) return null;
+      camera.updateMatrixWorld(); const ndc = (p) => { const v = toWorld(p, new THREE.Vector3()).project(camera); return [+v.x.toFixed(2), +v.y.toFixed(2)]; };
+      return { feet: ndc([s.x, s.y, s.z]), top: ndc([s.x, s.y + 1.5 * SH02_WELL.rim, s.z]), reticle: reticle.visible ? ndc([reticle.position.x, reticle.position.y, reticle.position.z]) : null };
+    },
     state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vz: +s.vz.toFixed(2), tilt: +s.tilt.toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +s.x.toFixed(1), z: +s.z.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2) } : null),
     dispose() { stopAll(); reticle.removeFromParent(); for (const l of [altRing, ...fixed, square]) { l.geometry.dispose(); l.material.dispose(); } },   // the HUD is the arrival's
   };

@@ -40,8 +40,6 @@ assert.ok(root.querySelector('#lh-sink').classList.contains('hot'), 'a sink over
 hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); assert.equal(root.querySelector('#lh-ann').textContent, 'AUTO-LAND FAULT · MANUAL OVERRIDE');
 assert.ok(root.querySelector('#lh-ann').classList.contains('alarm'), 'the alarm kind is a class');
 hud.verdict({ grade: 'HARD', reason: 'sink', sink: 4.2, drift: 1, tilt: 0.03 }); assert.ok(root.querySelector('#lh-verdict').textContent.includes('HARD') && root.querySelector('#lh-verdict').textContent.includes('SINK 4.2'));
-hud.offer(true, 'SPACE'); assert.ok(root.querySelector('#lh-offer').textContent.includes('SPACE')); assert.equal(root.querySelector('#lh-offer').hidden, false);
-hud.offer(false); assert.equal(root.querySelector('#lh-offer').hidden, true);
 
 // the rest of the readings: calm numbers are not hot, the drift reads with its arrow, legs by their fraction, tilt in degrees
 hud.set({ altitude: 50, sink: 1.2, driftAlong: -1, driftAcross: 0, tilt: 0.05, tw: 1.5, hStop: 10, fuel: 30, legs: 0.5, phase: 'manual' });

@@ -43,12 +43,14 @@ export function storyLayout(base = 'classic') {
 }
 
 // THE LANDING IS FLOWN ON A BROWSER'S FIRST START, OFFERED AFTER (owner, 2026-11-07, call 2; spec section 8): `flown` is the store's
-// td.landing.flown; ?landing=1 forces the flight, ?landing=0 never; an acceptance run lands itself unless it asks
+// td.landing.flown; ?landing=1 forces the flight, ?landing=offer the start gate's offer (a later start's, for the harness: 2026-11-07),
+// ?landing=0 never; an acceptance run lands itself unless it asks
 export function decideLanding({ arrives, query, flown, acceptance }) {
   if (!arrives) return { manual: false, offer: false };
   const q = query.get('landing');
   if (q === '0') return { manual: false, offer: false };
   if (q === '1') return { manual: true, offer: false };
+  if (q === 'offer') return { manual: false, offer: true };
   if (acceptance) return { manual: false, offer: false };
   return flown ? { manual: false, offer: true } : { manual: true, offer: false };
 }

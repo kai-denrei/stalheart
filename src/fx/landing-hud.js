@@ -3,7 +3,7 @@
 import { LANDING_GAME } from '../content/landing-game.js';
 
 const ROWS = [['alt', 'ALT', 'm'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', 'm/s'], ['tilt', 'TILT', '°'], ['tw', 'T/W', ''], ['stop', 'CAN STOP IN', 'm'], ['fuel', 'FUEL', 's']];
-const INERT = { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, clear() {}, offer() {}, touch() {}, dispose() {} };
+const INERT = { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, clear() {}, touch() {}, dispose() {} };
 export function createLandingHud(root, tune = LANDING_GAME) {
   if (!root || typeof document === 'undefined') return { ...INERT };
   const hard = tune.verdict.hard;
@@ -20,7 +20,6 @@ export function createLandingHud(root, tune = LANDING_GAME) {
   el.append(grid);
   const legs = document.createElement('div'); legs.id = 'lh-legs'; legs.className = 'lh-legs'; legs.textContent = 'LEGS UP'; el.append(legs);
   const verdictEl = document.createElement('div'); verdictEl.id = 'lh-verdict'; verdictEl.className = 'lh-verdict'; el.append(verdictEl);
-  const offerEl = document.createElement('div'); offerEl.id = 'lh-offer'; offerEl.className = 'lh-offer'; offerEl.hidden = true; el.append(offerEl);
   const rail = document.createElement('div'); rail.id = 'lh-touch'; rail.className = 'lh-touch'; rail.hidden = true; el.append(rail);
   root.append(el);
   const num = (v, d = 0) => (Number.isFinite(v) ? v.toFixed(d) : '—');
@@ -42,7 +41,6 @@ export function createLandingHud(root, tune = LANDING_GAME) {
       verdictEl.className = `lh-verdict ${grade.toLowerCase()}`;
     },
     clear() { verdictEl.textContent = ''; verdictEl.className = 'lh-verdict'; ann.textContent = ''; ann.className = 'lh-ann'; },   // a fresh flight reads nothing from an earlier one
-    offer(on, key = 'SPACE') { offerEl.hidden = !on; offerEl.textContent = on ? `AUTO-LAND · [${key}] OVERRIDE` : ''; },
     touch(on, h = {}) {   // phones: a throttle slider, two tilt buttons, LEGS, SKIP (spec section 5)
       rail.hidden = !on; rail.replaceChildren();
       if (!on) return;

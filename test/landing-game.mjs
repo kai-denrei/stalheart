@@ -32,6 +32,7 @@ const q = (s) => new URLSearchParams(s);
 assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: false, acceptance: false }), { manual: true, offer: false }, 'the first start flies it');
 assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: true, acceptance: false }), { manual: false, offer: true }, 'later starts are offered it');
 assert.deepEqual(decideLanding({ arrives: true, query: q('landing=1'), flown: true, acceptance: true }), { manual: true, offer: false }, '?landing=1 forces it');
+assert.deepEqual(decideLanding({ arrives: true, query: q('landing=offer'), flown: false, acceptance: true }), { manual: false, offer: true }, '?landing=offer: the gate offers it (the harness)');
 assert.deepEqual(decideLanding({ arrives: true, query: q('landing=0'), flown: false, acceptance: false }), { manual: false, offer: false }, '?landing=0 never');
 assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: false, acceptance: true }), { manual: false, offer: false }, 'an acceptance run lands itself unless it asks');
 assert.deepEqual(decideLanding({ arrives: false, query: q('landing=1'), flown: false, acceptance: false }), { manual: false, offer: false }, 'no arrival, no landing');
