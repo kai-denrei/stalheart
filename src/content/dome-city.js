@@ -33,7 +33,7 @@ const dir = 'assets/models/dome-colony';
 // of Isao's programme, standing from a growing base's first frame (src/domain/base-plan.js): the SH02 comes down among them
 export const DOME_ISLANDS = Object.freeze(DOMES.map(([id, , , x, z]) => Object.freeze({ id, w: 30, d: 30, x, z, stage: 2, founded: true })));
 export const DOME_STRUCTURES = Object.freeze([
-  ...DOMES.map(([id, author, module, , , ports]) => Object.freeze({ id, author, module, asset: `${dir}/${module}_d0_lod1.glb`, far: `${dir}/${module}_d0_lod2.glb`, island: id, stage: 2, founded: true, scale: 1, offset: [0, 0, 0], hide: ports.map((p) => `PORT_CAP_${p}`) })),
+  ...DOMES.map(([id, author, module, , , ports]) => Object.freeze({ id, author, module, asset: `${dir}/${module}_d0_lod1.glb`, far: `${dir}/${module}_d0_lod2.glb`, island: id, stage: 2, founded: true, batch: true, scale: 1, offset: [0, 0, 0], hide: ports.map((p) => `PORT_CAP_${p}`) })),
   // THE BRIDGES: the 52 m bridge_long (ends +-27 m, its sockets +-26 m at y 9.7, the deck's underside 7.5 m, columns at +-10 and +-26 m, a 19 m
   // opening between the middle pair). The author's yaw -pi/2 lays its X along +Z: heading [-1, 0] here. NO SLAB UNDER A BRIDGE: its ends stand
   // inside the two domes' plots (26 m out of 40, the dome's plot reaches 25 m), so a bridge island could never keep the 4 m between islands;
@@ -42,7 +42,7 @@ export const DOME_STRUCTURES = Object.freeze([
   // the domes' slabs to the centimetre and the middle pair sinks a quarter metre into the ground, unseen. `anchor: 'frame'`: placed at its
   // own x, z on natural ground (src/domain/base-plan.js)
   ...[['bridge-w1', 'LINK_N_11', -80, -40], ['bridge-w2', 'LINK_N_21', -80, 40], ['bridge-e1', 'LINK_N_13', 80, -40], ['bridge-e2', 'LINK_N_23', 80, 40]].map(([id, author, x, z]) => Object.freeze({
-    id, author, module: 'bridge_long', asset: `${dir}/bridge_long_d0_lod1.glb`, far: `${dir}/bridge_long_d0_lod2.glb`, anchor: 'frame', x, z, stage: 2, founded: true, scale: 1, offset: [0, 0, 0], heading: [-1, 0], lift: -0.33,
+    id, author, batch: true, module: 'bridge_long', asset: `${dir}/bridge_long_d0_lod1.glb`, far: `${dir}/bridge_long_d0_lod2.glb`, anchor: 'frame', x, z, stage: 2, founded: true, scale: 1, offset: [0, 0, 0], heading: [-1, 0], lift: -0.33,
   })),
 ]);
 // the plot of a bridge, for the placement rule (test/dome-city.mjs): its 54 x 4.4 m deck along its heading

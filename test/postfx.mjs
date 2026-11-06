@@ -50,5 +50,10 @@ console.log('\npostfx sizing invariants hold');
   check('sums scene and bloom before the transfer', f.includes('texture2D( tDiffuse, vUv ) + texture2D( tBloom, vUv )'));
   check('keeps the display transfer', f.includes('colorspace_pars_fragment') && f.includes('sRGBTransferOETF'));
   check('keeps the tone mapping switch', f.includes('ACES_FILMIC_TONE_MAPPING'));
+  // THE PARITY: the composer swaps its two buffers after every pass that asks, and the final pass is the only one left in the
+  // chain; a swap there alternates the scene pass between the multisampled target with the depth buffer and the depthless one,
+  // so every other frame the scene draws with no depth test (the floor lattice through the rock, 2026-11-06's 'sheet').
+  const { AddOutputPass } = await import('../src/postfx.js');
+  check('the one-pass tail never swaps the composer\'s buffers', new AddOutputPass().needsSwap === false);
   if (failures > 0) { console.error(`\n${failures} failure(s)`); process.exit(1); }
 }

@@ -57,13 +57,18 @@ export function addOutputFragment() {
   return src.replace(a, `${a}
 		uniform sampler2D tBloom;`).replace(b, 'gl_FragColor = texture2D( tDiffuse, vUv ) + texture2D( tBloom, vUv );');
 }
-class AddOutputPass extends OutputPass {
+export class AddOutputPass extends OutputPass {
   render(renderer, writeBuffer, readBuffer, deltaTime, maskActive) {
     if (this.tDiffuseOverride) { this.uniforms.tDiffuse.value = this.tDiffuseOverride; this.uniforms.toneMappingExposure.value = renderer.toneMappingExposure; renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer); this.fsQuad.render(renderer); return; }
     super.render(renderer, writeBuffer, readBuffer, deltaTime, maskActive);
   }
   constructor() {
     super();
+    // THE LAST PASS NEVER SWAPS: the composer swaps its two targets after each pass that asks, and this is the only pass after the
+    // scene pass; one swap a frame would alternate the scene pass between the multisampled target with the depth buffer and the
+    // depthless one, so every other frame would draw with no depth test (the floor lattice through the rock, the 2026-11-06 sheet).
+    // The old two-pass tail swapped twice, which kept the parity by accident.
+    this.needsSwap = false;
     this.uniforms.tBloom = { value: null };
     this.material.dispose();
     this.material = new THREE.RawShaderMaterial({ name: 'AddOutputShader', uniforms: this.uniforms, vertexShader: OutputShader.vertexShader, fragmentShader: addOutputFragment() });
