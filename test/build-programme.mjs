@@ -157,5 +157,15 @@ console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a 
   assert.equal(whenHolds({ stand: ['a'], sector: 2 }, both), false, 'stand and sector: the sector still gates');
   assert.equal(whenHolds({ stand: ['a'], sector: 2 }, { ...both, sector: 2, standing: () => false }), false, 'stand and sector: the stand still gates');
   assert.equal(whenHolds({ stand: ['a'], sector: 2 }, { ...both, sector: 2 }), true, 'both hold: due');
+  // through due(), which is how the host finds Isao's next step: the context's standing() must reach the step's `when`
+  {
+    const steps = [{ id: 'dome', when: {}, structures: ['dome-a'] }, { id: 'bridge', when: { stand: ['dome-a', 'dome-b'] }, structures: ['bridge-ab'] }];
+    const next = (standing) => { const st = makeBuildProgramme(steps); finish(st, steps[0]); return due(st, standing ? { phase: 'rotor-ready', standing } : { phase: 'rotor-ready' }); };
+    assert.equal(next((id) => id === 'dome-a'), null, 'due(): one dome standing, the bridge waits');
+    assert.equal(next((id) => id === 'dome-a' || id === 'dome-b')?.id, 'bridge', 'due(): both domes stand, the bridge is due');
+    assert.equal(next(null), null, 'due(): no standing() from the host, the bridge waits');
+    const st = makeBuildProgramme([{ id: 'e', when: { stand: [] }, structures: [] }]);
+    assert.equal(due(st, {})?.id, 'e', 'due(): an empty stand list comes due without standing(), as whenHolds says');
+  }
   console.log('build-programme: ok');
 }

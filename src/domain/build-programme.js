@@ -34,10 +34,10 @@ export function whenHolds(w, { phase, sector, waveActive, back, manned, standing
 // turn comes round again (the ARC-01 waits on the player's hands, and the back gate must not wait behind it).
 export function due(st, ctx = {}) {
   if (st.active) return null;
-  const { phase = null, sector = 0, waveActive = false, back = null, manned = 0 } = ctx;
+  const { phase = null, sector = 0, waveActive = false, back = null, manned = 0, standing } = ctx;
   for (const s of st.steps) {
     if (st.done.has(s.id) || (s.board && !st.bought.has(s.id))) continue;
-    if (whenHolds(s.when ?? {}, { phase, sector, waveActive, back, manned })) return s;
+    if (whenHolds(s.when ?? {}, { phase, sector, waveActive, back, manned, standing })) return s;
     if (!s.passable) return null;
   }
   return null;
