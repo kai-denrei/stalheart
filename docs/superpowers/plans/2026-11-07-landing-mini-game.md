@@ -155,6 +155,7 @@ export const LANDING_GAME = Object.freeze({
     torque: 3,           // rad/s² at full stick
     damping: 3.5,        // the tilt rate's decay a second
     legTime: 0.6,        // s to deploy the legs
+    legDrag: 0.0009,     // extra quadratic drag with the legs down (the 2D game's number)
     autoLegsAltitude: 200,   // m: the legs come down here on their own if the player has not asked
   }),
   // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry)
@@ -228,7 +229,7 @@ export function step(s, input, dt, tune) {
   const lit = s.throttle > 0 ? Math.max(v.minThrottle, s.throttle) : 0;
   s.tiltRate += (clamp(input.tiltRate ?? 0, -1, 1) * v.torque - s.tiltRate * v.damping) * dt;
   s.tilt += s.tiltRate * dt;
-  const drag = tune.sim.drag + (s.legs >= 1 ? 0.0009 : 0), T = v.thrust * lit;
+  const drag = tune.sim.drag + (s.legs >= 1 ? v.legDrag : 0), T = v.thrust * lit;
   s.vz += (Math.sin(s.tilt) * T - drag * s.vz * Math.abs(s.vz)) * dt;
   s.vx += (s.wind - drag * s.vx * Math.abs(s.vx)) * dt;
   s.vy += (Math.cos(s.tilt) * T - g - drag * s.vy * Math.abs(s.vy)) * dt;
@@ -260,6 +261,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Modify: `src/domain/manual-landing.js`
+- Modify: `src/content/landing-game.js` (add `vehicle.legDrag: 0.0009` with its rationale; Task 1's review found the number hardcoded in `step`: read it from the tune)
 - Test: `test/manual-landing.mjs` (append)
 
 **Interfaces:**
@@ -283,7 +285,7 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   const q = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0 }); let t = 0; while (q.y > 0 && t < 60) { step(q, { throttle: 0, tiltRate: 0, legs: false }, DT, T); t += DT; }
   assert.ok(p.reached); assert.ok(Math.abs(p.z - q.z) < 2, `predicted z ${p.z.toFixed(1)} against flown ${q.z.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3);
   const high = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 }); high.y = 1e6;
-  assert.equal(predictImpact(high, T).reached, false, 'beyond the predictor's horizon: not reached');
+  assert.equal(predictImpact(high, T).reached, false, "beyond the predictor's horizon: not reached");
 }
 { // the verdict: the worst axis names the reason; legs up, a slope or off the pad are wrecks whatever the speeds
   const base = { ...createLanding(entry), vy: -1, vx: 0, vz: 0.5, tilt: 0.02, legs: 1, legsDown: true };
