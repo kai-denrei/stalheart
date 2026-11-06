@@ -43,6 +43,9 @@ export function makeStoryBeats({
   const gated = gate >= 0 && fodder >= 0;
   // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
   const fd = foundry ? makeFoundry(foundry) : null;
+  // THE LANDING'S GRADE (spec 2026-11-07-landing-mini-game-design.md section 6): what the AFR-01 has to cut after the way the rocket came
+  // down: the sections left, a barrel's worth, and bonus barrels granted at the deploy. Set by the arrival before its deploy(api); unset, the tune's
+  let perBarrel = foundry?.feedstockPerBarrel ?? 0, bonusBarrels = 0;
   let quiverOrdered = false, cWaves = 0, cSent = 0, studyDelay = quiver?.studyDelay ?? 3, upAt = null;
   // the beats pay for the Quiver and put it on Isao's book, once; a refused order is tried again at the override and at the clear
   // THE ROTOR IS ISAO'S (owner, 2026-10-16; `rotorAuto`): it fires on its own from the first wave (api.autoTower) and the player watches; else the manual override
@@ -92,7 +95,7 @@ export function makeStoryBeats({
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
       if (early && released && !opened && clock - releasedAt >= earlyBreach && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) { api.breach?.(fodder, { quiet: true }); opened = true; quiet = true; nextSpawn = clock + spawnDelay; }
       if (opened && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) spawnTick(api);
-      if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(foundry.feedstockPerBarrel); }
+      if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(perBarrel); }
       if (phase === 'landed' && fd && released && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); api.brief?.('foundry_deploy'); enter('foundry'); }
       // THE ROTOR DOES NOT WAIT FOR THE FIRST BARREL (owner, 2026-10-03: "faster intro, more intensity"): Isao prints it from the landing's
       // stock the moment the AFR-01 is down, and the barrels it cuts pay for what comes after
@@ -165,7 +168,13 @@ export function makeStoryBeats({
     deploy(api) {
       if (released || phase !== 'landed') return false;
       released = true; releasedAt = clock;
-      if (fd) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); }
+      if (fd) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); for (let i = 0; i < bonusBarrels; i++) api.grant(perBarrel); }
+      return true;
+    },
+    // THE ARRIVAL'S GRADE (src/content/landing-game.js salvage[grade]): before deploy(api); false when there is no foundry or it is already released
+    salvage({ sections, feedstockPerBarrel, bonus }) {
+      if (!fd || released) return false;
+      fd.sections = fd.sections.slice(0, Math.max(1, sections)); perBarrel = feedstockPerBarrel; bonusBarrels = bonus;
       return true;
     },
     phase: () => phase,

@@ -14,3 +14,11 @@ assert.ok(LANDING_GAME.vehicle.thrust > LANDING_GAME.sim.gravity, 'full thrust b
 assert.ok(LANDING_GAME.vehicle.minThrottle * LANDING_GAME.vehicle.thrust < LANDING_GAME.sim.gravity, 'idle thrust does not hover (the brief: the rocket cannot hover)');
 assert.ok(LANDING_GAME.flare.altitude > 0 && LANDING_GAME.flare.sink > LANDING_GAME.verdict.clean.sink, 'the flare corridor is wider than CLEAN');
 console.log('landing-game: ok');
+import { STORY_ARRIVAL, STORY_ARRIVAL_MANUAL } from '../src/content/story-defaults.js';
+assert.equal(STORY_ARRIVAL_MANUAL.landing.descent, LANDING_GAME.approach.descent);
+assert.equal(STORY_ARRIVAL_MANUAL.landing.startAltitude, LANDING_GAME.approach.startAltitude);
+const shift = LANDING_GAME.approach.descent - STORY_ARRIVAL.landing.descent;
+const oldDown = STORY_ARRIVAL.landing.orbit + STORY_ARRIVAL.landing.descent;
+for (const k of STORY_ARRIVAL.rail) { const m = STORY_ARRIVAL_MANUAL.rail.find((x) => x.pos === k.pos); assert.ok(m); assert.equal(m.t, k.t >= oldDown ? k.t + shift : k.t, 'rail keys after the touchdown move with it'); }
+assert.ok(LANDING_GAME.approach.overrideAt < STORY_ARRIVAL_MANUAL.landing.descent, 'the override comes before the sequence would have touched down');
+console.log('landing-game: arrival tune ok');
