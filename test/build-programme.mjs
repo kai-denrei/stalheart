@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { BASE_PROGRAMME, BASE_PERKS, BASE_BUILDER } from '../src/content/base-programme.js';
-import { makeBuildProgramme, due, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost } from '../src/domain/build-programme.js';
+import { makeBuildProgramme, due, whenHolds, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost } from '../src/domain/build-programme.js';
 import { STORY_PHASES } from '../src/domain/automation.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
@@ -142,4 +142,20 @@ console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a 
   const fresh = makeBuildProgramme(BASE_PROGRAMME);
   assert.equal(lose(fresh, 'radar'), null, 'a building that never stood cannot be burned');
   assert.deepEqual([...lost(fresh)], [], '...and is not booked as lost');
+}
+
+// THE BRIDGES FOLLOW THEIR DOMES (owner's note, 2026-11-07): `when.stand` is the structure ids that must stand before a step is due;
+// the host answers with `standing(id)`, and with no answer nothing stands, so a bridge never prints toward a dome that is not there
+{
+  const ctx = { phase: 'rotor-ready', sector: 1 };
+  assert.equal(whenHolds({ stand: ['a', 'b'] }, { ...ctx, standing: (id) => id === 'a' }), false, 'one of two named structures standing is not enough');
+  assert.equal(whenHolds({ stand: ['a', 'b'] }, { ...ctx, standing: (id) => id === 'a' || id === 'b' }), true, 'both stand: due');
+  assert.equal(whenHolds({ stand: ['a', 'b'] }, ctx), false, 'no standing() from the host: nothing stands');
+  assert.equal(whenHolds({ stand: [] }, ctx), true, 'an empty list names nothing to wait for');
+  assert.equal(whenHolds({}, ctx), true, 'a step with no stand condition is unaffected');
+  const both = { ...ctx, standing: () => true };
+  assert.equal(whenHolds({ stand: ['a'], sector: 2 }, both), false, 'stand and sector: the sector still gates');
+  assert.equal(whenHolds({ stand: ['a'], sector: 2 }, { ...both, sector: 2, standing: () => false }), false, 'stand and sector: the stand still gates');
+  assert.equal(whenHolds({ stand: ['a'], sector: 2 }, { ...both, sector: 2 }), true, 'both hold: due');
+  console.log('build-programme: ok');
 }

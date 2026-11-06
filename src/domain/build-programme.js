@@ -13,7 +13,7 @@ export function makeBuildProgramme(steps, { standing = () => false } = {}) {
 }
 
 // does a step's `when` hold in this context? (the build board asks it of the coming sector)
-export function whenHolds(w, { phase, sector, waveActive, back, manned }) {
+export function whenHolds(w, { phase, sector, waveActive, back, manned, standing }) {
   const at = STORY_PHASES.indexOf(phase);
   if (w.phase != null && !(at >= 0 && at >= STORY_PHASES.indexOf(w.phase))) return false;
   if (w.sector != null && !((sector ?? 0) >= w.sector)) return false;
@@ -23,6 +23,9 @@ export function whenHolds(w, { phase, sector, waveActive, back, manned }) {
   if (w.back != null && w.back !== back) return false;
   // SOL AUTOMATED (2026-10-01): `when.manned` is how many passes the player must have flown and burned in (the ARC-01 waits for it)
   if (w.manned != null && !((manned ?? 0) >= w.manned)) return false;
+  // THE BRIDGES FOLLOW THEIR DOMES (2026-11-07): `when.stand` is the structure ids that must STAND before the step is due (a bridge waits for its
+  // two domes). The host answers with `standing(id)`; with no answer nothing stands, so a bridge is never printed toward a dome that is not there; an empty list names nothing to wait for.
+  if (w.stand?.length && !(typeof standing === 'function' && w.stand.every((id) => standing(id)))) return false;
   return true;
 }
 
