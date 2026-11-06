@@ -17,7 +17,11 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
   let isaoFace = 'neutral';
   // the whole arrival stands on the landing island, tangent to the sphere there
   const root = new THREE.Group(); root.name = 'Arrival'; root.matrixAutoUpdate = false; root.matrix.copy(basisAt(placer, site[0], site[1], [0, 1])); root.matrixWorldNeedsUpdate = true; scene.add(root);
-  const lift = new THREE.Group(); lift.name = 'Descent'; root.add(lift);
+  // THE LANDING FLOWN in the lab (2026-11-07, ?manual=1): `spot` stands the rocket, its marks and Isao where a flown landing touched
+  // (place()), identity on the pad; the reticle hangs from `root` itself, whose frame is the island's metres with the touchdown plane at 0
+  const spot = new THREE.Group(); spot.name = 'Touchdown'; root.add(spot);
+  const lift = new THREE.Group(); lift.name = 'Descent'; spot.add(lift);
+  lift.userData.placed = new THREE.Matrix4();   // the flight's rest placement (src/fx/manual-landing.js poseRocket): the lift on the pad, identity
   // the hull group carries the presentation scale: rocket, plumes and the
   // well positions all scale together, so a bigger rocket is one number
   const hull = new THREE.Group(); hull.name = 'Hull'; hull.scale.setScalar(STORY_SCALE.rocket); lift.add(hull);
@@ -32,7 +36,7 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
     p.userData.engine = e; hull.add(p); return p;
   });
   const burn = (level, t) => { for (const p of plumes) { const e = p.userData.engine; p.userData.setIntensity(level * (1 - e.depth + e.depth * Math.sin(t * e.cadence + e.phase)) * 0.55); p.userData.tick(t + e.phase); } };
-  const effects = new THREE.Group(); root.add(effects);
+  const effects = new THREE.Group(); spot.add(effects);
   let rocket = null, mixer = null, actions = {}, isao = null, scorch = null, dust = null, dustAt = -1, error = null;
   const geometries = new Set(), materials = new Set();
   const own = (o) => o.traverse((n) => { if (n.geometry) geometries.add(n.geometry); for (const m of [n.material].flat().filter(Boolean)) materials.add(m); });
@@ -47,7 +51,7 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
       if (!ok) return;
       isao = makeIsaoDrone();
       if (!isao) return;
-      isao.scale.setScalar(STORY_SCALE.isaoMetres / 0.55); isao.name = 'Isao'; isao.visible = false; own(isao); root.add(isao);
+      isao.scale.setScalar(STORY_SCALE.isaoMetres / 0.55); isao.name = 'Isao'; isao.visible = false; own(isao); spot.add(isao);
     }),
   ]);
   const held = new Map();
@@ -108,6 +112,16 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
     },
     state: () => ({ loaded: !!rocket, error, face: isaoFace, plumes: plumes.length, burning: plumes.filter((p) => p.visible).length, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
     rocketTop: () => WELL_RIM * S,
+    // the flown landing's handles (2026-11-07): the host poses `holder()` by matrix while `flying(true)` (the lab's apply() moves it by
+    // position otherwise), burns `plumes()`, lays its reticle in `frame()` and scrubs the legs by their fraction of the clip (`scrub`)
+    holder: () => lift, plumes: () => plumes, frame: () => root,
+    flying(on) { lift.matrixAutoUpdate = !on; if (!on) lift.updateMatrix(); },
+    scrub(name, u) { const a = actions[name]; if (!a) return; hold(name, u * a.getClip().duration); mixer.update(0); },
+    // the touchdown where it touched (as the game's placedLanded): the spot on the ground at `at` (island metres), stood along `normal`; null is the pad
+    place(at, normal) {
+      if (!at) { spot.position.set(0, 0, 0); spot.quaternion.identity(); return; }
+      spot.position.fromArray(at); spot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().fromArray(normal).normalize());
+    },
     setLanded(on) { lift.visible = on; if (isao) isao.visible = on && isao.visible; },
     dispose() {
       mixer?.stopAllAction(); if (rocket) mixer?.uncacheRoot(rocket);

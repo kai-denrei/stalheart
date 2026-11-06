@@ -3,7 +3,11 @@
 import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
 import { LOOKS } from '../looks.js';
-import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS, STORY_SOUNDS, STORY_DAY } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS, STORY_SOUNDS, STORY_DAY, STORY_ARRIVAL_MANUAL } from '../content/story-defaults.js';
+import { LANDING_GAME } from '../content/landing-game.js';
+import { seedEntry } from '../domain/manual-landing.js';
+import { createManualLanding } from '../fx/manual-landing.js';
+import { createLandingHud } from '../fx/landing-hud.js';
 import { createDaylight } from '../fx/daylight.js';
 import { SOUNDS } from '../audiomanifest.js';
 import { makeAudio } from '../audio.js';
@@ -45,7 +49,10 @@ export function initStoryTab(root) {
   let active = false, disposed = false, frameId = 0, planet = null, planetMesh = null, marker = null, landing = null, errors = [];
   // the thrust bed loops under the descent and cuts at touchdown; the tank's
   // pneumatics stand in for the legs, the landing and the door
-  const sfx = makeAudio({ seed: 3, persist: false, sounds: { ...STORY_SOUNDS, tank_spool_up: SOUNDS.tank_spool_up, tank_spool_down: SOUNDS.tank_spool_down } });
+  // THE LANDING FLOWN (2026-11-07, ?manual=1): the arrival's longer approach (STORY_ARRIVAL_MANUAL), and the host's alarm, ping and wreck
+  const manualMode = q.get('manual') === '1';
+  const flightSounds = manualMode ? { danger_alert: SOUNDS.danger_alert, laser_click: SOUNDS.laser_click, mech_landing_impact: SOUNDS.mech_landing_impact } : {};
+  const sfx = makeAudio({ seed: 3, persist: false, sounds: { ...STORY_SOUNDS, tank_spool_up: SOUNDS.tank_spool_up, tank_spool_down: SOUNDS.tank_spool_down, ...flightSounds } });
   sfx.arm();
   const cueLog = [];
   const cue = (key, o) => { cueLog.push(key); if (cueLog.length > 40) cueLog.shift(); sfx.play(key, o); };
@@ -65,7 +72,7 @@ export function initStoryTab(root) {
     if (heard.down && !was.down) cue('tank_spool_down');
     if (heard.door && !was.door) cue('tank_spool_up', { rate: 0.85 });
   }
-  const sequence = makeLandingSequence(LANDING_DEFAULTS);
+  const sequence = makeLandingSequence(manualMode ? STORY_ARRIVAL_MANUAL.landing : LANDING_DEFAULTS);
   const rail = compileRail(RAIL);
   let t = sequence.duration, playing = false, onRail = false, last = performance.now();
   const clock = { time: 0 };
@@ -104,17 +111,61 @@ export function initStoryTab(root) {
     camera.position.set(p[0], p[1], p[2]); camera.fov = pose.fov; camera.updateProjectionMatrix();
     controls.target.set(l[0], l[1], l[2]); camera.lookAt(controls.target);
   }
+  // THE LANDING FLOWN (2026-11-07, ?manual=1): from L, at LANDING_GAME.approach.overrideAt the lab's own host (src/fx/manual-landing.js)
+  // takes the rocket, seeded from the entry as the game's (?seed=, 'lab' by default), and the sequence's clock stands still until the
+  // ground; on the contact the sequence resumes at its touchdown with the rocket left where it touched (the game's placedLanded), so
+  // the owner judges the spot the game would show. The camera is the lab's OrbitControls, framed once on the corridor at the override;
+  // the chase and the glare are the game's. `armed` from L to the override, `flight` the host while it flies, `flown` its last state
+  // (the verdict once touched), `lhud` the instruments, kept with the verdict until R, L or K
+  let armed = false, flight = null, flown = null, lhud = null, overrideT = 0, statusText = '';
+  // the bare sphere under the island's tangent plane, as the arrival's floorAt (src/fx/arrival.js), R the planet's radius in metres
+  const floorAt = (x, z) => { const R = planet.radius, l = Math.hypot(x / R, 1, z / R); return { y: -(x * x + z * z) / (2 * R), normal: [x / R / l, 1 / l, z / R / l] }; };
+  const fixed = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '-');
+  function flightLine(st) {
+    const nums = `sink ${fixed(st.sink)} m/s, drift ${fixed(st.drift)} m/s, tilt ${fixed(st.tilt * 180 / Math.PI)} deg, fuel ${fixed(st.fuel)} s`;
+    return st.grade ? `LANDING · ${st.grade} (${st.reason}): ${nums}, at x ${fixed(st.x)} z ${fixed(st.z)} m. R resets, L flies again.`
+      : `${st.phase.toUpperCase()} · alt ${fixed(st.altitude)} m, ${nums}, throttle ${fixed(st.throttle, 2)}, legs ${fixed(st.legs, 2)}, x ${fixed(st.x)} z ${fixed(st.z)}. W/S throttle, A/D tilt, L legs.`;
+  }
+  function startFlight() {
+    armed = false; audioSync(null, false);   // the host's own thrust bed takes over
+    landing.flying(true);
+    lhud = createLandingHud(document.body);
+    // the host's frame is the holder's parent's: the lift hangs under the island's basis, so island metres go in as they are (the
+    // game's holder hangs in the world, whose toWorld is the site's matrix); the reticle is laid in that same frame
+    flight = createManualLanding({ game: LANDING_GAME, entry: seedEntry(q.get('seed') ?? 'lab', LANDING_GAME), rocket: { holder: landing.holder() }, plumes: landing.plumes(), camera, sfx, hud: lhud,
+      toWorld: (p, out) => out.set(p[0], p[1], p[2]), up: new THREE.Vector3(0, 1, 0), floorAt, root: landing.frame(), clipScrub: landing.scrub });
+    flight.begin(0); overrideT = 0; flown = flight.state();
+    // high over the corridor from +x and behind the pad (measured in the headless lab, 2026-11-07): the rocket at the entry's 350 m in the
+    // upper frame, the pad and the reticle on it in the lower; side-on from 200 m up the clearing's rim hid the pad
+    onRail = false; frameCamera({ pos: [300, 520, -120], look: [0, 120, 30], fov: 50 }); controls.update();
+  }
+  function flightTick(dt) {
+    overrideT += dt; if (flight.phase() === 'override' && overrideT >= LANDING_GAME.override.seconds) flight.manual();
+    const ph = flight.tick(dt); flown = flight.state(); status.textContent = flightLine(flown);
+    if (ph !== 'touched') return;
+    const p = flight.pose(), g = floorAt(p.x, p.z);
+    if (flight.contact().reason !== 'skipped') landing.place([p.x, g.y, p.z], g.normal);
+    flight.dispose(); flight = null; landing.flying(false);
+    heard = { legs: true, down: false, door: false };   // the legs are down: the shock's pneumatics next, no second legs cue
+    seek(sequence.touchdown);
+  }
+  function endFlight() {   // R, L, K, O, a seek: the host and its panel go, the rocket back on the pad
+    armed = false; flight?.dispose(); flight = null; lhud?.dispose(); lhud = null; flown = null;
+    if (landing) { landing.flying(false); landing.place(null); }
+    if (statusText) status.textContent = statusText;
+  }
   function seek(time) {
     t = Math.max(0, Math.min(sequence.duration, time));
     const state = sequence.stateAt(t);
+    if (manualMode && !flown && t < sequence.touchdown) state.clips.Legs_Deploy = null;   // the flown approach keeps the legs stowed: they are the player's (the arrival's apply)
     landing?.apply(state, t);
     audioSync(state, playing);
     if (onRail) frameCamera(rail.poseAt(t));
   }
-  function land() { onRail = true; playing = true; heard = null; seek(0); }
-  function skip() { playing = false; onRail = true; seek(sequence.duration); onRail = false; controls.update(); }
-  function reset() { playing = false; onRail = false; seek(sequence.duration); frameCamera(rail.poseAt(sequence.duration)); controls.update(); }
-  function overview() { playing = false; onRail = false; seek(sequence.duration); frameCamera({ pos: [120, 210, 300], look: [0, 0, -40], fov: 40 }, { x: 0, z: 0 }); controls.update(); }
+  function land() { endFlight(); onRail = true; playing = true; heard = null; seek(0); armed = manualMode; }
+  function skip() { endFlight(); playing = false; onRail = true; seek(sequence.duration); onRail = false; controls.update(); }
+  function reset() { endFlight(); playing = false; onRail = false; seek(sequence.duration); frameCamera(rail.poseAt(sequence.duration)); controls.update(); }
+  function overview() { endFlight(); playing = false; onRail = false; seek(sequence.duration); frameCamera({ pos: [120, 210, 300], look: [0, 0, -40], fov: 40 }, { x: 0, z: 0 }); controls.update(); }
 
   function build() {
     if (disposed) return;   // the lab closed inside the 30 ms before its deferred build (2026-09-25): build nothing into a disposed scene
@@ -128,7 +179,7 @@ export function initStoryTab(root) {
     marker = buildMouthMarker(planet, look); if (marker) scene.add(marker);
     setStage(stage);
     const c = planetMesh.userData.counts;
-    status.textContent = `${c.cells.toLocaleString()} cells, radius ${planet.radius.toFixed(0)} m, built in ${(built / 1000).toFixed(1)} s. ${planet.clearing.mouths.length} lane mouths, one open and gate-sized. L to land.`;
+    status.textContent = statusText = `${c.cells.toLocaleString()} cells, radius ${planet.radius.toFixed(0)} m, built in ${(built / 1000).toFixed(1)} s. ${planet.clearing.mouths.length} lane mouths, one open and gate-sized. L to ${manualMode ? 'fly the landing' : 'land'}.`;
     reset();
   }
   controls.addEventListener('start', () => { onRail = false; });
@@ -150,7 +201,8 @@ export function initStoryTab(root) {
     if (!active || disposed) return;
     frameId = requestAnimationFrame(loop);
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; clock.time += dt;
-    if (playing) { seek(t + dt); if (t >= sequence.duration) { playing = false; onRail = false; audioSync(sequence.stateAt(t), false); } }
+    if (flight) flightTick(dt);   // the flight holds the sequence's clock
+    else if (playing) { seek(t + dt); if (armed && t >= LANDING_GAME.approach.overrideAt) startFlight(); else if (t >= sequence.duration) { playing = false; onRail = false; audioSync(sequence.stateAt(t), false); } }
     landing?.tick(dt, camera); base?.tick(dt, null, gateForced, camera.position); daylight.tick(dt);
     if (!onRail) controls.update();
     renderer.render(scene, camera);
@@ -160,12 +212,12 @@ export function initStoryTab(root) {
     dispose() {
       if (disposed) return; disposed = true; active = false; cancelAnimationFrame(frameId);
       removeEventListener('resize', resize); removeEventListener('keydown', onKey);
-      thrust?.stop(0); sfx.dispose(); landing?.dispose(); base?.dispose(); planetMesh?.userData.dispose(); marker?.userData.dispose(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
+      endFlight(); thrust?.stop(0); sfx.dispose(); landing?.dispose(); base?.dispose(); planetMesh?.userData.dispose(); marker?.userData.dispose(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
     },
   };
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
-    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, comms: commsEl.hidden ? null : commsEl.textContent, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate(), lod: base.lod() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
-    land, skip, seek: (time) => { onRail = true; seek(time); }, reset, overview, setStage, gate: (on) => { gateForced = on; }, baseReady: () => base?.ready, dispose: api.dispose,
+    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, comms: commsEl.hidden ? null : commsEl.textContent, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate(), lod: base.lod() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors, manual: flown }),
+    land, skip, seek: (time) => { endFlight(); onRail = true; seek(time); }, reset, overview, setStage, gate: (on) => { gateForced = on; }, baseReady: () => base?.ready, dispose: api.dispose,
     frame: (pose, about) => { playing = false; onRail = false; frameCamera(pose, about); controls.update(); },   // a free framing for screenshots: metres around `about` (an island, or {x,z})
     daylight: () => daylight.state(), setDay: (phase) => daylight.set(phase),
   };
