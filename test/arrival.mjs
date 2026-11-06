@@ -6,6 +6,7 @@ import * as THREE from '../vendor/three.module.js';
 import { createArrival } from '../src/fx/arrival.js';
 import { STORY_ARRIVAL } from '../src/content/story-defaults.js';
 import { BRIEFS, lineDwell } from '../src/isaobriefs.js';
+import { LANDING_GAME } from '../src/content/landing-game.js';
 
 const METRES = 1 / 753, HOVER = 1 + 18.6 * METRES, CLIPS = { Legs_Deploy: 2.4, Landing_Shock: 2, Top_Door_Open: 1.8 };
 const site = new THREE.Matrix4().makeTranslation(0, 1, 0);   // the landing island at the pole of a unit sphere: +y up, +z toward the pole
@@ -147,5 +148,27 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
   assert.equal(vis(w2, 'sh02'), false, 'a rocket that loads after the release does not stand next to its own salvage'); assert.equal(vis(w2, 'sh02-salvage'), true);
   w2.base.conceal('sh02-salvage'); run(w2, a2, 0.5); assert.equal(vis(w2, 'sh02-salvage'), false, 'once: a later conceal (a burn) stands');
   w2.base.load('foundry'); run(w2, a2, 0.1); assert.equal(vis(w2, 'foundry'), true);
+}
+// THE LANDING FLOWN, the skip pays no grade (2026-11-07, the final review; the owner's call 1: the grade is for a flown landing): a skip
+// mid-flight is graded CLEAN for the record but the foundry is left as today (no salvage call: no CLEAN bonus barrel for Esc), the talk the
+// plain one; a flown contact (no input: a WRECK) does set the salvage. The flight shot passes no keys (the host takes the flight keys), Esc skips it
+{
+  const fly = () => {
+    const w = world(), salvaged = [], shots = []; w.beats.salvage = (x) => salvaged.push(x);
+    const start = w.api.startShot; w.api.startShot = (sh) => { shots.push(sh); start(sh); };
+    const a = createArrival({ on: true, base: w.base, beats: w.beats, site, metres: METRES, manual: true }); w.isao = true;
+    for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
+    for (let i = 0; i < 60 * 20 && !a.state().landing; i++) w.frame(1 / 60, a);
+    return { w, a, salvaged, shots };
+  };
+  { const { w, a, salvaged, shots } = fly(); assert.ok(a.state().landing, 'the override began');
+    const flight = shots.at(-1); assert.deepEqual([flight.id, flight.passKeys, flight.skipKey], ['arrivalFlight', false, 'Escape'], 'the flight shot eats what the host does not take; Esc skips');
+    assert.equal(a.landing('skip'), true); run(w, a, 0.1);
+    assert.deepEqual([a.state().landing.grade, a.state().landing.reason], ['CLEAN', 'skipped']); assert.deepEqual(salvaged, [], 'a skip pays no salvage');
+    const rail = shots.at(-1); assert.deepEqual([rail.id, rail.skipKey, rail.lockFor], ['arrival', 'Escape', LANDING_GAME.touchdown.lockSeconds], 'the resumed rail: locked, then Esc (a tap on a phone)');
+    run(w, a, 30); assert.equal(a.state().talkBrief, 'arrival_talk', 'the plain talk'); assert.ok(w.log.some(([k, id]) => k === 'brief' && id === 'arrival_talk')); }
+  { const { w, a, salvaged } = fly();
+    for (let i = 0; i < 60 * 40 && a.state().phase === 'landing' && a.state().landing?.phase !== 'done'; i++) w.frame(1 / 60, a);
+    assert.equal(a.state().landing.grade, 'WRECK', `no input is a wreck (${JSON.stringify(a.state().landing)})`); assert.deepEqual(salvaged.map((x) => x.sections), [2], 'a flown contact sets the salvage'); }
 }
 console.log(`Arrival: waits for the rocket, its salvage, the foundry and Isao; lands; swaps on the cut to his face; ${talk.toFixed(1)} s of lines; skips and give-ups land on the same end state.`);

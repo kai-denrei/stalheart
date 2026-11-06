@@ -1,5 +1,7 @@
 // Story planet, clearing, terrace and arrival tunables. Pure data; the
 // domain modules take these as explicit configuration.
+import { LANDING_GAME } from './landing-game.js';
+
 export const STORY_RECIPE = Object.freeze({
   seed: 7, points: 16000, k: 12, relaxIters: 80, pullRate: 0.25,
   rooms: 384, roomRadius: 4, extraCorridors: 192, corridorWidth: 1,
@@ -57,6 +59,16 @@ export const STORY_ARRIVAL = Object.freeze({
   talk: Object.freeze({ fov: 20, brief: 'arrival_talk' }),
   wait: 30,
 });
+
+// THE FLOWN ARRIVAL (owner, 2026-11-07; src/content/landing-game.js, src/fx/arrival.js): the same sequence from higher and slower, so the
+// override has room; every rail key at or after the old touchdown moves with the new one, the keys before it keep their place
+export const STORY_ARRIVAL_MANUAL = (() => {
+  const a = LANDING_GAME.approach, base = STORY_ARRIVAL.landing, down = base.orbit + base.descent, shift = a.descent - base.descent;
+  return Object.freeze({ ...STORY_ARRIVAL,
+    landing: Object.freeze({ ...base, descent: a.descent, startAltitude: a.startAltitude, deployAltitude: a.deployAltitude }),
+    rail: Object.freeze(STORY_ARRIVAL.rail.map((k) => Object.freeze({ ...k, t: k.t >= down ? k.t + shift : k.t }))),
+  });
+})();
 
 // Story-only cues; the lab merges these with the tank pneumatics from the
 // shared manifest. Same budget fields as audiomanifest.js.

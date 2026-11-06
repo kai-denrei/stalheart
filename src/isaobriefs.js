@@ -119,6 +119,22 @@ export const BRIEFS = {
     id: 'arrival_talk', face: 'angry', faces: ['angry', 'glee', 'determined'], dwell: [1.0, 1.1, 2.6], title: 'COMMS · ISAO',
     lines: ['Rough landing!', 'So much to build!', 'I\'ll cannibalize the rocket to get the terraforming started.'],
   },
+  // THE LANDING (owner, 2026-11-07; docs/superpowers/specs/2026-11-07-landing-mini-game-design.md sections 7-8, src/content/landing-game.js
+  // LANDING_GAME.lines): `override` as the auto-lander lets go and the player has the stick; the close-up's lines graded by the touchdown,
+  // `arrival_talk` itself for a HARD one. A wreck's fourth line is dwelt and faced like the rest (lineDwell, the brief queue's `faces`).
+  // Captions until recorded (no voice list in this file; the recordings' list is ~/Dev/seiyu_voice)
+  override: {
+    id: 'override', face: 'scan', title: 'COMMS · ISAO', dwell: [2.2],
+    lines: ["Auto-lander's gone. You have the stick."],
+  },
+  arrival_talk_clean: {
+    id: 'arrival_talk_clean', face: 'glee', faces: ['glee', 'glee', 'determined'], dwell: [1.0, 1.1, 2.6], title: 'COMMS · ISAO',
+    lines: ['Textbook landing!', 'So much to build!', 'I\'ll cannibalize the rocket to get the terraforming started.'],
+  },
+  arrival_talk_wreck: {
+    id: 'arrival_talk_wreck', face: 'angry', faces: ['angry', 'glee', 'determined', 'angry'], dwell: [1.0, 1.1, 2.6, 1.6], title: 'COMMS · ISAO',
+    lines: ['Rough landing!', 'So much to build!', 'I\'ll cannibalize the rocket to get the terraforming started.', "Less to cannibalize than I'd hoped."],
+  },
   tremor: {
     id: 'tremor', face: 'scan', title: 'TREMOR DETECTED', once: true,
     lines: ['Tremor on the radar. Far out, past the tunnel.', 'Something is coming up through the ground.'],

@@ -6,6 +6,8 @@
 // before the player's first click, tap or key, and the CTA is that gesture. Isao says WELCOME! and "Let's settle a new planet
 // together!" as soon as the sound can start (at once, or on the first click or key that is not the CTA), and "Ad Astra Per Aspera"
 // on START; the landing waits for that line (`opened` turns true as it ends), and the voice is freed for the mission line after it.
+// THE LANDING'S OFFER (2026-11-07, spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md section 8): on a later start (`offer`)
+// a smaller FLY THE LANDING beside START, SPACE its key; it opens the gate as START does, with `choice` 'fly' (src/fx/arrival.js reads it).
 import { isaoSay, isaoFree } from './isao-voice.js';
 import { createWireframeStage } from './wireframe-stage.js';
 
@@ -34,16 +36,19 @@ const HTML = `<div class="wg"><div class="edition"><span>✳ A6 INTERSTELLAR REL
 <h2>${s.h}</h2><p>${s.p}</p><p class="aside">${s.aside}</p><button class="stamp" type="button" aria-pressed="false" data-done="${s.done}">${s.stamp} <span>＋</span></button></li>`).join('')}</ol>
 <footer class="guide-footer"><div class="towel-note"><svg viewBox="0 0 60 62" aria-hidden="true"><path d="M14 8 46 4 52 48 20 54Z M18 14 47 10 M19 18 48 14 M23 43 50 39 M24 47 51 43 M20 54l1 5m5-6 1 5m5-6 1 5m5-6 1 5m5-6 1 5"/></svg><div><strong>Don't forget your towel!</strong><span>THE MOST IMPORTANT PIECE OF EQUIPMENT. OBVIOUSLY.</span></div></div>
 <div class="completion"><span class="progress" role="status">0 / 4 STAMPS · YOUR ADVENTURE AWAITS</span></div></footer>
-<div class="cta-row"><button type="button" class="wg-cta" data-start>START A NEW PLANET <span>→</span></button></div>
+<div class="cta-row"><button type="button" class="wg-cta" data-start>START A NEW PLANET <span>→</span></button>__FLY__</div>
 <div class="fineprint">A6 FIELD NOTES / Models by jelaludo · Dyson link: future story concept; collectors orbit the star.</div></div>
 <div class="wg-pop" hidden><canvas></canvas><b></b><span></span></div>`;
 
-// root: the DOM parent; sfx: the sound engine (for Isao); onOpen(): the player started. Returns { opened, dispose }
-export function createStartGate(root, { onOpen = null, sfx = null } = {}) {
-  if (!root || typeof document === 'undefined') return { opened: true, dispose() {} };
-  const el = document.createElement('div'); el.id = 'start-gate'; el.innerHTML = HTML;
+const FLY = '<button type="button" class="wg-fly" data-fly>FLY THE LANDING <kbd>SPACE</kbd></button>';
+
+// root: the DOM parent; sfx: the sound engine (for Isao); onOpen(): the player started; offer: FLY THE LANDING beside START.
+// Returns { opened, starting, choice ('start' or 'fly'), dispose }
+export function createStartGate(root, { onOpen = null, sfx = null, offer = false } = {}) {
+  if (!root || typeof document === 'undefined') return { opened: true, choice: 'start', dispose() {} };
+  const el = document.createElement('div'); el.id = 'start-gate'; el.innerHTML = HTML.replace('__FLY__', offer ? FLY : '');
   root.append(el);
-  const gate = { opened: false, starting: false, dispose }, cta = el.querySelector('[data-start]'), pop = el.querySelector('.wg-pop');
+  const gate = { opened: false, starting: false, choice: 'start', dispose }, cta = el.querySelector('[data-start]'), fly = el.querySelector('[data-fly]'), pop = el.querySelector('.wg-pop');
   let welcomed = false, stage = null, raf = 0, last = 0, popFor = null, hideT = 0;
 
   // ISAO'S WELCOME: now if the sound already runs, else on the first gesture that is not START (that one gets Ad Astra)
@@ -100,18 +105,21 @@ export function createStartGate(root, { onOpen = null, sfx = null } = {}) {
   }
   el.addEventListener('scroll', () => hide(true), { passive: true });
 
-  // START: Ad Astra Per Aspera, the guide fades, and the landing begins as the line ends
-  function start() {
-    if (gate.starting) return; gate.starting = true; hide(true); hush();
-    removeEventListener('pointerup', firstGesture); removeEventListener('keyup', firstGesture);
+  // START (or FLY THE LANDING): Ad Astra Per Aspera, the guide fades, and the landing begins as the line ends
+  function start(choice = 'start') {
+    if (gate.starting) return; gate.starting = true; gate.choice = choice; hide(true); hush();
+    removeEventListener('pointerup', firstGesture); removeEventListener('keyup', firstGesture); removeEventListener('keydown', onSpace, true);
     const line = isaoSay(sfx, 'ad_astra', { force: true });
     el.classList.add('out');
     setTimeout(() => { isaoFree(); gate.opened = true; dispose(); onOpen?.(); }, line ? (line.duration + 0.25) * 1000 : 600);
   }
-  cta.addEventListener('click', start);
+  cta.addEventListener('click', () => start());
+  // SPACE flies (the 2D game's key): taken in capture before a focused button's own Space, so it never presses START instead
+  const onSpace = (e) => { if (e.key !== ' ' || gate.starting) return; e.preventDefault(); e.stopImmediatePropagation(); start('fly'); };
+  if (fly) { fly.addEventListener('click', () => start('fly')); addEventListener('keydown', onSpace, true); }
   // ALL SYSTEMS NOMINAL (owner, 2026-10-07, lab 144: 'when the player hovers on the beginning start button'), once the sound can start
   cta.addEventListener('pointerenter', () => { if (!sfx?.ready || gate.starting || performance.now() < voiceTill) return; const line = isaoSay(sfx, 'welcome_nominal', { force: true }); if (line) voiceTill = performance.now() + line.duration * 1000; });
   queueMicrotask(() => cta.focus({ preventScroll: true }));   // Enter starts too
-  function dispose() { hide(true); removeEventListener('pointerup', firstGesture); removeEventListener('keyup', firstGesture); el.classList.add('out'); setTimeout(() => el.remove(), 500); }
+  function dispose() { hide(true); removeEventListener('pointerup', firstGesture); removeEventListener('keyup', firstGesture); removeEventListener('keydown', onSpace, true); el.classList.add('out'); setTimeout(() => el.remove(), 500); }
   return gate;
 }

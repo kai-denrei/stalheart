@@ -1584,6 +1584,85 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`${T}.rover.spend(${PEARLS.capacity})`);
  await until(`${T}.rover.state().mode!=='full'`,20000).catch(async()=>assert.fail(`a spend lets it unload (${JSON.stringify(await R())})`));
  current='rover-after';await finish();
+ } else if(args.includes('--landing')) {
+ // THE LANDING FLOWN (owner, 2026-11-07; spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md sections 8-9): five fresh pages, the
+ // acceptance page's planet seed fixed, so the seeded entry is the same each run. 1. the scripted pilot (the Task 7 fix flights' rule: legs down, the
+ // tilt toward a drift that returns to the pad, a half burn while the drift is off, the full burn at the stopping distance + 30 m) to CLEAN through the
+ // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK (`off-pad` on this seed: the entry's 8-12 m/s
+ // drift carries it ~95 m out before the sink can; `sink` would be the reason on the pad), two sections, the wreck's fourth caption. 3. the skip
+ // mid-flight (the still at ~200 m first: the rocket, the reticle on the ground): CLEAN · skipped, the plain talk, three sections. 4-5. a later start's
+ // offer on the START gate (`?landing=offer` stands in for the store's flag, `?gate=1` shows the gate on an acceptance page): taken by its FLY THE
+ // LANDING button it flies; START alone lands itself, no flight. Stills: landing-manual, landing-verdict, landing-wreck (+ each page's end).
+ const T='window.__stalheartTest',A=`${T}.state().arrival`,L=`${A}.landing`,st=()=>evaluate(`${T}.state()`),briefs=()=>evaluate('window.__seen?.briefs??[]');
+ const FLY='index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',OFFER='index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td';
+ const why=async(what)=>assert.fail(`${what} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,cut:a.cut,gate:a.gate,manual:a.manual,offer:a.offer,offered:a.offered,landing:a.landing})(${A})`))})`);
+ const PILOT=`(()=>{const T=window.__stalheartTest;(function f(){const L=T.state().arrival?.landing;if(!L||L.phase==='done'||L.phase==='touched')return;
+  if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.z*0.3)),e=want-L.vz;
+   const tiltWant=Math.max(-0.35,Math.min(0.35,e*0.08)),tr=Math.max(-1,Math.min(1,(tiltWant-L.tilt)*6));
+   T.landing('input',{throttle:stop+30>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}
+  requestAnimationFrame(f);})();})()`;   // 12 = LANDING_GAME.vehicle.thrust, 3.2 = sim.gravity: the stopping distance at full burn
+ // a flight page to the MANUAL phase: the override's glare and line, the store's flag
+ const toManual=async(name)=>{
+  await go(name,FLY);await evaluate(SEEN_LOG);
+  await until(`!!${T}&&${A}?.phase==='landing'`,120000).catch(()=>why('the arrival began'));
+  assert.equal(await evaluate(`${A}.manual`),true,'?landing=1 flies the landing');
+  await until(`!!${L}`,20000).catch(()=>why('the override came'));
+  {const s=await evaluate(L);assert.ok(['override','manual'].includes(s.phase),`OVERRIDE first (${JSON.stringify(s)})`);if(s.phase==='override')assert.equal(await evaluate('!!document.querySelector("#landing-glare")'),true,'the glare stands over the override');}
+  await until(`${L}?.phase==='manual'`,15000).catch(()=>why('MANUAL after the override'));
+  {const s=await evaluate(L);console.log(`  ${name}: MANUAL ${JSON.stringify(s)}`);assert.ok(s.altitude>=250&&s.altitude<=400,`the entry's altitude (${s.altitude})`);}
+  assert.equal(await evaluate(`${A}.flown`),true,'the store remembers the flight (td.landing.flown)');
+  await until(`(window.__seen?.briefs||[]).some(b=>/You have the stick/.test(b))`,5000).catch(async()=>assert.fail(`Isao's override line (${JSON.stringify(await briefs())})`));
+ };
+ const toContact=async(what)=>{await until(`(L=>!L||L.phase==='done')(${L})||${A}.phase!=='landing'`,60000).catch(()=>why(what));await delay(400);return evaluate(A);};
+ const toEnd=async(name)=>{await until(`${A}.phase==='talk'`,30000).catch(()=>why(`${name}: the talk`));const s=await st();
+  assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],`${name}: on the cut the rocket is the salvage and the AFR-01 (${JSON.stringify(s.arrival)})`);
+  await until(`${A}.phase==='done'`,30000).catch(()=>why(`${name}: the talk ends`));const e=await st();assert.deepEqual(errors,[],`${name}: browser errors`);
+  assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,`${name}: the panel removed at the end`);return {s:e,said:await briefs()};};
+ // the phases the clean flight passed through, once a frame in the page (2026-11-07, the final review: the flare was not asserted, so an
+ // unaided clean flight would have passed): FLARE must be seen before the contact
+ const PHASES=`(()=>{const T=window.__stalheartTest,P=window.__landingPhases=[];(function f(){const L=T.state().arrival?.landing;if(L&&P.at(-1)!==L.phase)P.push(L.phase);if(!L||L.phase!=='done')requestAnimationFrame(f);})();})()`;
+ {const t0=Date.now();await toManual('landing-clean');await evaluate(PHASES);await evaluate(PILOT);
+  const a=await toContact('the pilot to the contact'),g=a.landing;
+  {const P=await evaluate('window.__landingPhases');console.log(`  clean: phases ${P.join(' > ')}`);const f=P.indexOf('flare'),end=P.findIndex(p=>p==='touched'||p==='done');
+   assert.ok(f>=0&&(end<0||f<end),`the auto-lander's FLARE before the touch (${P.join(' > ')})`);}console.log(`  clean: ${JSON.stringify(g)}, panel "${await evaluate(`document.querySelector('#landing-hud')?.innerText.replace(/\\s+/g,' ')`)}", ${((Date.now()-t0)/1000).toFixed(0)} s`);
+  assert.equal(g.grade,'CLEAN',`the scripted pilot lands CLEAN (${JSON.stringify(g)})`);assert.notEqual(g.reason,'skipped','flown, not skipped');assert.ok(g.landed&&Math.hypot(g.landed[0],g.landed[2])<14,`on the pad (${JSON.stringify(g.landed)})`);
+  assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/CLEAN/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_clean');
+  current='landing-verdict';await finish();
+  const {s,said}=await toEnd('landing-clean');console.log(`  clean: foundry ${JSON.stringify(s.story.foundry)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
+  assert.equal(s.story.foundry.sections,3,'all three sections');assert.ok(said.some(b=>/Textbook landing!/.test(b)),`the clean talk (${JSON.stringify(said.slice(-4))})`);}
+ {const t0=Date.now();await toManual('landing-wreck');   // no input at all
+  const a=await toContact('no input to the contact'),g=a.landing;console.log(`  wreck: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
+  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.ok(['sink','off-pad'].includes(g.reason),`a no-burn wreck reads sink or off-pad (${g.reason})`);
+  assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/WRECK/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_wreck');
+  await finish();
+  const {s,said}=await toEnd('landing-wreck');console.log(`  wreck: foundry ${JSON.stringify(s.story.foundry)}`);
+  assert.equal(s.story.foundry.sections,2,'the tank section is gone');assert.ok(said.some(b=>/Less to cannibalize/.test(b)),`the wreck's fourth caption (${JSON.stringify(said.slice(-4))})`);}
+ {await toManual('landing-skip');
+  await until(`(L=>!L||L.phase!=='manual'||L.altitude<=200)(${L})`,30000).catch(()=>why('down to 200 m'));
+  {const s=await evaluate(L),v=await evaluate(`${A}.view`);console.log(`  manual still: ${JSON.stringify(s)}, view ${JSON.stringify(v)}`);assert.equal(s?.phase,'manual','still flying at 200 m');}
+  current='landing-manual';await finish();   // the rocket from behind, the reticle on the ground, the disk low in the frame
+  assert.equal(await evaluate(`${T}.landing('skip')`),true,'the skip mid-flight');
+  const a=await toContact('the skip to the contact'),g=a.landing;console.log(`  skip: ${JSON.stringify(g)}`);
+  assert.deepEqual([g.grade,g.reason,g.landed],['CLEAN','skipped',null],'a skip is CLEAN, on the pad');assert.equal(a.talkBrief,'arrival_talk','the plain talk');
+  const {s,said}=await toEnd('landing-skip');assert.equal(s.story.foundry.sections,3,'the CLEAN salvage');assert.ok(!said.some(b=>/Textbook landing!|Less to cannibalize/.test(b)),'no graded line');
+  current='landing-skip';await finish();}
+ for(const take of [true,false]){const name=take?'landing-offer-taken':'landing-offer-left';
+  await go(name,OFFER);await evaluate(SEEN_LOG);
+  await until(`!!${T}&&${A}?.gate==='shown'`,120000).catch(()=>why(`${name}: the gate`));
+  assert.equal(await evaluate(`!!document.querySelector('#start-gate [data-start]')`),true,'START on the gate');
+  assert.match(await evaluate(`document.querySelector('#start-gate [data-fly]')?.innerText??''`),/FLY THE LANDING/,'the gate offers the flight');
+  assert.deepEqual(await evaluate(`[${A}.offer,${A}.offered,${A}.phase]`),[true,false,'waiting'],'offered, not yet taken');
+  // taken: the gate's own FLY THE LANDING button, clicked (2026-11-07, the final review: the harness's landing('override') stood in for it), which
+  // opens the gate as START does; left: START alone
+  const btn=take?'#start-gate [data-fly]':'#start-gate [data-start]';
+  await evaluate(`document.querySelector('${btn}').scrollIntoView({block:'center'})`);await delay(300);await click(btn);
+  await until(`${A}.phase==='landing'`,30000).catch(()=>why(`${name}: START opens the landing`));
+  assert.deepEqual(await evaluate(`[${A}.manual,${A}.offered]`),[take,take],take?'FLY THE LANDING flies it':'START alone lands itself');
+  if(take){await until(`${L}?.phase==='manual'`,30000).catch(()=>why('the offered flight'));assert.equal(await evaluate(`${T}.state().shot`),'arrivalFlight','the chase shot');assert.equal(await evaluate(`${T}.landing('skip')`),true);}
+  else{await delay(5000);assert.equal(await evaluate(L),null,'no flight without the ask');assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,'no panel');}
+  await until(`${A}.phase==='done'`,60000).catch(()=>why(`${name}: the arrival ends`));
+  {const a=await evaluate(A);console.log(`  ${name}: landing ${JSON.stringify(a.landing)}, talk ${a.talkBrief}`);assert.equal(a.talkBrief,'arrival_talk','the plain talk');if(take)assert.deepEqual([a.landing?.grade,a.landing?.reason],['CLEAN','skipped']);else assert.equal(a.landing,null);}
+  await finish();}
  } else if(args.includes('--antenna-print')) {
  // THE ANTENNA, PRINTED ON SCREEN (owner, 2026-11-02, round 4 note 4): the grown base of sector 4 has its radar standing and the call made at the load,
  // due eight days on; the harness replays the radar's print under the close-up (antennaPrint(): the real path is the radar step at sector 2, --grow):

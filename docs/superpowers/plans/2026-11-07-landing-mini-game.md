@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Pure modules in `src/domain` and `src/content` import nothing from `src/fx`, `src/platform` or three.js; `npm run architecture` enforces it. Hosts in `src/fx`.
+- Pure modules in `src/domain` and `src/content` import nothing from `src/fx`, `src/platform` or three.js, and `src/domain` never imports `src/content` (the architecture guard rejects it): every domain function takes the tune as a REQUIRED argument (`tune`), and hosts and tests pass `LANDING_GAME` in. `npm run architecture` enforces it. Hosts in `src/fx`.
 - `src/td-tab.js` is 5,340 lines under a 5,450 ceiling with a long-line budget of 0: no line over 500 characters, and at most the three one-line additions this plan names.
 - Every number tunable lives in `LANDING_GAME` (`src/content/landing-game.js`), frozen, with its rationale beside it. Nothing tunable in logic.
 - Metres around the landing island as `src/domain/landing-sequence.js` measures them: x and z along the ground, y up, +z toward the pole. The host converts with the arrival's `toWorld`.
@@ -52,7 +52,7 @@
 - Test: `test/manual-landing.mjs`, `test/landing-game.mjs`
 
 **Interfaces:**
-- Produces: `LANDING_GAME` (frozen literal); `createLanding(entry)` → state `{ x, y, z, vx, vy, vz, tilt, tiltRate, throttle, set, fuel, legs, legsDown, t, phase }`; `step(state, input, dt, tune = LANDING_GAME)` → the same object mutated and returned; `input = { throttle: 0..1 | null, tiltRate: -1..1, legs: boolean }`.
+- Produces: `LANDING_GAME` (frozen literal); `createLanding(entry)` → state `{ x, y, z, vx, vy, vz, tilt, tiltRate, throttle, set, fuel, legs, legsDown, t, phase }`; `step(state, input, dt, tune)` → the same object mutated and returned; `input = { throttle: 0..1 | null, tiltRate: -1..1, legs: boolean }`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -89,46 +89,46 @@ const entry = { altitude: 350, sink: 35, drift: 10, tilt: 0.3, fuelSeconds: 20, 
 { // the throttle follows its set point at the spool rate and burns fuel only when thrusting
   const s = createLanding(entry);
   assert.equal(s.throttle, 0); assert.equal(s.fuel, 20);
-  step(s, { throttle: 1, tiltRate: 0, legs: false }, DT);
+  step(s, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
   assert.ok(Math.abs(s.throttle - T.vehicle.spool * DT) < 1e-9, 'one step of spool');
   const fuel0 = s.fuel;
-  for (let i = 0; i < 120; i++) step(s, { throttle: 1, tiltRate: 0, legs: false }, DT);
+  for (let i = 0; i < 120; i++) step(s, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
   assert.equal(s.throttle, 1, 'spooled to full within a second');
   assert.ok(s.fuel < fuel0, 'fuel burns'); assert.ok(s.fuel > fuel0 - 1.01, 'a second of full burn costs a second of fuel at most');
-  const s2 = createLanding(entry); for (let i = 0; i < 120; i++) step(s2, { throttle: 0, tiltRate: 0, legs: false }, DT);
+  const s2 = createLanding(entry); for (let i = 0; i < 120; i++) step(s2, { throttle: 0, tiltRate: 0, legs: false }, DT, T);
   assert.equal(s2.fuel, 20, 'no burn, no fuel spent');
 }
 { // gravity pulls, thrust along the axis pushes; no fuel, no thrust
   const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 });
-  step(s, { throttle: 0, tiltRate: 0, legs: false }, DT);
+  step(s, { throttle: 0, tiltRate: 0, legs: false }, DT, T);
   assert.ok(s.vy < 0, 'falls');
   const f = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0, fuelSeconds: 0 }); f.throttle = 1;
-  step(f, { throttle: 1, tiltRate: 0, legs: false }, DT);
+  step(f, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
   assert.equal(f.throttle, 0, 'dry: the throttle reads zero'); assert.ok(f.vy < 0, 'dry: falls');
 }
 { // the tilt aims the thrust: forward tilt pushes +z, back tilt -z
   const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0.3 }); s.throttle = 1; s.fuel = 10;
-  step(s, { throttle: 1, tiltRate: 0, legs: false }, DT);
+  step(s, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
   assert.ok(s.vz > 0, 'tilted forward, pushed forward');
   const b = createLanding({ ...entry, sink: 0, drift: 0, tilt: -0.3 }); b.throttle = 1; b.fuel = 10;
-  step(b, { throttle: 1, tiltRate: 0, legs: false }, DT);
+  step(b, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
   assert.ok(b.vz < 0, 'tilted back, pushed back');
 }
 { // deterministic: one timeline, one outcome; and the seeded entry is a pure function of its seed
-  const run = () => { const s = createLanding(entry); for (let i = 0; i < 600; i++) step(s, { throttle: i > 200 ? 1 : 0.3, tiltRate: i % 7 === 0 ? 1 : 0, legs: i > 100 }, DT); return JSON.stringify(s); };
+  const run = () => { const s = createLanding(entry); for (let i = 0; i < 600; i++) step(s, { throttle: i > 200 ? 1 : 0.3, tiltRate: i % 7 === 0 ? 1 : 0, legs: i > 100 }, DT, T); return JSON.stringify(s); };
   assert.equal(run(), run());
-  assert.deepEqual(seedEntry('planet-7'), seedEntry('planet-7'));
-  const e = seedEntry('planet-7');
+  assert.deepEqual(seedEntry('planet-7', T), seedEntry('planet-7', T));
+  const e = seedEntry('planet-7', T);
   assert.ok(e.altitude >= T.entry.altitude[0] && e.altitude <= T.entry.altitude[1]); assert.ok(e.sink >= T.entry.sink[0] && e.sink <= T.entry.sink[1]);
   assert.ok(Math.abs(e.drift) >= T.entry.drift[0] && Math.abs(e.drift) <= T.entry.drift[1]); assert.ok(Math.abs(e.tilt) >= T.entry.tilt[0] && Math.abs(e.tilt) <= T.entry.tilt[1]);
   assert.ok(e.fuelSeconds >= T.entry.fuelSeconds[0] && e.fuelSeconds <= T.entry.fuelSeconds[1]);
-  assert.notDeepEqual(seedEntry('planet-7'), seedEntry('planet-8'), 'another seed, another problem');
+  assert.notDeepEqual(seedEntry('planet-7', T), seedEntry('planet-8', T), 'another seed, another problem');
 }
 { // the legs deploy over legTime once asked, and stay down
   const s = createLanding(entry);
-  for (let i = 0; i < 12; i++) step(s, { throttle: 0, tiltRate: 0, legs: true }, DT);
+  for (let i = 0; i < 12; i++) step(s, { throttle: 0, tiltRate: 0, legs: true }, DT, T);
   assert.ok(s.legs > 0 && s.legs < 1, 'deploying'); assert.equal(s.legsDown, false);
-  for (let i = 0; i < 200; i++) step(s, { throttle: 0, tiltRate: 0, legs: false }, DT);
+  for (let i = 0; i < 200; i++) step(s, { throttle: 0, tiltRate: 0, legs: false }, DT, T);
   assert.equal(s.legs, 1); assert.equal(s.legsDown, true, 'down, and a later false does not retract them');
 }
 console.log('manual-landing: step ok');
@@ -155,6 +155,7 @@ export const LANDING_GAME = Object.freeze({
     torque: 3,           // rad/s² at full stick
     damping: 3.5,        // the tilt rate's decay a second
     legTime: 0.6,        // s to deploy the legs
+    legDrag: 0.0009,     // extra quadratic drag with the legs down (the 2D game's number)
     autoLegsAltitude: 200,   // m: the legs come down here on their own if the player has not asked
   }),
   // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry)
@@ -170,7 +171,7 @@ export const LANDING_GAME = Object.freeze({
   pad: Object.freeze({ reach: 14 }),   // m from the island's centre a foot may land and still be on the pad (the landing island is 16 x 16)
   // the arrival's clock around the window: the approach is the arrival's own sequence from higher, the override at `overrideAt` s of it
   approach: Object.freeze({ descent: 7, startAltitude: 900, overrideAt: 4.2, deployAltitude: 700 }),
-  override: Object.freeze({ seconds: 3, glare: 2.4, offerSeconds: 3 }),   // the alarm beat; the glare's length; the SPACE offer on a later start
+  override: Object.freeze({ seconds: 3, glare: Object.freeze({ seconds: 2.4, dim: 1000, peak: 8 }), offerSeconds: 3 }),   // the alarm beat; the glare's length and its exposure (the shader divides by it: dim is the quad plume's default, peak the height); the SPACE offer on a later start
   camera: Object.freeze({ back: 60, up: 34, ahead: 18, down: 10, fov: 46, lag: 0.12, jolt: 0.8 }),   // the chase: behind along -z, above, looking ahead and down
   reticle: Object.freeze({ metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), square: 10, segments: 48 }),
   hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10 }), predictorSeconds: 35, predictorDt: 0.15 }),
@@ -192,8 +193,6 @@ export const LANDING_GAME = Object.freeze({
 // fixed-step, deterministic: the same entry and input timeline give the same state. Ported from the owner's 2D game
 // (Stalsfar_Landing/landing/lander.js flightStep, evaluateTouchdown, predictImpact) onto the arrival's metres: x and z along the
 // ground, y up (the pad at 0), +z toward the pole; the tilt is about x, positive forward (+z); the rocket cannot hover at idle.
-import { LANDING_GAME } from '../content/landing-game.js';
-
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const lerp = (a, b, u) => a + (b - a) * u;
 
@@ -207,7 +206,7 @@ function rng(seed) {
 const pick = (r, [lo, hi]) => lerp(lo, hi, r());
 
 // the problem the override hands over, from this planet's seed
-export function seedEntry(seed, tune = LANDING_GAME) {
+export function seedEntry(seed, tune) {
   const r = rng(seed), e = tune.entry;
   return { altitude: pick(r, e.altitude), sink: pick(r, e.sink), drift: pick(r, e.drift) * (r() < 0.5 ? -1 : 1), tilt: pick(r, e.tilt) * (r() < 0.5 ? -1 : 1), fuelSeconds: pick(r, e.fuelSeconds), wind: e.wind };
 }
@@ -222,7 +221,7 @@ export function overrideSeed(altitude, rate, entry) {
 }
 
 // one fixed step. input: { throttle: the set point 0..1 (null keeps it), tiltRate: -1..1 (back..forward), legs: true asks for the legs }
-export function step(s, input, dt, tune = LANDING_GAME) {
+export function step(s, input, dt, tune) {
   const v = tune.vehicle, g = tune.sim.gravity;
   if (input.throttle != null) s.set = clamp(input.throttle, 0, 1);
   s.throttle += clamp(s.set - s.throttle, -v.spool * dt, v.spool * dt);
@@ -230,7 +229,7 @@ export function step(s, input, dt, tune = LANDING_GAME) {
   const lit = s.throttle > 0 ? Math.max(v.minThrottle, s.throttle) : 0;
   s.tiltRate += (clamp(input.tiltRate ?? 0, -1, 1) * v.torque - s.tiltRate * v.damping) * dt;
   s.tilt += s.tiltRate * dt;
-  const drag = tune.sim.drag + (s.legs >= 1 ? 0.0009 : 0), T = v.thrust * lit;
+  const drag = tune.sim.drag + (s.legs >= 1 ? v.legDrag : 0), T = v.thrust * lit;
   s.vz += (Math.sin(s.tilt) * T - drag * s.vz * Math.abs(s.vz)) * dt;
   s.vx += (s.wind - drag * s.vx * Math.abs(s.vx)) * dt;
   s.vy += (Math.cos(s.tilt) * T - g - drag * s.vy * Math.abs(s.vy)) * dt;
@@ -262,10 +261,11 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 **Files:**
 - Modify: `src/domain/manual-landing.js`
+- Modify: `src/content/landing-game.js` (add `vehicle.legDrag: 0.0009` with its rationale; Task 1's review found the number hardcoded in `step`: read it from the tune)
 - Test: `test/manual-landing.mjs` (append)
 
 **Interfaces:**
-- Produces: `hStop(state, tune)` → metres; `predictImpact(state, tune, groundY = 0)` → `{ x, z, t, reached }`; `verdict(state, slope, offPad, tune)` → `{ grade: 'CLEAN'|'HARD'|'WRECK', reason: 'sink'|'drift'|'tilt'|'legs'|'slope'|'off-pad', sink, drift, tilt }`; `flareDue(state, tune)` → boolean; `flareStep(state, dt, tune)` → state (the auto-lander's step, replaces `step` once due); `touched(state)` → boolean (`y <= 0`).
+- Produces (every one takes `tune` as a required last argument): `hStop(state, tune)` → metres; `predictImpact(state, tune, groundY = 0)` → `{ x, z, t, reached }`; `verdict(state, slope, offPad, tune)` → `{ grade: 'CLEAN'|'HARD'|'WRECK', reason: 'sink'|'drift'|'tilt'|'legs'|'slope'|'off-pad', sink, drift, tilt }`; `flareDue(state, tune)` → boolean; `flareStep(state, dt, tune)` → state (the auto-lander's step, replaces `step` once due); `touched(state)` → boolean (`y <= 0`).
 
 - [ ] **Step 1: Append the failing tests**
 
@@ -273,38 +273,38 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../src/domain/manual-landing.js';
 { // the stopping distance is v² / 2(T - g) at full thrust
   const s = createLanding({ ...entry, sink: 30, drift: 0, tilt: 0 });
-  assert.ok(Math.abs(hStop(s) - 30 * 30 / (2 * (T.vehicle.thrust - T.sim.gravity))) < 1e-9);
+  assert.ok(Math.abs(hStop(s, T) - 30 * 30 / (2 * (T.vehicle.thrust - T.sim.gravity))) < 1e-9);
   // and a full burn started at exactly that height stops within a few metres of the ground (the integrator against the formula)
-  const f = createLanding({ ...entry, sink: 30, drift: 0, tilt: 0, fuelSeconds: 60 }); f.y = hStop(f) + 6; f.throttle = 1; f.set = 1;   // +6: the spool is not instant
-  let lowest = f.y; for (let i = 0; i < 2400 && f.vy < 0; i++) { step(f, { throttle: 1, tiltRate: 0, legs: true }, DT); lowest = Math.min(lowest, f.y); }
+  const f = createLanding({ ...entry, sink: 30, drift: 0, tilt: 0, fuelSeconds: 60 }); f.y = hStop(f, T) + 6; f.throttle = 1; f.set = 1;   // +6: the spool is not instant
+  let lowest = f.y; for (let i = 0; i < 2400 && f.vy < 0; i++) { step(f, { throttle: 1, tiltRate: 0, legs: true }, DT, T); lowest = Math.min(lowest, f.y); }
   assert.ok(lowest > 0 && lowest < 12, `stops above the ground and near it (${lowest.toFixed(1)} m)`);
 }
 { // the predictor lands where the integrator lands, at the current throttle
   const s = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0 });
-  const p = predictImpact(s);
-  const q = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0 }); let t = 0; while (q.y > 0 && t < 60) { step(q, { throttle: 0, tiltRate: 0, legs: false }, DT); t += DT; }
+  const p = predictImpact(s, T);
+  const q = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0 }); let t = 0; while (q.y > 0 && t < 60) { step(q, { throttle: 0, tiltRate: 0, legs: false }, DT, T); t += DT; }
   assert.ok(p.reached); assert.ok(Math.abs(p.z - q.z) < 2, `predicted z ${p.z.toFixed(1)} against flown ${q.z.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3);
   const high = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 }); high.y = 1e6;
-  assert.equal(predictImpact(high).reached, false, 'beyond the predictor's horizon: not reached');
+  assert.equal(predictImpact(high, T).reached, false, "beyond the predictor's horizon: not reached");
 }
 { // the verdict: the worst axis names the reason; legs up, a slope or off the pad are wrecks whatever the speeds
   const base = { ...createLanding(entry), vy: -1, vx: 0, vz: 0.5, tilt: 0.02, legs: 1, legsDown: true };
-  assert.deepEqual(verdict({ ...base }, 0, false).grade, 'CLEAN');
-  assert.deepEqual([verdict({ ...base, vy: -4 }, 0, false).grade, verdict({ ...base, vy: -4 }, 0, false).reason], ['HARD', 'sink']);
-  assert.deepEqual([verdict({ ...base, vz: 5 }, 0, false).grade, verdict({ ...base, vz: 5 }, 0, false).reason], ['WRECK', 'drift']);
-  assert.deepEqual([verdict({ ...base, tilt: 0.1 }, 0, false).grade, verdict({ ...base, tilt: 0.1 }, 0, false).reason], ['HARD', 'tilt']);
-  assert.deepEqual([verdict({ ...base, legs: 0.4, legsDown: false }, 0, false).grade, verdict({ ...base, legs: 0.4, legsDown: false }, 0, false).reason], ['WRECK', 'legs']);
-  assert.deepEqual(verdict({ ...base }, 0.2, false).reason, 'slope'); assert.deepEqual(verdict({ ...base }, 0, true).reason, 'off-pad');
-  const v = verdict({ ...base, vy: -3.3, vz: -2.2, tilt: 0.05 }, 0, false);
+  assert.deepEqual(verdict({ ...base }, 0, false, T).grade, 'CLEAN');
+  assert.deepEqual([verdict({ ...base, vy: -4 }, 0, false, T).grade, verdict({ ...base, vy: -4 }, 0, false, T).reason], ['HARD', 'sink']);
+  assert.deepEqual([verdict({ ...base, vz: 5 }, 0, false, T).grade, verdict({ ...base, vz: 5 }, 0, false, T).reason], ['WRECK', 'drift']);
+  assert.deepEqual([verdict({ ...base, tilt: 0.1 }, 0, false, T).grade, verdict({ ...base, tilt: 0.1 }, 0, false, T).reason], ['HARD', 'tilt']);
+  assert.deepEqual([verdict({ ...base, legs: 0.4, legsDown: false }, 0, false, T).grade, verdict({ ...base, legs: 0.4, legsDown: false }, 0, false, T).reason], ['WRECK', 'legs']);
+  assert.deepEqual(verdict({ ...base }, 0.2, false, T).reason, 'slope'); assert.deepEqual(verdict({ ...base }, 0, true, T).reason, 'off-pad');
+  const v = verdict({ ...base, vy: -3.3, vz: -2.2, tilt: 0.05 }, 0, false, T);
   assert.equal(v.sink, 3.3); assert.equal(v.drift, 2.2); assert.ok(Math.abs(v.tilt - 0.05) < 1e-12, 'the readings are reported as flown');
 }
 { // the flare: due below its altitude inside its corridor, never above it or outside; and it settles the rocket to the ground
   const s = { ...createLanding(entry), y: 25, vy: -5, vz: 2, tilt: 0.1 };
-  assert.equal(flareDue(s), true); assert.equal(flareDue({ ...s, y: 40 }), false); assert.equal(flareDue({ ...s, vy: -9 }), false); assert.equal(flareDue({ ...s, vz: 6 }), false); assert.equal(flareDue({ ...s, tilt: 0.3 }), false);
-  let f = { ...s }; for (let i = 0; i < 3000 && !touched(f); i++) flareStep(f, DT);
+  assert.equal(flareDue(s, T), true); assert.equal(flareDue({ ...s, y: 40 }, T), false); assert.equal(flareDue({ ...s, vy: -9 }, T), false); assert.equal(flareDue({ ...s, vz: 6 }, T), false); assert.equal(flareDue({ ...s, tilt: 0.3 }, T), false);
+  let f = { ...s }; for (let i = 0; i < 3000 && !touched(f); i++) flareStep(f, DT, T);
   assert.ok(touched(f), 'lands'); assert.ok(Math.abs(f.vy) <= T.flare.sinkFinal + 0.05, `settles at the final sink (${f.vy.toFixed(2)})`);
   assert.ok(Math.abs(f.vz) < 0.2 && Math.abs(f.tilt) < 0.02 && f.legsDown, 'drift and tilt killed, legs down');
-  assert.equal(verdict(f, 0, false).grade, 'CLEAN', 'the auto-lander never crashes');
+  assert.equal(verdict(f, 0, false, T).grade, 'CLEAN', 'the auto-lander never crashes');
 }
 console.log('manual-landing: rules ok');
 ```
@@ -319,13 +319,13 @@ Expected: fails at the import, `does not provide an export named 'hStop'`.
 Append to `src/domain/manual-landing.js`:
 ```js
 // the height a full burn needs to stop the present sink: v² / 2(T − g), recomputed each frame (the brief; mass is not simulated)
-export function hStop(s, tune = LANDING_GAME) {
+export function hStop(s, tune) {
   const v = Math.max(0, -s.vy), a = tune.vehicle.thrust - tune.sim.gravity;
   return a > 0 ? v * v / (2 * a) : Infinity;
 }
 
 // where the rocket meets the ground if the throttle stays where it is: the reticle's centre and the ping's clock
-export function predictImpact(s, tune = LANDING_GAME, groundY = 0) {
+export function predictImpact(s, tune, groundY = 0) {
   const p = { ...s }, dt = tune.hud.predictorDt, hold = { throttle: null, tiltRate: 0, legs: false };
   for (let t = 0; t < tune.hud.predictorSeconds; t += dt) {
     step(p, hold, dt, tune);
@@ -337,7 +337,7 @@ export function predictImpact(s, tune = LANDING_GAME, groundY = 0) {
 export const touched = (s) => s.y <= 0;
 
 // the grade at first contact (spec 3): the worst axis decides and names the reason; legs up, a slope or off the pad are wrecks
-export function verdict(s, slope, offPad, tune = LANDING_GAME) {
+export function verdict(s, slope, offPad, tune) {
   const sink = Math.max(0, -s.vy), drift = Math.hypot(s.vx, s.vz), tilt = Math.abs(s.tilt), V = tune.verdict;
   const axes = [['sink', sink, V.clean.sink, V.hard.sink], ['drift', drift, V.clean.drift, V.hard.drift], ['tilt', tilt, V.clean.tilt, V.hard.tilt]];
   let worst = 0, reason = 'sink', ratio = -1;
@@ -352,13 +352,13 @@ export function verdict(s, slope, offPad, tune = LANDING_GAME) {
 }
 
 // the auto-lander takes back under flare.altitude when the state is inside its corridor (spec 2.4)
-export function flareDue(s, tune = LANDING_GAME) {
+export function flareDue(s, tune) {
   const f = tune.flare;
   return s.y <= f.altitude && -s.vy <= f.sink && Math.hypot(s.vx, s.vz) <= f.drift && Math.abs(s.tilt) <= f.tilt;
 }
 
 // the auto-lander's step: the tilt and the drift eased out over flare.settle, the sink eased to sinkFinal, the legs down, no fuel spent
-export function flareStep(s, dt, tune = LANDING_GAME) {
+export function flareStep(s, dt, tune) {
   const f = tune.flare, k = Math.min(1, dt / f.settle * 3);
   s.tilt += (0 - s.tilt) * k; s.tiltRate = 0;
   s.vx += (0 - s.vx) * k; s.vz += (0 - s.vz) * k;
@@ -639,7 +639,7 @@ console.log('landing-hud: ok');
 import { LANDING_GAME } from '../content/landing-game.js';
 
 const ROWS = [['alt', 'ALT', 'm'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', 'm/s'], ['tilt', 'TILT', '°'], ['tw', 'T/W', ''], ['stop', 'CAN STOP IN', 'm'], ['fuel', 'FUEL', 's']];
-export function createLandingHud(root, tune = LANDING_GAME) {
+export function createLandingHud(root, tune) {
   if (!root || typeof document === 'undefined') return { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, offer() {}, touch() {}, dispose() {} };
   const el = document.createElement('div'); el.id = 'landing-hud'; el.setAttribute('aria-live', 'polite'); el.hidden = true;
   const ann = document.createElement('div'); ann.id = 'lh-ann'; ann.className = 'lh-ann'; el.append(ann);
@@ -898,7 +898,7 @@ In `src/fx/arrival.js`:
         if (flying && t >= overrideAt && !flying.pose()) {   // OVERRIDE: the sequence's altitude and rate at this instant seed the flight
           const alt = shot.stateAt(t).altitude, rate = (shot.stateAt(t + 0.05).altitude - alt) / 0.05;
           flying.begin(alt, rate); api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
-          glare = startLandingGlare(globalThis.document?.body, { seconds: LANDING_GAME.override.glare, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });
+          glare = startLandingGlare(globalThis.document?.body, { ...LANDING_GAME.override.glare, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });   // the glare's seconds, dim and peak exposure are the tune's (Task 6's fix: the shader divides by the exposure)
           api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: true, onEnd: () => { if (!cutting && phase === 'landing') flying?.skip(); } });
           overrideT = 0;
         }
@@ -944,7 +944,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Wire it**
 
-In `src/labs/story-landing.js`: export a `holder()` → `lift` (a Group with `matrixAutoUpdate` true; give the host a `rocket = { holder: lift }` whose `userData.placed` is an identity matrix set once, and set `lift.matrixAutoUpdate = false` while the host poses it) and `plumes()` → the plumes array. In `src/labs/story-tab.js`: when `q.get('manual') === '1'` use `STORY_ARRIVAL_MANUAL.landing` for the sequence the lab seeks, and in the `land()` loop, at `t >= LANDING_GAME.approach.overrideAt`, create the host (`createManualLanding({ entry: seedEntry(q.get('seed') ?? 'lab'), rocket: { holder: landing.holder() }, plumes: landing.plumes(), camera, sfx, hud: createLandingHud(document.body), toWorld: (p, out) => out.set(...p).applyMatrix4(landing.rootMatrix()), up: ..., floorAt: () => ({ y: 0, normal: [0, 1, 0] }), root: scene, clipScrub: landing.hold })`), call `begin` then `manual()` after `override.seconds`, tick it instead of seeking the sequence, and on `'touched'` resume the sequence at its touchdown. The lab's camera: `controls` (OrbitControls) stay; the chase is not used in the lab (the owner orbits to judge the flight). The status line prints `state()` each frame.
+In `src/labs/story-landing.js`: export a `holder()` → `lift` (a Group with `matrixAutoUpdate` true; give the host a `rocket = { holder: lift }` whose `userData.placed` is an identity matrix set once, and set `lift.matrixAutoUpdate = false` while the host poses it) and `plumes()` → the plumes array. In `src/labs/story-tab.js`: when `q.get('manual') === '1'` use `STORY_ARRIVAL_MANUAL.landing` for the sequence the lab seeks, and in the `land()` loop, at `t >= LANDING_GAME.approach.overrideAt`, create the host (`createManualLanding({ entry: seedEntry(q.get('seed') ?? 'lab'), rocket: { holder: landing.holder() }, plumes: landing.plumes(), camera, sfx, hud: createLandingHud(document.body), toWorld: (p, out) => out.set(...p).applyMatrix4(landing.rootMatrix()), up: ..., floorAt: () => ({ y: 0, normal: [0, 1, 0] }), root: scene, clipScrub: landing.hold })`), call `begin` (the flight seeded from the entry, as the game does since Task 7's fix A) then `manual()` after `override.seconds`, tick it instead of seeking the sequence, and on `'touched'` resume the sequence at its touchdown. The lab's camera: `controls` (OrbitControls) stay; the chase is not used in the lab (the owner orbits to judge the flight). The status line prints `state()` each frame.
 
 - [ ] **Step 2: Check** — `labs.html?sw=0&manual=1#story`, press L: the rocket comes in, the alarm at the override, the keys fly it, the verdict prints in the status line, R resets. `--story` (the lab's own suite) stays green through the lock.
 
@@ -1001,15 +1001,19 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
   assert.equal(s.arrival.rocket,false,'the rocket swapped');assert.equal(s.arrival.salvage,true);}
  // WRECK: no burn at all
  {const s=await fly('landing-wreck','index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',()=>({throttle:0,tiltRate:0,legs:true}));
-  const g=s.arrival.landing;console.log('  wreck:',JSON.stringify(g));assert.equal(g.grade,'WRECK');assert.equal(g.reason,'sink');
+  const g=s.arrival.landing;console.log('  wreck:',JSON.stringify(g));assert.equal(g.grade,'WRECK');assert.ok(['sink','off-pad'].includes(g.reason),`a no-burn wreck reads sink or off-pad (${g.reason})`);
   assert.equal(s.story.foundry.sections.length,2,'the tank section is gone');}
  // the skip mid-flight: CLEAN, the plain talk
  {await go('landing-skip','index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td');await until(`${L}?.phase==='manual'`,120000);await delay(1500);current='landing-manual';await finish();   // the still mid-flight, the disk in frame
   assert.equal(await evaluate(`${T}.landing('skip')`),true);await until(`${T}.state().arrival?.phase!=='landing'`,60000);
   const s=await evaluate(`${T}.state()`);assert.equal(s.arrival.landing.grade,'CLEAN');assert.equal(s.arrival.landing.reason,'skipped');assert.equal(s.story.foundry.sections.length,3);}
- // a later start is offered the override and lands itself when it is not taken
- {await go('landing-offer','index.html?sw=0&acceptance=1&cine=0&world=story#td');await until(`!!${T}&&${T}.state().arrival?.phase==='landing'`,120000);
-  assert.equal(await evaluate(`${T}.state().arrival.offered`),false);await until(`${T}.state().arrival?.phase==='done'`,120000);assert.equal(await evaluate(`${L}`),null,'no flight without the ask');}
+ // a later start is offered the flight on the START gate (Task 7's fix B; `?landing=offer` stands in for the store's flag because an acceptance page never offers on its own; ?gate=1 shows the gate on an acceptance page): taken through the harness before START it flies, not taken it lands itself in the short arrival
+ {await go('landing-offer-taken','index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td');await until(`!!${T}&&${T}.state().arrival?.gate==='shown'`,120000);
+  assert.equal(await evaluate(`${T}.landing('override')`),true,'the gate offers the flight');await evaluate(`document.querySelector('#wg-start,.wg-start,[data-start]')?.click()`);
+  await until(`${L}?.phase==='manual'`,120000);assert.equal(await evaluate(`${T}.state().arrival.offered`),true);await evaluate(`${T}.landing('skip')`);await until(`${T}.state().arrival?.phase!=='landing'`,60000);}
+ {await go('landing-offer-left','index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td');await until(`!!${T}&&${T}.state().arrival?.gate==='shown'`,120000);await evaluate(`document.querySelector('#wg-start,.wg-start,[data-start]')?.click()`);
+  await until(`${T}.state().arrival?.phase==='done'`,120000);assert.equal(await evaluate(`${L}`),null,'no flight without the ask');}
+ (Read `src/fx/start-gate.js` for the START button's real selector and the FLY THE LANDING button's; `state().arrival.gate` reads 'shown' / 'opened'.)
 ```
 Read how `story.said` / the current brief is exposed in `state()` (line 4989: `story: story?.beats.state()` has `said`; the arrival's brief goes through `api.brief` → check which state field records it) and fix the assertion's field. `go()` resets storage between pages? Read `go()` at line 50: if the profile persists `localStorage`, the `landing-offer` page sees `flown` from the first page, which is what the assertion wants; if it does not, set `localStorage` before navigating (`await evaluate("localStorage.setItem('stalheart:v1:td.landing.flown','1')")` on the previous page).
 

@@ -4213,7 +4213,7 @@ export function initTdTab(root) {
     briefs.stepClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|arrivalFlight|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
@@ -5098,7 +5098,7 @@ export function initTdTab(root) {
       // THE PACING PROBE'S DEFENDER (--pacing): a body within r cells of a door dies there; it counts arrivals (not harmless
       // leftovers), not a player's kills
       sectorCull: (r = 8, pay = null) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { if (pay) damageEnemy(e, t, e.hp + 1, false, pay); else killCreature(e, false); if (!e.harmless) n++; } return n; },
-      sectorContinue: (via) => sectorRun?.test.cont(via),
+      sectorContinue: (via) => sectorRun?.test.cont(via), landing: (cmd, arg) => story?.arrival.landing?.(cmd, arg) ?? null,   // THE LANDING's harness (src/fx/arrival.js landing)
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
       descentPlay: () => descentHost.begin(() => endingHost.finale(() => {})),   // ?descent=1 and the dev entry: the cave now, the ending after it
       arenaNow: () => bossRun.force(), partyNow: () => { discoParty?.force(); return !!discoParty; },   // THE ARENA's harness: the hull counted as at the beacon; DAY 42's (2026-10-18): the party armed now

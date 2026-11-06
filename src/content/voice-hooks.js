@@ -12,7 +12,9 @@ export const VOICE_HOOKS = Object.freeze({
   hull_lost: Object.freeze(['MÖRK DOWN!']),
   // the arrival's close-up, line by line (owner, 2026-10-04: "Isao says rough landing and another line about building"): its first two
   // lines are recorded word for word (rough_landing_01, so_much_to_build_01); the third, the cannibalized rocket, is the foundry's
-  foundry_deploy: Object.freeze(['arrival_talk#2']),
+  // and the graded talks' third line (THE LANDING, 2026-11-07, the final review: the brief queue voices a line as `${id}#${i}`, so a CLEAN
+  // or WRECK close-up's arrival_talk_clean#2 / arrival_talk_wreck#2 resolved to nothing and the recorded line was lost)
+  foundry_deploy: Object.freeze(['arrival_talk#2', 'arrival_talk_clean#2', 'arrival_talk_wreck#2']),
   // THE ALIEN LANGUAGE (owner, 2026-10-05, lines promoted in seiyu_voice): the study's first line, then its third, "Need more compute"
   vibration_study: Object.freeze(['vibration_study#2']),
   plasma_dry: Object.freeze(['PLASMA DRY']),
