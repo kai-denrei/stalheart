@@ -13,10 +13,10 @@ import { drop } from '../core/terrace-profile.js';
 // THE GATES ARE A LIST (2026-09-18): `plan.gates` is every door on the base, entry 0 the front gate on the open mouth. `plan.gate`
 // stays as entry 0 so every single-gate consumer reads exactly what it read before. `backMouth` (from src/domain/back-door.js) adds
 // the back door, always pending — the swarm cracks that mouth open in play and Isao prints a gate there afterwards.
-// FOUNDED PIECES (owner, 2026-11-05, round 8 note 6, the dome city: "the main base"; src/content/dome-city.js): `founded: true` is never
-// pending. A plain stage places it from its own stage as before; a grown base (wider reach) stands it from the first frame, because no step of
-// Isao's programme prints it (the colony arrived with its domes). `anchor: 'frame'`: a structure at its own frame x, z on natural ground, with
-// no island (a bridge whose ends stand in two domes' plots).
+// FOUNDED PIECES (owner, 2026-11-05, round 8 note 6): `founded: true` is never pending. A plain stage places it from its own stage as before;
+// a grown base (wider reach) stands it from the first frame. Round 8's dome city was founded; since the owner's note of 2026-11-07 (THE BASE
+// FROM SCRATCH, src/content/dome-city.js) Isao prints the domes and bridges in play and nothing shipped uses `founded`: the mechanism stays.
+// `anchor: 'frame'`: a structure at its own frame x, z on natural ground, with no island (a bridge whose ends stand in two domes' plots).
 export function planBase(planet, layout, stage, { reach = stage, backMouth = null } = {}) {
   const pending = (n, piece = null) => (n > stage && !piece?.founded ? { pending: true } : {});
   const { radius } = planet;

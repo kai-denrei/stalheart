@@ -20,18 +20,23 @@
 // the one-draw LOD2 far, its ports 14 m out at y 9.7 in the model, 9.1 m out at y 6.3 standing. THE PAIR SPACING IS THE BRIDGE'S: the
 // bridge keeps its length, so its socket 26 m from its centre meets a port 9.1 m from the dome's when the domes stand 2 x 35.1 = 70.2 m apart
 // (the author's grid was 80 m at scale 1, 26 + 14 = 40 a side): the middle domes stay at z 0, the outer ones move in to z +-70.2, the bridges
-// to z +-35.1; the columns stay at x +-80. `hide` lifts the named port caps on the linked side (the dome-colony README: "Hide the named connected caps at LOD0/1 using
-// open_ports; LOD2 keeps static simplified port silhouettes"; in our LOD2 files the caps are empty nodes, so the same names hide nothing there).
+// to z +-35.1; the columns stay at x +-80. `caps` names each port cap a bridge meets and that bridge (the dome-colony README: "Hide the named connected caps at LOD0/1
+// using open_ports; LOD2 keeps static simplified port silhouettes"; in our LOD2 files the caps are empty nodes, so the same names hide nothing there).
+// THE CAP FOLLOWS ITS BRIDGE (the final review of THE BASE FROM SCRATCH, 2026-11-07): round 8 hid the caps outright, from when all ten pieces
+// stood together; a dome Isao prints before its bridge then had a 3.8 x 3.7 m hole in its side, 4-7.5 m up. src/fx/story-base.js hides a cap only
+// once its bridge stands or is printing (a static page, where nothing is pending, hides every one as before), and grow() opens it when the bridge
+// begins; a middle dome has two caps, one per bridge.
 export const DOME_SCALE = 0.65;   // the owner, 2026-11-07: the domes resized, the bridges 0.65 in height only (below)
 export const DOME_ROLES = Object.freeze(['habitat', 'biosphere', 'fabrication', 'logistics']);
 const DOMES = [
-  // id, the author's dome, module, centre, the ports a bridge meets
-  ['dome-nw', 'DOME_11', 'habitat', -80, -70.2, ['N']],
-  ['dome-w', 'DOME_21', 'biosphere', -80, 0, ['S', 'N']],
-  ['dome-sw', 'DOME_31', 'habitat', -80, 70.2, ['S']],
-  ['dome-ne', 'DOME_13', 'logistics', 80, -70.2, ['N']],
-  ['dome-e', 'DOME_23', 'fabrication', 80, 0, ['S', 'N']],
-  ['dome-se', 'DOME_33', 'logistics', 80, 70.2, ['S']],
+  // id, the author's dome, module, centre, the ports a bridge meets and the bridge that meets each (the author's N is +Z: dome-nw's N port faces
+  // bridge-w1 at z -35.1)
+  ['dome-nw', 'DOME_11', 'habitat', -80, -70.2, [['N', 'bridge-w1']]],
+  ['dome-w', 'DOME_21', 'biosphere', -80, 0, [['S', 'bridge-w1'], ['N', 'bridge-w2']]],
+  ['dome-sw', 'DOME_31', 'habitat', -80, 70.2, [['S', 'bridge-w2']]],
+  ['dome-ne', 'DOME_13', 'logistics', 80, -70.2, [['N', 'bridge-e1']]],
+  ['dome-e', 'DOME_23', 'fabrication', 80, 0, [['S', 'bridge-e1'], ['N', 'bridge-e2']]],
+  ['dome-se', 'DOME_33', 'logistics', 80, 70.2, [['S', 'bridge-e2']]],
 ];
 const dir = 'assets/models/dome-colony';
 // STAGE 2, NOT FOUNDED (the owner, 2026-11-07: "the base should not be built yet. Isao comes out and starts a base from scratch"; round 8 had
@@ -39,12 +44,13 @@ const dir = 'assets/models/dome-colony';
 // story's default) has them pending (src/domain/base-plan.js), for Isao's programme to print in play: the SH02 comes down on an empty plain
 export const DOME_ISLANDS = Object.freeze(DOMES.map(([id, , , x, z]) => Object.freeze({ id, w: 20, d: 20, x, z, stage: 2 })));
 export const DOME_STRUCTURES = Object.freeze([
-  ...DOMES.map(([id, author, module, , , ports]) => Object.freeze({ id, author, module, asset: `${dir}/${module}_d0_lod1.glb`, far: `${dir}/${module}_d0_lod2.glb`, island: id, stage: 2, batch: true, scale: DOME_SCALE, offset: [0, 0, 0], hide: ports.map((p) => `PORT_CAP_${p}`) })),
+  ...DOMES.map(([id, author, module, , , ports]) => Object.freeze({ id, author, module, asset: `${dir}/${module}_d0_lod1.glb`, far: `${dir}/${module}_d0_lod2.glb`, island: id, stage: 2, batch: true, scale: DOME_SCALE, offset: [0, 0, 0], caps: Object.freeze(ports.map(([p, bridge]) => Object.freeze([`PORT_CAP_${p}`, bridge]))) })),
   // THE BRIDGES: the 52 m bridge_long (ends +-27 m, its sockets +-26 m at y 9.7, the deck's underside 7.5 m, columns at +-10 and +-26 m, a 19 m
   // opening between the middle pair). The author's yaw -pi/2 lays its X along +Z: heading [-1, 0] here. 0.65 IN HEIGHT ONLY (the owner, 2026-11-07:
   // room for the tank under the bridges): `scale: 1` keeps its 54 m length and 4.4 m width, `scaleY: DOME_SCALE` (src/fx/story-base.js place)
-  // brings the sockets to y 6.3, onto the scaled ports, and the deck's underside to 4.9 m, 4.5 m once `lift` has lowered it: 1.49 m over the
-  // MÖRK's 3.016 m, 0.49 m over the rule's 1.0 m (7.5 x 0.65 - 0.37 >= 3.016 + 1.0). NO SLAB UNDER A BRIDGE: its ends stand inside the two
+  // brings the sockets to y 6.3, onto the scaled ports, and the deck's underside to 4.9 m, 4.505 m once `lift` has lowered it: 1.49 m over the
+  // MÖRK's 3.016 m at rest; HOVERING its body rises TANK_FEEL.rise (src/tankfeel.js, 0.095 model units, ~0.09 m, taken as 0.095 m), so 1.39 m
+  // of air over the hovering hull, 0.89 m more than the rule's half metre (7.5 x 0.65 - 0.37 >= 3.016 + 0.095 + 0.5, test/dome-city.mjs). NO SLAB UNDER A BRIDGE: its ends stand inside the two
   // domes' plots (26 m out of 35.1, the dome's plot reaches 25.1 m), so a bridge island could never keep the 4 m between islands; and none is
   // needed. Each placement is tangent at its own centre (R 753 m). `lift` (NEGATIVE = DOWN, along the bridge's own up) brings the bridge's end
   // and the dome's port to one height: the end stands 26 m out and the port 14 x DOME_SCALE = 9.1 m out of the dome's centre, both measured over

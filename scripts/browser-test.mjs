@@ -9,6 +9,7 @@ import { resolve, join } from 'node:path';
 import { launchChrome } from './chrome-proc.mjs';
 import assert from 'node:assert/strict';
 import { SENTRIES } from '../src/content/sentries.js';
+import { DOME_STRUCTURES } from '../src/content/dome-city.js';
 import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
@@ -2696,6 +2697,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.state().programme.printed.includes('dome-nw')`,180000).catch(async()=>assert.fail(`dome-nw printed (${JSON.stringify(P(await st()))})`));mark('dome-nw stands');
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-nw')?.visible===true`,20000).catch(async()=>assert.fail(`dome-nw shown (${JSON.stringify(domes(await st()))})`));
  {const s=await st();assert(!stands(s,'bridge-w1')&&!P(s).printed.includes('bridge-w1'),'no bridge with one dome');}
+ // THE CAP FOLLOWS ITS BRIDGE (the final review, 2026-11-07; src/content/dome-city.js caps): the lone dome's port is capped until bridge-w1 begins
+ const cap=(id,name)=>evaluate(`${T}.showcase.capShown(${JSON.stringify(id)},${JSON.stringify(name)})`),capIs=async(id,name,want,why)=>{const v=await cap(id,name);console.log(`  ${id} ${name}: ${JSON.stringify(v)}`);assert(Array.isArray(v)&&v.length>0&&v.every(x=>x===want),`${why} (${id} ${name} ${JSON.stringify(v)})`);};
+ await capIs('dome-nw','PORT_CAP_N',true,'the lone dome keeps its port capped');
  await until(`${T}.state().programme.printed.includes('dome-w')`,400000).catch(async()=>assert.fail(`dome-w printed (${JSON.stringify(P(await st()))})`));mark('dome-w stands');
  await until(`${T}.state().programme.printed.includes('bridge-w1')`,240000).catch(async()=>assert.fail(`bridge-w1 prints by itself after both domes (${JSON.stringify(P(await st()))}; ${JSON.stringify(domes(await st()))})`));mark('bridge-w1 stands');
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='bridge-w1')?.visible===true`,20000).catch(async()=>assert.fail(`bridge-w1 shown (${JSON.stringify(domes(await st()))})`));
@@ -2703,6 +2707,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert(pr.indexOf('dome-nw')<pr.indexOf('dome-w')&&pr.indexOf('dome-w')<pr.indexOf('bridge-w1'),'dome-nw, dome-w, then the bridge');
   assert(!p.bought.includes('bridge-w1'),'the bridge was never bought');
   assert.deepEqual(domes(s).filter(d=>d.visible).map(d=>d.id).sort(),['bridge-w1','dome-nw','dome-w'],'only what was bought and its bridge stands');
+  await capIs('dome-nw','PORT_CAP_N',false,'bridge-w1 opens the port it meets');await capIs('dome-w','PORT_CAP_S',false,'bridge-w1 opens dome-w\'s south port');
+  await capIs('dome-w','PORT_CAP_N',true,'dome-w\'s north port waits for bridge-w2');
   const said=await evaluate('window.__seen.briefs');console.log(`  Isao: ${JSON.stringify(said.filter(b=>/DOME|BRIDGE/i.test(b)))}`);}
  await evaluate(`(()=>{const T=${T},a=T.showcase.footprint('bridge-w1')?.at;if(!a)return;const l=Math.hypot(...a),u=a.map(v=>v/l),n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}T.showcase.ground(best,8,10);})()`);await delay(2500);
  current='dome-print-end';await finish();
@@ -2721,6 +2727,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const med=(k)=>{const v=perf.map(p=>p[k]).filter(x=>x!=null).sort((a,b)=>a-b);return v.length?+v[v.length>>1].toFixed(2):null;};
  const lod=await evaluate(`JSON.stringify((${T}.state().storyLod||[]).filter(l=>/^(dome|bridge)/.test(l.id)).map(l=>l.id+':'+l.shown))`);
  console.log(`DOME LOOK ${tag} base camera: ${perf.length} samples, median ${med('calls')} calls, ${med('triangles')} triangles, ${med('frameMs')} ms frame, gpu ${med('gpuMs')} ms; tiers ${lod}`);
+ // a static page stands every bridge, so every cap a bridge meets is open on every mounted tier (the caps follow their bridges since the final review, 2026-11-07)
+ if(tag==='dome')for(const d of DOME_STRUCTURES.filter(x=>x.caps))for(const [name,bridge] of d.caps){const v=await evaluate(`${T}.showcase.capShown(${JSON.stringify(d.id)},${JSON.stringify(name)})`);assert(Array.isArray(v)&&v.length>0&&v.every(x=>x===false),`${d.id} ${name} open under ${bridge} on a static page (${JSON.stringify(v)})`);}
+ if(tag==='dome')console.log(`DOME LOOK caps: every cap a bridge meets is open (${DOME_STRUCTURES.flatMap(d=>d.caps??[]).length})`);
  current=`dome-look-${tag}-base`;await finish();
  // and from above (--base-look's still): every island and dome in the frame on both layouts, so the difference is the city's own cost
  await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);perf.length=0;

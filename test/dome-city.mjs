@@ -9,6 +9,7 @@ import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
 import { buildStoryPlanet, frameToWorld } from '../src/domain/story-planet.js';
 import { planBase } from '../src/domain/base-plan.js';
 import { KIT, STAGES } from '../src/content/base-layout.js';
+import { TANK_FEEL } from '../src/tankfeel.js';
 
 // the switch: one parser, the dome city by default (round 8 stream C's last commit), the classic base when the page asks for it
 assert.deepEqual(BASE_LAYOUT_MODES, ['classic', 'dome']); assert.equal(BASE_LAYOUT_DEFAULT, 'dome');
@@ -42,7 +43,11 @@ assert.ok(DOME_PLACEMENT.depot, 'the depot has its dome-city centre (the NE cour
 // the domes at 0.65 on 20 x 20 islands, moved in along their columns so a bridge's socket meets the scaled port, and nothing founded: a growing
 // base prints them in play
 assert.equal(DOME_SCALE, 0.65);
-assert.ok(7.5 * DOME_SCALE >= 3.016 + 1.0, 'the deck\'s underside, scaled in height, clears the MÖRK by a metre');
+// THE HULL HOVERS (the final review, 2026-11-07): the MÖRK is 3.016 m at rest and its body rises TANK_FEEL.rise when it hovers (model units,
+// ~0.09 m; taken as metres, the larger); the deck keeps half a metre of air over that
+const HOVER = TANK_FEEL.rise, CLEAR = 3.016 + HOVER + 0.5;
+assert.ok(HOVER > 0 && HOVER < 0.3, `the hover rise ${HOVER}`);
+assert.ok(7.5 * DOME_SCALE >= CLEAR, 'the deck\'s underside, scaled in height, clears the hovering MÖRK by half a metre');
 assert.deepEqual(DOME_ISLANDS.map((i) => i.id), ['dome-nw', 'dome-w', 'dome-sw', 'dome-ne', 'dome-e', 'dome-se']);
 assert.deepEqual(Object.fromEntries(DOME_ISLANDS.map((i) => [i.id, [i.x, i.z, i.w, i.d]])), { 'dome-nw': [-80, -70.2, 20, 20], 'dome-w': [-80, 0, 20, 20], 'dome-sw': [-80, 70.2, 20, 20], 'dome-ne': [80, -70.2, 20, 20], 'dome-e': [80, 0, 20, 20], 'dome-se': [80, 70.2, 20, 20] });
 assert.ok(DOME_ISLANDS.every((i) => !i.founded) && DOME_STRUCTURES.every((s) => !s.founded), 'nothing of the dome city is founded');
@@ -58,16 +63,20 @@ for (const b of bridges) {
   // each bridge runs north-south between two domes 2 * 35.1 m apart, its 52 m between their ports (9.1 m out of each)
   const a = domeAt(b.x, b.z - half), c = domeAt(b.x, b.z + half); assert.ok(a && c, `${b.id} links two domes`);
   assert.deepEqual(b.heading, [-1, 0], `${b.id}: the author's yaw -pi/2, its length along Z`);
-  // the caps on the linked side are hidden (the author's N is +Z), and only those
-  const hides = (d) => DOME_STRUCTURES.find((s) => s.island === d.id).hide;
-  assert.ok(hides(a).includes('PORT_CAP_N') && hides(c).includes('PORT_CAP_S'), `${b.id}: the ports it meets are open`);
+  // the caps on the linked side belong to this bridge (the author's N is +Z): the south dome's N cap, the north dome's S cap
+  const caps = (d) => DOME_STRUCTURES.find((s) => s.island === d.id).caps;
+  assert.ok(caps(a).some(([n, id]) => n === 'PORT_CAP_N' && id === b.id) && caps(c).some(([n, id]) => n === 'PORT_CAP_S' && id === b.id), `${b.id}: the ports it meets open with it`);
 }
+// THE CAP FOLLOWS ITS BRIDGE (the final review, 2026-11-07: a dome printed before its bridge showed an open port): every dome names exactly the
+// caps a bridge meets, each with the bridge that meets it, and hides nothing outright
 for (const d of DOME_STRUCTURES.filter((s) => s.island)) { const isl = DOME_ISLANDS.find((i) => i.id === d.island);
-  const want = [['PORT_CAP_N', half], ['PORT_CAP_S', -half]].filter(([, dz]) => bridges.some((b) => b.x === isl.x && Math.abs(b.z - (isl.z + dz)) < 1e-9)).map(([n]) => n);
-  assert.deepEqual([...d.hide].sort(), want.sort(), `${d.id} hides exactly the caps a bridge meets`); }
+  const want = [['PORT_CAP_N', half], ['PORT_CAP_S', -half]].flatMap(([n, dz]) => bridges.filter((b) => b.x === isl.x && Math.abs(b.z - (isl.z + dz)) < 1e-9).map((b) => [n, b.id]));
+  assert.deepEqual([...d.caps].map((c) => [...c]).sort(), want.sort(), `${d.id}'s caps are exactly the ones a bridge meets, each with its bridge`);
+  assert.equal(d.hide, undefined, `${d.id} hides no cap outright`); }
+assert.equal(DOME_STRUCTURES.filter((s) => s.island).flatMap((s) => s.caps).length, 2 * bridges.length, 'two caps a bridge');
 // the cap nodes exist in the near tier by those names (the GLB's JSON chunk starts at byte 20)
 const gltf = (f) => { const b = readFileSync(f), n = b.readUInt32LE(12); return JSON.parse(b.subarray(20, 20 + n).toString()); };
-for (const d of DOME_STRUCTURES.filter((s) => s.island)) { const names = new Set(gltf(d.asset).nodes.map((n) => n.name)); for (const h of d.hide) assert.ok(names.has(h), `${d.id}: ${h} in ${d.asset}`); }
+for (const d of DOME_STRUCTURES.filter((s) => s.island)) { const names = new Set(gltf(d.asset).nodes.map((n) => n.name)); for (const [h] of d.caps) assert.ok(names.has(h), `${d.id}: ${h} in ${d.asset}`); }
 assert.ok(DOME_SOLIDS.every((id) => SOLID_STRUCTURES.includes(id)) && DOME_SOLIDS.length === DOME_STRUCTURES.length, 'the domes and bridges stop the hull');
 
 // THE PLACEMENT RULE, with stream D's depot stood in at its classic plot so the merged tree is held to it too
@@ -110,7 +119,7 @@ for (const b of boxes.filter((x) => !x.city)) for (const i of city.islands) if (
 // below is the binding guard (the shipped -0.37 against the relation's -0.39)
 const sag = (d) => d * d / (2 * 753);
 for (const b of bridges) { assert.ok(Math.abs(b.lift - (-(sag(26) - sag(14 * DOME_SCALE)))) < 0.05, `${b.id}: lift ${b.lift} from the sag of the end and the port`);
-  assert.ok(7.5 * DOME_SCALE + b.lift >= 3.016 + 1.0, `${b.id}: the deck, lowered by its lift, clears the MÖRK by a metre`); }
+  assert.ok(7.5 * DOME_SCALE + b.lift >= CLEAR, `${b.id}: the deck, lowered by its lift, clears the hovering MÖRK by half a metre (${(7.5 * DOME_SCALE + b.lift - 3.016 - HOVER).toFixed(2)} m of air)`); }
 // ...and measured on the sphere (src/fx/story-base.js basisAt on the game's frame, src/domain/story-planet.js frameToWorld at 753.3 m): the
 // bridge's end columns stand on the domes' slabs within a decimetre, and each socket (read from the models' nodes) meets its scaled port within
 // 5 cm in height (along the deck, the frame's projection leaves them ~0.2 m apart; 0.45 m at the old 80 m spacing)

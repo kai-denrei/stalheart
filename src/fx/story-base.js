@@ -164,9 +164,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       // cloneSkinned, not clone(true): a rigged landmark (the foundry) keeps the CACHED glTF's bones otherwise, and
       // nothing updates those, so its skin resolves into a huge sheet over the base instead of the model
       // a batched tier welds on a clone, round the nodes named afterwards: the hidden, the darkened, and `keep`, what an effect drives by name (the launcher's sled and clamps)
-      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations, [...(s.hide ?? []), ...(s.dark ?? []), ...(s.keep ?? [])]) : cloneSkinned(gltf.scene);
+      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations, [...(s.hide ?? []), ...(s.caps ?? []).map(([name]) => name), ...(s.dark ?? []), ...(s.keep ?? [])]) : cloneSkinned(gltf.scene);
       own(root); root.name = s.id;
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
+      shutCaps(s, root);
       for (const name of s.dark ?? []) { const n = root.getObjectByName(name); if (n?.material?.emissive) { n.material = n.material.clone(); n.material.emissiveIntensity = 0; owned.add(n.material); } }   // its own copy, dark: the cached glTF's material is shared
       holder.add(root); root.position.set(...s.offset);
       if (s.rig) { const make = RIGS[s.rig]; if (!make) throw new Error(`no rig '${s.rig}'`); rigs.push(make(THREE, root)); }   // posed at once, before a warm or a print reads it
@@ -195,6 +196,11 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       bays.sort((a, b) => a.n - b.n);
       return root;
   }
+  // THE CAP FOLLOWS ITS BRIDGE (src/content/dome-city.js caps; the final review, 2026-11-07): a port cap [name, bridge] is hidden once its bridge
+  // stands or has begun printing (k > 0); a static page, where nothing is pending, hides it at once as before. A bridge this plan has not got,
+  // or skips, leaves the port capped
+  const capOpen = (bridge) => { const b = plan.structures.find((x) => x.id === bridge); return !!b && !skip.includes(bridge) && kOf(grown.structures, bridge, b) > 0; };
+  function shutCaps(s, root) { for (const [name, bridge] of s.caps ?? []) { const n = root?.getObjectByName(name); if (n) n.visible = !capOpen(bridge); } }
   const lodSwitch = (kit.lod?.metres ?? 150) * metres, lodHyst = kit.lod?.hysteresis ?? 1.3;
   let clock = 0;   // the rigs' time, seconds of ticks
   function driveLod(eye) {
@@ -213,7 +219,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     ready, group, counts, errors,
     tick(dt, near = null, force = null, eye = null) {
       for (const m of mixers) m.update(dt);
-      for (const r of rigs) r.tick(clock += dt);
+      clock += dt; for (const r of rigs) r.tick(clock);
       prints.tick(records);
       driveLod(eye);
       for (const g of gates) {
@@ -245,7 +251,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // counts as built (it opens for the tank, it holds the swarm) once it reaches the top
     growIsland: (id, k) => { const n = plan.islands.findIndex((i) => i.id === id); if (n < 0) return; grown.islands.set(n, k); for (const s of slabs) { s.inst.setMatrixAt(n, islandMatrix(plan.islands[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
     growWall: (n, k) => { if (!plan.walls[n]) return; grown.walls.set(n, k); for (const s of wallMeshes) { s.inst.setMatrixAt(n, wallMatrix(plan.walls[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
-    grow: (id, k) => { grown.structures.set(id, k); const r = records.get(id); if (r) printAt(id, r, k); },
+    grow: (id, k) => {
+      grown.structures.set(id, k); const r = records.get(id); if (r) printAt(id, r, k);
+      for (const s of plan.structures) if (s.caps?.some(([, b]) => b === id)) { const d = records.get(s.id); if (d) for (const t of [d.far, d.near]) shutCaps(s, t); }   // a bridge begun opens the ports it meets, on every mounted tier
+    },
     printState: (id) => prints.state(id, records.get(id)),
     growGate: (k, id = null) => { const n = id ? gates.findIndex((x) => x.id === id) : 0, g = gates[n]; if (!g) return; grown.gates[n] = k; if (n === 0) grown.gate = k; if (g.obj) lift(g.obj, k); if (k >= 1) g.built = true; },
     // a beat's hand on a landmark: show or hide it, or take its shown tier and clip actions
