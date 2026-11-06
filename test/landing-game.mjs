@@ -22,3 +22,17 @@ const oldDown = STORY_ARRIVAL.landing.orbit + STORY_ARRIVAL.landing.descent;
 for (const k of STORY_ARRIVAL.rail) { const m = STORY_ARRIVAL_MANUAL.rail.find((x) => x.pos === k.pos); assert.ok(m); assert.equal(m.t, k.t >= oldDown ? k.t + shift : k.t, 'rail keys after the touchdown move with it'); }
 assert.ok(LANDING_GAME.approach.overrideAt < STORY_ARRIVAL_MANUAL.landing.descent, 'the override comes before the sequence would have touched down');
 console.log('landing-game: arrival tune ok');
+import { BRIEFS } from '../src/isaobriefs.js';
+for (const id of Object.values(LANDING_GAME.lines)) assert.ok(BRIEFS[id]?.lines?.length, `brief ${id} exists`);
+assert.equal(BRIEFS.arrival_talk_clean.lines[0], 'Textbook landing!');
+assert.equal(BRIEFS.arrival_talk_wreck.lines.length, 4, 'a wreck adds a fourth caption');
+assert.equal(BRIEFS.arrival_talk_wreck.lines[3], "Less to cannibalize than I'd hoped.");
+import { decideLanding } from '../src/platform/story-world.js';
+const q = (s) => new URLSearchParams(s);
+assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: false, acceptance: false }), { manual: true, offer: false }, 'the first start flies it');
+assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: true, acceptance: false }), { manual: false, offer: true }, 'later starts are offered it');
+assert.deepEqual(decideLanding({ arrives: true, query: q('landing=1'), flown: true, acceptance: true }), { manual: true, offer: false }, '?landing=1 forces it');
+assert.deepEqual(decideLanding({ arrives: true, query: q('landing=0'), flown: false, acceptance: false }), { manual: false, offer: false }, '?landing=0 never');
+assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: false, acceptance: true }), { manual: false, offer: false }, 'an acceptance run lands itself unless it asks');
+assert.deepEqual(decideLanding({ arrives: false, query: q('landing=1'), flown: false, acceptance: false }), { manual: false, offer: false }, 'no arrival, no landing');
+console.log('landing-game: lines and switch ok');

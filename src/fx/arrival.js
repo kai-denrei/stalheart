@@ -29,7 +29,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { createLaunchPlume } from './launch-plume.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
-import { PLUME_CLUSTER, SH02_WELL, STORY_ARRIVAL } from '../content/story-defaults.js';
+import { PLUME_CLUSTER, SH02_WELL, STORY_ARRIVAL, STORY_ARRIVAL_MANUAL } from '../content/story-defaults.js';
 import { makeArrivalShot } from '../domain/arrival-shot.js';
 import { isaoFace } from '../domain/story-shots.js';
 import { BRIEFS, lineDwell } from '../isaobriefs.js';
@@ -40,8 +40,11 @@ const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 
 // `site`: the landing island's world basis (src/fx/story-base.js basisAt: +y its up, +z toward the pole), `metres`: world units a metre.
 // `past`: the page starts past the landing (a tutorial chapter, a phase jump at stage 1): no shot, and the rocket is its salvage and
-// the foundry from the first frame, each landmark put in that end state as it loads
-export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune = STORY_ARRIVAL } = {}) {
+// the foundry from the first frame, each landmark put in that end state as it loads.
+// THE LANDING (src/platform/story-world.js decideLanding): `manual` the player flies it (the longer approach, STORY_ARRIVAL_MANUAL,
+// unless a tune is passed), `offer` the landing is offered at the start, `seed` the override's entry (src/domain/manual-landing.js seedEntry, per planet). The parameters stay in this closure for the flown landing
+export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet' } = {}) {
+  tune ??= manual ? STORY_ARRIVAL_MANUAL : STORY_ARRIVAL;
   let phase = on && base && beats && site ? 'waiting' : past && base ? 'done' : 'off';
   const shot = makeArrivalShot(tune), lines = BRIEFS[tune.talk.brief];
   const talkSeconds = lines.lines.reduce((sum, _, i) => sum + lineDwell(lines, i), 0);   // the close-up holds every line (the owner's second playtest)
