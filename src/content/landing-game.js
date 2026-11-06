@@ -31,7 +31,15 @@ export const LANDING_GAME = Object.freeze({
   pad: Object.freeze({ reach: 14 }),   // m from the island's centre a foot may land and still be on the pad (the landing island is 16 x 16)
   // the arrival's clock around the window: the approach is the arrival's own sequence from higher, the override at `overrideAt` s of it
   approach: Object.freeze({ descent: 7, startAltitude: 900, overrideAt: 4.2, deployAltitude: 700 }),
-  override: Object.freeze({ seconds: 3, glare: 2.4, offerSeconds: 3 }),   // the alarm beat; the glare's length; the SPACE offer on a later start
+  // the alarm beat (seconds), the SPACE offer on a later start (offerSeconds), and the glare over it (src/fx/landing-glare.js)
+  override: Object.freeze({
+    seconds: 3, offerSeconds: 3,
+    glare: Object.freeze({
+      seconds: 2.4,   // the whole beat's length: swell, hold, clear
+      dim: 1000,      // the launch shader's exposure when nothing shows (the quad plume's default); the shader divides by it, so large is dark
+      peak: 8,        // the exposure at the glare's height: smaller is brighter (tanh(o * o.a / exposure)); reached at 40 %, held to 70 %
+    }),
+  }),
   camera: Object.freeze({ back: 60, up: 34, ahead: 18, down: 10, fov: 46, lag: 0.12, jolt: 0.8 }),   // the chase: behind along -z, above, looking ahead and down
   reticle: Object.freeze({ metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), square: 10, segments: 48 }),
   hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10 }), predictorSeconds: 35, predictorDt: 0.15 }),

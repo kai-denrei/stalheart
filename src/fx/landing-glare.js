@@ -1,7 +1,7 @@
 // The override's glare: the 2D game's full-screen launch shader on its own canvas
 // over the page. The FRAGMENT and VERTEX sources below are the 2D game's
 // landing/launch-plume.js verbatim (https://github.com/jelaludo/Stalsfar_Landing);
-// the surface under them is this game's: an exposure ramp, a capped resolution and
+// the surface under them is this game's: an exposure ramp (the shader divides by it), a capped resolution and
 // a plain CSS fade on reduced motion or when there is no WebGL2. See ATTRIBUTIONS.md.
 // Launch shader by Pulkit (MIT), adapted from the Onkochishin Launch lab.
 // Source: https://github.com/pulkitxm/claude-directory/tree/main/shaders/launch-shader
@@ -61,12 +61,17 @@ const VERTEX = `#version 300 es
 layout(location=0) in vec2 a_pos;
 void main(){gl_Position=vec4(a_pos,0.,1.);}`;
 
-// the 2D game's uniform set, with uExposure driven per frame (the 2D game holds it at 1000)
+// the 2D game's uniform set, with uExposure driven per frame (the 2D game holds it at 1000; see LANDING_GAME.override.glare)
 const FIXED = { uSteps: 100, uSquash: 0.3, uOctaves: 9, uTurb: 0.1, uCore: 2, uDetail: 6, uStepSize: 8 };
 const MAX_W = 1600, MAX_H = 1000;
 
-// exposure: 0.05 -> 4 over the first 40 %, held to 70 %, then down to 0 (the 2D game's starship intro ramp, folded)
-const exposure = (u) => (u < 0.4 ? 0.05 + (4 - 0.05) * (u / 0.4) : u < 0.7 ? 4 : 4 * (1 - (u - 0.7) / 0.3));
+// the exposure at progress u (0..1): from `dim` down to `peak` over the first 40 % (log space: the shader divides by it, so the eye
+// reads ratios), held to 70 %, then back up to `dim` by the end. Smaller is brighter. Pure, so a node test can pin it.
+export function glareExposure(u, { dim = 1000, peak = 8 } = {}) {
+  const [a, b] = [Math.log(dim), Math.log(peak)];
+  const k = u < 0.4 ? u / 0.4 : u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3;
+  return Math.exp(a + (b - a) * Math.max(0, Math.min(1, k)));
+}
 
 // compile and link; returns the draw closure and a free(), or null if the shader will not build
 function build(gl) {
@@ -112,7 +117,7 @@ function build(gl) {
   } catch (error) { console.warn('Landing glare shader unavailable', error); free(); return null; }
 }
 
-export function startLandingGlare(root, { seconds = 2.4, reducedMotion = false } = {}) {
+export function startLandingGlare(root, { seconds = 2.4, dim = 1000, peak = 8, reducedMotion = false } = {}) {
   const canvas = document.createElement('canvas');
   canvas.id = 'landing-glare'; canvas.setAttribute('aria-hidden', 'true'); root.append(canvas);
   const gl = reducedMotion ? null : canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false, antialias: false });
@@ -124,8 +129,10 @@ export function startLandingGlare(root, { seconds = 2.4, reducedMotion = false }
       if (done) return;
       t += dt;
       const u = Math.min(1, t / seconds);
-      if (pipe) pipe.draw(t, exposure(u), canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight);
-      else canvas.style.opacity = String(u < 0.5 ? u * 2 : 2 - u * 2);
+      if (pipe) {
+        pipe.draw(t, glareExposure(u, { dim, peak }), canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight);
+        canvas.style.opacity = String(u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3);   // the end is a clear whatever the shader does
+      } else canvas.style.opacity = String(u < 0.5 ? u * 2 : 2 - u * 2);
       if (u >= 1) this.dispose();
     },
     get done() { return done; },
