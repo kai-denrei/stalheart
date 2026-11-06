@@ -34,6 +34,12 @@ import { makeArrivalShot } from '../domain/arrival-shot.js';
 import { isaoFace } from '../domain/story-shots.js';
 import { BRIEFS, lineDwell } from '../isaobriefs.js';
 import { createStartGate } from './start-gate.js';
+import { LANDING_GAME } from '../content/landing-game.js';
+import { seedEntry } from '../domain/manual-landing.js';
+import { createManualLanding } from './manual-landing.js';
+import { createLandingHud } from './landing-hud.js';
+import { startLandingGlare } from './landing-glare.js';
+import { storage } from '../storage.js';
 
 const IDS = ['sh02', 'sh02-salvage', 'foundry'];
 const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
@@ -46,8 +52,9 @@ const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet' } = {}) {
   tune ??= manual ? STORY_ARRIVAL_MANUAL : STORY_ARRIVAL;
   let phase = on && base && beats && site ? 'waiting' : past && base ? 'done' : 'off';
-  const shot = makeArrivalShot(tune), lines = BRIEFS[tune.talk.brief];
-  const talkSeconds = lines.lines.reduce((sum, _, i) => sum + lineDwell(lines, i), 0);   // the close-up holds every line (the owner's second playtest)
+  const shot = makeArrivalShot(tune);
+  const holdOf = (id) => BRIEFS[id].lines.reduce((sum, _, i) => sum + lineDwell(BRIEFS[id], i), 0);
+  let talkSeconds = holdOf(tune.talk.brief);   // the close-up holds every line (the owner's second playtest); a graded talk's own count (toTalk)
   const m4 = new THREE.Matrix4(), up = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), eye = new THREE.Vector3();
   const inv = site ? site.clone().invert() : null;
   if (site) up.setFromMatrixColumn(site, 1).normalize();
@@ -55,6 +62,11 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   const pose = (out, eye, look, n) => { m4.lookAt(eye, look, n); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye); };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
+  // THE LANDING FLOWN (2026-11-07, spec section 2): `flying` the host (src/fx/manual-landing.js) from the start when the landing may be flown,
+  // `lhud` its panel (the arrival's: the verdict reads through the cut), `grade` the contact once the ground is met, `landed` where the
+  // rocket stood (island metres; null on a skip), `jolt` the rail's shake after a hard or wrecked contact, `onOffer` the offer's Space key
+  let flying = null, lhud = null, glare = null, overrideAt = manual ? LANDING_GAME.approach.overrideAt : Infinity, overrideT = 0, offered = false, offerLeft = offer ? LANDING_GAME.override.offerSeconds : 0, grade = null, landed = null, jolt = 0, onOffer = null;
+  const talkBrief = () => (grade && grade.reason !== 'skipped' ? LANDING_GAME.lines[grade.grade] : tune.talk.brief);   // a skip is the plain talk (spec 7)
   // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
   // an acceptance run lands without it unless it asks (?gate=1)
   const q = typeof location === 'object' ? new URLSearchParams(location.search) : null, gated = !q || q.get('acceptance') !== '1' || q.get('gate') === '1';
@@ -79,10 +91,14 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // the rocket at time `time` of the landing: along its own up, its clips, plumes, scorch and dust; Isao climbing out and clear
   function apply(time, dt) {
     const s = shot.stateAt(time), h = rocket.holder;
+    if (manual && !grade) s.clips.Legs_Deploy = null;   // the flown landing's legs are the player's (L, or 200 m): the approach keeps them stowed
     sound(s);
-    h.matrix.copy(h.userData.placed).premultiply(m4.makeTranslation(up.x * s.altitude * metres, up.y * s.altitude * metres, up.z * s.altitude * metres)); h.matrixWorldNeedsUpdate = true;
+    // after a flown touchdown the rocket stands where it met the ground (`landed`, island metres off the pad's centre), not snapped to it
+    toWorld(landed ?? [0, 0, 0], c).sub(toWorld([0, 0, 0], b)).addScaledVector(up, s.altitude * metres);
+    h.matrix.copy(h.userData.placed).premultiply(m4.makeTranslation(c.x, c.y, c.z)); h.matrixWorldNeedsUpdate = true;
     clip('Legs_Deploy', s.clips.Landing_Shock === null ? (s.clips.Legs_Deploy ?? 0) : null);   // stowed until they deploy; the shock owns the legs after touchdown
-    clip('Landing_Shock', s.clips.Landing_Shock); clip('Top_Door_Open', s.clips.Top_Door_Open ?? 0);
+    // the shock clip at a rate from the contact (spec 2.5): as authored on a clean one, faster on a hard one, hardest on a wreck
+    clip('Landing_Shock', s.clips.Landing_Shock === null ? null : s.clips.Landing_Shock * (grade?.grade === 'WRECK' ? 1.6 : grade?.grade === 'HARD' ? 1.25 : 1)); clip('Top_Door_Open', s.clips.Top_Door_Open ?? 0);
     rocket.root?.userData.mixer?.update(0);
     toWorld(shot.camera(time).pos, eye); h.updateMatrixWorld(true); a.copy(eye); h.worldToLocal(a);   // this frame's eye, off the rail
     for (const p of plumes) {   // several engines, each on its own cadence (the lab's burn), each sheet turned to the camera about the hull's axis
@@ -90,13 +106,14 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       p.userData.setIntensity(s.plume * (1 - e.depth + e.depth * Math.sin(time * e.cadence + e.phase)) * 0.55); p.userData.tick(time + e.phase);
       p.rotation.set(0, Math.atan2(a.x - p.position.x, a.z - p.position.z), 0);
     }
-    if (s.scorch && !scorch) { scorch = makeScorch({ ...IMPACT_TUNE, scorchSize: 9, scorchLife: 1e9 }, 0x0a0806); scorch.rotation.x = -Math.PI / 2; scorch.position.y = 0.02; fxRoot.add(scorch); }
-    if (s.dust && !dust) { dust = makeEmbers({ ...IMPACT_TUNE, emberCount: 420, emberLife: 2.6, emberDrag: 0.985, emberRise: 0.9 }, 0x9a8f7a, 11); dust.scale.setScalar(6); dust.position.y = 0.4; fxRoot.add(dust); }
+    const wreck = grade?.grade === 'WRECK', [lx, , lz] = landed ?? [0, 0, 0];   // a wreck: the scorch wider, the dust doubled (spec 2.5)
+    if (s.scorch && !scorch) { scorch = makeScorch({ ...IMPACT_TUNE, scorchSize: wreck ? 14 : 9, scorchLife: 1e9 }, 0x0a0806); scorch.rotation.x = -Math.PI / 2; scorch.position.set(lx, 0.02, lz); fxRoot.add(scorch); }
+    if (s.dust && !dust) { dust = makeEmbers({ ...IMPACT_TUNE, emberCount: wreck ? 840 : 420, emberLife: 2.6, emberDrag: 0.985, emberRise: 0.9 }, 0x9a8f7a, 11); dust.scale.setScalar(6); dust.position.set(lx, 0.4, lz); fxRoot.add(dust); }
     if (dust && dt > 0 && !dust.userData.tick(dt)) { drop(dust); dust = null; }
     const i = shot.isaoAt(time, to), o = drone.obj;
     o.visible = i.visible;
     if (!i.visible) return;
-    o.scale.setScalar(size * tune.isao.scale); toWorld(i.pos, o.position);
+    o.scale.setScalar(size * tune.isao.scale); toWorld(landed ? [i.pos[0] + lx * (1 - i.out), i.pos[1], i.pos[2] + lz * (1 - i.out)] : i.pos, o.position);   // out of the rocket where it stands, then his arc to his point
     // he faces the camera as he comes out, angry at the landing: the first line's face, before the line
     b.copy(o.position).normalize(); c.copy(eye).sub(o.position); c.addScaledVector(b, -c.dot(b)).add(o.position);
     m4.lookAt(c, o.position, b); o.quaternion.setFromRotationMatrix(m4); drone.faceLock = 'angry';
@@ -121,7 +138,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       drone.dir = b.toArray(); drone.faceLock = null;
     }
     beats.deploy(api);
-    api.brief(tune.talk.brief);
+    api.brief(talkBrief());   // the graded talk (LANDING_GAME.lines), the plain one when the landing was not flown or was skipped
   }
   // THE LANDING HANDS OVER TO THE TOUR of the landers, and the tour dives straight into the Rotor (owner, 2026-10-05: "no more 'look
   // around' the map after the beacon"; it was a free orbit camera since 2026-09-30); without a tour, the orbit camera on the base
@@ -141,12 +158,25 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     hud(true);
     camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
     api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
+    if (manual || offer) {   // THE LANDING (2026-11-07): the host in island metres with the pad's top at 0, its reticle under a group lifted there
+      const pad = new THREE.Vector3().setFromMatrixPosition(rocket.holder.userData.placed).applyMatrix4(inv).divideScalar(metres).y;
+      const flightRoot = new THREE.Group(); flightRoot.name = 'LandingFlight'; flightRoot.position.y = pad; fxRoot.add(flightRoot);
+      lhud = createLandingHud(globalThis.document?.body);
+      flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
+        clipScrub: (name, time) => { clip(name, time); rocket.root?.userData.mixer?.update(0); }, coarse: !!globalThis.matchMedia?.('(pointer: coarse)').matches });
+    }
+    if (offer) {   // the offer on a later start (spec 8): Space takes it; this capture listener goes in before the shot's, so it has Space first
+      lhud.show(true); lhud.offer(true, 'SPACE');
+      onOffer = (ev) => { if (ev.key !== LANDING_GAME.input.offerKey || !takeOffer()) return; ev.preventDefault(); ev.stopImmediatePropagation(); };
+      globalThis.addEventListener?.('keydown', onOffer, true);
+    }
     api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
   function railPose(u, out) {
     const p = shot.camera(Math.min(t, shot.cut));
     if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); }
     pose(out, toWorld(p.pos, a), toWorld(p.look, b), up);
+    if (jolt > 0) out.pos.addScaledVector(up, Math.sin(jolt * 40) * jolt * LANDING_GAME.camera.jolt * metres);   // the shake on a hard contact (spec 4)
   }
   function talkPose(u, out) {
     const o = drone.obj, f = isaoFace(o.position.toArray(), drone.dir, o.getWorldDirection(a).toArray(), o.scale.x, u);
@@ -155,7 +185,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // THE CUT: everything that would show the swap is behind the camera, and the swap happens in this call
   function toTalk() {
     settle(); deploy();
-    phase = 'talk'; talkT = 0;
+    phase = 'talk'; talkT = 0; talkSeconds = holdOf(talkBrief());
     camera.fov = tune.talk.fov; camera.updateProjectionMatrix();
     cutting = true; api.startShot({ id: 'arrivalTalk', dur: talkSeconds, poseAt: talkPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => finish(false) }); cutting = false;
   }
@@ -165,15 +195,58 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     settle(); deploy();   // a skip before the cut: the swap happens with it, on the cut to the base
     camera.fov = fov; camera.updateProjectionMatrix();
     if (drone) { drone.loiter = toWorld([0, 0, 0], a).normalize().toArray(); drone.obj.visible = true; }   // he drifts back to the foundry he is about to work
-    hud(false);
+    hud(false); endFlight(true);
     phase = 'done';
     look();
   }
   // no landing to show (a model never came): the beats are released and the lines said; whatever loads later lands in the end state
   function release() {
-    phase = 'done'; late = new Set(IDS.filter((id) => !base.structure(id)));
+    phase = 'done'; late = new Set(IDS.filter((id) => !base.structure(id))); endFlight(true);
     const d = api.drone(); if (d) d.obj.visible = true;
     deploy(); look();
+  }
+  // the host and the glare go at the touchdown; the panel (its verdict) and the offer's key at the end of the arrival
+  function endFlight(all) {
+    flying?.dispose(); flying = null; glare?.dispose(); glare = null;
+    if (!all) return;
+    lhud?.dispose(); lhud = null; if (onOffer) globalThis.removeEventListener?.('keydown', onOffer, true); onOffer = null;
+  }
+  function takeOffer() {
+    if (!offer || offered || offerLeft <= 0 || phase !== 'landing' || !flying) return false;
+    offered = true; overrideAt = t + 0.01; return true;
+  }
+  // OVERRIDE: the sequence's altitude, rate and legs at this instant seed the flight; the chase shot takes over from the rail
+  function override() {
+    const s = shot.stateAt(t), rate = (shot.stateAt(t + 0.05).altitude - s.altitude) / 0.05;
+    if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
+    flying.begin(s.altitude, rate, manual || s.clips.Legs_Deploy === null ? 0 : Math.min(1, s.clips.Legs_Deploy / tune.landing.legsDeploy));
+    api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
+    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches });
+    cutting = true;   // starting a shot ends the rail's, whose onEnd would finish the arrival
+    api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: true, onEnd: () => { if (!cutting && phase === 'landing') flying?.skip(); } });
+    cutting = false; overrideT = 0;
+  }
+  // TOUCHDOWN: the grade to the foundry, the sequence resumes at its touchdown where the rocket stands, the rail shot back
+  function touchdown() {
+    const p = flying.pose(); grade = flying.contact(); landed = grade.reason === 'skipped' ? null : [p.x, 0, p.z];
+    jolt = grade.grade === 'HARD' ? 0.5 : grade.grade === 'WRECK' ? 1 : 0;
+    t = shot.seq.touchdown; overrideAt = Infinity; if (heard) heard.legs = true;   // the legs are down: no second pneumatics cue
+    beats.salvage?.(LANDING_GAME.salvage[grade.grade]);
+    endFlight(false);
+    cutting = true; api.startShot({ id: 'arrival', dur: shot.cut - t + 2, poseAt: railPose, onEnd: () => { if (!cutting) finish(true); } }); cutting = false;
+  }
+  function landingTick(dt) {   // the landing branch; while the flight holds the clock `t` stands still (the rail and the sequence wait)
+    t += dt;
+    if (offerLeft > 0) { offerLeft -= dt; if (offerLeft <= 0 && !offered) { lhud?.offer(false); lhud?.show(false); } }
+    if (offer && !offered && offerLeft > 0 && api.offerTaken?.()) { offered = true; overrideAt = Math.max(t, LANDING_GAME.approach.overrideAt); }
+    if (flying && t >= overrideAt && !flying.pose()) override();
+    if (flying?.pose()) {   // the window: OVERRIDE for override.seconds, then MANUAL / FLARE, until the ground
+      glare?.tick(dt); if (glare?.done) glare = null;
+      overrideT += dt; if (flying.phase() === 'override' && overrideT >= LANDING_GAME.override.seconds) flying.manual();
+      if (flying.tick(dt) === 'touched') touchdown(); else { t -= dt; return; }
+    }
+    jolt = Math.max(0, jolt - dt);
+    if (t >= shot.cut) toTalk(); else apply(t, dt);
   }
   return {
     tick(dt, host) {
@@ -193,17 +266,26 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         else if (waited > tune.wait || base.errors.some((e) => IDS.some((id) => e.startsWith(`${id}:`)))) release();
         return;
       }
-      if (phase === 'landing') { t += dt; if (t >= shot.cut) toTalk(); else apply(t, dt); }
+      if (phase === 'landing') landingTick(dt);
       else talkT += dt;
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
+    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip', 'override' (takes the offer)
+    landing(cmd, arg) {
+      if (cmd === 'input') { flying?.input(arg ?? {}); return !!flying?.pose(); }
+      if (cmd === 'skip') { if (flying?.pose()) { flying.skip(); return true; } return false; }
+      if (cmd === 'override') return takeOffer();
+      return null;
+    },
     state: () => {
       const vis = (id) => base?.structure(id)?.holder.visible ?? null, local = (v) => v.clone().applyMatrix4(inv).divideScalar(metres).toArray().map((x) => +x.toFixed(1));
       return { on, phase, gate: gate ? (gate.opened ? 'opened' : 'shown') : null, thrust: !!thrust, cues: cues.slice(-12), sound: api?.sfx?.ready ?? null, t: +t.toFixed(2), cut: +shot.cut.toFixed(2), talk: +talkSeconds.toFixed(2), talkT: +talkT.toFixed(2), waited: +waited.toFixed(1), deployed, skipped,
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
-        isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov };   // lens: the game's own, put back at the end
+        isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
+        manual, offer, offered, offerLeft: +Math.max(0, offerLeft).toFixed(2), flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
+        landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed } : null) };
     },
   };
 }

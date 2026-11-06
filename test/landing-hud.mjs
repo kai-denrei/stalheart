@@ -53,6 +53,10 @@ assert.ok(root.querySelector('#lh-stop').classList.contains('hot'), 'a stopping 
 assert.equal(root.querySelector('#lh-legs').textContent, 'LEGS DOWN'); assert.ok(root.querySelector('#lh-legs').classList.contains('ok'));
 assert.equal(LANDING_GAME.verdict.hard.sink, 6, 'the hot lines are the verdict\'s own');
 
+// clear(): a new flight starts with no verdict and no annunciation left from an earlier one (Task 7, 2026-11-07)
+hud.clear(); assert.equal(root.querySelector('#lh-verdict').textContent, ''); assert.equal(root.querySelector('#lh-verdict').className, 'lh-verdict');
+assert.equal(root.querySelector('#lh-ann').textContent, ''); assert.equal(root.querySelector('#lh-ann').className, 'lh-ann');
+
 // the touch rail: five controls, the buttons call their handlers, the slider is the throttle
 const got = [];
 hud.touch(true, { tilt: (d) => got.push(['tilt', d]), legs: () => got.push(['legs']), skip: () => got.push(['skip']), throttle: (v) => got.push(['throttle', v]) });
@@ -66,5 +70,5 @@ hud.touch(false); assert.equal(rail.hidden, true); assert.equal(rail.children.le
 
 hud.dispose(); assert.equal(root.querySelector('#landing-hud'), null);
 // no root, no document: an inert panel that never throws
-const inert = createLandingHud(null); inert.show(true); inert.set({}); inert.dispose();
+const inert = createLandingHud(null); inert.show(true); inert.set({}); inert.clear(); inert.dispose();
 console.log('landing-hud: ok');

@@ -3,7 +3,7 @@
 import { LANDING_GAME } from '../content/landing-game.js';
 
 const ROWS = [['alt', 'ALT', 'm'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', 'm/s'], ['tilt', 'TILT', '°'], ['tw', 'T/W', ''], ['stop', 'CAN STOP IN', 'm'], ['fuel', 'FUEL', 's']];
-const INERT = { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, offer() {}, touch() {}, dispose() {} };
+const INERT = { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, clear() {}, offer() {}, touch() {}, dispose() {} };
 export function createLandingHud(root, tune = LANDING_GAME) {
   if (!root || typeof document === 'undefined') return { ...INERT };
   const hard = tune.verdict.hard;
@@ -41,6 +41,7 @@ export function createLandingHud(root, tune = LANDING_GAME) {
       verdictEl.textContent = `LANDING · ${grade} · ${reason.toUpperCase()} ${reason === 'sink' ? num(sink, 1) : reason === 'drift' ? num(drift, 1) : reason === 'tilt' ? num(tilt * 180 / Math.PI, 1) + '°' : ''}`.trim();
       verdictEl.className = `lh-verdict ${grade.toLowerCase()}`;
     },
+    clear() { verdictEl.textContent = ''; verdictEl.className = 'lh-verdict'; ann.textContent = ''; ann.className = 'lh-ann'; },   // a fresh flight reads nothing from an earlier one
     offer(on, key = 'SPACE') { offerEl.hidden = !on; offerEl.textContent = on ? `AUTO-LAND · [${key}] OVERRIDE` : ''; },
     touch(on, h = {}) {   // phones: a throttle slider, two tilt buttons, LEGS, SKIP (spec section 5)
       rail.hidden = !on; rail.replaceChildren();
