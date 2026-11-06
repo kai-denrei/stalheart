@@ -68,6 +68,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // `lhud` its panel (the arrival's: the verdict reads through the cut), `grade` the contact once the ground is met, `landed` where the
   // rocket stood (island metres; null on a skip), `jolt` the rail's shake after a hard or wrecked contact, `offered` the gate's offer taken
   let flying = null, lhud = null, glare = null, overrideAt = Infinity, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0;
+  // from the contact to the cut the arrival's island-metre points all move by `landed`: the holder (`placedLanded`, its placement with the
+  // offset baked in), the rail's eye and aim, Isao's rise and arc, the scorch and dust; settle() and deploy() stay on the plan's spots
+  let placedLanded = null;
+  const atLanded = (p) => (landed ? [p[0] + landed[0], p[1], p[2] + landed[2]] : p);
   const talkBrief = () => (grade && grade.reason !== 'skipped' ? LANDING_GAME.lines[grade.grade] : tune.talk.brief);   // a skip is the plain talk (spec 7)
   // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
   // an acceptance run lands without it unless it asks (?gate=1)
@@ -95,27 +99,27 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     const s = shot.stateAt(time), h = rocket.holder;
     if (manual && !grade) s.clips.Legs_Deploy = null;   // the flown landing's legs are the player's (L, or 200 m): the approach keeps them stowed
     sound(s);
-    // after a flown touchdown the rocket stands where it met the ground (`landed`, island metres off the pad's centre), not snapped to it
-    toWorld(landed ?? [0, 0, 0], c).sub(toWorld([0, 0, 0], b)).addScaledVector(up, s.altitude * metres);
-    h.matrix.copy(h.userData.placed).premultiply(m4.makeTranslation(c.x, c.y, c.z)); h.matrixWorldNeedsUpdate = true;
+    // after a flown touchdown the rocket stands where it met the ground (`placedLanded`, `landed` off the pad's centre), not snapped to it
+    c.copy(up).multiplyScalar(s.altitude * metres);
+    h.matrix.copy((landed && placedLanded) || h.userData.placed).premultiply(m4.makeTranslation(c.x, c.y, c.z)); h.matrixWorldNeedsUpdate = true;
     clip('Legs_Deploy', s.clips.Landing_Shock === null ? (s.clips.Legs_Deploy ?? 0) : null);   // stowed until they deploy; the shock owns the legs after touchdown
     // the shock clip at a rate from the contact (spec 2.5): as authored on a clean one, faster on a hard one, hardest on a wreck
     clip('Landing_Shock', s.clips.Landing_Shock === null ? null : s.clips.Landing_Shock * (grade?.grade === 'WRECK' ? 1.6 : grade?.grade === 'HARD' ? 1.25 : 1)); clip('Top_Door_Open', s.clips.Top_Door_Open ?? 0);
     rocket.root?.userData.mixer?.update(0);
-    toWorld(shot.camera(time).pos, eye); h.updateMatrixWorld(true); a.copy(eye); h.worldToLocal(a);   // this frame's eye, off the rail
+    toWorld(atLanded(shot.camera(time).pos), eye); h.updateMatrixWorld(true); a.copy(eye); h.worldToLocal(a);   // this frame's eye, off the rail
     for (const p of plumes) {   // several engines, each on its own cadence (the lab's burn), each sheet turned to the camera about the hull's axis
       const e = p.userData.engine;
       p.userData.setIntensity(s.plume * (1 - e.depth + e.depth * Math.sin(time * e.cadence + e.phase)) * 0.55); p.userData.tick(time + e.phase);
       p.rotation.set(0, Math.atan2(a.x - p.position.x, a.z - p.position.z), 0);
     }
-    const wreck = grade?.grade === 'WRECK', [lx, , lz] = landed ?? [0, 0, 0];   // a wreck: the scorch wider, the dust doubled (spec 2.5)
+    const wreck = grade?.grade === 'WRECK', [lx, , lz] = atLanded([0, 0, 0]);   // a wreck: the scorch wider, the dust doubled (spec 2.5)
     if (s.scorch && !scorch) { scorch = makeScorch({ ...IMPACT_TUNE, scorchSize: wreck ? 14 : 9, scorchLife: 1e9 }, 0x0a0806); scorch.rotation.x = -Math.PI / 2; scorch.position.set(lx, 0.02, lz); fxRoot.add(scorch); }
     if (s.dust && !dust) { dust = makeEmbers({ ...IMPACT_TUNE, emberCount: wreck ? 840 : 420, emberLife: 2.6, emberDrag: 0.985, emberRise: 0.9 }, 0x9a8f7a, 11); dust.scale.setScalar(6); dust.position.set(lx, 0.4, lz); fxRoot.add(dust); }
     if (dust && dt > 0 && !dust.userData.tick(dt)) { drop(dust); dust = null; }
     const i = shot.isaoAt(time, to), o = drone.obj;
     o.visible = i.visible;
     if (!i.visible) return;
-    o.scale.setScalar(size * tune.isao.scale); toWorld(landed ? [i.pos[0] + lx * (1 - i.out), i.pos[1], i.pos[2] + lz * (1 - i.out)] : i.pos, o.position);   // out of the rocket where it stands, then his arc to his point
+    o.scale.setScalar(size * tune.isao.scale); toWorld(atLanded(i.pos), o.position);   // out of the rocket where it stands, then his arc to his point moved with it (`to` + `landed`)
     // he faces the camera as he comes out, angry at the landing: the first line's face, before the line
     b.copy(o.position).normalize(); c.copy(eye).sub(o.position); c.addScaledVector(b, -c.dot(b)).add(o.position);
     m4.lookAt(c, o.position, b); o.quaternion.setFromRotationMatrix(m4); drone.faceLock = 'angry';
@@ -176,7 +180,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   function railPose(u, out) {
     const p = shot.camera(Math.min(t, shot.cut));
     if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); }
-    pose(out, toWorld(p.pos, a), toWorld(p.look, b), up);
+    pose(out, toWorld(atLanded(p.pos), a), toWorld(atLanded(p.look), b), up);   // the rail moves with the rocket where it touched
     if (jolt > 0) out.pos.addScaledVector(up, Math.sin(jolt * 40) * jolt * LANDING_GAME.camera.jolt * metres);   // the shake on a hard contact (spec 4)
   }
   function talkPose(u, out) {
@@ -230,6 +234,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // TOUCHDOWN: the grade to the foundry, the sequence resumes at its touchdown where the rocket stands, the rail shot back
   function touchdown() {
     const p = flying.pose(); grade = flying.contact(); landed = grade.reason === 'skipped' ? null : [p.x, 0, p.z];
+    if (landed) { toWorld(landed, c).sub(toWorld([0, 0, 0], b)); placedLanded = rocket.holder.userData.placed.clone().premultiply(m4.makeTranslation(c.x, c.y, c.z)); }
     jolt = grade.grade === 'HARD' ? 0.5 : grade.grade === 'WRECK' ? 1 : 0;
     t = shot.seq.touchdown; overrideAt = Infinity; if (heard) heard.legs = true;   // the legs are down: no second pneumatics cue
     beats.salvage?.(LANDING_GAME.salvage[grade.grade]);
