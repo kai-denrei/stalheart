@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/orbital-finale-assets.lock.json','docs/isao-birudoron-assets.lock.json','docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json','docs/landmark-tiers-assets.lock.json','docs/korp-assets.lock.json','docs/sol82-assets.lock.json','docs/arrival-foundry-assets.lock.json','docs/cargo-assets.lock.json','docs/colony-assets.lock.json','docs/scoreboard-assets.lock.json','docs/livery-assets.lock.json','docs/nih-dairia-assets.lock.json','docs/feids26-assets.lock.json','docs/companions-assets.lock.json','docs/a6-settlement-assets.lock.json']) {
+for(const lockFile of ['docs/orbital-finale-assets.lock.json','docs/isao-birudoron-assets.lock.json','docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json','docs/landmark-tiers-assets.lock.json','docs/korp-assets.lock.json','docs/sol82-assets.lock.json','docs/arrival-foundry-assets.lock.json','docs/cargo-assets.lock.json','docs/colony-assets.lock.json','docs/scoreboard-assets.lock.json','docs/livery-assets.lock.json','docs/nih-dairia-assets.lock.json','docs/feids26-assets.lock.json','docs/companions-assets.lock.json','docs/a6-settlement-assets.lock.json','docs/a6-kidou-sai93-assets.lock.json','docs/lab-crystals.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
@@ -59,6 +59,9 @@ for(const file of lock.files){
    if(bytes.length>budget.plain_bytes_max)throw Error(`${file.path}: ${bytes.length} bytes, over the ${tier} budget of ${budget.plain_bytes_max}`);
    if(tier==='lod2'&&(json.animations||[]).length)throw Error(`${file.path}: a distance tier must stay static`);
   }
+  // NAMED NODES THE ADAPTERS REACH INTO (2026-11-07, docs/a6-kidou-sai93-assets.lock.json): the KIDOU and SAI-93 runtime.js adapters look their pivots
+  // and sockets up by name and throw on a missing one, so a lock entry may list them; a later upstream revision that renames one fails here, not in a scene.
+  if(file.requiredNodes)for(const name of file.requiredNodes)if(!(json.nodes||[]).some(n=>n.name===name))throw Error(`Missing named node ${name}: ${file.path}`);
   if(file.clips)for(const clip of file.clips)if(!(json.animations||[]).some(a=>a.name===clip))throw Error('Missing Astro clip: '+clip);
   if(file.damageLevel<2 && !(json.animations||[]).some(a=>a.name==='Terraforming_Cycle'))throw Error('Missing authored cycle');
  }
