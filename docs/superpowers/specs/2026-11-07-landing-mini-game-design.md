@@ -393,8 +393,8 @@ the game alone remains. Concretely:
   blend; MANUAL comes mid-pull-back (0.5 s into the 2 s ease), 1.5 s before the side view holds.
 - The camera's intro: for `blend` seconds the host's `chase()` holds the ENGINE SHOT `intro.hold` s, then eases over the remaining
   `blend − hold` s (2.0) to the side view's dolly: the engine shot's
-  eye is `camera.intro.back` m (6) from the engines' centre along the side view's line of sight and `camera.intro.up` m (−2, under the
-  bells) with the look at the engines' centre (the hull's bottom, `SH02_WELL.bell` in the model's metres scaled), its fov
+  eye is `camera.intro.back` m (22; first 6, then 16, see "B as built") from the engines' centre along the side view's line of sight and
+  `camera.intro.up` m (−6; first −2, under the bells) with the look at the engines' centre (the hull's bottom, `SH02_WELL.bell` in the model's metres scaled), its fov
   `camera.intro.fov` (40); the ease is a smoothstep on both the eye and the look (not on the fov: the fov eases linearly), the side
   view's own numbers at the end. In the flight frame the engine shot's eye sits on +z of the rocket like the side view's, so the
   dolly out is a straight pull-back and rise: no swing.
@@ -418,7 +418,8 @@ sight. `introMix(t, blend, hold)` (the weights: the progress u over the blend, t
 and `engineShot` (the pose) are pure exports of `src/fx/manual-landing.js`. First built at blend 2.0 with a linear fade and no hold: the still
 showed the close-up almost wholly under the canvas and the cinematic frame already black by mid-blend; retuned the same day to blend 3.0, hold 1.0
 and the (1 − u)^1.5 ease-out. Measured (retuned): the flight begins after 4.9-5.0 s of the signature, the opacity ~0.73 half a second in with the
-lens still at 40, ~0.30 at 1.5 s in (fov ~46, MANUAL just past); the side view holds 1.47-1.50 s after MANUAL. Read from the stills: the engine shot
-alone (`landing-engine-shot`) frames the hull's underside large (the skirt, the engine housings, a leg's foot pad at the corner), nothing cut by the
-near plane; the in-game burn there is a broad warm glow down the frame's centre rather than a defined column, and through the canvas
-(`landing-blend-start`) it merges into the cinematic flame, the hull and legs dark silhouettes around it.
+lens still at 40, ~0.30 at 1.5 s in (fov ~46, MANUAL just past); the side view holds 1.47-1.50 s after MANUAL. At `intro { back: 6, up: −2 }` the engine shot
+alone (`landing-engine-shot`) framed the hull's underside from inside the skirt's glow, the burn a formless haze; pulled out to back 16 / up −6
+it was still a haze under the skirt, and the build stands at **`intro { back: 22, up: −6, fov: 40, hold: 1 }`**: the whole skirt, its bells and
+the legs in the frame's upper half, the burn a soft cone streaming down from the bells toward the disk, nothing cut by the near plane. The look
+stays on the engines' centre (the text above), so the bells sit near the frame's middle rather than its upper third.

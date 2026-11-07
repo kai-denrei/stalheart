@@ -233,12 +233,12 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
     assert.ok(s0.intro > 0 && s0.intro < 0.1, `the intro starts with the flight (${s0.intro})`);
     { const feet = new THREE.Vector3().setFromMatrixPosition(w.base.structure('sh02').holder.matrix), d = w.goal.pos.distanceTo(feet) / METRES, fw = new THREE.Vector3(0, 0, -1).applyQuaternion(w.goal.quat);
       const bells = new THREE.Vector3(0, 1, 0).multiplyScalar(2 * 1.5 * METRES).add(feet).sub(w.goal.pos).normalize();   // the hull's bottom (SH02_WELL.bell x 1.5), the tilt ignored
-      assert.ok(d > 5 && d < 7.5, `the engine shot: the eye a few metres off the hull's feet (${d.toFixed(2)} m)`); assert.ok(fw.dot(bells) > 0.97, `looking at the engines (${fw.dot(bells).toFixed(3)})`); }
+      const I = LANDING_GAME.camera.intro, want = Math.hypot(I.back, I.up + 3); assert.ok(Math.abs(d - want) < 1, `the engine shot: the eye ~${want.toFixed(1)} m off the hull's feet (${d.toFixed(2)} m)`); assert.ok(fw.dot(bells) > 0.97, `looking at the engines (${fw.dot(bells).toFixed(3)})`); }
     assert.ok(sig.opacity.length > 0 && sig.opacity.at(-1) < 1 && sig.opacity.at(-1) > 0.9, `the canvas begins to fade (${sig.opacity.at(-1)})`);
     assert.equal(w.camera.fov, LANDING_GAME.camera.intro.fov, `the engine shot's lens, held (${w.camera.fov})`);
     { const H = LANDING_GAME.camera.intro.hold, eye = w.goal.pos.clone(); run(w, a, H - 0.2, dt);
       const feet = new THREE.Vector3().setFromMatrixPosition(w.base.structure('sh02').holder.matrix), d = w.goal.pos.distanceTo(feet) / METRES;
-      assert.equal(w.camera.fov, LANDING_GAME.camera.intro.fov, 'still the engine shot\'s lens through the hold'); assert.ok(d > 5 && d < 7.5, `the engine shot held on the falling hull (${d.toFixed(2)} m)`);
+      assert.equal(w.camera.fov, LANDING_GAME.camera.intro.fov, 'still the engine shot\'s lens through the hold'); const I = LANDING_GAME.camera.intro, want = Math.hypot(I.back, I.up + 3); assert.ok(Math.abs(d - want) < 1, `the engine shot held on the falling hull (${d.toFixed(2)} m of ~${want.toFixed(1)})`);
       assert.ok(eye.distanceTo(w.goal.pos) / METRES > 10, 'riding down with it'); }
     run(w, a, S.blend / 2 - (LANDING_GAME.camera.intro.hold - 0.2), dt);
     assert.ok(Math.abs(sig.opacity.at(-1) - 0.5 ** 1.5) < 0.03, `(1 - u)^1.5 half way: ${(0.5 ** 1.5).toFixed(3)} (${sig.opacity.at(-1)})`); assert.ok(Math.abs(a.state().landing.intro - 0.5) < 0.05, `the intro half way (${a.state().landing.intro})`);

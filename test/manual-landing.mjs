@@ -198,7 +198,7 @@ console.log('manual-landing: pose ok');
   assert.equal(introMix(H + R / 2, B, H).pos, 0.5, 'the pull-back\'s midpoint'); assert.ok(Math.abs(introMix(H + R / 4, B, H).fov - 0.25) < 1e-12, 'the lens linear over the pull-back');
   assert.deepEqual(introMix(B, B, H), { u: 1, pos: 1, fov: 1 }, 'the side view at the blend\'s end');
   assert.equal(introMix(0.1, 0).u, 1, 'no blend: the side view at once');
-  const e = engineShot([10, 300, -2], 0, 3, I); near(e.look, [10, 303, -2], 'upright: the engines 3 m above the feet'); near(e.eye, [10, 301, 4], 'the eye 6 m on +z, 2 m under');
+  const e = engineShot([10, 300, -2], 0, 3, I); near(e.look, [10, 303, -2], 'upright: the engines 3 m above the feet'); near(e.eye, [10, 303 + I.up, -2 + I.back], 'the eye intro.back on +z, intro.up under');
   const t = engineShot([0, 0, 0], 0.2, 3, I); near(t.look, [3 * Math.sin(0.2), 3 * Math.cos(0.2), 0], 'tilted: up the hull\'s axis'); assert.equal(t.eye[0], t.look[0], 'the eye straight back: no swing across');
   console.log('manual-landing: intro ok');
 }

@@ -77,10 +77,13 @@ export const LANDING_GAME = Object.freeze({
   // superposed on the bright cinematic plume), then eased to the side view over the blend's remaining signature.blend - hold s (2 s;
   // src/fx/manual-landing.js chase: a smoothstep on the eye and the look, linear on the fov): the eye `back` m from the engines' centre (the
   // hull's bottom, SH02_WELL.bell scaled) on the flight's +z, the side view's line of sight, and `up` m above it (negative: under the bells),
-  // looking at that centre, the lens `fov` degrees (narrower than the side view's 58: the in-game plumes fill the frame as the 2D game's do).
+  // looking at that centre, the lens `fov` degrees (narrower than the side view's 58). Pulled out the same day from back 6 / up -2: at 6 m the
+  // camera sat inside the skirt's glow, the underside filled the frame and the burn was a formless haze; at 16 m / 6 m under it was still
+  // a haze below the skirt; at 22 m the whole skirt, its bells and the legs stand in the frame's upper half and the burn is a soft cone
+  // streaming down toward the disk (the look stays on the engines' centre, so the bells sit near the frame's middle, not its upper third).
   // The override beat (1.5 s) ends a quarter into the pull-back: MANUAL comes while the camera is still dollying out
   camera: Object.freeze({ back: 40, backPerMetre: 1.0, backPerMetreAcross: 0.8, up: 18, upPerMetre: 0.5, fov: 58, lag: 0.12, jolt: 0.8,
-    intro: Object.freeze({ back: 6, up: -2, fov: 40, hold: 1.0 }) }),
+    intro: Object.freeze({ back: 22, up: -6, fov: 40, hold: 1.0 }) }),
   reticle: Object.freeze({
     metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), segments: 48,
     minRadius: 2,         // m: the altitude ring never shrinks below the rocket's own footprint (the legs splay to about 2 m)
