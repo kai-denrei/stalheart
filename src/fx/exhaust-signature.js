@@ -137,7 +137,8 @@ export function startExhaustSignature(root, { seconds, hold, yEnd, reducedMotion
     + '<button type="button" class="es-skip" data-skip-cinematic>SKIP CINEMATIC →</button></div>';
   el.prepend(canvas);
   const tune = { seconds, hold, yEnd };
-  let t = 0, done = false, skipped = false;
+  // `fading`: the cross-fade under way (spec 15 B, fadeTo below): the flight runs under the canvas, so its keys and the touch rail go through
+  let t = 0, done = false, skipped = false, fading = false;
   const handle = {
     tick(dt) {
       if (done) return;
@@ -146,6 +147,15 @@ export function startExhaustSignature(root, { seconds, hold, yEnd, reducedMotion
       if (t >= seconds) handle.dispose();
     },
     get done() { return done; },
+    get t() { return t; },   // the signature's own clock, the seconds the host has ticked it: the arrival starts the flight at seconds - blend on it
+    // THE CROSS-FADE (spec 15 B): the element's CSS opacity (the shader keeps drawing its darkening frame beneath it). Under 1 the flight is
+    // running underneath: every key but Esc (still the skip) and every press reach the page, the plate's SKIP CINEMATIC still a button
+    fadeTo(opacity) {
+      if (done) return;
+      const o = Math.max(0, Math.min(1, opacity));
+      el.style.opacity = String(o);
+      if (o < 1 && !fading) { fading = true; el.style.pointerEvents = 'none'; }
+    },
     skip() {   // the host's too (the arrival's harness skip); `skipped` first, so an onSkip that calls back in cannot run it twice
       if (done || skipped) return;
       skipped = true;
@@ -162,12 +172,13 @@ export function startExhaustSignature(root, { seconds, hold, yEnd, reducedMotion
   };
   // capture on window: Esc skips, and no other key reaches the page under the black (the rail's any-key skip must not fire)
   function onKey(ev) {
+    if (fading && ev.key !== 'Escape') return;   // the cross-fade: the flight's keys are the host's (Esc alone ends the signature, not the flight)
     ev.preventDefault(); ev.stopImmediatePropagation();
     if (ev.key === 'Escape') handle.skip();
   }
   // and no press reaches the page under it either (the shot's tap skip, the scene): stopped in capture, not prevented, so the SKIP
   // CINEMATIC button's click still fires (2026-11-07)
-  function onTap(ev) { ev.stopImmediatePropagation(); }
+  function onTap(ev) { if (!fading) ev.stopImmediatePropagation(); }   // the cross-fade: the touch rail under it takes its presses
   window.addEventListener('keydown', onKey, true); window.addEventListener('pointerdown', onTap, true);
   el.querySelector('.es-skip').addEventListener('click', () => handle.skip());
   root.append(el);

@@ -10,8 +10,10 @@
 //                  the 2D game's boosters full-screen over the page, the arrival's clock held at 0 and the thrust bed at full under it, Esc
 //                  or SKIP CINEMATIC ends it; then SIGNATURE > OVERRIDE > MANUAL > FLARE > TOUCHDOWN on the rail below. THE HAND-OVER IN
 //                  MOTION (spec 14 C, 2026-11-07): no approach from orbit on a flown landing; the flight's side view ('arrivalFlight')
-//                  runs from start() under the signature, and its black opens on the rocket already sinking and drifting with the
-//                  boosters lit. An automatic landing has no signature and keeps the whole sequence from orbit
+//                  runs from start() under the signature, and the rocket is already sinking and drifting with the boosters lit when it shows.
+//                  THE CROSS-FADE (spec 15 B, 2026-11-07, the owner's third look): no cut on black; the flight begins under the signature's last
+//                  signature.blend s (aim permitting), the camera on the engines dollying out to the side view as the signature's canvas fades
+//                  out (signatureTick). An automatic landing has no signature and keeps the whole sequence from orbit
 //   'arrival'      the SH02 comes down along its own up on src/domain/arrival-shot.js's clock (the lab's timeline, cut short), its
 //                  legs, shock and door clips scrubbed, the lab's plumes, scorch and dust under it; Isao climbs out of the well
 //                  (smaller than his game size: the six metre drone would not fit it) and flies clear toward the pole
@@ -57,7 +59,8 @@ const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 // THE LANDING (src/platform/story-world.js decideLanding): `manual` the player flies it (the longer sequence, STORY_ARRIVAL_MANUAL, resumed at its touchdown,
 // unless a tune is passed), `offer` the start gate offers it (FLY THE LANDING beside START, 2026-11-07: taking it makes the start a
 // manual one, start() choosing the tune), `seed` the override's entry (src/domain/manual-landing.js seedEntry, per planet). The parameters stay in this closure for the flown landing
-export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet' } = {}) {
+// `startSignature`: the exhaust signature's factory (startExhaustSignature; a node test hands in a fake, with no DOM to draw on)
+export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet', startSignature = null } = {}) {
   const given = tune;
   tune ??= manual ? STORY_ARRIVAL_MANUAL : STORY_ARRIVAL;
   let phase = on && base && beats && site ? 'waiting' : past && base ? 'done' : 'off';
@@ -84,8 +87,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // `lhud` its panel (the arrival's: the verdict reads through the cut), `signature` the exhaust signature while it plays (`missionDue`: the
   // mission card waits for its end, its timers are the wall clock's and would run out under the black), `grade` the contact once the ground is met, `landed` where the
   // rocket stood (island metres; null on a skip), `jolt` the rail's shake after a hard or wrecked contact, `offered` the gate's offer taken
-  // `aimWait` the seconds the flight waited after the signature for the sky disk to be aimed (null until the signature is over; the harness's)
-  let flying = null, lhud = null, glare = null, signature = null, missionDue = false, aimWait = null, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0;
+  // `aimWait` the seconds the flight waited at the signature's blend (or after its skip) for the sky disk to be aimed (null until then; the harness's)
+  // `introDue` (spec 15 B): a signature played, so the flight opens on the engine shot and eases to the side view (none without it)
+  let flying = null, lhud = null, glare = null, signature = null, missionDue = false, aimWait = null, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0, introDue = false;
   // from the contact to the cut the arrival's island-metre points all move by `landed`: the holder (`placedLanded`, its placement with the
   // offset baked in), the rail's eye and aim, Isao's rise and arc, the scorch and dust; settle() and deploy() stay on the plan's spots
   let placedLanded = null;
@@ -197,8 +201,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     if (!manual) { camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0); }   // the orbit picture: a flown landing has none (spec 14 C)
     // THE EXHAUST SIGNATURE (spec 13) before the flight shot: capture listeners on one target run in registration order, so its window
     // keydown runs before the shot's and eats every key under the black, Esc its own skip. Null on reduced motion or without WebGL2: no signature
-    if (manual && globalThis.document?.body) {
-      signature = startExhaustSignature(globalThis.document.body, { ...LANDING_GAME.signature, reducedMotion: still, onSkip: () => { signature = null; } });
+    if (manual && (globalThis.document?.body || startSignature)) {
+      signature = (startSignature ?? startExhaustSignature)(globalThis.document?.body ?? null, { ...LANDING_GAME.signature, reducedMotion: still, onSkip: () => { signature = null; } });
+      introDue = !!signature;
       if (signature) { thrust ??= api.sfx?.loop('rocket_thrust', { dist: 0, gain: 0 }); thrust?.set(1, 1); }   // the boosters at full; the host's own bed takes over at the override
     }
     if (signature) missionDue = true; else api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
@@ -268,7 +273,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   function override() {
     if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
     base.reveal('sh02');   // hidden since the gate: the host's begin() puts it at the entry this same call
-    flying.begin(0);   // the legs stowed: they are the player's (L, or 200 m)
+    flying.begin(0, { intro: introDue });   // the legs stowed: they are the player's (L, or 200 m); the engine shot first after a signature (spec 15 B)
     api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
     if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare });   // the plain fade for everyone (spec 13: the shader is the signature's)
     overrideT = 0;
@@ -296,10 +301,21 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     // A phone has no Esc: after the lock any tap skips it (2026-11-07, the final review; the lock and the repeat rule already stop a held key)
     cutting = true; api.startShot({ id: 'arrival', dur: shot.cut - t + 2, poseAt: railPose, lockFor: LANDING_GAME.touchdown.lockSeconds, skipKey: coarse ? null : LANDING_GAME.input.skipKey, onEnd: () => { if (!cutting) finish(true); } }); cutting = false;
   }
+  // THE CROSS-FADE (spec 15 B): the signature's own clock (its `t`, ticked here) decides; the flight begins at seconds - blend, and if the disk's
+  // aim is late the signature is not ticked past that point (its canvas holds its last frame at opacity 1: never a cut to an unaimed frame)
+  // until it begins; from then on the canvas fades over the rest of its clock, to 0 at its end, where it removes itself
+  function signatureTick(dt) {
+    const S = LANDING_GAME.signature, at = S.seconds - S.blend, waiting = flying && !flying.pose();
+    const step = waiting ? Math.min(dt, Math.max(0, at - signature.t)) : dt;
+    if (step > 0) signature.tick(step);
+    if (signature && !signature.done && flying?.pose()) signature.fadeTo((S.seconds - signature.t) / S.blend);
+    if (signature?.done) signature = null;
+    return !signature || signature.t >= at - 1e-9;   // the flight may run (or begin) under it
+  }
   function landingTick(dt) {   // the landing branch; while the signature or the flight holds the clock `t` stands still (the rail and the sequence wait)
-    if (signature) { signature.tick(dt); if (!signature.done) return; signature = null; }   // the boosters full-screen, the clock held at 0
-    if (missionDue) { missionDue = false; api.mission?.(); }   // the mission card at the signature's end (its timers are the wall clock's)
-    if (flying && !flying.pose()) {   // a flown landing: the flight begins as the signature ends (or at once without it), once the disk is aimed
+    if (signature && !signatureTick(dt)) return;   // the boosters full-screen, the clock held at 0
+    if (missionDue && !signature) { missionDue = false; api.mission?.(); }   // the mission card at the signature's end (its timers are the wall clock's)
+    if (flying && !flying.pose()) {   // a flown landing: the flight begins at the signature's blend (or at once without it), once the disk is aimed
       aimWait ??= 0;
       if (aimed() || aimWait >= LANDING_GAME.override.aimWait) override(); else aimWait += dt;
       return;

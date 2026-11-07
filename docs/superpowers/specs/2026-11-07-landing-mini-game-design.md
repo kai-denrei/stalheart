@@ -403,3 +403,15 @@ remains. Concretely:
   1 once the side view holds) for the suite; `--landing` asserts that at the blend's start the flight has begun (`landing.phase ===
   'override'`) while `#exhaust-signature` still stands with opacity under 1 and over 0, and that `intro` reaches 1 by MANUAL + 0.5 s;
   a still mid-blend (`landing-blend`).
+
+**B as built (2026-11-07, branch `landing-polish`).** The signature's handle reports its own clock `t` and gains `fadeTo(opacity)`; the arrival
+(`signatureTick`) starts the flight on that clock at `seconds − blend` and, while the aim is late, does not tick it past that point (the canvas
+keeps its last frame at opacity 1), then sets the opacity to `(seconds − t) / blend` every frame until the signature removes itself at its end.
+Under the fade the signature's capture listeners let every key but Esc and every press through to the flight (an addition to the text above: the
+override's tilt keys and MANUAL's burn are live under the blend). The engines' centre is `SH02_WELL.bell` times the holder's scale (its placement's
+scale over the world units a metre: 1.5, so 3 m) up the tilted hull from the rocket's own position (not the side view's lagged follow point, which
+trails a hull sinking 30-40 m/s by metres); the side view's look in the ease is taken at the engine shot's distance along its line of sight.
+`introMix` (the weights) and `engineShot` (the pose) are pure exports of `src/fx/manual-landing.js`. Measured: the flight begins after 5.9-6.0 s of
+the signature, the opacity 0.95 at the blend's start, ~0.5 with the intro at ~0.45 mid-blend; the side view holds 0.5 s after MANUAL. The still
+shows the signature's own frame near black by mid-blend (the ramp's geometric fall starts at 6.2 s), so the superposition is mostly over the
+blend's first few tenths of a second.
