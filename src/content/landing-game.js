@@ -49,17 +49,16 @@ export const LANDING_GAME = Object.freeze({
     seconds: 1.5,   // spec 14 C (2026-11-07): the auto-lander's last burn under the alarm, shorter so the player has the rocket sooner (was 3)
     glare: Object.freeze({ seconds: 1.2 }),   // the plain fade (2026-11-07, spec 13): the shader is the signature's, no longer the override's
   }),
-  // the chase (src/fx/manual-landing.js chase; 2026-11-07, the controller's call C): it looks at the reticle's ground point (the predicted
-  // impact), the eye behind along -z by back + backPerMetre x height, above the rocket by up + upPerMetre x height, and to +x by `side` x
-  // that back distance. The distances grow with the height because the rocket and the ground under it subtend an angle that does: with
-  // fixed offsets the rocket at 350 m sat ~60 degrees above a ground point at the centre (the brief's 60/34 kept only the rocket in frame,
-  // the reticle 55-80 degrees below the lens's 23). `lookReach` m off the pad the look leaves the prediction for the rocket's own ground
-  // point (all of it at twice that), so a wild prediction never swings the camera to the horizon. Measured in the browser (1440 x 900,
-  // the scripted pilot, NDC y of the feet / the hull's top with the reticle at the centre): 350 m 0.68 / 0.77, 100 m 0.56 / 0.80, 20 m
-  // 0.28 / 0.85; back 60 (50 cut the hull's top at 20 m, 1.08), backPerMetre 1.8 (the separation at 350 m ~21 degrees under the lens's
-  // 29: 2 left the rocket tinier for no gain), up 10 + 0.2/m (a little above the rocket shrinks the angle it shares with the ground),
-  // side 0.8 (~39 degrees: the tilt reads at ~0.6 of itself; 0.45 left 9 degrees looking nearly upright), fov 58 (the brief's 46 could not hold both)
-  camera: Object.freeze({ back: 60, backPerMetre: 1.8, up: 10, upPerMetre: 0.2, side: 0.8, lookReach: 40, fov: 58, lag: 0.12, jolt: 0.8 }),
+  // THE SIDE VIEW (spec 14 A; src/fx/manual-landing.js chase, the shot's poseAt): a fixed level line of sight along the flight's -z toward
+  // the disk, the eye on the +z side `back + backPerMetre x height` m from the rocket and `up + upPerMetre x height` m above the pad, across
+  // with the rocket; the angle never moves, only the position. Priced so the hull's top and the pad's centre sit symmetric about the lens's
+  // axis (up + upPerMetre x h = (h + the hull's 35 m) / 2) and the distance holds both inside +-0.9 of the fov's 58 degrees (the spec's
+  // starting 20 + 0.95/m and 10 + 0.5/m put the hull's top at ~1.07 at 350 m). Measured in the browser (1440 x 900, --landing, NDC y of the
+  // feet / the hull's top / the pad's centre on the scripted pilot's flight): 350 m 0.72 / 0.88 / -0.89, 100 m 0.39 / 0.84 / -0.88, 50 m
+  // 0.11 / 0.81 / -0.86, 20 m -0.24 / 0.81 / -0.84 (the pad's x within 0.04; the disk at 0.00, 0.18 at every height). A flight that drifts
+  // far off loses the pad sideways (the eye goes across with the rocket: 100 m out at 20 m puts it at x -1.9). `jolt` scales the touchdown
+  // rail's shake (src/fx/arrival.js railPose), not this shot
+  camera: Object.freeze({ back: 40, backPerMetre: 1.0, up: 18, upPerMetre: 0.5, fov: 58, lag: 0.12, jolt: 0.8 }),
   reticle: Object.freeze({
     metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), segments: 48,
     minRadius: 2,         // m: the altitude ring never shrinks below the rocket's own footprint (the legs splay to about 2 m)

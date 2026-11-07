@@ -67,6 +67,15 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   if (site) up.setFromMatrixColumn(site, 1).normalize();
   const toWorld = (p, out = new THREE.Vector3()) => out.set(p[0] * metres, p[1] * metres, p[2] * metres).applyMatrix4(site);
   const pose = (out, eye, look, n) => { m4.lookAt(eye, look, n); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye); };
+  // THE SIDE VIEW's azimuth (spec 14 A): the disk's world direction (the sky-hole planes' userData.hole.dir) turned into the island's frame as
+  // a direction; the flight's -z, the camera's line of sight, is put on it (src/fx/manual-landing.js flightToIsland); 0 without the planes.
+  // Read by the host at its begin(), not at start(): the hole is aimed behind the Stålheart once that structure loads (src/fx/sky-rig.js),
+  // which on a quick skip of the signature came after start() (the frame was then turned ~43 degrees off the disk). `azimuth` the value taken
+  let azimuth = null;
+  const holeAzimuth = () => {
+    const dir = api?.scene?.getObjectByName('sky-hole')?.userData.hole?.dir, d = dir ? new THREE.Vector3(...dir).transformDirection(inv) : null;
+    return (azimuth = d ? Math.atan2(-d.x, -d.z) : 0);
+  };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
   // THE LANDING FLOWN (2026-11-07, spec section 2): `flying` the host (src/fx/manual-landing.js) from the start when the landing may be flown,
@@ -197,7 +206,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       const flightRoot = new THREE.Group(); flightRoot.name = 'LandingFlight'; flightRoot.position.y = pad; fxRoot.add(flightRoot);
       lhud = createLandingHud(globalThis.document?.body);
       flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
-        floorAt, clipScrub: (name, u) => { clip(name, u, true); rocket.root?.userData.mixer?.update(0); }, coarse });
+        floorAt, clipScrub: (name, u) => { clip(name, u, true); rocket.root?.userData.mixer?.update(0); }, coarse, azimuth: holeAzimuth });
     }
     // the signature's seconds on the rail's length: its clock runs under the black while the arrival's holds.
     // A FLOWN APPROACH SKIPS ON ESC ALONE (2026-11-07, the final review): a player tapping Space through the signature's black would otherwise
@@ -292,6 +301,15 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     jolt = Math.max(0, jolt - dt);
     if (t >= shot.cut) toTalk(); else apply(t, dt);
   }
+  // THE DISK IN FRAME (spec 14 A, the harness): the sky-hole's direction projected through the camera as a far point, NDC [x, y]; null
+  // without the planes or the camera, 'behind' when it lies behind the lens (the projection would mirror it into the frame)
+  function disk() {
+    const dir = api?.scene?.getObjectByName('sky-hole')?.userData.hole?.dir;
+    if (!dir || !camera) return null;
+    camera.updateMatrixWorld(); const d = new THREE.Vector3(...dir).normalize();
+    if (d.dot(camera.getWorldDirection(new THREE.Vector3())) <= 0) return 'behind';
+    const v = d.multiplyScalar(1e5).add(camera.position).project(camera); return [+v.x.toFixed(2), +v.y.toFixed(2)];
+  }
   return {
     tick(dt, host) {
       if (phase === 'off') return;
@@ -330,7 +348,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
         manual, offer, offered, signature: !!signature, flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
-        view: flying?.view() ?? null, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
+        view: flying?.view() ?? null, azimuth: azimuth == null ? null : +azimuth.toFixed(3), disk: disk(), diskAimed: !!api?.scene?.getObjectByName('sky-hole')?.userData.aimedFor, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
     },
   };
 }

@@ -133,7 +133,7 @@ export function initStoryTab(root) {
     // the host's frame is the holder's parent's: the lift hangs under the island's basis, so island metres go in as they are (the
     // game's holder hangs in the world, whose toWorld is the site's matrix); the reticle is laid in that same frame
     flight = createManualLanding({ game: LANDING_GAME, entry: seedEntry(q.get('seed') ?? 'lab', LANDING_GAME), rocket: { holder: landing.holder() }, plumes: landing.plumes(), camera, sfx, hud: lhud,
-      toWorld: (p, out) => out.set(p[0], p[1], p[2]), up: new THREE.Vector3(0, 1, 0), floorAt, root: landing.frame(), clipScrub: landing.scrub });
+      toWorld: (p, out) => out.set(p[0], p[1], p[2]), up: new THREE.Vector3(0, 1, 0), floorAt, root: landing.frame(), clipScrub: landing.scrub, azimuth: 0 });   // azimuth 0: the lab's frame is the island's (its camera is the OrbitControls, not the side view)
     flight.begin(0); overrideT = 0; flown = flight.state();
     // high over the corridor from +x and behind the pad (measured in the headless lab, 2026-11-07): the rocket at the entry's 350 m in the
     // upper frame, the pad and the reticle on it in the lower; side-on from 200 m up the clearing's rim hid the pad

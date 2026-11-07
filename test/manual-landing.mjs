@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { LANDING_GAME } from '../src/content/landing-game.js';
 import { createLanding, step, seedEntry } from '../src/domain/manual-landing.js';
+import { flightToIsland, islandToFlight, hullTilt } from '../src/fx/manual-landing.js';
 
 const T = LANDING_GAME, DT = T.sim.dt;
 const entry = { altitude: 350, sink: 35, drift: 10, tilt: 0.3, fuelSeconds: 20, wind: 0 };
@@ -146,6 +147,26 @@ console.log('manual-landing: drift on x ok');
     const v = new THREE.Vector3(0, 1, 0).applyMatrix4(new THREE.Matrix4().makeRotationZ(-tilt));
     const d = [Math.sin(tilt), Math.cos(tilt), 0];
     v.toArray().forEach((x, k) => assert.ok(Math.abs(x - d[k]) < 1e-12, `tilt ${tilt}: component ${k} ${x} vs ${d[k]}`));
+  }
+}
+{ // THE SIDE VIEW's frame (spec 14 A): island = Ry(azimuth) . flight, three.js's makeRotationY sense (a + angle turns +z toward +x). The camera
+  // sits on the flight's +z side looking toward -z (its right is then +x: right = forward x up), so the disk lies along the flight's -z:
+  // flightToIsland([0, 0, -1], az) is the disk's island direction for az = atan2(-d.x, -d.z)
+  const near = (u, v, what) => u.forEach((x, k) => assert.ok(Math.abs(x - v[k]) < 1e-12, `${what}: component ${k} ${x} vs ${v[k]}`));
+  for (const p of [[1, 2, 3], [-4, 0.5, 0], [0, 0, 1]]) { near(flightToIsland(p, 0), p, `az 0 is identity (${p})`); near(islandToFlight(p, 0), p, `az 0 back (${p})`); }
+  const d = [0.6, -0.62], l = Math.hypot(...d), az = Math.atan2(-d[0], -d[1]);
+  near(flightToIsland([0, 0, -1], az), [d[0] / l, 0, d[1] / l], 'the line of sight (flight -z) on the disk\'s azimuth');
+  // the screen's right for a camera looking along (dx, 0, dz) with up +y is forward x up = (-dz, 0, dx): the flight's +x
+  near(flightToIsland([1, 0, 0], az), [-d[1] / l, 0, d[0] / l], 'the flight\'s +x is the screen\'s right');
+  near(flightToIsland([0, 7, 0], az), [0, 7, 0], 'the height untouched');
+  for (const p of [[12, -3, 40], [-55, 350, 2]]) for (const a of [az, Math.PI / 2, -2.1]) { near(islandToFlight(flightToIsland(p, a), a), p, `round trip ${p} at ${a}`); near(flightToIsland(islandToFlight(p, a), a), p, `round trip back ${p} at ${a}`); }
+  near(flightToIsland([0, 0, 1], Math.PI / 2), [1, 0, 0], 'at a quarter turn the flight\'s +z is island +x');
+}
+console.log('manual-landing: side frame ok');
+{ // the hull's tilt in the holder's (island) frame: Ry(az) . Rz(-tilt) . Ry(-az) puts the hull's up on the flight's thrust direction turned to the island
+  for (const az of [0, Math.PI / 2, Math.atan2(0.6, -0.62)]) for (const tilt of [0.3, -0.25, 0]) {
+    const v = new THREE.Vector3(0, 1, 0).applyMatrix4(hullTilt(tilt, az, new THREE.Matrix4())), d = flightToIsland([Math.sin(tilt), Math.cos(tilt), 0], az);
+    v.toArray().forEach((x, k) => assert.ok(Math.abs(x - d[k]) < 1e-12, `az ${az} tilt ${tilt}: component ${k} ${x} vs ${d[k]}`));
   }
 }
 console.log('manual-landing: pose ok');

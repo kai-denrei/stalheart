@@ -1598,16 +1598,20 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
 // the harness (a real Space eaten first; at MANUAL a real Space held is the burn), the offer taken by clicking SKIP CINEMATIC; START alone has no signature.
 // THE SECOND LOOK (2026-11-07, spec 14 B): three variables, Space held the burn and A/D the tilt about z toward +x; the drift is on x, so the
 // pilot steers vx toward x = 0 with the signed tilt (a + tilt pushes +x).
+// THE SIDE VIEW (2026-11-07, spec 14 A): the flight frame is turned to the disk's azimuth, so state().x/z are island metres and `along` the flight's x
+// (the screen's right) the pilot steers on; the disk must stand in the frame (state().arrival.disk, NDC) at the MANUAL still and at ~50 m, a real
+// Space + D held moves the rocket toward the screen's right (the pad then on the screen's left of the eye: its NDC x against `along`), and the skip
+// page takes two more stills on its way down, landing-side-100 and landing-side-20; view() prints the feet, the hull's top and the pad at each.
  const T='window.__stalheartTest',A=`${T}.state().arrival`,L=`${A}.landing`,st=()=>evaluate(`${T}.state()`),briefs=()=>evaluate('window.__seen?.briefs??[]');
  const FLY='index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',OFFER='index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td';
  const why=async(what)=>assert.fail(`${what} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,cut:a.cut,gate:a.gate,manual:a.manual,offer:a.offer,offered:a.offered,landing:a.landing})(${A})`))})`);
  const PILOT=`(()=>{const T=window.__stalheartTest;(function f(){const L=T.state().arrival?.landing;if(!L||L.phase==='done'||L.phase==='touched')return;
-  if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.x*0.3)),e=want-L.vx;
+  if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.along*0.3)),e=want-L.vx;
    const tiltWant=Math.max(-0.35,Math.min(0.35,e*0.08)),tr=Math.max(-1,Math.min(1,(tiltWant-L.tilt)*6));
    T.landing('input',{throttle:stop+30>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}
   requestAnimationFrame(f);})();})()`;   // 12 = LANDING_GAME.vehicle.thrust, 3.2 = sim.gravity: the stopping distance at full burn
  // REAL KEYS through CDP (2026-11-07, the final review: the harness's skip stood in for Esc): a press is keyDown + keyUp; Space carries its text
- const KEY={w:{key:'w',code:'KeyW'},esc:{key:'Escape',code:'Escape'},space:{key:' ',code:'Space',text:' '}};
+ const KEY={w:{key:'w',code:'KeyW'},d:{key:'d',code:'KeyD'},a:{key:'a',code:'KeyA'},esc:{key:'Escape',code:'Escape'},space:{key:' ',code:'Space',text:' '}};
  const keyDown=(k)=>send('Input.dispatchKeyEvent',{type:'keyDown',...KEY[k]}),keyUp=(k)=>send('Input.dispatchKeyEvent',{type:'keyUp',...KEY[k]});
  const tap=async(k)=>{await keyDown(k);await keyUp(k);};
  // a key pressed under the signature is eaten: after 300 ms the signature still plays and the rail shot still runs (no skip of the arrival)
@@ -1640,7 +1644,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await until(`!!${L}`,20000).catch(()=>why('the override came'));
   {const s=await evaluate(L);assert.ok(['override','manual'].includes(s.phase),`OVERRIDE first (${JSON.stringify(s)})`);if(s.phase==='override')assert.equal(await evaluate('!!document.querySelector("#landing-glare")'),true,'the glare stands over the override');}
   await until(`${L}?.phase==='manual'`,15000).catch(()=>why('MANUAL after the override'));
-  {const s=await evaluate(L);console.log(`  ${name}: MANUAL ${JSON.stringify(s)}`);assert.ok(s.altitude>=250&&s.altitude<=400,`the entry's altitude (${s.altitude})`);}
+  {const s=await evaluate(L);console.log(`  ${name}: MANUAL ${JSON.stringify(s)}, azimuth ${await evaluate(`${A}.azimuth`)} (the hole aimed: ${await evaluate(`${A}.diskAimed`)}), view ${JSON.stringify(await evaluate(`${A}.view`))}, disk ${JSON.stringify(await evaluate(`${A}.disk`))}`);assert.ok(s.altitude>=250&&s.altitude<=400,`the entry's altitude (${s.altitude})`);}
   assert.equal(await evaluate(`${A}.flown`),true,'the store remembers the flight (td.landing.flown)');
   await until(`(window.__seen?.briefs||[]).some(b=>/You have the stick/.test(b))`,5000).catch(async()=>assert.fail(`Isao's override line (${JSON.stringify(await briefs())})`));
  };
@@ -1652,10 +1656,16 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // the phases the clean flight passed through, once a frame in the page (2026-11-07, the final review: the flare was not asserted, so an
  // unaided clean flight would have passed): FLARE must be seen before the contact
  const PHASES=`(()=>{const T=window.__stalheartTest,P=window.__landingPhases=[];(function f(){const L=T.state().arrival?.landing;if(L&&P.at(-1)!==L.phase)P.push(L.phase);if(!L||L.phase!=='done')requestAnimationFrame(f);})();})()`;
- {const t0=Date.now();await toManual('landing-clean',true);await evaluate(PHASES);await evaluate(PILOT);
+ // THE SIDE VIEW's frame on the pilot's flight (near the pad): the first frame at or under 100, 50 and 20 m, the feet, the hull's top and the pad's
+ // centre in frame (NDC within +-1), the disk with them
+ const VIEWS=`(()=>{const T=window.__stalheartTest,V=window.__landingViews={};(function f(){const a=T.state().arrival,L=a?.landing;if(L&&L.altitude!=null)for(const h of [100,50,20])if(!V[h]&&L.altitude<=h&&L.phase!=='done')V[h]={alt:L.altitude,phase:L.phase,along:L.along,view:a.view,disk:a.disk};if(!L||L.phase!=='done')requestAnimationFrame(f);})();})()`;
+ {const t0=Date.now();await toManual('landing-clean',true);await evaluate(PHASES);await evaluate(VIEWS);await evaluate(PILOT);
   const a=await toContact('the pilot to the contact'),g=a.landing;
   {const P=await evaluate('window.__landingPhases');console.log(`  clean: phases ${P.join(' > ')}`);const f=P.indexOf('flare'),end=P.findIndex(p=>p==='touched'||p==='done');
-   assert.ok(f>=0&&(end<0||f<end),`the auto-lander's FLARE before the touch (${P.join(' > ')})`);}console.log(`  clean: ${JSON.stringify(g)}, panel "${await evaluate(`document.querySelector('#landing-hud')?.innerText.replace(/\\s+/g,' ')`)}", ${((Date.now()-t0)/1000).toFixed(0)} s`);
+   assert.ok(f>=0&&(end<0||f<end),`the auto-lander's FLARE before the touch (${P.join(' > ')})`);}
+  {const V=await evaluate('window.__landingViews'),inF=(p)=>Array.isArray(p)&&Math.abs(p[0])<1&&Math.abs(p[1])<1;
+   for(const h of [100,50,20]){const v=V[h];console.log(`  clean: side view at ~${h} m: ${JSON.stringify(v)}`);assert.ok(v&&v.view,`a frame at ${h} m (${JSON.stringify(V)})`);
+    for(const k of ['feet','top','pad'])assert.ok(inF(v.view[k]),`the ${k} in frame at ${v.alt} m (${JSON.stringify(v.view)})`);assert.ok(inF(v.disk),`the disk in frame at ${v.alt} m (${JSON.stringify(v.disk)})`);}}console.log(`  clean: ${JSON.stringify(g)}, panel "${await evaluate(`document.querySelector('#landing-hud')?.innerText.replace(/\\s+/g,' ')`)}", ${((Date.now()-t0)/1000).toFixed(0)} s`);
   assert.equal(g.grade,'CLEAN',`the scripted pilot lands CLEAN (${JSON.stringify(g)})`);assert.notEqual(g.reason,'skipped','flown, not skipped');assert.ok(g.landed&&Math.hypot(g.landed[0],g.landed[2])<14,`on the pad (${JSON.stringify(g.landed)})`);
   assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/CLEAN/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_clean');
   current='landing-verdict';await finish();
@@ -1674,9 +1684,23 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   {await keyDown('space');await delay(600);const on=await evaluate(L);await keyUp('space');await delay(600);const off=await evaluate(L);
    console.log(`  skip: a real Space held: throttle ${on?.throttle} (alt ${on?.altitude}), released: ${off?.throttle} (alt ${off?.altitude})`);
    assert.ok(on?.throttle>0.5,`a real Space held lights the burn (${JSON.stringify(on)})`);assert.ok(off?.throttle<0.3,`its release kills it (${JSON.stringify(off)})`);}
-  await until(`(L=>!L||L.phase!=='manual'||L.altitude<=200)(${L})`,30000).catch(()=>why('down to 200 m'));
-  {const s=await evaluate(L),v=await evaluate(`${A}.view`);console.log(`  manual still: ${JSON.stringify(s)}, view ${JSON.stringify(v)}`);assert.equal(s?.phase,'manual','still flying at 200 m');}
-  current='landing-manual';await finish();   // the rocket from behind, the reticle on the ground, the disk low in the frame
+  // D held with the burn: the tilt toward +x, the drift toward +x, the screen's right (the eye trails the rocket across, so the pad, at the flight's x = 0,
+  // stands on the side of the screen away from the rocket's `along`)
+  // (A held as long again after it, the burn off, puts the tilt back near where it was, so the stills below fly the entry's own drift, not a sideways dive)
+  {const b=await evaluate(L);await keyDown('space');await keyDown('d');await delay(600);await keyUp('d');await keyUp('space');await delay(300);const e=await evaluate(L),v=await evaluate(`${A}.view`);
+   await keyDown('a');await delay(600);await keyUp('a');
+   console.log(`  skip: Space + D for 0.6 s: tilt ${b.tilt} > ${e.tilt}, vx ${b.vx} > ${e.vx}, along ${b.along} > ${e.along}, view ${JSON.stringify(v)}`);
+   assert.ok(e.tilt>b.tilt+0.05,`a real D leans toward +x (${b.tilt} > ${e.tilt})`);assert.ok(e.vx>b.vx+0.3,`the burn pushes the drift toward +x (${b.vx} > ${e.vx})`);
+   if(Math.abs(e.along)>3)assert.equal(Math.sign(v.pad[0]),-Math.sign(e.along),`the flight's +x is the screen's right: the pad (x = 0) on the far side from the rocket's along ${e.along} (${JSON.stringify(v)})`);}
+  const diskIn=async(what)=>{const d=await evaluate(`${A}.disk`);assert.ok(Array.isArray(d)&&Math.abs(d[0])<1&&Math.abs(d[1])<1,`the disk in frame ${what} (${JSON.stringify(d)})`);return d;};
+  const side=async(alt,name)=>{await until(`(L=>!L||L.phase==='touched'||L.phase==='done'||L.altitude<=${alt})(${L})`,60000).catch(()=>why(`down to ${alt} m`));
+   const s=await evaluate(L),v=await evaluate(`${A}.view`),d=await evaluate(`${A}.disk`);console.log(`  ${name??'side'} at ~${alt} m: ${JSON.stringify(s)}, view ${JSON.stringify(v)}, disk ${JSON.stringify(d)}`);
+   assert.ok(s&&s.phase!=='touched'&&s.phase!=='done',`still flying at ${alt} m (${JSON.stringify(s)})`);return {s,v,d};};
+  {const {s}=await side(200,'manual still');assert.equal(s?.phase,'manual','still flying at 200 m');await diskIn('at the MANUAL still');}
+  current='landing-manual';await finish();   // the side view: the rocket, the reticle on the ground, the disk behind
+  await side(100,'landing-side-100');current='landing-side-100';await finish();
+  await side(50);await diskIn('at ~50 m');
+  await side(20,'landing-side-20');current='landing-side-20';await finish();
   assert.equal(await evaluate(`${T}.landing('skip')`),true,'the skip mid-flight');
   const a=await toContact('the skip to the contact'),g=a.landing;console.log(`  skip: ${JSON.stringify(g)}`);
   assert.deepEqual([g.grade,g.reason,g.landed],['CLEAN','skipped',null],'a skip is CLEAN, on the pad');assert.equal(a.talkBrief,'arrival_talk','the plain talk');
