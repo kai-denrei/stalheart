@@ -198,4 +198,76 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
   // Esc on the flight shot before the override (the flight waiting on the aim) skips the whole arrival, ungraded: no flight to skip
   { const { w, a } = flown(false); run(w, a, 0.3); w.skip(); assert.equal(a.state().phase, 'done'); assert.equal(a.state().skipped, true); assert.equal(a.state().landing, null); }
 }
+// THE CROSS-FADE (spec 15 B): a fake signature (its clock, its opacity) handed in as startSignature. Aimed, the flight begins at seconds - blend
+// under it, the intro on (the engine shot, eased out over the blend), the canvas fading to 0 at its end; not aimed, the signature holds its frame
+// (its clock stopped at seconds - blend, opacity 1) until the flight begins; a skip during the blend ends it at once, the intro eases on; no
+// signature, no intro
+{
+  const S = LANDING_GAME.signature, at = S.seconds - S.blend;
+  const fakeSignature = () => {
+    const log = { ticks: 0, opacity: [] };
+    const factory = (root, o) => {
+      let t = 0, done = false;
+      const h = { log, tick(dt) { if (done) return; t += dt; log.ticks++; if (t >= o.seconds - 1e-9) h.dispose(); }, get done() { return done; }, get t() { return t; },
+        fadeTo(x) { log.opacity.push(x); }, skip() { if (done) return; o.onSkip?.(); h.dispose(); }, dispose() { done = true; log.disposed = t; } };
+      log.handle = h; return h;
+    };
+    return { factory, log };
+  };
+  const flown = ({ aimed = true, signature = true } = {}) => {
+    const w = world(), sig = fakeSignature();
+    const a = createArrival({ on: true, base: w.base, beats: w.beats, site, metres: METRES, manual: true, startSignature: signature ? sig.factory : (() => null) }); w.isao = true;
+    const scene = new THREE.Scene(), hole = new THREE.Group(); hole.name = 'sky-hole'; hole.userData.hole = { dir: [0.3, 0.2, -1] }; if (aimed) hole.userData.aimedFor = w.base; scene.add(hole); w.api.scene = scene;
+    for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
+    w.frame(1 / 60, a);   // start(): the signature begins
+    return { w, a, hole, sig: sig.log };
+  };
+  const dt = 1 / 60;
+  // aimed: no flight before seconds - blend, the flight at it (the signature still playing, opaque), the intro from 0, the fade to 0 at its end
+  { const { w, a, sig } = flown();
+    assert.equal(a.state().signature, true, 'the signature plays');
+    run(w, a, at - 0.1, dt); assert.equal(a.state().landing, null, `no flight before the blend (${sig.handle.t.toFixed(2)} s)`); assert.deepEqual(sig.opacity, [], 'no fade before it');
+    run(w, a, 0.15, dt); const s0 = a.state().landing;
+    assert.equal(s0?.phase, 'override', `the flight at seconds - blend (${sig.handle.t.toFixed(3)} s)`); assert.equal(a.state().signature, true, 'under the signature, which stands through the blend');
+    assert.ok(Math.abs(sig.handle.t - at - 0.05) < 0.03, `the signature's clock about at the blend's start (${sig.handle.t.toFixed(3)})`);
+    assert.ok(s0.intro > 0 && s0.intro < 0.1, `the intro starts with the flight (${s0.intro})`);
+    { const feet = new THREE.Vector3().setFromMatrixPosition(w.base.structure('sh02').holder.matrix), d = w.goal.pos.distanceTo(feet) / METRES, fw = new THREE.Vector3(0, 0, -1).applyQuaternion(w.goal.quat);
+      const bells = new THREE.Vector3(0, 1, 0).multiplyScalar(2 * 1.5 * METRES).add(feet).sub(w.goal.pos).normalize();   // the hull's bottom (SH02_WELL.bell x 1.5), the tilt ignored
+      const I = LANDING_GAME.camera.intro, want = Math.hypot(I.back, I.up + 3); assert.ok(Math.abs(d - want) < 1, `the engine shot: the eye ~${want.toFixed(1)} m off the hull's feet (${d.toFixed(2)} m)`); assert.ok(fw.dot(bells) > 0.97, `looking at the engines (${fw.dot(bells).toFixed(3)})`); }
+    assert.ok(sig.opacity.length > 0 && sig.opacity.at(-1) < 1 && sig.opacity.at(-1) > 0.9, `the canvas begins to fade (${sig.opacity.at(-1)})`);
+    assert.equal(w.camera.fov, LANDING_GAME.camera.intro.fov, `the engine shot's lens, held (${w.camera.fov})`);
+    { const H = LANDING_GAME.camera.intro.hold, eye = w.goal.pos.clone(); run(w, a, H - 0.2, dt);
+      const feet = new THREE.Vector3().setFromMatrixPosition(w.base.structure('sh02').holder.matrix), d = w.goal.pos.distanceTo(feet) / METRES;
+      assert.equal(w.camera.fov, LANDING_GAME.camera.intro.fov, 'still the engine shot\'s lens through the hold'); const I = LANDING_GAME.camera.intro, want = Math.hypot(I.back, I.up + 3); assert.ok(Math.abs(d - want) < 1, `the engine shot held on the falling hull (${d.toFixed(2)} m of ~${want.toFixed(1)})`);
+      assert.ok(eye.distanceTo(w.goal.pos) / METRES > 10, 'riding down with it'); }
+    run(w, a, S.blend / 2 - (LANDING_GAME.camera.intro.hold - 0.2), dt);
+    assert.ok(Math.abs(sig.opacity.at(-1) - 0.5 ** 1.5) < 0.03, `(1 - u)^1.5 half way: ${(0.5 ** 1.5).toFixed(3)} (${sig.opacity.at(-1)})`); assert.ok(Math.abs(a.state().landing.intro - 0.5) < 0.05, `the intro half way (${a.state().landing.intro})`);
+    assert.ok(w.camera.fov > LANDING_GAME.camera.intro.fov && w.camera.fov < LANDING_GAME.camera.fov, `pulling back half way (${w.camera.fov})`);
+    for (let i = 1; i < sig.opacity.length; i++) assert.ok(sig.opacity[i] <= sig.opacity[i - 1] + 1e-12, 'the fade never climbs');
+    run(w, a, S.blend / 2 + 0.05, dt);
+    assert.equal(a.state().signature, false, 'the signature over at its end'); assert.ok(sig.disposed >= S.seconds - 1e-9, `it ran its whole clock (${sig.disposed})`);
+    assert.ok(sig.opacity.at(-1) < 0.02, `the opacity reaches 0 at the end (${sig.opacity.at(-1)})`);
+    assert.equal(a.state().landing.intro, 1, 'the side view holds once the blend is over'); assert.equal(a.state().landing.phase, 'manual', 'MANUAL came under the blend');
+    assert.equal(w.camera.fov, LANDING_GAME.camera.fov, 'the side view\'s lens'); }
+  // not aimed: the signature's clock stops at seconds - blend at opacity 1 (its last frame held) until the aim; then the blend runs its 2 s
+  { const { w, a, hole, sig } = flown({ aimed: false });
+    run(w, a, at + 1, dt);
+    assert.equal(a.state().landing, null, 'the flight waits for the aim'); assert.ok(Math.abs(sig.handle.t - at) < 1e-9, `the signature held at the blend's start (${sig.handle.t})`);
+    assert.deepEqual(sig.opacity, [], 'opaque while it holds'); assert.equal(a.state().signature, true, 'and still standing');
+    assert.ok(a.state().aimWait > 0.9, `the wait counted from the blend's start (${a.state().aimWait})`);
+    hole.userData.aimedFor = w.base; w.frame(dt, a); assert.equal(a.state().landing?.phase, 'override', 'aimed: the flight begins');
+    run(w, a, S.blend - 0.1, dt); assert.equal(a.state().signature, true, 'the blend late, its whole length'); run(w, a, 0.15, dt); assert.equal(a.state().signature, false); assert.ok(sig.opacity.at(-1) < 0.02); }
+  // never aimed: override.aimWait still bounds the hold
+  { const { w, a } = flown({ aimed: false }); run(w, a, at + LANDING_GAME.override.aimWait + 0.1, dt); assert.equal(a.state().landing?.phase, 'override', 'the aim wait bounds the hold'); }
+  // a skip during the blend: the signature ends at once, the intro goes on from where it is
+  { const { w, a, sig } = flown(); run(w, a, at + 0.5, dt); const i0 = a.state().landing.intro;
+    assert.equal(a.landing('skip'), 'signature', 'the harness skip ends the signature, not the flight'); assert.equal(a.state().signature, false); assert.ok(sig.disposed < S.seconds, 'at once');
+    assert.equal(a.state().landing.phase, 'override', 'the flight goes on'); w.frame(dt, a); assert.ok(a.state().landing.intro > i0 && a.state().landing.intro < 1, `the intro eases on (${i0} > ${a.state().landing.intro})`);
+    run(w, a, S.blend, dt); assert.equal(a.state().landing.intro, 1); }
+  // a skip before the blend: the flight and the intro at once
+  { const { w, a } = flown(); run(w, a, 1, dt); a.landing('skip'); w.frame(dt, a); const s = a.state().landing; assert.equal(s?.phase, 'override', 'the skip starts the flight'); assert.ok(s.intro < 0.05, `with its intro from the start (${s.intro})`); }
+  // no signature (reduced motion, no WebGL2): no intro, the side view from the first frame
+  { const { w, a } = flown({ signature: false }); w.frame(dt, a); assert.equal(a.state().signature, false); assert.equal(a.state().landing?.phase, 'override', 'the flight at once');
+    assert.equal(a.state().landing.intro, 1, 'no intro'); assert.equal(w.camera.fov, LANDING_GAME.camera.fov, 'the side view\'s lens from the first frame'); }
+}
 console.log(`Arrival: waits for the rocket, its salvage, the foundry and Isao; lands; swaps on the cut to his face; ${talk.toFixed(1)} s of lines; skips and give-ups land on the same end state.`);

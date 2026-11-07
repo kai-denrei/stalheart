@@ -40,7 +40,12 @@ assert.deepEqual(decideLanding({ arrives: true, query: q('landing=0'), flown: fa
 assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: false, acceptance: true }), { manual: false, offer: false }, 'an acceptance run lands itself unless it asks');
 assert.deepEqual(decideLanding({ arrives: false, query: q('landing=1'), flown: false, acceptance: false }), { manual: false, offer: false }, 'no arrival, no landing');
 console.log('landing-game: lines and switch ok');
-assert.deepEqual(LANDING_GAME.signature, { seconds: 8, hold: 3, yEnd: -1048576 }, "the 2D game's opening: 8 s, a 3 s hold, black at the end");
+assert.deepEqual(LANDING_GAME.signature, { seconds: 8, hold: 3, yEnd: -1048576, blend: 3 }, "the 2D game's opening: 8 s, a 3 s hold, black at the end; its last 3 s the cross-fade (spec 15 B)");
+assert.ok(LANDING_GAME.signature.blend < LANDING_GAME.signature.seconds - LANDING_GAME.signature.hold, 'the blend falls in the ramp, after the hold');
+assert.ok(LANDING_GAME.signature.blend > LANDING_GAME.override.seconds, 'the override beat runs under the blend: MANUAL comes before the side view holds');
+assert.deepEqual(LANDING_GAME.camera.intro, { back: 22, up: -6, fov: 40, hold: 1 }, 'spec 15 B (pulled out from 6 / -2, then 16, 2026-11-07): the engine shot 22 m off the engines, 6 m under, a 40 degree lens, held 1 s');
+assert.ok(LANDING_GAME.camera.intro.hold < LANDING_GAME.signature.blend, 'the hold leaves a pull-back'); assert.ok(LANDING_GAME.override.seconds > LANDING_GAME.camera.intro.hold, 'MANUAL comes mid-pull-back, after the hold');
+assert.ok(Object.isFrozen(LANDING_GAME.camera.intro)); assert.ok(LANDING_GAME.camera.intro.fov < LANDING_GAME.camera.fov, 'the engine shot narrower than the side view');
 assert.ok(Object.isFrozen(LANDING_GAME.signature));
 assert.equal(LANDING_GAME.input.burnKey, ' ', 'Space is the burn');
 assert.deepEqual(LANDING_GAME.input, { skipKey: 'Escape', burnKey: ' ' }, 'spec 14 B: Space, A/D and L are keys of the host; the tune holds the skip and the burn only');

@@ -45,8 +45,14 @@ export const LANDING_GAME = Object.freeze({
   approach: Object.freeze({ descent: 10, startAltitude: 900, overrideAt: 3.5 }),
   // THE EXHAUST SIGNATURE (spec 13, src/fx/exhaust-signature.js): the 2D game's opening verbatim (Stalsfar_Landing CONFIG.cinematic
   // { opening: 8, ignitionHold: 3, launchYEnd: -1048576 }): the camera's Y holds at 2 for `hold` s (the boosters close up), falls to -8,
-  // then geometrically to `yEnd`, where the frame is black
-  signature: Object.freeze({ seconds: 8, hold: 3, yEnd: -1048576 }),
+  // then geometrically to `yEnd`, where the frame is black.
+  // `blend` (spec 15 B, 2026-11-07, the owner's third look: "we briefly superpose a zoomed in version of the in-game booster to the cinematic
+  // boosters, and as it zooms out, the cinematic disappears"): the signature's last 3 s are a cross-fade, not a cut to black. The flight
+  // begins at seconds - blend (5 s: the ramp's camera Y reaches -8 at ~5.5 s and holds there to ~6.2 s, the plume seen from under, bright and
+  // large, then falls geometrically to black by ~7.6 s), the game's camera on the engines (camera.intro, held `intro.hold` s) then dollying out
+  // to the side view while the canvas's opacity eases out, (1 - u)^1.5 over the blend's progress u, so the game shows through early while the
+  // shader's own frame is still bright (retuned the same day from blend 2.0, a linear fade and no hold: the close-up was all under the canvas)
+  signature: Object.freeze({ seconds: 8, hold: 3, yEnd: -1048576, blend: 3.0 }),
   // the alarm beat (seconds) and the plain fade over it (src/fx/landing-glare.js); on a later start the offer is the start gate's
   // FLY THE LANDING (src/fx/start-gate.js, 2026-11-07), no longer a SPACE window in the approach
   override: Object.freeze({
@@ -67,7 +73,17 @@ export const LANDING_GAME = Object.freeze({
   // (y of the feet, the top, the pad): 195 m 55 m out 0.11 / -0.11 (0.50, 0.73, -0.75), 99 m 83 m out 0.23 / -0.22 (0.26, 0.56, -0.60),
   // 49 m 97 m out 0.33 / -0.32, 17 m 105 m out 0.41 / -0.41 (-0.14, 0.30, -0.36); the disk at 0.00, 0.18 at every height. `jolt` scales the
   // touchdown rail's shake (src/fx/arrival.js railPose), not this shot
-  camera: Object.freeze({ back: 40, backPerMetre: 1.0, backPerMetreAcross: 0.8, up: 18, upPerMetre: 0.5, fov: 58, lag: 0.12, jolt: 0.8 }),
+  // `intro` (spec 15 B): THE ENGINE SHOT the flight opens on under the signature's blend: HELD for its first `hold` s (the in-game plumes
+  // superposed on the bright cinematic plume), then eased to the side view over the blend's remaining signature.blend - hold s (2 s;
+  // src/fx/manual-landing.js chase: a smoothstep on the eye and the look, linear on the fov): the eye `back` m from the engines' centre (the
+  // hull's bottom, SH02_WELL.bell scaled) on the flight's +z, the side view's line of sight, and `up` m above it (negative: under the bells),
+  // looking at that centre, the lens `fov` degrees (narrower than the side view's 58). Pulled out the same day from back 6 / up -2: at 6 m the
+  // camera sat inside the skirt's glow, the underside filled the frame and the burn was a formless haze; at 16 m / 6 m under it was still
+  // a haze below the skirt; at 22 m the whole skirt, its bells and the legs stand in the frame's upper half and the burn is a soft cone
+  // streaming down toward the disk (the look stays on the engines' centre, so the bells sit near the frame's middle, not its upper third).
+  // The override beat (1.5 s) ends a quarter into the pull-back: MANUAL comes while the camera is still dollying out
+  camera: Object.freeze({ back: 40, backPerMetre: 1.0, backPerMetreAcross: 0.8, up: 18, upPerMetre: 0.5, fov: 58, lag: 0.12, jolt: 0.8,
+    intro: Object.freeze({ back: 22, up: -6, fov: 40, hold: 1.0 }) }),
   reticle: Object.freeze({
     metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), segments: 48,
     minRadius: 2,         // m: the altitude ring never shrinks below the rocket's own footprint (the legs splay to about 2 m)

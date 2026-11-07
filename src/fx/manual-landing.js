@@ -29,6 +29,19 @@ export function islandToFlight([x, y, z], azimuth) { const c = Math.cos(azimuth)
 // direction d = (sin tilt, cos tilt, 0)), turned to the island: Ry(azimuth) . Rz(-tilt) . Ry(-azimuth)
 const ry = new THREE.Matrix4(), rz = new THREE.Matrix4();
 export function hullTilt(tilt, azimuth, out = new THREE.Matrix4()) { return out.makeRotationY(azimuth).multiply(rz.makeRotationZ(-tilt)).multiply(ry.makeRotationY(-azimuth)); }
+// THE INTRO (spec 15 B): the engine shot held `hold` s, then eased to the side view over the remaining `blend - hold` s. introMix: the
+// intro's progress u (0..1 over the whole blend) and the ease's weights over the pull-back, a smoothstep for the eye and the look, linear for the lens. engineShot: the engine shot in flight metres, the engines' centre
+// `bell` m up the hull from the feet at `rocket` (the hull's axis tilted by Rz(-tilt): up goes to (sin tilt, cos tilt, 0)), the eye `intro.back`
+// m on +z of it and `intro.up` m above it (negative: under the bells), the look on it. Pure, so a node test pins them
+export function introMix(t, blend, hold = 0) {
+  const u = blend > 0 ? Math.max(0, Math.min(1, t / blend)) : 1, run = blend - hold;
+  const v = run > 0 ? Math.max(0, Math.min(1, (t - hold) / run)) : u;
+  return { u, pos: v * v * (3 - 2 * v), fov: v };
+}
+export function engineShot([x, y, z], tilt, bell, intro) {
+  const look = [x + Math.sin(tilt) * bell, y + Math.cos(tilt) * bell, z];
+  return { eye: [look[0], look[1] + intro.up, look[2] + intro.back], look };
+}
 
 export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes, camera, sfx, hud, toWorld, up, floorAt = FLAT, root, clipScrub, coarse = false, azimuth = 0 }) {
   // the frame's turn, fixed at begin() for the whole flight: `azimuth` a number or a function read then (the arrival's: the disk may be aimed
@@ -37,6 +50,10 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   const m4 = new THREE.Matrix4(), tiltM = new THREE.Matrix4(), q = new THREE.Quaternion(), a = new THREE.Vector3(), n = new THREE.Vector3(), eye = new THREE.Vector3(), look = new THREE.Vector3();
   const toWorldF = (p, out) => toWorld(flightToIsland(p, az), out);   // flight metres to world units
   const origin = toWorld([0, 0, 0], new THREE.Vector3()), follow = new THREE.Vector3();
+  // `introT` the intro's clock (spec 15 B: from begin(), advanced by tick), null when the flight has no intro (no signature: the side view from
+  // the first frame); `bellUp` the engines' centre up the hull in flight metres (SH02_WELL.bell in the model's metres times the holder's scale)
+  let introT = null, bellUp = 0;
+  const shotEye = new THREE.Vector3(), shotLook = new THREE.Vector3();
   let pred = null, s = null, phase = 'idle', acc = 0, input = { legs: false }, harnessThrottle = null, held = { left: false, right: false, burn: false }, rate = { tilt: 0 }, touchTilt = 0, thrust = null, pingAt = 0, contact = null, legsHeard = false;
   // the reticle: three fixed rings and the altitude ring, a line loop each, and the hard square, laid on the ground under the predicted point
   const ring = (color) => { const g = new THREE.BufferGeometry().setFromPoints(Array.from({ length: game.reticle.segments + 1 }, (_, i) => { const t = i / game.reticle.segments * Math.PI * 2; return new THREE.Vector3(Math.cos(t), 0, Math.sin(t)); })); return new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85, depthTest: false })); };
@@ -92,10 +109,19 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   // camera.backPerMetre x height + camera.backPerMetreAcross x |x|` m from the rocket, `camera.up + camera.upPerMetre x height` m above the
   // pad, and across at the MIDPOINT of the rocket and the pad (the pad is the frame's x = 0), so a drifting flight keeps the landing zone in
   // view (the owner's rule, 2026-11-07: the player must always see it); the follow point trails the rocket by `camera.lag` (LANDING_GAME.camera)
+  // THE INTRO (spec 15 B): for signature.blend s from begin() the pose holds THE ENGINE SHOT intro.hold s, then eases from it (engineShot: on the rocket itself, not the
+  // lagged follow point, 6 m off a hull sinking 30-40 m/s) to this side view; the side view's look is taken at the engine shot's distance along
+  // its line of sight, so the eased look turns smoothly rather than racing to a point a metre ahead
   function chase(out) {
     const c = game.camera, h = Math.max(0, follow.y), back = c.back + c.backPerMetre * h + c.backPerMetreAcross * Math.abs(follow.x), rise = c.up + c.upPerMetre * h, x = follow.x / 2;
-    if (camera && camera.fov !== c.fov) { camera.fov = c.fov; camera.updateProjectionMatrix(); }
-    toWorldF([x, rise, follow.z + back], eye); toWorldF([x, rise, follow.z + back - 1], look);
+    const mix = introT == null || !s ? null : introMix(introT, game.signature.blend, game.camera.intro.hold);
+    const fov = mix && mix.u < 1 ? c.intro.fov + (c.fov - c.intro.fov) * mix.fov : c.fov;
+    if (camera && camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    if (mix && mix.u < 1) {
+      const e = engineShot([s.x, s.y, s.z], s.tilt, bellUp, c.intro), d = Math.hypot(c.intro.back, c.intro.up), k = mix.pos;
+      toWorldF(e.eye, shotEye); toWorldF(e.look, shotLook); toWorldF([x, rise, follow.z + back], eye); toWorldF([x, rise, follow.z + back - d], look);
+      eye.lerpVectors(shotEye, eye, k); look.lerpVectors(shotLook, look, k);
+    } else { toWorldF([x, rise, follow.z + back], eye); toWorldF([x, rise, follow.z + back - 1], look); }
     m4.lookAt(eye, look, up); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye);
   }
   function sounds(dt) {
@@ -121,18 +147,24 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     // OVERRIDE: the seeded problem (the entry: src/domain/manual-landing.js seedEntry; 2026-11-07, the sequence's own altitude and rate were
     // not flyable), placed under the glare with the boosters LIT (spec 14 C: the throttle and its set point at 1 from the first frame, the
     // auto-lander's last burn); clear the panel, arm the keys; MANUAL starts when the arrival calls manual()
-    begin(legs = 0) {
+    // `intro` (spec 15 B): the flight opens under the signature's blend on the engine shot, held intro.hold s, then eased to the side view
+    begin(legs = 0, { intro = false } = {}) {
       az = typeof azimuth === 'function' ? azimuth() : azimuth;
+      introT = intro ? 0 : null;
+      { const placed = rocket.holder.userData.placed, unit = toWorld([0, 1, 0], new THREE.Vector3()).distanceTo(origin);   // the holder's scale in flight metres a model metre
+        const scale = placed && unit > 0 ? new THREE.Vector3().setFromMatrixScale(placed).x / unit : 1.5; bellUp = SH02_WELL.bell * scale; }
       s = createLanding(entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0; s.throttle = 1; s.set = 1;
       padRing.visible = true;
       phase = 'override'; acc = 0; contact = null; harnessThrottle = null; rate = { tilt: 0 }; touchTilt = 0; follow.set(s.x, s.y, s.z);
       hud.clear(); hud.show(true); hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); hud.set(reading()); listen(true);
       if (coarse) hud.touch(true, { tilt: (r) => { touchTilt = r; }, burn: (on) => { held.burn = on; }, legs: () => { input.legs = true; }, skip: () => host.skip() });
+      clipScrub('Top_Door_Open', 0); clipScrub('Landing_Shock', 0);   // the top CLOSED and the hull unshocked on the way down (2026-11-07, the owner: the flown rocket came down with its door open: nothing had scrubbed the clip since the rail's apply() no longer runs on a flown landing)
       pred = predict(); sfx?.play('danger_alert', { dist: 0 }); poseRocket(); plumesAt(); placeReticle();   // the plumes now, so the first frame out of the black shows the boosters lit
     },
     manual() { if (phase === 'override') { phase = 'manual'; hud.annunciate('MANUAL', 'info'); } },
     tick(dt) {
       if (!s || phase === 'idle' || phase === 'touched') return phase;
+      if (introT != null) introT += dt;   // the intro's clock: the arrival's dt, as overrideT (MANUAL at 1.5 s, the side view at 2.0 s)
       acc += Math.min(dt, game.sim.dt * game.sim.maxSteps);
       // the throttle's set point every step (the model spools toward it): the burn held, else the harness's held throttle, else idle;
       // the tilt a held key, else a held rail triangle, else the harness's rate
@@ -174,7 +206,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       const [x, y, z] = island();
       return { feet: ndc([x, y, z]), top: ndc([x, y + 1.5 * SH02_WELL.rim, z]), reticle: reticle.visible ? ndc([reticle.position.x, reticle.position.y, reticle.position.z]) : null, pad: ndc([0, 0, 0]) };
     },
-    state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vx: +s.vx.toFixed(2), vz: +s.vz.toFixed(2), tilt: +s.tilt.toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +island()[0].toFixed(1), z: +island()[2].toFixed(1), along: +s.x.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2) } : null),
+    state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vx: +s.vx.toFixed(2), vz: +s.vz.toFixed(2), tilt: +s.tilt.toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +island()[0].toFixed(1), z: +island()[2].toFixed(1), along: +s.x.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2), intro: +(introT == null ? 1 : introMix(introT, game.signature.blend, game.camera.intro.hold).u).toFixed(3) } : null),
     dispose() { stopAll(); reticle.removeFromParent(); padRing.removeFromParent(); for (const l of [altRing, ...fixed, square, padRing]) { l.geometry.dispose(); l.material.dispose(); } },   // the HUD is the arrival's
   };
   // the keys listen FROM CREATION (spec 14 C): the arrival starts the flight shot right after creating this host, before begin(), and capture

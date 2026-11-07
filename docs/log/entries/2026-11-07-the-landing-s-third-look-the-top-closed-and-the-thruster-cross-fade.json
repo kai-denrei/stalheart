@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-11-07-the-landing-s-third-look-the-top-closed-and-the-thruster-cross-fade",
+  "date": "2026-11-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "the landing's third look: the top closed and the thruster cross-fade",
+  "context": "Owner, 2026-11-07, after the second look: \"much better; 1) the model of the rocket falling down already has an open top, it should be closed. 2) the transition between the cinematic thruster and the in-game thrusters could be much smoother, we briefly superpose a zoomed in version of the in-game booster to the cinematic boosters, and as it zooms out, the cinematic disappears and only the game remains. 3) gameplay is ok for now.\" Spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md section 15, branch landing-polish from 8c2ed58d, unpushed. The signature ended on black and the flight cut in under it.",
+  "outcome": "BUILT. A (50012d9d): the host's begin() scrubs Top_Door_Open and Landing_Shock to 0, the flown rocket comes down shut. B: LANDING_GAME.signature.blend 2.0 and camera.intro { back: 6, up: -2, fov: 40 }. The signature's handle reports its clock t and gains fadeTo(opacity) (the element's CSS opacity, the shader drawing on); under the fade every key but Esc and every press reach the flight. The arrival (signatureTick) begins the flight at seconds - blend on the signature's clock, the aim permitting (aimed late, the signature is not ticked past that point: its last frame held at opacity 1; override.aimWait still bounds it), and fades the canvas to (seconds - t) / blend, 0 at its end. The host's chase() eases from the engine shot (the eye 6 m on the flight's +z of the engines' centre and 2 m under it, the centre SH02_WELL.bell x the holder's scale up the tilted hull from the rocket itself) to the side view over blend s from begin(): a smoothstep on the eye and the look, the lens linear 40 -> 58 (introMix, engineShot: pure, node-tested). MANUAL comes under the blend at 1.5 s, the side view holds at 2.0 s. A skip during the blend ends the signature at once and the intro eases on; before it, the flight and the intro start together; no signature, no intro. state().arrival.landing.intro 0..1.",
+  "alternatives": [
+    "The arrival timing the blend from its own clock instead of the signature's t: two clocks to keep in step; the signature's t is the one its picture follows.",
+    "Keeping the signature's listeners eating every key through the blend: Space would be eaten for MANUAL's first 0.5 s and the override's tilt keys for all of it.",
+    "Easing from the side view's lagged follow point: 6 m off a hull sinking 30-40 m/s the 0.12 s lag is metres, the engines out of the close-up."
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --landing: PASS 11 (landing-signature, -blend-start, -blend, -verdict, -wreck, -manual, -side-100, -side-20, -skip, -offer-taken, -offer-left), 'Browser acceptance passed (source)'; the flight began under the signature after 5.9 s of it (aim wait 0 s), at the blend's start opacity 0.96 with the flight OVERRIDE, throttle 1, intro 0.04; mid-blend opacity 0.52, intro 0.475, fov 48.6; the side view 0.50 s after MANUAL on every flown page; the skip pages' flight 0.00-0.01 s after the skip.",
+    "Stills: landing-blend-start (the 2D plume from under fills the frame, the game's hull and HUD a ghost beneath, one flame) and landing-blend (the canvas half faded over a frame already near black: a dark veil over the rocket with one burn under its skirt and the disk behind).",
+    "npm test: 342 test programs passed (test/arrival.mjs: the blend with a fake signature; test/manual-landing.mjs: introMix and engineShot; test/landing-game.mjs: the tune's shape); npm run check green."
+  ],
+  "supersedes": []
+}
