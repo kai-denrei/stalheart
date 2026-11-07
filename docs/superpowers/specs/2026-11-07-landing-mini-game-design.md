@@ -47,9 +47,9 @@ APPROACH -> OVERRIDE -> MANUAL -> FLARE -> TOUCHDOWN -> RESULT
    (auto)    (alarm)   (player)  (auto)    (clips)    (the arrival's talk, graded)
 ```
 
-1. **APPROACH** (auto, about 6 s). The arrival's orbit shot as it is, from higher: the rocket burning in from `start.altitude` on the
+1. **APPROACH** (auto, about 6 s; superseded by 14 C on a flown landing). The arrival's orbit shot as it is, from higher: the rocket burning in from `start.altitude` on the
    sequence's own eased altitude. The start gate's START is still the first gesture.
-2. **OVERRIDE** (`override.seconds`, 3 s). At `approach.overrideAt` (3.5 s into the approach, the sequence at ~380 m) the auto-lander
+2. **OVERRIDE** (`override.seconds`, 3 s; superseded by 14 C on a flown landing). At `approach.overrideAt` (3.5 s into the approach, the sequence at ~380 m) the auto-lander
    faults: the alarm, the HUD's annunciator `AUTO-LAND FAULT · MANUAL OVERRIDE`, Isao's caption line (section 7), the full-screen
    plume glare swelling over the frame and clearing (2.4 s), and the hand-over: under the glare the flight state is the planet's seeded
    entry (`seedEntry`: 300-400 m, sink 30-40 m/s, drift ±8-12, tilt ±0.25-0.35, 18-22 s of fuel; section 3), not the sequence's own
@@ -220,7 +220,8 @@ section for them, the recording order as before):
   acceptance page.
 - **The skip inside the flight** is `Esc` or the on-screen SKIP, not any key: the sequence resumes at its touchdown on the pad, grade
   CLEAN for the record, no salvage (the foundry as today, section 2), the plain talk, the rail back in the same frame. Before the override (the approach) any key or tap skips the whole arrival as
-  today (a flown landing: Esc alone, section 13), ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
+  today (a flown landing: Esc alone, section 13; 2026-11-07, section 14 C: no approach on a flown landing, so its Esc before the override is the
+  signature's skip, and only past the signature, while the flight waits for the disk's aim, the whole arrival's), ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
   contact), then `Esc` alone skips it (on a phone, after the lock, a tap: 2026-11-07); an auto-repeated key never skips any shot (`src/fx/camera-shot.js`). The tutorial card's skip
   and the chapter links are unchanged (a chapter starts past the landing, as today).
 - **Acceptance runs** (`?acceptance=1`) land automatically unless they ask (`?landing=1`), and show the gate only with `?gate=1`.
@@ -278,6 +279,8 @@ chapters, the skip links or the acceptance routes beyond `?landing`.
 
 ## 13. The owner's morning (2026-11-07): the exhaust signature and the stick
 
+*Superseded 2026-11-07 by section 14 for the stick, the bank axis and the mouse; the signature stands.*
+
 Owner, after the first look, with a still of his 2D game's opening: "the beginning is not working as intended. 1) we want the 'exhaust
 signature' effect in full screen, a close up of the boosters firing, as in the stalheart landing fleet 2d mini game. 2) the space bar
 must be the booster, and some form of wasd + mouse to orient the rocket and try to smooth the landing." Two things change; the rest of
@@ -291,8 +294,9 @@ smoothstep over 55 % of the remaining 4.6 s, held to 70 %, then geometrically do
 `STÅLHEART · ARRIVAL CORRIDOR`, the credit `LAUNCH SHADER · PULKIT · MIT` and a `SKIP CINEMATIC →` button. It plays once START (or
 FLY THE LANDING) has opened the gate and the landing is to be flown, BEFORE the approach: the arrival's clock holds at 0 under it, the
 rocket's thrust bed plays under it at full (the boosters firing; the 2D game's is silent only because its audio is not yet unlocked),
-and when it ends (black) the approach runs as today, then the override. `Esc` or the button skips the cinematic only (to the approach);
-every other key is eaten under it (the rail's any-key skip must not fire under the black). After the signature the approach's rail skips on Esc alone (2026-11-07, the final review: a Space tapped through the black would otherwise end the flown landing at the first fresh press); an automatic landing's approach skips on any key as today. Reduced motion or no WebGL2 skips it
+and when it ends (black) the approach runs as today, then the override (2026-11-07, section 14 C: no approach on a flown landing; the black
+opens on the flight at the override). `Esc` or the button skips the cinematic only (to the approach; since section 14 C, to the flight);
+every other key is eaten under it (the rail's any-key skip must not fire under the black). After the signature the approach's rail skips on Esc alone (2026-11-07, section 14 C: no approach on a flown landing; the flight shot skips on Esc alone) (2026-11-07, the final review: a Space tapped through the black would otherwise end the flown landing at the first fresh press); an automatic landing's approach skips on any key as today. Reduced motion or no WebGL2 skips it
 outright (the 2D game's rule); a phone plays it (the 2D game does, at its cap). The tune: `LANDING_GAME.signature { seconds: 8, hold:
 3, yEnd: -1048576 }`. The override's glare is no longer the shader: the plain fade (`landing-glare.js`'s CSS path, `override.glare
 { seconds: 1.2 }`), so the shader shows once, as the 2D game shows it. An automatic landing (START on a later run, `?landing=0`, the
@@ -316,3 +320,53 @@ buttons go. The harness's `landing('input', { throttle, tiltRate, bankRate, legs
 Not changed: the approach, the override beat (its alarm, Isao's line, the hand-over under a plain fade), the chase, the reticle, the
 HUD rows, the grades, the salvage, the gate's offer, `?landing`. Open for the owner: whether the signature should also precede an
 automatic landing (today it does not), and the mouse's sense (a drag up is the nose away).
+
+## 14. The owner's second look (2026-11-07): the side view, three controls, the hand-over in motion
+
+Owner, with a still of a drifted flight low over the island's rim: "it is not working, as it is too easy for the user to entirely drift
+and miss the landing zone, which makes no sense game-wise. there is also a display problem whereby being too close to the ground while
+drifting reveals a secondary layer of ground mapping, perhaps the other side? 2) let's try this. a) we force a fixed camera view,
+essentially making a temporary 2D game from our 3d Assets. It is a fixed camera angle with the large Black Hole in the background. b)
+the user has limited controls, space bar for thrusters, A and D for the angle adjustement, we simplify the game to these three
+variables. 3) small change but when transitioning from the thruster animation full screen to the 2D game, we want both the motion to
+be already occuring and the boosters to be on, for continuity". Section 13's stick, bank axis and mouse go; its signature stays.
+
+**A. The side view.** The flight is a 2D game again, in the plane the camera looks across. The camera's ANGLE is fixed: level, looking
+along the island's ground toward the accretion disk (the world's `sky-hole` planes, `api.scene`, their `userData.hole.dir` turned into
+the island's frame: the look azimuth), so the disk is the background of every frame (the brief's call 3, now met by design). Only its
+POSITION moves, a dolly on that fixed line of sight: `camera.back + camera.backPerMetre × altitude` behind the rocket's ground point and
+`camera.up + camera.upPerMetre × altitude` above the pad, the numbers chosen so the rocket and the pad share the frame from the entry's
+altitude down to the contact (starting values back 20 + 0.95/m, up 10 + 0.5/m, fov 58; measured in the browser with the harness's
+`view()` and re-priced). The flight frame is turned about the pad's up by that azimuth: the model's +x is the camera's right, the
+model's z the line of sight, so the drift and the tilt read as screen motion; the host converts to island metres at its boundary
+(`pose()`, the reticle, `landed`). The reticle stays on the ground under the predicted point. Off-island ground is the planet's sphere
+as before; the camera never looks down at it from above, which is what showed the lattice under the rim.
+
+**B. Three variables.** Space held is the burn (as section 13); `A` / `D` (and the arrows) tilt the rocket left / right in the camera's
+plane, a held rate as before; `L` legs, `Esc` the skip. Nothing else: no W/S, no bank, no stick, no mouse. The bank axis leaves the
+flight model, `src/fx/landing-stick.js` goes, the harness's `bankRate` and `lean` go, `state().tilt` is the signed tilt. A phone's rail
+is `◂` `▸` `BURN` (held) `LEGS` `SKIP`. The entry is retuned so a miss is the player's doing, not the entry's: drift 4-7 m/s (was
+8-12), tilt 0.15-0.25 rad (was 0.25-0.35); the rest of the entry as before.
+
+**C. The hand-over in motion.** A flown landing has no approach rail from orbit any more: the signature's black opens directly on the
+side view with the rocket already sinking and drifting at the entry's state and the boosters LIT. The flight begins when the signature
+ends (or is skipped); for `override.seconds` (now 1.5 s) the auto-lander's last burn runs: the physics step with the throttle forced to
+1, under the alarm, the annunciator and Isao's line; then MANUAL, where the burn follows Space. The flight shot (the fixed camera) is
+started under the signature so the first visible frame is the flight. The automatic landing (START on a later run, `?landing=0`, the
+acceptance suites without `?landing=1`) keeps the whole arrival sequence from orbit as today.
+
+Not changed: the signature, the verdict, the flare, the touchdown, the salvage, the gate's offer, `?landing`, the touch rail's BURN.
+Open for the owner: the entry ranges above; whether the camera should pitch down a few degrees so more ground shows under the pad.
+
+**Changed in the build (2026-11-07).** The side view's dolly is across at the MIDPOINT of the rocket and the pad (the frame's x = 0),
+backed off with the gap: `back + backPerMetre × height + backPerMetreAcross × |x|` (0.8 a metre of the gap), so a drifting flight keeps
+the landing zone in frame; the eye is on the flight frame's +z side looking along −z toward the disk (A's "behind the rocket's ground
+point" was the first version). The flight waits for the sky disk to be aimed behind the Stålheart for THIS world's base before `begin()`
+reads the azimuth once, never longer than `override.aimWait` (3 s) past the signature. The flown rocket is hidden from the gate until
+the override places it at the entry. A green ring of the pad's 14 m reach (`game.pad.reach`, half opacity) marks the landing zone for
+the whole flight. The host listens for keys from its creation (the flight shot is started right after it, before `begin()`, and
+capture listeners on one target run in registration order; the host ignores every key until `begin()`). The entry's tilt leans
+AGAINST its drift (`seedEntry`: tilt = −sign(drift) × size, the draws in their old order with a discarded draw where the tilt's sign
+was, so every planet keeps its entry and only the tilt's sign changes): the override's 1.5 s burn along that lean takes the drift
+down rather than adding to it, about −0.5 to +4 m/s at MANUAL, and a no-input flight wrecks `off-pad` just past the pad's reach. The
+sign rule itself is the owner's call.

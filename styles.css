@@ -4764,14 +4764,12 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 #landing-hud .lh-verdict.wreck { color: #ff6a5a; }
 #landing-hud .lh-touch[hidden] { display: none; }
 #landing-hud .lh-touch { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; justify-content: space-between; padding: 12px; pointer-events: auto; }
-#landing-hud .lh-btn { font: inherit; color: #b8ffca; background: rgba(4, 12, 8, 0.7); border: 1px solid #4fae63; padding: 14px 16px; min-width: 88px; }
+#landing-hud .lh-btn { font: inherit; color: #b8ffca; background: rgba(4, 12, 8, 0.7); border: 1px solid #4fae63; padding: 14px 12px; min-width: 56px; }   /* five on a 360 px phone: 5 x 56 + gaps */
 #landing-hud .lh-btn.burn { flex: 1; }
-/* THE STICK (src/fx/landing-stick.js): the floating ring at the press point, its knob at the clamped drag */
-.lh-stick { position: fixed; width: 96px; height: 96px; margin: -48px 0 0 -48px; border: 1px solid rgba(79, 174, 99, 0.7); border-radius: 50%; pointer-events: none; z-index: 42; }
-.lh-stick i { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: rgba(184, 255, 202, 0.6); }
+#landing-hud .lh-btn.tilt-left, #landing-hud .lh-btn.tilt-right { font-size: 1.4em; line-height: 1; }
 /* #landing-hud sits in the body, not in #td-app, so the arrival's chrome-hiding rule does not reach it; :not([hidden]) keeps show(false) true */
 body.arrival-on #landing-hud:not([hidden]) { display: block; }
-/* the arrival's flight: a drag on the scene is the landing's stick, never a pan (the universal manipulation above would take it) */
+/* the arrival's flight: a held rail button or a drag on the scene is never a pan (the universal manipulation above would take it) */
 body.arrival-on #tab-td { touch-action: none; }
 /* THE LANDING'S GLARE (src/fx/landing-glare.js): the override beat's plain CSS fade (the shader is the signature's, below) */
 #landing-glare { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 39; pointer-events: none; mix-blend-mode: screen; }

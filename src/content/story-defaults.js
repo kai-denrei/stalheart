@@ -65,7 +65,7 @@ export const STORY_ARRIVAL = Object.freeze({
 export const STORY_ARRIVAL_MANUAL = (() => {
   const a = LANDING_GAME.approach, base = STORY_ARRIVAL.landing, down = base.orbit + base.descent, shift = a.descent - base.descent;
   return Object.freeze({ ...STORY_ARRIVAL,
-    landing: Object.freeze({ ...base, descent: a.descent, startAltitude: a.startAltitude, deployAltitude: a.deployAltitude }),
+    landing: Object.freeze({ ...base, descent: a.descent, startAltitude: a.startAltitude }),
     rail: Object.freeze(STORY_ARRIVAL.rail.map((k) => Object.freeze({ ...k, t: k.t >= down ? k.t + shift : k.t }))),
   });
 })();

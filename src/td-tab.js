@@ -4749,7 +4749,7 @@ export function initTdTab(root) {
     // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
-    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, scene, startShot, snapCamera, sfx, drone: () => isao,
     mission: () => (isaoSay(sfx, 'mission'), showMission(root, STORY_MISSION)), touring: () => !story?.arrival.done() || shotId() === 'sitesTour',
     freeLook: () => { const done = (glide) => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; if (!glide) snapCamera(); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
       if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = tourSeconds(pts.length);

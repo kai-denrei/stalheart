@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-11-07-the-landing-s-second-look-the-side-view-three-controls-the-hand-over-in-motion",
+  "date": "2026-11-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "the landing's second look: the side view, three controls, the hand-over in motion",
+  "context": "Owner, 2026-11-07, with a still of a drifted flight low over the island's rim: \"it is not working, as it is too easy for the user to entirely drift and miss the landing zone ... a) we force a fixed camera view, essentially making a temporary 2D game from our 3d Assets ... with the large Black Hole in the background. b) ... space bar for thrusters, A and D for the angle adjustement ... 3) ... when transitioning from the thruster animation full screen to the 2D game, we want both the motion to be already occuring and the boosters to be on, for continuity\". Spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md section 14 (A the side view, B three variables, C the hand-over in motion), plan d67391d7 (three tasks), branch landing-sideview from 7a737a81, unpushed.",
+  "outcome": "BUILT. A (da856894, 35d83240): the flight frame turned about the pad's up to the accretion disk's azimuth (the sky-hole planes' direction, read once at the host's begin()), a fixed level line of sight toward the disk with a dolly (back 40 + 1.0/m + 0.8/m across, up 18 + 0.5/m, fov 58, the eye across at the midpoint of the rocket and the pad), the disk at NDC [0, 0.18] at every height; storyApi carries the scene. B (89e7f19f): the bank axis, the floating stick and the mouse gone (src/fx/landing-stick.js deleted); Space held the burn, A / D (and the arrows) the tilt about z toward +x, L the legs; the phone rail ◂ ▸ BURN LEGS SKIP; the entry drift 4-7 m/s and tilt 0.15-0.25 rad; the override 1.5 s. C (this entry's commit): a flown landing starts no orbit rail and draws no orbit picture: the flight shot arrivalFlight starts in start() under the signature (registered after it and after the host, whose keys now listen from its creation so the shot cannot eat Space, A and D), the rocket hidden until the override places it; the flight begins as the signature ends or is skipped once the sky disk is aimed (at most override.aimWait 3 s; state().arrival.aimWait); the host's begin() lights the boosters (throttle and set point 1) and its override branch steps the physics at full throttle with the tilt keys and the legs live, then MANUAL; Esc before the override (past the signature) skips the whole arrival, after it the flight; the rail's lengthening by the signature's seconds and approach.deployAltitude retired (STORY_ARRIVAL_MANUAL keeps descent and startAltitude for the resumed sequence; overrideAt kept for the story lab's rehearsal, which still reads it); a green ring of the pad's 14 m reach at half opacity marks the landing zone for the whole flight. The automatic landing keeps the whole sequence from orbit.",
+  "alternatives": [
+    "Restarting the flight shot at the override (the old order, so the host's listener came first): a second shot start under a running one, its onEnd guarded by cutting; listening from the host's creation keeps one shot from start() to the touchdown.",
+    "Removing approach.overrideAt as the brief asked: the story lab (src/labs/story-tab.js ?manual=1) still cuts its rehearsal at it; kept and re-commented as the lab's.",
+    "The auto-lander's last burn held upright (the tilt eased to 0) so the override adds no drift: not built, the spec says the physics step with the throttle forced to 1 and the tilt keys live; left for the owner."
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --landing: PASS 9 (landing-signature, -verdict, -wreck, -manual, -side-100, -side-20, -skip, -offer-taken, -offer-left); out of the signature the flight in 0.00-0.02 s, the aim waited 0 s on every page, OVERRIDE with throttle 1 sinking ~351 -> ~342 m over 300 ms; MANUAL at ~317 m, drift ~9.7 m/s; the pilot CLEAN through FLARE; no input WRECK slope ~120 m out.",
+    "Still artifacts/browser/landing-manual.png: the side view at ~197 m, the rocket upper right, the disk centred behind, the pad's ring faint green left of centre on the ground, the red reticle off the pad.",
+    "The task reports .superpowers/sdd/task-1-report.md to task-3-report.md."
+  ],
+  "supersedes": []
+}

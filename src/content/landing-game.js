@@ -1,20 +1,23 @@
 // THE LANDING, the manual override in the arrival (owner, 2026-11-07; spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md).
 // One frozen literal; every number a starting value with its reason, the story lab (labs.html#story&manual=1) is where they move.
-// Metres and seconds around the landing island (x, z along the ground, y up, +z toward the pole), as src/domain/landing-sequence.js.
+// Metres and seconds around the landing island (x, z along the ground, y up, +z toward the pole), as src/domain/landing-sequence.js;
+// the flight's drift is on x (spec 14 B, src/domain/manual-landing.js's header).
 export const LANDING_GAME = Object.freeze({
   sim: Object.freeze({ dt: 1 / 120, maxSteps: 8, gravity: 3.2, drag: 0.0016 }),   // the 2D game's planet: fixed 120 Hz, a thin atmosphere
   vehicle: Object.freeze({
     thrust: 12,          // m/s² at full throttle (T/W 3.75: a late, hard burn stops the rocket; the brief's hoverslam)
     minThrottle: 0.2,    // the set point's floor while lit (0.2 x 12 = 2.4 < g: idle cannot hover, so a hover costs real fuel)
     spool: 4,            // throttle units a second toward the set point
-    torque: 3,           // rad/s² at full stick
+    torque: 3,           // rad/s² at a full tilt key (A / D held)
     damping: 3.5,        // the tilt rate's decay a second
     legTime: 0.6,        // s to deploy the legs
     legDrag: 0.0009,     // added to sim.drag once the legs are down: the splayed feet catch air (the 2D game's figure)
     autoLegsAltitude: 200,   // m: the legs come down here on their own if the player has not asked
   }),
-  // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry)
-  entry: Object.freeze({ altitude: [300, 400], sink: [30, 40], drift: [8, 12], tilt: [0.25, 0.35], fuelSeconds: [18, 22], wind: 0 }),
+  // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry). Retuned
+  // 2026-11-07 (spec 14 B, the owner: "too easy for the user to entirely drift and miss the landing zone"): drift 4-7 m/s (was 8-12) and
+  // tilt 0.15-0.25 rad (was 0.25-0.35), so a miss is the player's doing, not the entry's
+  entry: Object.freeze({ altitude: [300, 400], sink: [30, 40], drift: [4, 7], tilt: [0.15, 0.25], fuelSeconds: [18, 22], wind: 0 }),
   // the auto-lander takes back under this height when the state is inside its corridor (spec 2.4)
   flare: Object.freeze({
     altitude: 30, sink: 8, drift: 5, tilt: 0.25, sinkFinal: 1.8,
@@ -34,8 +37,12 @@ export const LANDING_GAME = Object.freeze({
   // sinking 102 m/s, a 590 m stopping distance: every flight a wreck), so the flight is seeded from `entry` above, under the glare, and the
   // approach is only the picture of a rocket coming in from orbit. At 3.5 s of 10 the sequence is at 900 x (1 - 0.35)² = 380 m, so the cut
   // to the entry's 300-400 m under the glare is small; its eased rate there (~117 m/s) is dropped for the entry's 30-40 m/s: the
-  // auto-lander's braking burn is what failed. The legs' 700 m is the sequence's own (the flown landing keeps them stowed: the player's).
-  approach: Object.freeze({ descent: 10, startAltitude: 900, overrideAt: 3.5, deployAltitude: 700 }),
+  // auto-lander's braking burn is what failed.
+  // Since spec 14 C (2026-11-07, the hand-over in motion) the GAME's flown landing has no approach from orbit: the signature opens on the flight at
+  // the entry, and `descent` / `startAltitude` only time the sequence a flown landing resumes at its touchdown (STORY_ARRIVAL_MANUAL: the rail
+  // after it, the cut). `overrideAt` is the story lab's alone now (labs.html#story&manual=1 still rehearses the cut from its approach,
+  // src/labs/story-tab.js). `deployAltitude: 700` retired (the legs at the base's 134 m: the sequence's legs are the player's or the shock's)
+  approach: Object.freeze({ descent: 10, startAltitude: 900, overrideAt: 3.5 }),
   // THE EXHAUST SIGNATURE (spec 13, src/fx/exhaust-signature.js): the 2D game's opening verbatim (Stalsfar_Landing CONFIG.cinematic
   // { opening: 8, ignitionHold: 3, launchYEnd: -1048576 }): the camera's Y holds at 2 for `hold` s (the boosters close up), falls to -8,
   // then geometrically to `yEnd`, where the frame is black
@@ -43,20 +50,24 @@ export const LANDING_GAME = Object.freeze({
   // the alarm beat (seconds) and the plain fade over it (src/fx/landing-glare.js); on a later start the offer is the start gate's
   // FLY THE LANDING (src/fx/start-gate.js, 2026-11-07), no longer a SPACE window in the approach
   override: Object.freeze({
-    seconds: 3,
+    seconds: 1.5,   // spec 14 C (2026-11-07): the auto-lander's last burn under the alarm, shorter so the player has the rocket sooner (was 3)
+    aimWait: 3,     // s at most the flight waits past the signature for the sky disk to be aimed (src/fx/arrival.js aimed): a Stålheart that never loads must not hold it
     glare: Object.freeze({ seconds: 1.2 }),   // the plain fade (2026-11-07, spec 13): the shader is the signature's, no longer the override's
   }),
-  // the chase (src/fx/manual-landing.js chase; 2026-11-07, the controller's call C): it looks at the reticle's ground point (the predicted
-  // impact), the eye behind along -z by back + backPerMetre x height, above the rocket by up + upPerMetre x height, and to +x by `side` x
-  // that back distance. The distances grow with the height because the rocket and the ground under it subtend an angle that does: with
-  // fixed offsets the rocket at 350 m sat ~60 degrees above a ground point at the centre (the brief's 60/34 kept only the rocket in frame,
-  // the reticle 55-80 degrees below the lens's 23). `lookReach` m off the pad the look leaves the prediction for the rocket's own ground
-  // point (all of it at twice that), so a wild prediction never swings the camera to the horizon. Measured in the browser (1440 x 900,
-  // the scripted pilot, NDC y of the feet / the hull's top with the reticle at the centre): 350 m 0.68 / 0.77, 100 m 0.56 / 0.80, 20 m
-  // 0.28 / 0.85; back 60 (50 cut the hull's top at 20 m, 1.08), backPerMetre 1.8 (the separation at 350 m ~21 degrees under the lens's
-  // 29: 2 left the rocket tinier for no gain), up 10 + 0.2/m (a little above the rocket shrinks the angle it shares with the ground),
-  // side 0.8 (~39 degrees: the tilt reads at ~0.6 of itself; 0.45 left 9 degrees looking nearly upright), fov 58 (the brief's 46 could not hold both)
-  camera: Object.freeze({ back: 60, backPerMetre: 1.8, up: 10, upPerMetre: 0.2, side: 0.8, lookReach: 40, fov: 58, lag: 0.12, jolt: 0.8 }),
+  // THE SIDE VIEW (spec 14 A; src/fx/manual-landing.js chase, the shot's poseAt): a fixed level line of sight along the flight's -z toward
+  // the disk, the eye on the +z side `back + backPerMetre x height + backPerMetreAcross x |x|` m from the rocket and `up + upPerMetre x height`
+  // m above the pad, across at the MIDPOINT of the rocket and the pad (the frame's x = 0: the owner's rule, a player must always see the landing
+  // zone); the angle never moves, only the position. Priced so the hull's top and the pad's centre sit symmetric about the lens's axis (up +
+  // upPerMetre x h = (h + the hull's 35 m) / 2) and the distance holds both inside +-0.9 of the fov's 58 degrees (the spec's starting 20 +
+  // 0.95/m and 10 + 0.5/m put the hull's top at ~1.02 at 350 m, analytic, not run; ~1.07 near 200 m). backPerMetreAcross: the horizontal
+  // half-fov's tan is aspect x tan(fov/2) = 1.6 x 0.554 = 0.886 at 16:10; the rocket and the pad each sit |x|/2 off the eye, inside ~0.8 of
+  // it when the depth >= 0.7 |x|, so 0.8 a metre of the gap (with `back` on top). Measured in the browser (1440 x 900, --landing, NDC):
+  // the scripted pilot's flight (near the pad, x within 0.02), y of the feet / the hull's top / the pad: 350 m 0.72 / 0.88 / -0.89, 100 m
+  // 0.39 / 0.83 / -0.87, 50 m 0.11 / 0.78 / -0.84, 20 m -0.24 / 0.79 / -0.82; the no-input skip page drifting off, x of the feet / the pad
+  // (y of the feet, the top, the pad): 195 m 55 m out 0.11 / -0.11 (0.50, 0.73, -0.75), 99 m 83 m out 0.23 / -0.22 (0.26, 0.56, -0.60),
+  // 49 m 97 m out 0.33 / -0.32, 17 m 105 m out 0.41 / -0.41 (-0.14, 0.30, -0.36); the disk at 0.00, 0.18 at every height. `jolt` scales the
+  // touchdown rail's shake (src/fx/arrival.js railPose), not this shot
+  camera: Object.freeze({ back: 40, backPerMetre: 1.0, backPerMetreAcross: 0.8, up: 18, upPerMetre: 0.5, fov: 58, lag: 0.12, jolt: 0.8 }),
   reticle: Object.freeze({
     metresPerMetre: 0.1, rings: Object.freeze([100, 50, 10]), segments: 48,
     minRadius: 2,         // m: the altitude ring never shrinks below the rocket's own footprint (the legs splay to about 2 m)
@@ -68,8 +79,8 @@ export const LANDING_GAME = Object.freeze({
   // the altitude ping's gap (src/fx/manual-landing.js sounds): `far` s at `nearAt + nearOver` m and above, ramping to `near` s at `nearAt` m.
   // nearOver 300 (2026-11-07, out of the logic at the final review): the ramp spans the entry's 300-400 m, so the ping quickens over the whole flight
   hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10, nearOver: 300 }), predictorSeconds: 35, predictorDt: 0.15 }),
-  // Space held is the burn (spec 13); the stick: the 2D game's floating thumb-stick, px of drag past the dead zone to the full throw
-  input: Object.freeze({ skipKey: 'Escape', burnKey: ' ', stick: Object.freeze({ dead: 5, full: 48 }) }),
+  // Space held is the burn (spec 13); A / D (and the arrows) the tilt and L the legs are the host's own keys (spec 14 B: three variables)
+  input: Object.freeze({ skipKey: 'Escape', burnKey: ' ' }),
   // the contact (2026-11-07, review of Task 7): the rail that resumes at the touchdown, the shock clip, the shake and a wreck's marks
   touchdown: Object.freeze({
     lockSeconds: 1.5,   // s the resumed rail cannot be skipped: the keys the player was holding at the contact must not skip the door and Isao's rise

@@ -8,8 +8,10 @@
 // Two shots over the base's own landmarks (src/fx/story-base.js), no second rocket:
 //   (flown)        a flown landing opens on THE EXHAUST SIGNATURE (src/fx/exhaust-signature.js, spec 13; 2026-11-07, the owner's morning):
 //                  the 2D game's boosters full-screen over the page, the arrival's clock held at 0 and the thrust bed at full under it, Esc
-//                  or SKIP CINEMATIC to the approach; then SIGNATURE > APPROACH > OVERRIDE > MANUAL > FLARE > TOUCHDOWN on the rail below.
-//                  An automatic landing has none
+//                  or SKIP CINEMATIC ends it; then SIGNATURE > OVERRIDE > MANUAL > FLARE > TOUCHDOWN on the rail below. THE HAND-OVER IN
+//                  MOTION (spec 14 C, 2026-11-07): no approach from orbit on a flown landing; the flight's side view ('arrivalFlight')
+//                  runs from start() under the signature, and its black opens on the rocket already sinking and drifting with the
+//                  boosters lit. An automatic landing has no signature and keeps the whole sequence from orbit
 //   'arrival'      the SH02 comes down along its own up on src/domain/arrival-shot.js's clock (the lab's timeline, cut short), its
 //                  legs, shock and door clips scrubbed, the lab's plumes, scorch and dust under it; Isao climbs out of the well
 //                  (smaller than his game size: the six metre drone would not fit it) and flies clear toward the pole
@@ -52,7 +54,7 @@ const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 // `site`: the landing island's world basis (src/fx/story-base.js basisAt: +y its up, +z toward the pole), `metres`: world units a metre.
 // `past`: the page starts past the landing (a tutorial chapter, a phase jump at stage 1): no shot, and the rocket is its salvage and
 // the foundry from the first frame, each landmark put in that end state as it loads.
-// THE LANDING (src/platform/story-world.js decideLanding): `manual` the player flies it (the longer approach, STORY_ARRIVAL_MANUAL,
+// THE LANDING (src/platform/story-world.js decideLanding): `manual` the player flies it (the longer sequence, STORY_ARRIVAL_MANUAL, resumed at its touchdown,
 // unless a tune is passed), `offer` the start gate offers it (FLY THE LANDING beside START, 2026-11-07: taking it makes the start a
 // manual one, start() choosing the tune), `seed` the override's entry (src/domain/manual-landing.js seedEntry, per planet). The parameters stay in this closure for the flown landing
 export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet' } = {}) {
@@ -67,13 +69,23 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   if (site) up.setFromMatrixColumn(site, 1).normalize();
   const toWorld = (p, out = new THREE.Vector3()) => out.set(p[0] * metres, p[1] * metres, p[2] * metres).applyMatrix4(site);
   const pose = (out, eye, look, n) => { m4.lookAt(eye, look, n); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye); };
+  // THE SIDE VIEW's azimuth (spec 14 A): the disk's world direction (the sky-hole planes' userData.hole.dir) turned into the island's frame as
+  // a direction; the flight's -z, the camera's line of sight, is put on it (src/fx/manual-landing.js flightToIsland); 0 without the planes.
+  // Read by the host at its begin(), not at start(): the hole is aimed behind the Stålheart once that structure loads (src/fx/sky-rig.js),
+  // which on a quick skip of the signature came after start() (the frame was then turned ~43 degrees off the disk). `azimuth` the value taken
+  let azimuth = null;
+  const holeAzimuth = () => {
+    const dir = api?.scene?.getObjectByName('sky-hole')?.userData.hole?.dir, d = dir ? new THREE.Vector3(...dir).transformDirection(inv) : null;
+    return (azimuth = d ? Math.atan2(-d.x, -d.z) : 0);
+  };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
   // THE LANDING FLOWN (2026-11-07, spec section 2): `flying` the host (src/fx/manual-landing.js) from the start when the landing may be flown,
   // `lhud` its panel (the arrival's: the verdict reads through the cut), `signature` the exhaust signature while it plays (`missionDue`: the
   // mission card waits for its end, its timers are the wall clock's and would run out under the black), `grade` the contact once the ground is met, `landed` where the
   // rocket stood (island metres; null on a skip), `jolt` the rail's shake after a hard or wrecked contact, `offered` the gate's offer taken
-  let flying = null, lhud = null, glare = null, signature = null, missionDue = false, overrideAt = Infinity, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0;
+  // `aimWait` the seconds the flight waited after the signature for the sky disk to be aimed (null until the signature is over; the harness's)
+  let flying = null, lhud = null, glare = null, signature = null, missionDue = false, aimWait = null, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0;
   // from the contact to the cut the arrival's island-metre points all move by `landed`: the holder (`placedLanded`, its placement with the
   // offset baked in), the rail's eye and aim, Isao's rise and arc, the scorch and dust; settle() and deploy() stay on the plan's spots
   let placedLanded = null;
@@ -112,7 +124,6 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // the rocket at time `time` of the landing: along its own up, its clips, plumes, scorch and dust; Isao climbing out and clear
   function apply(time, dt) {
     const s = shot.stateAt(time), h = rocket.holder;
-    if (manual && !grade) s.clips.Legs_Deploy = null;   // the flown landing's legs are the player's (L, or 200 m): the approach keeps them stowed
     sound(s);
     // after a flown touchdown the rocket stands where it met the ground (`placedLanded`, `landed` off the pad's centre), not snapped to it
     c.copy(up).multiplyScalar(s.altitude * metres);
@@ -171,12 +182,11 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     // the flown landing is chosen here, not at creation: a first start (`manual`), or the gate's FLY THE LANDING on a later one (`offer`)
     if (offer && (offered || gate?.choice === 'fly')) { offered = true; manual = true; }
     if (manual && !given) { tune = STORY_ARRIVAL_MANUAL; shot = makeArrivalShot(tune); talkSeconds = holdOf(tune.talk.brief); }
-    overrideAt = manual ? LANDING_GAME.approach.overrideAt : Infinity;
     rocket = base.structure('sh02'); drone = api.drone(); camera = api.camera; fov = camera.fov; size = drone.obj.scale.x;
     // where he ends: `clear` metres toward the pole at his own hover height, so the game takes him back without a jump
     toWorld([0, 0, tune.isao.clear], a).normalize().multiplyScalar(drone.obj.position.length());
     to = a.applyMatrix4(inv).divideScalar(metres).toArray();
-    base.reveal('sh02');
+    if (!manual) base.reveal('sh02');   // a flown landing's rocket stays hidden until the override places it at the entry (override())
     fxRoot = new THREE.Group(); fxRoot.name = 'Arrival'; fxRoot.matrixAutoUpdate = false; fxRoot.matrix.copy(site).multiply(m4.makeScale(metres, metres, metres)); base.group.add(fxRoot);
     plumes = PLUME_CLUSTER.map((e) => {   // under the skirt, in the hull's own authored metres, as the lab hangs them
       const p = createLaunchPlume({ width: e.width, height: e.height }), ang = e.angle * Math.PI / 180;
@@ -184,12 +194,12 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     });
     phase = 'landing'; t = 0;
     hud(true);
-    camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
-    // THE EXHAUST SIGNATURE (spec 13) before the rail shot: capture listeners on one target run in registration order, so its window
-    // keydown runs before the shot's and eats the rail's any-key skip under the black. Null on reduced motion or without WebGL2: no signature
+    if (!manual) { camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0); }   // the orbit picture: a flown landing has none (spec 14 C)
+    // THE EXHAUST SIGNATURE (spec 13) before the flight shot: capture listeners on one target run in registration order, so its window
+    // keydown runs before the shot's and eats every key under the black, Esc its own skip. Null on reduced motion or without WebGL2: no signature
     if (manual && globalThis.document?.body) {
       signature = startExhaustSignature(globalThis.document.body, { ...LANDING_GAME.signature, reducedMotion: still, onSkip: () => { signature = null; } });
-      if (signature) { thrust ??= api.sfx?.loop('rocket_thrust', { dist: 0, gain: 0 }); thrust?.set(1, 1); }   // the boosters at full; sound() takes the bed over at the approach's first frame
+      if (signature) { thrust ??= api.sfx?.loop('rocket_thrust', { dist: 0, gain: 0 }); thrust?.set(1, 1); }   // the boosters at full; the host's own bed takes over at the override
     }
     if (signature) missionDue = true; else api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
     if (manual) {   // THE LANDING (2026-11-07): the host in island metres with the pad's top at 0, its reticle under a group lifted there
@@ -197,12 +207,16 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       const flightRoot = new THREE.Group(); flightRoot.name = 'LandingFlight'; flightRoot.position.y = pad; fxRoot.add(flightRoot);
       lhud = createLandingHud(globalThis.document?.body);
       flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
-        floorAt, clipScrub: (name, u) => { clip(name, u, true); rocket.root?.userData.mixer?.update(0); }, coarse });
+        floorAt, clipScrub: (name, u) => { clip(name, u, true); rocket.root?.userData.mixer?.update(0); }, coarse, azimuth: holeAzimuth });
     }
-    // the signature's seconds on the rail's length: its clock runs under the black while the arrival's holds.
-    // A FLOWN APPROACH SKIPS ON ESC ALONE (2026-11-07, the final review): a player tapping Space through the signature's black would otherwise
-    // end the flight they chose with the first fresh press at the approach; an automatic landing keeps any key or tap, as today
-    api.startShot({ id: 'arrival', dur: shot.cut + 2 + (signature ? LANDING_GAME.signature.seconds : 0), poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, ...(manual ? { skipKey: LANDING_GAME.input.skipKey } : {}), onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
+    // THE FLIGHT SHOT AT ONCE on a flown landing (spec 14 C): the side view under the signature, so its first visible frame is the flight; no
+    // rail from orbit. Capture listeners run in registration order: the signature's, then the host's (it listens from its creation, above), then
+    // this shot's. passKeys off (2026-11-07, the final review): the host takes the flight keys itself; every other key is eaten during the
+    // flight, Escape still skips: the flight once it has begun (the rail back in this same call, no frame without a shot), the whole arrival
+    // before it (a skip before the override, ungraded).
+    // An automatic landing's rail skips on any key or tap, as today; its end is the cut (tick), not its clock
+    if (manual) api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: false, onEnd: () => { if (cutting || phase !== 'landing' || !flying) return; if (flying.pose()) { flying.skip(); touchdown(); } else finish(true); } });
+    else api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });
   }
   function railPose(u, out) {
     const p = shot.camera(Math.min(t, shot.cut));
@@ -249,18 +263,21 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     if (!offer || offered || phase !== 'waiting') return false;
     offered = true; return true;
   }
-  // OVERRIDE: the seeded entry under the glare (LANDING_GAME.approach says why not the sequence's own state); the chase shot takes over from the rail
+  // OVERRIDE: the seeded entry (src/domain/manual-landing.js seedEntry), the rocket placed there sinking and drifting with the boosters lit (the
+  // host's begin(); spec 14 C: the auto-lander's last burn runs for override.seconds), under the plain fade; the flight shot already runs (start())
   function override() {
     if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
-    flying.begin(0);   // the flown approach keeps the legs stowed (apply): they are the player's
+    base.reveal('sh02');   // hidden since the gate: the host's begin() puts it at the entry this same call
+    flying.begin(0);   // the legs stowed: they are the player's (L, or 200 m)
     api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
     if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare });   // the plain fade for everyone (spec 13: the shader is the signature's)
-    cutting = true;   // starting a shot ends the rail's, whose onEnd would finish the arrival
-    // passKeys off (2026-11-07, the final review): the host's capture listener (flying.begin above, registered before the shot's) takes the
-    // flight keys itself; every other key is eaten during the flight, Escape still skips
-    api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: false, onEnd: () => { if (!cutting && phase === 'landing' && flying) { flying.skip(); touchdown(); } } });   // Esc: the rail back in this same call, no frame without a shot
-    cutting = false; overrideT = 0;
+    overrideT = 0;
   }
+  // the flight waits for the sky disk to be aimed behind the Stålheart (src/fx/sky-rig.js) before its begin() reads the azimuth once: aimed
+  // late, the frame was turned up to 43 degrees off the disk. No planes (a context that refuses the shader): nothing to wait for; and never
+  // longer than override.aimWait s past the signature (a Stålheart that never loads must not hold the flight). Aimed for THIS base: the rig
+  // stamps c.storyBase(), the same object story-world hands in as `base`, so a stale world's stamp does not count
+  const aimed = () => { const h = api?.scene?.getObjectByName('sky-hole'); return !h || h.userData.aimedFor === base; };
   // TOUCHDOWN: the grade to the foundry, the sequence resumes at its touchdown where the rocket stands, the rail shot back
   function touchdown() {
     const p = flying.pose(); grade = flying.contact(); landed = grade.reason === 'skipped' ? null : [p.x, floorAt(p.x, p.z).y, p.z];
@@ -270,7 +287,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       placedLanded = placed.clone().premultiply(m4.makeTranslation(-a.x, -a.y, -a.z)).premultiply(m5.makeRotationFromQuaternion(quat)).premultiply(m4.makeTranslation(a.x + c.x, a.y + c.y, a.z + c.z));
     }
     jolt = LANDING_GAME.touchdown.jolt[grade.grade] ?? 0;
-    t = shot.seq.touchdown; overrideAt = Infinity; if (heard) heard.legs = true;   // the legs are down: no second pneumatics cue
+    t = shot.seq.touchdown; if (heard) heard.legs = true;   // the legs are down: no second pneumatics cue
     // the grade is for a flown landing (the owner's call 1; 2026-11-07, the final review): a skip is graded CLEAN for the record but
     // pays nothing, or taking the offer and pressing Esc would beat a flown HARD landing by the CLEAN bonus barrel; the foundry as today
     if (grade.reason !== 'skipped') beats.salvage?.(LANDING_GAME.salvage[grade.grade]);
@@ -281,9 +298,13 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   }
   function landingTick(dt) {   // the landing branch; while the signature or the flight holds the clock `t` stands still (the rail and the sequence wait)
     if (signature) { signature.tick(dt); if (!signature.done) return; signature = null; }   // the boosters full-screen, the clock held at 0
-    if (missionDue) { missionDue = false; api.mission?.(); }   // the mission card over the approach, as without the signature
+    if (missionDue) { missionDue = false; api.mission?.(); }   // the mission card at the signature's end (its timers are the wall clock's)
+    if (flying && !flying.pose()) {   // a flown landing: the flight begins as the signature ends (or at once without it), once the disk is aimed
+      aimWait ??= 0;
+      if (aimed() || aimWait >= LANDING_GAME.override.aimWait) override(); else aimWait += dt;
+      return;
+    }
     t += dt;
-    if (flying && t >= overrideAt && !flying.pose()) override();
     if (flying?.pose()) {   // the window: OVERRIDE for override.seconds, then MANUAL / FLARE, until the ground
       glare?.tick(dt); if (glare?.done) glare = null;
       overrideT += dt; if (flying.phase() === 'override' && overrideT >= LANDING_GAME.override.seconds) flying.manual();
@@ -291,6 +312,16 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     }
     jolt = Math.max(0, jolt - dt);
     if (t >= shot.cut) toTalk(); else apply(t, dt);
+  }
+  // THE DISK IN FRAME (spec 14 A, the harness): the sky-hole's direction projected through the camera as a far point, NDC [x, y]; null
+  // without the planes or the camera, 'behind' when it lies behind the lens (the projection would mirror it into the frame). It projects the
+  // direction at infinity: the planes hang 40 units from the origin, ~2 degrees of parallax off it, harmless for an in-frame check
+  function disk() {
+    const dir = api?.scene?.getObjectByName('sky-hole')?.userData.hole?.dir;
+    if (!dir || !camera) return null;
+    camera.updateMatrixWorld(); const d = new THREE.Vector3(...dir).normalize();
+    if (d.dot(camera.getWorldDirection(new THREE.Vector3())) <= 0) return 'behind';
+    const v = d.multiplyScalar(1e5).add(camera.position).project(camera); return [+v.x.toFixed(2), +v.y.toFixed(2)];
   }
   return {
     tick(dt, host) {
@@ -315,7 +346,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
-    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, bankRate, legs }, held until the next), 'skip' (the
+    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip' (the
     // signature while it plays: 'signature', as Esc; else the flight), 'override' (takes the gate's offer before START)
     landing(cmd, arg) {
       if (cmd === 'input') { flying?.input(arg ?? {}); return !!flying?.pose(); }
@@ -329,8 +360,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
-        manual, offer, offered, signature: !!signature, flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
-        view: flying?.view() ?? null, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
+        manual, offer, offered, signature: !!signature, aimWait: aimWait == null ? null : +aimWait.toFixed(2), flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
+        view: flying?.view() ?? null, azimuth: azimuth == null ? null : +azimuth.toFixed(3), disk: disk(), diskAimed: api?.scene?.getObjectByName('sky-hole')?.userData.aimedFor === base, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
     },
   };
 }

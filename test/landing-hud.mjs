@@ -62,12 +62,16 @@ assert.equal(root.querySelector('#landing-hud').attrs['aria-live'], undefined); 
 hud.clear(); assert.equal(root.querySelector('#lh-verdict').textContent, ''); assert.equal(root.querySelector('#lh-verdict').className, 'lh-verdict');
 assert.equal(root.querySelector('#lh-ann').textContent, ''); assert.equal(root.querySelector('#lh-ann').className, 'lh-ann');
 
-// the touch rail (spec 13): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js). BURN's press and release drive the burn
+// the touch rail (spec 14 B): ◂ ▸ held tilt, BURN held, LEGS, SKIP. The triangles' press and release drive the tilt rate, BURN's the burn
 const got = [];
-hud.touch(true, { burn: (on) => got.push(['burn', on]), legs: () => got.push(['legs']), skip: () => got.push(['skip']) });
-const rail = root.querySelector('#lh-touch'); assert.equal(rail.hidden, false); assert.equal(rail.children.length, 3);
-const btn = (cls) => rail.children.find((c) => c.className.includes(cls));
-assert.deepEqual(rail.children.map((c) => c.textContent), ['BURN', 'LEGS', 'SKIP']);
+hud.touch(true, { tilt: (r) => got.push(['tilt', r]), burn: (on) => got.push(['burn', on]), legs: () => got.push(['legs']), skip: () => got.push(['skip']) });
+const rail = root.querySelector('#lh-touch'); assert.equal(rail.hidden, false); assert.equal(rail.children.length, 5);
+const btn = (cls) => rail.children.find((c) => c.className.split(/\s+/).includes(cls));
+assert.deepEqual(rail.children.map((c) => c.textContent), ['◂', '▸', 'BURN', 'LEGS', 'SKIP']);
+btn('tilt-left').handlers.pointerdown[0]({ preventDefault() {} }); btn('tilt-left').handlers.pointerup[0]();
+btn('tilt-right').handlers.pointerdown[0]({ preventDefault() {} }); btn('tilt-right').handlers.lostpointercapture[0]();
+assert.deepEqual(got, [['tilt', -1], ['tilt', 0], ['tilt', 1], ['tilt', 0]], 'the triangles hold a tilt rate of -1 / +1 and release it to 0');
+got.length = 0;
 btn('burn').handlers.pointerdown[0]({ preventDefault() {} }); btn('burn').handlers.pointerup[0]();
 btn('burn').handlers.pointerdown[0]({ preventDefault() {} }); btn('burn').handlers.pointercancel[0]();
 btn('legs').handlers.pointerdown[0]({ preventDefault() {} }); btn('skip').handlers.pointerdown[0]({ preventDefault() {} });
