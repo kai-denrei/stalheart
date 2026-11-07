@@ -168,5 +168,15 @@ console.log('manual-landing: side frame ok');
     const v = new THREE.Vector3(0, 1, 0).applyMatrix4(hullTilt(tilt, az, new THREE.Matrix4())), d = flightToIsland([Math.sin(tilt), Math.cos(tilt), 0], az);
     v.toArray().forEach((x, k) => assert.ok(Math.abs(x - d[k]) < 1e-12, `az ${az} tilt ${tilt}: component ${k} ${x} vs ${d[k]}`));
   }
+  // the up is blind to the trailing Ry(-az) (it leaves y alone); the flight's +x is not: the conjugate tilts it about the flight's z like the
+  // flight-frame Rz(-tilt) does, (1, 0, 0) onto (cos t, -sin t, 0), both turned to the island. (The hull's own island +x is not that axis: it lands
+  // on flightToIsland([cos t, -sin t, 0]) only under Ry(az) . Rz(-tilt) with the trailing turn missing, the control below)
+  const xAt = (M, az) => new THREE.Vector3(...flightToIsland([1, 0, 0], az)).applyMatrix4(M).toArray();
+  for (const az of [Math.PI / 2, 0.7]) for (const tilt of [0.3, -0.25]) {
+    const v = xAt(hullTilt(tilt, az, new THREE.Matrix4()), az), d = flightToIsland([Math.cos(tilt), -Math.sin(tilt), 0], az);
+    v.forEach((x, k) => assert.ok(Math.abs(x - d[k]) < 1e-12, `az ${az} tilt ${tilt}: the flight's +x, component ${k} ${x} vs ${d[k]}`));
+    const bad = xAt(new THREE.Matrix4().makeRotationY(az).multiply(new THREE.Matrix4().makeRotationZ(-tilt)), az);   // the control: no trailing Ry(-az)
+    assert.ok(bad.some((x, k) => Math.abs(x - d[k]) > 1e-3), `az ${az} tilt ${tilt}: the check tells a missing trailing Ry(-az) (${bad} vs ${d})`);
+  }
 }
 console.log('manual-landing: pose ok');

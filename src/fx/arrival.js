@@ -302,7 +302,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     if (t >= shot.cut) toTalk(); else apply(t, dt);
   }
   // THE DISK IN FRAME (spec 14 A, the harness): the sky-hole's direction projected through the camera as a far point, NDC [x, y]; null
-  // without the planes or the camera, 'behind' when it lies behind the lens (the projection would mirror it into the frame)
+  // without the planes or the camera, 'behind' when it lies behind the lens (the projection would mirror it into the frame). It projects the
+  // direction at infinity: the planes hang 40 units from the origin, ~2 degrees of parallax off it, harmless for an in-frame check
   function disk() {
     const dir = api?.scene?.getObjectByName('sky-hole')?.userData.hole?.dir;
     if (!dir || !camera) return null;

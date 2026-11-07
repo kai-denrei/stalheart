@@ -83,12 +83,13 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   }
   // the shot's poseAt (spec 14 A, the side view; the name kept from the morning's chase): the camera's ANGLE is fixed, level along the
   // flight's -z toward the disk, its right the flight's +x; only its POSITION moves, a dolly: on the flight's +z side `camera.back +
-  // camera.backPerMetre x height` m from the rocket, `camera.up + camera.upPerMetre x height` m above the pad, across with the rocket
-  // (LANDING_GAME.camera); the follow point trails the rocket by `camera.lag`
+  // camera.backPerMetre x height + camera.backPerMetreAcross x |x|` m from the rocket, `camera.up + camera.upPerMetre x height` m above the
+  // pad, and across at the MIDPOINT of the rocket and the pad (the pad is the frame's x = 0), so a drifting flight keeps the landing zone in
+  // view (the owner's rule, 2026-11-07: the player must always see it); the follow point trails the rocket by `camera.lag` (LANDING_GAME.camera)
   function chase(out) {
-    const c = game.camera, h = Math.max(0, follow.y), back = c.back + c.backPerMetre * h, rise = c.up + c.upPerMetre * h;
+    const c = game.camera, h = Math.max(0, follow.y), back = c.back + c.backPerMetre * h + c.backPerMetreAcross * Math.abs(follow.x), rise = c.up + c.upPerMetre * h, x = follow.x / 2;
     if (camera && camera.fov !== c.fov) { camera.fov = c.fov; camera.updateProjectionMatrix(); }
-    toWorldF([follow.x, rise, follow.z + back], eye); toWorldF([follow.x, rise, follow.z + back - 1], look);
+    toWorldF([x, rise, follow.z + back], eye); toWorldF([x, rise, follow.z + back - 1], look);
     m4.lookAt(eye, look, up); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye);
   }
   function sounds(dt) {
