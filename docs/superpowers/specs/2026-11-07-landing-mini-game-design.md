@@ -370,3 +370,36 @@ AGAINST its drift (`seedEntry`: tilt = −sign(drift) × size, the draws in thei
 was, so every planet keeps its entry and only the tilt's sign changes): the override's 1.5 s burn along that lean takes the drift
 down rather than adding to it, about −0.5 to +4 m/s at MANUAL, and a no-input flight wrecks `off-pad` just past the pad's reach. The
 sign rule itself is the owner's call.
+
+## 15. The owner's third look (2026-11-07): the top closed, the thruster cross-fade
+
+Owner: "much better; 1) the model of the rocket falling down already has an open top, it should be closed. 2) the transition between
+the cinematic thruster and the in-game thrusters could be much smoother, we briefly superpose a zoomed in version of the in-game
+booster to the cinematic boosters, and as it zooms out, the cinematic disappears and only the game remains. 3) gameplay is ok for now."
+
+**A. The top closed.** The flown rocket's `Top_Door_Open` and `Landing_Shock` clips are scrubbed to 0 at the override (the rail's
+`apply()` used to do it on every frame and no longer runs on a flown landing). Done, 50012d9d.
+
+**B. The cross-fade.** The signature no longer ends on black with a cut. Over its last `signature.blend` seconds (2.0 s; the ramp's
+camera Y is then falling from −8 toward black, the plume seen from under, large and darkening) the flight ALREADY runs underneath and
+the game's camera starts on a close-up of the SH02's engines, the in-game plumes filling the frame, and dollies out to the side view:
+the signature's canvas fades from opacity 1 to 0 over the same seconds (a CSS opacity on the element; the shader keeps drawing its
+darkening frame beneath it), so the two plumes are superposed, the in-game one growing as the cinematic one dims, and the game alone
+remains. Concretely:
+- The flight begins (the override, the alarm, Isao's line, the boosters lit) at `signature.seconds − signature.blend` (6 s) instead of
+  at the signature's end, the disk's aim permitting (the aim wait as today; if the aim is late the blend starts late and the signature
+  holds its last frame, opacity 1, until then: never a cut to an unaimed frame). The override beat (1.5 s) therefore runs under the
+  blend; MANUAL comes as the blend ends.
+- The camera's intro: for `blend` seconds the host's `chase()` eases from the ENGINE SHOT to the side view's dolly: the engine shot's
+  eye is `camera.intro.back` m (6) from the engines' centre along the side view's line of sight and `camera.intro.up` m (−2, under the
+  bells) with the look at the engines' centre (the hull's bottom, `SH02_WELL.bell` in the model's metres scaled), its fov
+  `camera.intro.fov` (40); the ease is a smoothstep on both the eye and the look (not on the fov: the fov eases linearly), the side
+  view's own numbers at the end. In the flight frame the engine shot's eye sits on +z of the rocket like the side view's, so the
+  dolly out is a straight pull-back and rise: no swing.
+- Skipping the signature (Esc, the button) during the blend ends the signature at once (opacity 0) and the intro completes its ease
+  from wherever it is; skipping before the blend starts the flight and the blend together, as today's skip starts the flight.
+- Reduced motion / no WebGL2 (no signature): no intro either, the side view from the first frame.
+- The harness: `state().arrival.signature` stays true through the blend; `state().arrival.landing.intro` (0..1, the intro's progress,
+  1 once the side view holds) for the suite; `--landing` asserts that at the blend's start the flight has begun (`landing.phase ===
+  'override'`) while `#exhaust-signature` still stands with opacity under 1 and over 0, and that `intro` reaches 1 by MANUAL + 0.5 s;
+  a still mid-blend (`landing-blend`).
