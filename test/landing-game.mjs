@@ -37,3 +37,10 @@ assert.deepEqual(decideLanding({ arrives: true, query: q('landing=0'), flown: fa
 assert.deepEqual(decideLanding({ arrives: true, query: q(''), flown: false, acceptance: true }), { manual: false, offer: false }, 'an acceptance run lands itself unless it asks');
 assert.deepEqual(decideLanding({ arrives: false, query: q('landing=1'), flown: false, acceptance: false }), { manual: false, offer: false }, 'no arrival, no landing');
 console.log('landing-game: lines and switch ok');
+assert.deepEqual(LANDING_GAME.signature, { seconds: 8, hold: 3, yEnd: -1048576 }, "the 2D game's opening: 8 s, a 3 s hold, black at the end");
+assert.ok(Object.isFrozen(LANDING_GAME.signature));
+assert.equal(LANDING_GAME.input.burnKey, ' ', 'Space is the burn');
+assert.deepEqual(LANDING_GAME.input.stick, { dead: 5, full: 48 }, "the 2D game's floating stick");
+assert.equal(LANDING_GAME.input.step, undefined, 'no stepped throttle');
+assert.deepEqual(LANDING_GAME.override.glare, { seconds: 1.2 }, 'the override is a plain fade: the shader is the signature');
+console.log('landing-game: signature and stick ok');

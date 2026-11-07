@@ -124,3 +124,43 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   assert.equal(verdict(f, 0, false, T).grade, 'CLEAN', 'the auto-lander never crashes');
 }
 console.log('manual-landing: rules ok');
+import { tiltTotal } from '../src/domain/manual-landing.js';
+{ // the bank aims the thrust across: a bank toward +x pushes +x, the tilt still pushes +z; the total angle is acos(cos b cos t)
+  const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 }); s.throttle = 1; s.fuel = 10; s.bank = 0.3;
+  step(s, { throttle: 1, tiltRate: 0, bankRate: 0, legs: false }, DT, T);
+  assert.ok(s.vx > 0, 'a +x bank pushes +x'); assert.ok(Math.abs(s.vz) < 1e-9, 'no tilt, no z push');
+  const both = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0.2 }); both.throttle = 1; both.fuel = 10; both.bank = 0.3;
+  step(both, { throttle: 1, tiltRate: 0, bankRate: 0, legs: false }, DT, T);
+  const d = [Math.sin(0.3) * Math.cos(0.2), Math.cos(0.3) * Math.cos(0.2), Math.sin(0.2)];
+  assert.ok(Math.abs(Math.hypot(...d) - 1) < 1e-12, 'd is unit');
+  assert.ok(Math.abs(both.vx - d[0] * T.vehicle.thrust * DT) < 1e-9, 'vx along d.x');
+  assert.ok(Math.abs(both.vz - d[2] * T.vehicle.thrust * DT) < 1e-9, 'vz along d.z');
+  assert.ok(Math.abs(both.vy - (d[1] * T.vehicle.thrust - T.sim.gravity) * DT) < 1e-9, 'vy along d.y less g');
+  assert.ok(Math.abs(tiltTotal(both) - Math.acos(d[1])) < 1e-12, 'the total angle from vertical');
+}
+{ // the bank rate integrates with the same torque and damping as the tilt rate
+  const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 });
+  for (let i = 0; i < 60; i++) step(s, { throttle: 0, tiltRate: 0, bankRate: 1, legs: false }, DT, T);
+  const t = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 });
+  for (let i = 0; i < 60; i++) step(t, { throttle: 0, tiltRate: 1, bankRate: 0, legs: false }, DT, T);
+  assert.ok(s.bank > 0 && Math.abs(s.bank - t.tilt) < 1e-12, 'bank and tilt integrate alike');
+  assert.equal(createLanding(entry).bank, 0); assert.equal(createLanding(entry).bankRate, 0);
+}
+{ // the verdict reads the total angle: a bank alone past the hard limit is a tilt wreck
+  const s = createLanding({ ...entry, sink: 1, drift: 0, tilt: 0 }); s.legs = 1; s.legsDown = true; s.vx = 0; s.vz = 0; s.bank = 0.3;
+  const v = verdict(s, 0, false, T);
+  assert.equal(v.grade, 'WRECK'); assert.equal(v.reason, 'tilt'); assert.ok(Math.abs(v.tilt - 0.3) < 1e-12);
+}
+{ // the flare's corridor reads the total angle and the flare eases the bank out
+  const s = createLanding({ ...entry, altitude: 20, sink: 2, drift: 0, tilt: 0 }); s.bank = 0.3;
+  assert.equal(flareDue(s, T), false, 'a 0.3 bank is outside the 0.25 corridor');
+  s.bank = 0.2; assert.equal(flareDue(s, T), true);
+  for (let i = 0; i < 600; i++) flareStep(s, DT, T);
+  assert.ok(Math.abs(s.bank) < 0.02, `the bank eased out (${s.bank})`);
+}
+{ // the predictor holds the bank rate at zero (the bank itself persists), as it holds the tilt
+  const s = createLanding({ ...entry, altitude: 100, sink: 10, drift: 0, tilt: 0 }); s.bank = 0.2;
+  const p = predictImpact(s, T); assert.ok(p.reached && Number.isFinite(p.x));
+  assert.ok(Math.abs(s.bank - 0.2) < 1e-12, 'the predictor does not touch the state');
+}
+console.log('manual-landing: bank ok');
