@@ -1,5 +1,5 @@
 // THE LANDING'S INSTRUMENTS (spec 2026-11-07-landing-mini-game-design.md section 5): a dozen readable things in the HUD's monochrome
-// vocabulary, three touchable ones on phones. Pointer-transparent but for the touch rail. Numbers are set, never animated by the DOM.
+// vocabulary, five touchable ones on phones. Pointer-transparent but for the touch rail. Numbers are set, never animated by the DOM.
 import { LANDING_GAME } from '../content/landing-game.js';
 
 const ROWS = [['alt', 'ALT', 'm'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', 'm/s'], ['tilt', 'TILT', '°'], ['tw', 'T/W', ''], ['stop', 'CAN STOP IN', 'm'], ['fuel', 'FUEL', 's']];
@@ -43,18 +43,19 @@ export function createLandingHud(root, tune = LANDING_GAME) {
       verdictEl.className = `lh-verdict ${grade.toLowerCase()}`;
     },
     clear() { verdictEl.textContent = ''; verdictEl.className = 'lh-verdict'; ann.textContent = ''; ann.className = 'lh-ann'; },   // a fresh flight reads nothing from an earlier one
-    touch(on, h = {}) {   // phones (spec 13): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js)
+    touch(on, h = {}) {   // phones (spec 14 B): ◂ ▸ the tilt held (h.tilt(-1 / +1), 0 on the release), BURN held, LEGS, SKIP
       rail.hidden = !on; rail.replaceChildren();
       if (!on) return;
-      // a press is captured to its button (2026-11-07, the review): a mouse leaving BURN before the release still releases it there, and a
-      // lost capture is a release too
+      // a press is captured to its button (2026-11-07, the review): a pointer leaving a held button before the release still releases it
+      // there, and a lost capture is a release too
       const mk = (cls, text, down, up) => {
         const b = document.createElement('button'); b.type = 'button'; b.className = `lh-btn ${cls}`; b.textContent = text;
         b.addEventListener('pointerdown', (e) => { e.preventDefault(); if (e.pointerId != null) b.setPointerCapture?.(e.pointerId); down?.(); });
         if (up) for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(t, up);
         return b;
       };
-      rail.append(mk('burn', 'BURN', () => h.burn?.(true), () => h.burn?.(false)), mk('legs', 'LEGS', () => h.legs?.()), mk('skip', 'SKIP', () => h.skip?.()));
+      rail.append(mk('tilt-left', '◂', () => h.tilt?.(-1), () => h.tilt?.(0)), mk('tilt-right', '▸', () => h.tilt?.(1), () => h.tilt?.(0)),
+        mk('burn', 'BURN', () => h.burn?.(true), () => h.burn?.(false)), mk('legs', 'LEGS', () => h.legs?.()), mk('skip', 'SKIP', () => h.skip?.()));
     },
     dispose() { el.remove(); },
   };

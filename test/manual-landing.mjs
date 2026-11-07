@@ -27,13 +27,13 @@ const entry = { altitude: 350, sink: 35, drift: 10, tilt: 0.3, fuelSeconds: 20, 
   step(f, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
   assert.equal(f.throttle, 0, 'dry: the throttle reads zero'); assert.ok(f.vy < 0, 'dry: falls');
 }
-{ // the tilt aims the thrust: forward tilt pushes +z, back tilt -z
+{ // the tilt aims the thrust: a + tilt pushes +x, a - tilt -x
   const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0.3 }); s.throttle = 1; s.fuel = 10;
   step(s, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
-  assert.ok(s.vz > 0, 'tilted forward, pushed forward');
+  assert.ok(s.vx > 0, 'tilted right, pushed right');
   const b = createLanding({ ...entry, sink: 0, drift: 0, tilt: -0.3 }); b.throttle = 1; b.fuel = 10;
   step(b, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
-  assert.ok(b.vz < 0, 'tilted back, pushed back');
+  assert.ok(b.vx < 0, 'tilted left, pushed left');
 }
 { // deterministic: one timeline, one outcome; and the seeded entry is a pure function of its seed
   const run = () => { const s = createLanding(entry); for (let i = 0; i < 600; i++) step(s, { throttle: i > 200 ? 1 : 0.3, tiltRate: i % 7 === 0 ? 1 : 0, legs: i > 100 }, DT, T); return JSON.stringify(s); };
@@ -67,7 +67,7 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   const s = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0 });
   const p = predictImpact(s, T);
   const q = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0 }); let t = 0; while (q.y > 0 && t < 60) { step(q, { throttle: 0, tiltRate: 0, legs: false }, DT, T); t += DT; }
-  assert.ok(p.reached); assert.ok(Math.abs(p.z - q.z) < 2, `predicted z ${p.z.toFixed(1)} against flown ${q.z.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3);
+  assert.ok(p.reached); assert.ok(Math.abs(p.x - q.x) < 2, `predicted x ${p.x.toFixed(1)} against flown ${q.x.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3);
   const high = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 }); high.y = 1e6;
   assert.equal(predictImpact(high, T).reached, false, "beyond the predictor's horizon: not reached");
 }
@@ -75,39 +75,39 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   const mk = () => { const q = createLanding({ ...entry, sink: 20, drift: 6, tilt: 0.1, fuelSeconds: 1 }); q.throttle = 1; q.set = 1; return q; };
   const p = predictImpact(mk(), T);
   const q = mk(); let t = 0; while (q.y > 0 && t < 60) { step(q, { throttle: null, tiltRate: 0, legs: false }, DT, T); t += DT; }
-  assert.ok(p.reached); assert.ok(Math.abs(p.z - q.z) < 2, `held throttle: predicted z ${p.z.toFixed(1)} against flown ${q.z.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3, `held throttle: predicted t ${p.t.toFixed(2)} against flown ${t.toFixed(2)}`);
-  assert.ok(q.z > 6 * t * 0.9, 'the thrust did push the flight (the held throttle is in the trajectory)');
+  assert.ok(p.reached); assert.ok(Math.abs(p.x - q.x) < 2, `held throttle: predicted x ${p.x.toFixed(1)} against flown ${q.x.toFixed(1)}`); assert.ok(Math.abs(p.t - t) < 0.3, `held throttle: predicted t ${p.t.toFixed(2)} against flown ${t.toFixed(2)}`);
+  assert.ok(q.x > 6 * t * 0.9, 'the thrust did push the flight (the held throttle is in the trajectory)');
 }
 { // touched reads the ground it is given, as predictImpact does (default 0)
   assert.equal(touched({ y: 0 }), true); assert.equal(touched({ y: 0.1 }), false);
   assert.equal(touched({ y: 5 }, 5), true); assert.equal(touched({ y: 5.1 }, 5), false); assert.equal(touched({ y: -2 }, -3), false);
 }
 { // the verdict: the worst axis names the reason; legs up, a slope or off the pad are wrecks whatever the speeds
-  const base = { ...createLanding(entry), vy: -1, vx: 0, vz: 0.5, tilt: 0.02, legs: 1, legsDown: true };
+  const base = { ...createLanding(entry), vy: -1, vz: 0, vx: 0.5, tilt: 0.02, legs: 1, legsDown: true };
   assert.deepEqual(verdict({ ...base }, 0, false, T).grade, 'CLEAN');
   assert.deepEqual([verdict({ ...base, vy: -4 }, 0, false, T).grade, verdict({ ...base, vy: -4 }, 0, false, T).reason], ['HARD', 'sink']);
-  assert.deepEqual([verdict({ ...base, vz: 5 }, 0, false, T).grade, verdict({ ...base, vz: 5 }, 0, false, T).reason], ['WRECK', 'drift']);
+  assert.deepEqual([verdict({ ...base, vx: 5 }, 0, false, T).grade, verdict({ ...base, vx: 5 }, 0, false, T).reason], ['WRECK', 'drift']);
   assert.deepEqual([verdict({ ...base, tilt: 0.1 }, 0, false, T).grade, verdict({ ...base, tilt: 0.1 }, 0, false, T).reason], ['HARD', 'tilt']);
   assert.deepEqual([verdict({ ...base, legs: 0.4, legsDown: false }, 0, false, T).grade, verdict({ ...base, legs: 0.4, legsDown: false }, 0, false, T).reason], ['WRECK', 'legs']);
   assert.deepEqual(verdict({ ...base }, 0.2, false, T).reason, 'slope'); assert.deepEqual(verdict({ ...base }, 0, true, T).reason, 'off-pad');
-  const v = verdict({ ...base, vy: -3.3, vz: -2.2, tilt: 0.05 }, 0, false, T);
+  const v = verdict({ ...base, vy: -3.3, vx: -2.2, tilt: 0.05 }, 0, false, T);
   assert.equal(v.sink, 3.3); assert.equal(v.drift, 2.2); assert.ok(Math.abs(v.tilt - 0.05) < 1e-12, 'the readings are reported as flown');
 }
 { // the verdict's tie-break, the limits' strictness and the precedence
-  const base = { ...createLanding(entry), vy: -1, vx: 0, vz: 0.5, tilt: 0.02, legs: 1, legsDown: true };
+  const base = { ...createLanding(entry), vy: -1, vz: 0, vx: 0.5, tilt: 0.02, legs: 1, legsDown: true };
   const g = (o, slope = 0, off = false) => { const v = verdict({ ...base, ...o }, slope, off, T); return [v.grade, v.reason]; };
   // two axes at one grade: the one further over its hard limit (value / hard) names the reason
-  assert.deepEqual(g({ vy: -5, vz: 3 }), ['HARD', 'sink'], 'sink 5/6 against drift 3/4');
-  assert.deepEqual(g({ vy: -4, vz: 3.5 }), ['HARD', 'drift'], 'sink 4/6 against drift 3.5/4');
+  assert.deepEqual(g({ vy: -5, vx: 3 }), ['HARD', 'sink'], 'sink 5/6 against drift 3/4');
+  assert.deepEqual(g({ vy: -4, vx: 3.5 }), ['HARD', 'drift'], 'sink 4/6 against drift 3.5/4');
   assert.deepEqual(g({ vy: -3, tilt: 0.1 }), ['HARD', 'tilt'], 'sink 3/6 against tilt 0.1/0.192');
   // a worse grade beats a nearer ratio: a WRECK names the reason over a HARD axis, either way round
-  assert.deepEqual(g({ vy: -5, vz: 5 }), ['WRECK', 'drift'], 'HARD sink, WRECK drift');
-  assert.deepEqual(g({ vy: -7, vz: 3 }), ['WRECK', 'sink'], 'WRECK sink, HARD drift');
+  assert.deepEqual(g({ vy: -5, vx: 5 }), ['WRECK', 'drift'], 'HARD sink, WRECK drift');
+  assert.deepEqual(g({ vy: -7, vx: 3 }), ['WRECK', 'sink'], 'WRECK sink, HARD drift');
   // exactly at a limit is the milder grade (strict >)
   assert.deepEqual(g({ vy: -T.verdict.clean.sink }), ['CLEAN', 'sink'], 'a sink of exactly clean is CLEAN (and a CLEAN verdict still names the nearest axis)');
   assert.deepEqual(g({ vy: -T.verdict.hard.sink }), ['HARD', 'sink'], 'a sink of exactly hard is HARD');
   assert.deepEqual(g({ vy: -(T.verdict.hard.sink + 0.01) }), ['WRECK', 'sink'], 'just over hard is WRECK');
-  assert.deepEqual(g({ vz: T.verdict.hard.drift }), ['HARD', 'drift'], 'a drift of exactly hard is HARD');
+  assert.deepEqual(g({ vx: T.verdict.hard.drift }), ['HARD', 'drift'], 'a drift of exactly hard is HARD');
   // precedence: legs, then slope, then off the pad, over any speeds
   assert.deepEqual(g({ legs: 0.4, legsDown: false }, 0.5, true), ['WRECK', 'legs'], 'legs up, a slope and off the pad: legs');
   assert.deepEqual(g({}, 0.5, true), ['WRECK', 'slope'], 'legs down, a slope and off the pad: slope');
@@ -117,60 +117,35 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   assert.deepEqual(g({}, -0.2), ['WRECK', 'slope'], 'a negative slope past the limit is a wreck');
 }
 { // the flare: due below its altitude inside its corridor, never above it or outside; and it settles the rocket to the ground
-  const s = { ...createLanding(entry), y: 25, vy: -5, vz: 2, tilt: 0.1 };
-  assert.equal(flareDue(s, T), true); assert.equal(flareDue({ ...s, y: 40 }, T), false); assert.equal(flareDue({ ...s, vy: -9 }, T), false); assert.equal(flareDue({ ...s, vz: 6 }, T), false); assert.equal(flareDue({ ...s, tilt: 0.3 }, T), false);
+  const s = { ...createLanding(entry), y: 25, vy: -5, vx: 2, tilt: 0.1 };
+  assert.equal(flareDue(s, T), true); assert.equal(flareDue({ ...s, y: 40 }, T), false); assert.equal(flareDue({ ...s, vy: -9 }, T), false); assert.equal(flareDue({ ...s, vx: 6 }, T), false); assert.equal(flareDue({ ...s, tilt: 0.3 }, T), false);
   let f = { ...s }; for (let i = 0; i < 3000 && !touched(f); i++) flareStep(f, DT, T);
   assert.ok(touched(f), 'lands'); assert.ok(Math.abs(f.vy) <= T.flare.sinkFinal + 0.05, `settles at the final sink (${f.vy.toFixed(2)})`);
-  assert.ok(Math.abs(f.vz) < 0.2 && Math.abs(f.tilt) < 0.02 && f.legsDown, 'drift and tilt killed, legs down');
+  assert.ok(Math.abs(f.vx) < 0.2 && Math.abs(f.tilt) < 0.02 && f.legsDown, 'drift and tilt killed, legs down');
   assert.equal(verdict(f, 0, false, T).grade, 'CLEAN', 'the auto-lander never crashes');
 }
 console.log('manual-landing: rules ok');
-import { tiltTotal } from '../src/domain/manual-landing.js';
-{ // the bank aims the thrust across: a bank toward +x pushes +x, the tilt still pushes +z; the total angle is acos(cos b cos t)
-  const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 }); s.throttle = 1; s.fuel = 10; s.bank = 0.3;
-  step(s, { throttle: 1, tiltRate: 0, bankRate: 0, legs: false }, DT, T);
-  assert.ok(s.vx > 0, 'a +x bank pushes +x'); assert.ok(Math.abs(s.vz) < 1e-9, 'no tilt, no z push');
-  const both = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0.2 }); both.throttle = 1; both.fuel = 10; both.bank = 0.3;
-  step(both, { throttle: 1, tiltRate: 0, bankRate: 0, legs: false }, DT, T);
-  const d = [Math.sin(0.3) * Math.cos(0.2), Math.cos(0.3) * Math.cos(0.2), Math.sin(0.2)];
-  assert.ok(Math.abs(Math.hypot(...d) - 1) < 1e-12, 'd is unit');
-  assert.ok(Math.abs(both.vx - d[0] * T.vehicle.thrust * DT) < 1e-9, 'vx along d.x');
-  assert.ok(Math.abs(both.vz - d[2] * T.vehicle.thrust * DT) < 1e-9, 'vz along d.z');
-  assert.ok(Math.abs(both.vy - (d[1] * T.vehicle.thrust - T.sim.gravity) * DT) < 1e-9, 'vy along d.y less g');
-  assert.ok(Math.abs(tiltTotal(both) - Math.acos(d[1])) < 1e-12, 'the total angle from vertical');
+{ // spec 14 B: one axis, the tilt about z toward +x; the drift is on x. A +0.3 tilt at full burn pushes +x along (sin t, cos t, 0), vz untouched
+  const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0.3 }); s.throttle = 1; s.fuel = 10;
+  step(s, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
+  assert.ok(s.vx > 0, 'a +x tilt pushes +x'); assert.equal(s.vz, 0, 'vz untouched');
+  assert.ok(Math.abs(s.vx - Math.sin(0.3) * T.vehicle.thrust * DT) < 1e-9, 'vx along sin tilt');
+  assert.ok(Math.abs(s.vy - (Math.cos(0.3) * T.vehicle.thrust - T.sim.gravity) * DT) < 1e-9, 'vy along cos tilt less g');
+  const e = createLanding(entry); assert.equal(e.vx, entry.drift, 'the entry drift is on vx'); assert.equal(e.vz, 0, 'and none on vz');
+  assert.deepEqual(Object.keys(e), ['x', 'y', 'z', 'vx', 'vy', 'vz', 'tilt', 'tiltRate', 'throttle', 'set', 'fuel', 'legs', 'legsDown', 'wind', 't', 'phase'], 'one rotational axis: the tilt and its rate')
 }
-{ // the bank rate integrates with the same torque and damping as the tilt rate
-  const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 });
-  for (let i = 0; i < 60; i++) step(s, { throttle: 0, tiltRate: 0, bankRate: 1, legs: false }, DT, T);
-  const t = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0 });
-  for (let i = 0; i < 60; i++) step(t, { throttle: 0, tiltRate: 1, bankRate: 0, legs: false }, DT, T);
-  assert.ok(s.bank > 0 && Math.abs(s.bank - t.tilt) < 1e-12, 'bank and tilt integrate alike');
-  assert.equal(createLanding(entry).bank, 0); assert.equal(createLanding(entry).bankRate, 0);
+{ // the verdict and the flare read the tilt's magnitude
+  const s = createLanding({ ...entry, sink: 1, drift: 0, tilt: -0.3 }); s.legs = 1; s.legsDown = true;
+  const v = verdict(s, 0, false, T); assert.equal(v.grade, 'WRECK'); assert.equal(v.reason, 'tilt'); assert.ok(Math.abs(v.tilt - 0.3) < 1e-12);
+  const f = createLanding({ ...entry, altitude: 20, sink: 2, drift: 0, tilt: -0.3 });
+  assert.equal(flareDue(f, T), false, 'a -0.3 tilt is outside the 0.25 corridor'); f.tilt = -0.2; assert.equal(flareDue(f, T), true);
 }
-{ // the verdict reads the total angle: a bank alone past the hard limit is a tilt wreck
-  const s = createLanding({ ...entry, sink: 1, drift: 0, tilt: 0 }); s.legs = 1; s.legsDown = true; s.vx = 0; s.vz = 0; s.bank = 0.3;
-  const v = verdict(s, 0, false, T);
-  assert.equal(v.grade, 'WRECK'); assert.equal(v.reason, 'tilt'); assert.ok(Math.abs(v.tilt - 0.3) < 1e-12);
-}
-{ // the flare's corridor reads the total angle and the flare eases the bank out
-  const s = createLanding({ ...entry, altitude: 20, sink: 2, drift: 0, tilt: 0 }); s.bank = 0.3;
-  assert.equal(flareDue(s, T), false, 'a 0.3 bank is outside the 0.25 corridor');
-  s.bank = 0.2; assert.equal(flareDue(s, T), true);
-  for (let i = 0; i < 600; i++) flareStep(s, DT, T);
-  assert.ok(Math.abs(s.bank) < 0.02, `the bank eased out (${s.bank})`);
-}
-{ // the predictor holds the bank rate at zero (the bank itself persists), as it holds the tilt
-  const s = createLanding({ ...entry, altitude: 100, sink: 10, drift: 0, tilt: 0 }); s.bank = 0.2;
-  const p = predictImpact(s, T); assert.ok(p.reached && Number.isFinite(p.x));
-  assert.ok(Math.abs(s.bank - 0.2) < 1e-12, 'the predictor does not touch the state');
-}
-console.log('manual-landing: bank ok');
-{ // the header's pose claim (2026-11-07, the final review): Rz(-bank)·Rx(tilt) puts the hull's up (0, 1, 0) on the thrust direction
-  // d = (sin bank·cos tilt, cos bank·cos tilt, sin tilt), the one step() pushes along
-  for (const [bank, tilt] of [[0.3, 0.2], [-0.25, 0.1], [0, 0.35], [0.2, -0.3]]) {
-    const v = new THREE.Vector3(0, 1, 0).applyMatrix4(new THREE.Matrix4().makeRotationZ(-bank).multiply(new THREE.Matrix4().makeRotationX(tilt)));
-    const d = [Math.sin(bank) * Math.cos(tilt), Math.cos(bank) * Math.cos(tilt), Math.sin(tilt)];
-    v.toArray().forEach((x, k) => assert.ok(Math.abs(x - d[k]) < 1e-12, `bank ${bank}, tilt ${tilt}: component ${k} ${x} vs ${d[k]}`));
+console.log('manual-landing: drift on x ok');
+{ // the host's pose (spec 14, the frame note): Rz(-tilt) puts the hull's up (0, 1, 0) on the thrust direction (sin tilt, cos tilt, 0)
+  for (const tilt of [0.3, -0.25, 0, 0.35]) {
+    const v = new THREE.Vector3(0, 1, 0).applyMatrix4(new THREE.Matrix4().makeRotationZ(-tilt));
+    const d = [Math.sin(tilt), Math.cos(tilt), 0];
+    v.toArray().forEach((x, k) => assert.ok(Math.abs(x - d[k]) < 1e-12, `tilt ${tilt}: component ${k} ${x} vs ${d[k]}`));
   }
 }
 console.log('manual-landing: pose ok');

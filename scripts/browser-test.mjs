@@ -1588,22 +1588,23 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // THE LANDING FLOWN (owner, 2026-11-07; spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md sections 8-9): five fresh pages, the
  // acceptance page's planet seed fixed, so the seeded entry is the same each run. 1. the scripted pilot (the Task 7 fix flights' rule: legs down, the
  // tilt toward a drift that returns to the pad, a half burn while the drift is off, the full burn at the stopping distance + 30 m) to CLEAN through the
- // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK (`off-pad` on this seed: the entry's 8-12 m/s
- // drift carries it ~95 m out before the sink can; `sink` would be the reason on the pad), two sections, the wreck's fourth caption. 3. the skip
+ // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK (`off-pad` on this seed: the entry's drift, 5.7 m/s
+ // of the 4-7 since spec 14 B, carries it ~55 m out before the sink can; `sink` would be the reason on the pad), two sections, the wreck's fourth caption. 3. the skip
  // mid-flight (the still at ~200 m first: the rocket, the reticle on the ground): CLEAN · skipped, the plain talk, three sections. 4-5. a later start's
  // offer on the START gate (`?landing=offer` stands in for the store's flag, `?gate=1` shows the gate on an acceptance page): taken by its FLY THE
  // LANDING button it flies; START alone lands itself, no flight. Stills: landing-manual, landing-verdict, landing-wreck (+ each page's end).
 // THE MORNING (2026-11-07, spec 13): every flown page opens on the exhaust signature (the clock held under it); the first plays it to its end
 // (still landing-signature at ~1 s, at least 7 s of wall), the others skip it: the wreck page with a real Esc (a real W eaten first), the skip page with
-// the harness (a real Space eaten first; at MANUAL a real Space held is the burn), the offer taken by clicking SKIP CINEMATIC; the pilot holds its throttle and steers the bank toward x = 0;
-// on the clean page a real press-and-drag on the scene is the stick (the bank grows, the chase shot runs on); START alone has no signature.
+// the harness (a real Space eaten first; at MANUAL a real Space held is the burn), the offer taken by clicking SKIP CINEMATIC; START alone has no signature.
+// THE SECOND LOOK (2026-11-07, spec 14 B): three variables, Space held the burn and A/D the tilt about z toward +x; the drift is on x, so the
+// pilot steers vx toward x = 0 with the signed tilt (a + tilt pushes +x).
  const T='window.__stalheartTest',A=`${T}.state().arrival`,L=`${A}.landing`,st=()=>evaluate(`${T}.state()`),briefs=()=>evaluate('window.__seen?.briefs??[]');
  const FLY='index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',OFFER='index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td';
  const why=async(what)=>assert.fail(`${what} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,cut:a.cut,gate:a.gate,manual:a.manual,offer:a.offer,offered:a.offered,landing:a.landing})(${A})`))})`);
  const PILOT=`(()=>{const T=window.__stalheartTest;(function f(){const L=T.state().arrival?.landing;if(!L||L.phase==='done'||L.phase==='touched')return;
-  if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.z*0.3)),e=want-L.vz;
+  if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.x*0.3)),e=want-L.vx;
    const tiltWant=Math.max(-0.35,Math.min(0.35,e*0.08)),tr=Math.max(-1,Math.min(1,(tiltWant-L.tilt)*6));
-   T.landing('input',{throttle:stop+30>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,bankRate:Math.max(-1,Math.min(1,-L.x*0.02-L.bank*4)),legs:true});}
+   T.landing('input',{throttle:stop+30>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}
   requestAnimationFrame(f);})();})()`;   // 12 = LANDING_GAME.vehicle.thrust, 3.2 = sim.gravity: the stopping distance at full burn
  // REAL KEYS through CDP (2026-11-07, the final review: the harness's skip stood in for Esc): a press is keyDown + keyUp; Space carries its text
  const KEY={w:{key:'w',code:'KeyW'},esc:{key:'Escape',code:'Escape'},space:{key:' ',code:'Space',text:' '}};
@@ -1652,17 +1653,6 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // unaided clean flight would have passed): FLARE must be seen before the contact
  const PHASES=`(()=>{const T=window.__stalheartTest,P=window.__landingPhases=[];(function f(){const L=T.state().arrival?.landing;if(L&&P.at(-1)!==L.phase)P.push(L.phase);if(!L||L.phase!=='done')requestAnimationFrame(f);})();})()`;
  {const t0=Date.now();await toManual('landing-clean',true);await evaluate(PHASES);await evaluate(PILOT);
-  // THE STICK IN THE GAME: a real press on the scene and a drag 40 px right, held: the bank grows toward +x and the press does not skip the chase shot
-  {const W=await evaluate('innerWidth'),H=await evaluate('innerHeight'),x=Math.round(W/2),y=Math.round(H/2),b0=await evaluate(`${L}.bank`);
-   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y});await send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',buttons:1,clickCount:1});
-   for(let i=1;i<=4;i++){await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:x+10*i,y,button:'left',buttons:1});await delay(30);}
-   await delay(400);const ring=await evaluate(`!!document.querySelector('.lh-stick')`);
-   await until(`${L}.bank>0.02`,4000).catch(()=>why(`the stick banks the rocket (from ${b0})`));
-   const b1=await evaluate(`${L}.bank`),shotNow=await evaluate(`${T}.state().shot`);
-   await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:x+40,y,button:'left',buttons:0,clickCount:1});
-   console.log(`  clean: the stick's drag banked ${b0} -> ${b1} rad (ring ${ring}), shot ${shotNow}`);
-   assert.ok(ring,'the stick\'s ring at the press');assert.equal(shotNow,'arrivalFlight','the press is the stick, not a skip');
-   await delay(200);assert.equal(await evaluate(`!!document.querySelector('.lh-stick')`),false,'the ring gone on the release');}
   const a=await toContact('the pilot to the contact'),g=a.landing;
   {const P=await evaluate('window.__landingPhases');console.log(`  clean: phases ${P.join(' > ')}`);const f=P.indexOf('flare'),end=P.findIndex(p=>p==='touched'||p==='done');
    assert.ok(f>=0&&(end<0||f<end),`the auto-lander's FLARE before the touch (${P.join(' > ')})`);}console.log(`  clean: ${JSON.stringify(g)}, panel "${await evaluate(`document.querySelector('#landing-hud')?.innerText.replace(/\\s+/g,' ')`)}", ${((Date.now()-t0)/1000).toFixed(0)} s`);
@@ -1674,7 +1664,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // the wreck page's signature: a real W is eaten under it, a real Esc ends it and only it
  {const t0=Date.now();await toManual('landing-wreck',async()=>{await eatenUnder('w');await tap('esc');await approachNext('a real Esc');});   // no input at all
   const a=await toContact('no input to the contact'),g=a.landing;console.log(`  wreck: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
-  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.ok(['sink','off-pad'].includes(g.reason),`a no-burn wreck reads sink or off-pad (${g.reason})`);
+  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.equal(g.reason,'off-pad',`a no-burn wreck on this seed lands off the pad (the 5.7 m/s drift carries it ~55 m out, spec 14 B; ${JSON.stringify(g)})`);
   assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/WRECK/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_wreck');
   await finish();
   const {s,said}=await toEnd('landing-wreck');console.log(`  wreck: foundry ${JSON.stringify(s.story.foundry)}`);

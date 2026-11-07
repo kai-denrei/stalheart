@@ -1,20 +1,23 @@
 // THE LANDING, the manual override in the arrival (owner, 2026-11-07; spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md).
 // One frozen literal; every number a starting value with its reason, the story lab (labs.html#story&manual=1) is where they move.
-// Metres and seconds around the landing island (x, z along the ground, y up, +z toward the pole), as src/domain/landing-sequence.js.
+// Metres and seconds around the landing island (x, z along the ground, y up, +z toward the pole), as src/domain/landing-sequence.js;
+// the flight's drift is on x (spec 14 B, src/domain/manual-landing.js's header).
 export const LANDING_GAME = Object.freeze({
   sim: Object.freeze({ dt: 1 / 120, maxSteps: 8, gravity: 3.2, drag: 0.0016 }),   // the 2D game's planet: fixed 120 Hz, a thin atmosphere
   vehicle: Object.freeze({
     thrust: 12,          // m/s² at full throttle (T/W 3.75: a late, hard burn stops the rocket; the brief's hoverslam)
     minThrottle: 0.2,    // the set point's floor while lit (0.2 x 12 = 2.4 < g: idle cannot hover, so a hover costs real fuel)
     spool: 4,            // throttle units a second toward the set point
-    torque: 3,           // rad/s² at full stick
+    torque: 3,           // rad/s² at a full tilt key (A / D held)
     damping: 3.5,        // the tilt rate's decay a second
     legTime: 0.6,        // s to deploy the legs
     legDrag: 0.0009,     // added to sim.drag once the legs are down: the splayed feet catch air (the 2D game's figure)
     autoLegsAltitude: 200,   // m: the legs come down here on their own if the player has not asked
   }),
-  // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry)
-  entry: Object.freeze({ altitude: [300, 400], sink: [30, 40], drift: [8, 12], tilt: [0.25, 0.35], fuelSeconds: [18, 22], wind: 0 }),
+  // the problem the override hands over: seeded per planet within these ranges (src/domain/manual-landing.js seedEntry). Retuned
+  // 2026-11-07 (spec 14 B, the owner: "too easy for the user to entirely drift and miss the landing zone"): drift 4-7 m/s (was 8-12) and
+  // tilt 0.15-0.25 rad (was 0.25-0.35), so a miss is the player's doing, not the entry's
+  entry: Object.freeze({ altitude: [300, 400], sink: [30, 40], drift: [4, 7], tilt: [0.15, 0.25], fuelSeconds: [18, 22], wind: 0 }),
   // the auto-lander takes back under this height when the state is inside its corridor (spec 2.4)
   flare: Object.freeze({
     altitude: 30, sink: 8, drift: 5, tilt: 0.25, sinkFinal: 1.8,
@@ -43,7 +46,7 @@ export const LANDING_GAME = Object.freeze({
   // the alarm beat (seconds) and the plain fade over it (src/fx/landing-glare.js); on a later start the offer is the start gate's
   // FLY THE LANDING (src/fx/start-gate.js, 2026-11-07), no longer a SPACE window in the approach
   override: Object.freeze({
-    seconds: 3,
+    seconds: 1.5,   // spec 14 C (2026-11-07): the auto-lander's last burn under the alarm, shorter so the player has the rocket sooner (was 3)
     glare: Object.freeze({ seconds: 1.2 }),   // the plain fade (2026-11-07, spec 13): the shader is the signature's, no longer the override's
   }),
   // the chase (src/fx/manual-landing.js chase; 2026-11-07, the controller's call C): it looks at the reticle's ground point (the predicted
@@ -68,8 +71,8 @@ export const LANDING_GAME = Object.freeze({
   // the altitude ping's gap (src/fx/manual-landing.js sounds): `far` s at `nearAt + nearOver` m and above, ramping to `near` s at `nearAt` m.
   // nearOver 300 (2026-11-07, out of the logic at the final review): the ramp spans the entry's 300-400 m, so the ping quickens over the whole flight
   hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10, nearOver: 300 }), predictorSeconds: 35, predictorDt: 0.15 }),
-  // Space held is the burn (spec 13); the stick: the 2D game's floating thumb-stick, px of drag past the dead zone to the full throw
-  input: Object.freeze({ skipKey: 'Escape', burnKey: ' ', stick: Object.freeze({ dead: 5, full: 48 }) }),
+  // Space held is the burn (spec 13); A / D (and the arrows) the tilt and L the legs are the host's own keys (spec 14 B: three variables)
+  input: Object.freeze({ skipKey: 'Escape', burnKey: ' ' }),
   // the contact (2026-11-07, review of Task 7): the rail that resumes at the touchdown, the shock clip, the shake and a wreck's marks
   touchdown: Object.freeze({
     lockSeconds: 1.5,   // s the resumed rail cannot be skipped: the keys the player was holding at the contact must not skip the door and Isao's rise

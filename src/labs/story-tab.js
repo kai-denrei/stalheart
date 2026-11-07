@@ -124,7 +124,7 @@ export function initStoryTab(root) {
   function flightLine(st) {
     const nums = `sink ${fixed(st.sink)} m/s, drift ${fixed(st.drift)} m/s, tilt ${fixed(st.tilt * 180 / Math.PI)} deg, fuel ${fixed(st.fuel)} s`;
     return st.grade ? `LANDING · ${st.grade} (${st.reason}): ${nums}, at x ${fixed(st.x)} z ${fixed(st.z)} m. R resets, L flies again.`
-      : `${st.phase.toUpperCase()} · alt ${fixed(st.altitude)} m, ${nums}, throttle ${fixed(st.throttle, 2)}, legs ${fixed(st.legs, 2)}, x ${fixed(st.x)} z ${fixed(st.z)}. SPACE burn, W/S tilt, A/D bank, drag to steer, L legs.`;
+      : `${st.phase.toUpperCase()} · alt ${fixed(st.altitude)} m, ${nums}, throttle ${fixed(st.throttle, 2)}, legs ${fixed(st.legs, 2)}, x ${fixed(st.x)} z ${fixed(st.z)}. SPACE burn, A/D tilt, L legs.`;
   }
   function startFlight() {
     armed = false; audioSync(null, false);   // the host's own thrust bed takes over
@@ -138,7 +138,7 @@ export function initStoryTab(root) {
     // high over the corridor from +x and behind the pad (measured in the headless lab, 2026-11-07): the rocket at the entry's 350 m in the
     // upper frame, the pad and the reticle on it in the lower; side-on from 200 m up the clearing's rim hid the pad
     onRail = false; frameCamera({ pos: [300, 520, -120], look: [0, 120, 30], fov: 50 }); controls.update();
-    controls.enabled = false;   // 2026-11-07: the stick's drag is the flight's, not an orbit (back at the touchdown or endFlight)
+    controls.enabled = false;   // 2026-11-07: no orbit while the rocket flies, the camera holds its framing (back at the touchdown or endFlight)
   }
   function flightTick(dt) {
     overrideT += dt; if (flight.phase() === 'override' && overrideT >= LANDING_GAME.override.seconds) flight.manual();

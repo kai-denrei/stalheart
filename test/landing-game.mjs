@@ -40,7 +40,11 @@ console.log('landing-game: lines and switch ok');
 assert.deepEqual(LANDING_GAME.signature, { seconds: 8, hold: 3, yEnd: -1048576 }, "the 2D game's opening: 8 s, a 3 s hold, black at the end");
 assert.ok(Object.isFrozen(LANDING_GAME.signature));
 assert.equal(LANDING_GAME.input.burnKey, ' ', 'Space is the burn');
-assert.deepEqual(LANDING_GAME.input.stick, { dead: 5, full: 48 }, "the 2D game's floating stick");
+assert.deepEqual(LANDING_GAME.input, { skipKey: 'Escape', burnKey: ' ' }, 'spec 14 B: Space, A/D and L are keys of the host; the tune holds the skip and the burn only');
 assert.equal(LANDING_GAME.input.step, undefined, 'no stepped throttle');
 assert.deepEqual(LANDING_GAME.override.glare, { seconds: 1.2 }, 'the override is a plain fade: the shader is the signature');
-console.log('landing-game: signature and stick ok');
+// spec 14 B: the entry retuned so a miss is the player's doing; the override beat 1.5 s
+assert.deepEqual(LANDING_GAME.entry.drift, [4, 7], 'drift 4-7 m/s'); assert.deepEqual(LANDING_GAME.entry.tilt, [0.15, 0.25], 'tilt 0.15-0.25 rad');
+assert.deepEqual(LANDING_GAME.entry.altitude, [300, 400], 'the altitude as before'); assert.deepEqual(LANDING_GAME.entry.sink, [30, 40], 'the sink as before');
+assert.equal(LANDING_GAME.override.seconds, 1.5, 'the override beat 1.5 s');
+console.log('landing-game: signature and entry ok');

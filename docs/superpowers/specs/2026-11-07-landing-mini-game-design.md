@@ -278,6 +278,8 @@ chapters, the skip links or the acceptance routes beyond `?landing`.
 
 ## 13. The owner's morning (2026-11-07): the exhaust signature and the stick
 
+*Superseded 2026-11-07 by section 14 for the stick, the bank axis and the mouse; the signature stands.*
+
 Owner, after the first look, with a still of his 2D game's opening: "the beginning is not working as intended. 1) we want the 'exhaust
 signature' effect in full screen, a close up of the boosters firing, as in the stalheart landing fleet 2d mini game. 2) the space bar
 must be the booster, and some form of wasd + mouse to orient the rocket and try to smooth the landing." Two things change; the rest of

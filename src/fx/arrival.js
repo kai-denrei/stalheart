@@ -315,7 +315,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
-    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, bankRate, legs }, held until the next), 'skip' (the
+    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip' (the
     // signature while it plays: 'signature', as Esc; else the flight), 'override' (takes the gate's offer before START)
     landing(cmd, arg) {
       if (cmd === 'input') { flying?.input(arg ?? {}); return !!flying?.pose(); }
