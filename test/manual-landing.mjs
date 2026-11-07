@@ -45,6 +45,7 @@ const entry = { altitude: 350, sink: 35, drift: 10, tilt: 0.3, fuelSeconds: 20, 
   assert.ok(Math.abs(e.drift) >= T.entry.drift[0] && Math.abs(e.drift) <= T.entry.drift[1]); assert.ok(Math.abs(e.tilt) >= T.entry.tilt[0] && Math.abs(e.tilt) <= T.entry.tilt[1]);
   assert.ok(e.fuelSeconds >= T.entry.fuelSeconds[0] && e.fuelSeconds <= T.entry.fuelSeconds[1]);
   assert.notDeepEqual(seedEntry('planet-7', T), seedEntry('planet-8', T), 'another seed, another problem');
+  for (const seed of ['planet-7', 'planet-8', 'lab', 'x']) { const q = seedEntry(seed, T); assert.ok(Math.sign(q.tilt) === -Math.sign(q.drift) && q.tilt !== 0, `${seed}: the tilt leans against the drift`); }
 }
 { // the legs deploy over legTime once asked, and stay down
   const s = createLanding(entry);

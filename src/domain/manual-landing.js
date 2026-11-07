@@ -21,7 +21,10 @@ const pick = (r, [lo, hi]) => lerp(lo, hi, r());
 // the problem the override hands over, from this planet's seed
 export function seedEntry(seed, tune) {
   const r = rng(seed), e = tune.entry;
-  return { altitude: pick(r, e.altitude), sink: pick(r, e.sink), drift: pick(r, e.drift) * (r() < 0.5 ? -1 : 1), tilt: pick(r, e.tilt) * (r() < 0.5 ? -1 : 1), fuelSeconds: pick(r, e.fuelSeconds), wind: e.wind };
+  // the tilt leans AGAINST the drift (2026-11-07, spec 14 C): the auto-lander's last burn, which runs through the override beat, was
+  // fighting the drift, so the hand-over does not add to it; the player still has the lean to take out and the sink to kill
+  const drift = pick(r, e.drift) * (r() < 0.5 ? -1 : 1);
+  return { altitude: pick(r, e.altitude), sink: pick(r, e.sink), drift, tilt: -Math.sign(drift) * pick(r, e.tilt), fuelSeconds: pick(r, e.fuelSeconds), wind: e.wind };
 }
 
 export function createLanding(entry) {
