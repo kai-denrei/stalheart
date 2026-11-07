@@ -1588,8 +1588,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // THE LANDING FLOWN (owner, 2026-11-07; spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md sections 8-9): five fresh pages, the
  // acceptance page's planet seed fixed, so the seeded entry is the same each run. 1. the scripted pilot (the Task 7 fix flights' rule: legs down, the
  // tilt toward a drift that returns to the pad, a half burn while the drift is off, the full burn at the stopping distance + 30 m) to CLEAN through the
- // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK (`off-pad` on this seed: the entry's drift, 5.7 m/s
- // of the 4-7 since spec 14 B, carries it ~55 m out before the sink can; `sink` would be the reason on the pad), two sections, the wreck's fourth caption. 3. the skip
+ // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK off the pad (on this seed the entry's drift, 5.8 m/s
+ // of the 4-7 since spec 14 B, and since spec 14 C the override's 1.5 s burn along the entry's lean of the same sign, ~9.7 m/s at MANUAL, carry it
+ // ~120 m out, where the sphere's ground is past the 9 degree slope limit: `slope`, which the verdict names before `off-pad`; `sink` would be the
+ // reason on the pad), two sections, the wreck's fourth caption. 3. the skip
  // mid-flight (the still at ~200 m first: the rocket, the reticle on the ground): CLEAN · skipped, the plain talk, three sections. 4-5. a later start's
  // offer on the START gate (`?landing=offer` stands in for the store's flag, `?gate=1` shows the gate on an acceptance page): taken by its FLY THE
  // LANDING button it flies; START alone lands itself, no flight. Stills: landing-manual, landing-verdict, landing-wreck (+ each page's end).
@@ -1604,6 +1606,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
 // page takes two more stills on its way down, landing-side-100 and landing-side-20; view() prints the feet, the hull's top and the pad at each.
 // THE PAD IN VIEW (review, 2026-11-07): every flown page asserts at MANUAL the hole aimed and the disk's x within 0.3; the pilot's page the 350 m framing;
 // the skip page (no pilot, ~100 m off) the pad and the feet within 0.9 NDC x at 100 and 20 m: the eye goes across to their midpoint.
+// THE HAND-OVER IN MOTION (2026-11-07, spec 14 C): no approach from orbit on a flown page: the flight shot ('arrivalFlight') runs from the start
+// under the signature (no flight state until it ends); out of it, the flight begins at once (once the disk is aimed: `aimWait` printed per page),
+// OVERRIDE with the boosters lit (throttle > 0.5) and the rocket sinking (two reads 300 ms apart); Esc under the signature begins the flight too.
+// The offer left (START alone) keeps the rail 'arrival' and no signature.
  const T='window.__stalheartTest',A=`${T}.state().arrival`,L=`${A}.landing`,st=()=>evaluate(`${T}.state()`),briefs=()=>evaluate('window.__seen?.briefs??[]');
  const FLY='index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',OFFER='index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td';
  const why=async(what)=>assert.fail(`${what} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,cut:a.cut,gate:a.gate,manual:a.manual,offer:a.offer,offered:a.offered,landing:a.landing})(${A})`))})`);
@@ -1616,13 +1622,21 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const KEY={w:{key:'w',code:'KeyW'},d:{key:'d',code:'KeyD'},a:{key:'a',code:'KeyA'},esc:{key:'Escape',code:'Escape'},space:{key:' ',code:'Space',text:' '}};
  const keyDown=(k)=>send('Input.dispatchKeyEvent',{type:'keyDown',...KEY[k]}),keyUp=(k)=>send('Input.dispatchKeyEvent',{type:'keyUp',...KEY[k]});
  const tap=async(k)=>{await keyDown(k);await keyUp(k);};
- // a key pressed under the signature is eaten: after 300 ms the signature still plays and the rail shot still runs (no skip of the arrival)
+ // a key pressed under the signature is eaten: after 300 ms the signature still plays and the flight shot still runs (no skip of the arrival)
  const eatenUnder=async(k)=>{await tap(k);await delay(300);
-  assert.deepEqual([await evaluate(`${A}.signature`),await evaluate(`${T}.state().shot`)],[true,'arrival'],`a real ${KEY[k].code} under the signature is eaten: the signature and the rail stand`);};
- // after the signature: the approach, not the whole arrival skipped (the arrival still landing, no flight yet, the rail on)
- const approachNext=async(how)=>{await until(`${A}.signature===false`,5000).catch(()=>why(`${how} ends the signature`));
-  assert.deepEqual([await evaluate(`${A}.phase`),await evaluate(L),await evaluate(`${T}.state().shot`)],['landing',null,'arrival'],`${how} skips the signature only: the approach follows`);
-  assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,'the signature gone on the skip');};
+  assert.deepEqual([await evaluate(`${A}.signature`),await evaluate(`${T}.state().shot`),await evaluate(L)],[true,'arrivalFlight',null],`a real ${KEY[k].code} under the signature is eaten: the signature and the flight shot stand, no flight yet`);};
+ // after the signature (`how` ended it): the flight at once, not the whole arrival skipped: OVERRIDE within 0.5 s of the signature's end (past the
+ // wait for the disk's aim, which the arrival reports), the boosters lit, the rocket sinking between two reads 300 ms apart, the flight shot on
+ const flightNext=async(how,name)=>{await until(`${A}.signature===false`,10000).catch(()=>why(`${how} ends the signature`));const t0=Date.now();
+  assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,`the signature gone (${how})`);
+  await until(`!!${L}`,5000).catch(()=>why(`${how}: the flight begins`));const wall=(Date.now()-t0)/1000,w=await evaluate(`${A}.aimWait`);
+  const s1=await evaluate(L);await delay(300);const s2=await evaluate(L);
+  console.log(`  ${name}: out of the signature (${how}) the flight in ${wall.toFixed(2)} s, the wait for the aim ${w} s; ${JSON.stringify(s1)} > alt ${s2?.altitude}, throttle ${s2?.throttle}, phase ${s2?.phase}`);
+  assert.deepEqual([await evaluate(`${A}.phase`),await evaluate(`${T}.state().shot`),await evaluate(`${A}.diskAimed`)],['landing','arrivalFlight',true],`${how}: the flight on its shot, the disk aimed`);
+  assert.ok(wall<=0.5+w,`${how}: the flight within 0.5 s of the signature's end past the aim's ${w} s (${wall.toFixed(2)} s)`);
+  assert.equal(s1.phase,'override',`${how}: OVERRIDE first (${JSON.stringify(s1)})`);assert.ok(s1.throttle>0.5,`${how}: the boosters lit from the first frame (${JSON.stringify(s1)})`);
+  assert.ok(s2.altitude<s1.altitude,`${how}: the rocket sinking out of the signature (${s1.altitude} > ${s2.altitude})`);assert.ok(s2.phase!=='override'||s2.throttle>0.5,`the auto-lander's burn through the override (${JSON.stringify(s2)})`);
+  return {wall,aimWait:w};};
  // at MANUAL on every flown page: the hole aimed and the line of sight on it (the disk's NDC x within 0.3: measured 0.00, a 20-40 degree azimuth
  // error lands it at 0.6-1.3 of the 58 degree fov's half-width, so a frame turned off the disk fails here)
  const diskOk=(d)=>Array.isArray(d)&&Math.abs(d[0])<0.3&&Math.abs(d[1])<1;
@@ -1639,16 +1653,18 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature canvas')`),true,'the signature\'s canvas over the page');
   assert.match(await evaluate(`document.querySelector('#exhaust-signature')?.innerText??''`),/EXHAUST SIGNATURE/,'the 2D game\'s plate');
   assert.ok((await evaluate(`${A}.t`))<0.5,'the clock held at the signature\'s start');
+  assert.deepEqual([await evaluate(`${T}.state().shot`),await evaluate(L)],['arrivalFlight',null],'no rail from orbit: the flight shot under the signature, no flight until it ends');
   if(how===true){const t0=Date.now();await delay(1000);current='landing-signature';await finish();current=name;   // the boosters close up
    // the arrival's clock, sampled every poll while it plays: it holds at 0 under the black
    await until(`(a=>{window.__sigT=Math.max(window.__sigT||0,a.signature?a.t:0);return a.signature===false;})(${A})`,30000).catch(()=>why('the signature ends on its own'));
    const wall=(Date.now()-t0)/1000;   // t0 is taken once it is seen playing, so this reads a little short of its length (no +1: the 1 s still is inside it)
    console.log(`  ${name}: the signature played out in ${wall.toFixed(1)} s, the clock at most ${await evaluate('window.__sigT')} s under it`);
    assert.ok(wall>=7,`the signature plays its length, not cut short (${wall.toFixed(1)} s wall, black at 7.6 s)`);
-   assert.ok((await evaluate('window.__sigT'))<0.5,'the clock held under the signature');assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,'the signature gone at its end');}
+   assert.ok((await evaluate('window.__sigT'))<0.5,'the clock held under the signature');assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,'the signature gone at its end');
+   await flightNext('the signature\'s end',name);}
   else if(how)await how();
   else{assert.equal(await evaluate(`${T}.landing('skip')`),'signature','the harness skips the signature (as Esc)');assert.equal(await evaluate(`${A}.signature`),false,'skipped');
-   assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,'the signature gone on the skip');}
+   await flightNext('the harness skip',name);}
   await until(`!!${L}`,20000).catch(()=>why('the override came'));
   {const s=await evaluate(L);assert.ok(['override','manual'].includes(s.phase),`OVERRIDE first (${JSON.stringify(s)})`);if(s.phase==='override')assert.equal(await evaluate('!!document.querySelector("#landing-glare")'),true,'the glare stands over the override');}
   await until(`${L}?.phase==='manual'`,15000).catch(()=>why('MANUAL after the override'));
@@ -1684,15 +1700,15 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const {s,said}=await toEnd('landing-clean');console.log(`  clean: foundry ${JSON.stringify(s.story.foundry)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
   assert.equal(s.story.foundry.sections,3,'all three sections');assert.ok(said.some(b=>/Textbook landing!/.test(b)),`the clean talk (${JSON.stringify(said.slice(-4))})`);}
  // the wreck page's signature: a real W is eaten under it, a real Esc ends it and only it
- {const t0=Date.now();await toManual('landing-wreck',async()=>{await eatenUnder('w');await tap('esc');await approachNext('a real Esc');});   // no input at all
+ {const t0=Date.now();await toManual('landing-wreck',async()=>{await eatenUnder('w');await tap('esc');await flightNext('a real Esc','landing-wreck');});   // no input at all
   const a=await toContact('no input to the contact'),g=a.landing;console.log(`  wreck: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
-  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.equal(g.reason,'off-pad',`a no-burn wreck on this seed lands off the pad (the 5.7 m/s drift carries it ~55 m out, spec 14 B; ${JSON.stringify(g)})`);
+  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.ok(['off-pad','slope'].includes(g.reason)&&g.landed&&Math.hypot(g.landed[0],g.landed[2])>14,`a no-burn wreck on this seed lands off the pad (the drift and the override's burn carry it ~120 m out, past the slope limit; ${JSON.stringify(g)})`);
   assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/WRECK/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_wreck');
   await finish();
   const {s,said}=await toEnd('landing-wreck');console.log(`  wreck: foundry ${JSON.stringify(s.story.foundry)}`);
   assert.equal(s.story.foundry.sections,2,'the tank section is gone');assert.ok(said.some(b=>/Less to cannibalize/.test(b)),`the wreck's fourth caption (${JSON.stringify(said.slice(-4))})`);}
  // the skip page's signature: a real Space is eaten under it, then the harness skips it; at MANUAL a real Space held is the burn
- {await toManual('landing-skip',async()=>{await eatenUnder('space');assert.equal(await evaluate(`${T}.landing('skip')`),'signature','the harness skips the signature (as Esc)');await approachNext('the harness skip');});
+ {await toManual('landing-skip',async()=>{await eatenUnder('space');assert.equal(await evaluate(`${T}.landing('skip')`),'signature','the harness skips the signature (as Esc)');await flightNext('the harness skip','landing-skip');});
   {await keyDown('space');await delay(600);const on=await evaluate(L);await keyUp('space');await delay(600);const off=await evaluate(L);
    console.log(`  skip: a real Space held: throttle ${on?.throttle} (alt ${on?.altitude}), released: ${off?.throttle} (alt ${off?.altitude})`);
    assert.ok(on?.throttle>0.5,`a real Space held lights the burn (${JSON.stringify(on)})`);assert.ok(off?.throttle<0.3,`its release kills it (${JSON.stringify(off)})`);}
@@ -1733,8 +1749,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await until(`${A}.phase==='landing'`,30000).catch(()=>why(`${name}: START opens the landing`));
   assert.deepEqual(await evaluate(`[${A}.manual,${A}.offered]`),[take,take],take?'FLY THE LANDING flies it':'START alone lands itself');
   // the offer taken opens on the signature (skipped here, as Esc); START alone is an automatic landing: none
-  if(take){await until(`${A}.signature===true`,10000).catch(()=>why('the offered flight\'s signature'));await click('#exhaust-signature .es-skip');await approachNext('SKIP CINEMATIC, clicked');}
-  else{assert.equal(await evaluate(`${A}.signature`),false,'no signature before an automatic landing');assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,'no signature on the page');}
+  if(take){await until(`${A}.signature===true`,10000).catch(()=>why('the offered flight\'s signature'));assert.equal(await evaluate(`${T}.state().shot`),'arrivalFlight','the flight shot under the signature');
+   await click('#exhaust-signature .es-skip');await flightNext('SKIP CINEMATIC, clicked',name);}
+  else{assert.equal(await evaluate(`${A}.signature`),false,'no signature before an automatic landing');assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,'no signature on the page');
+   assert.equal(await evaluate(`${T}.state().shot`),'arrival','an automatic landing keeps the rail from orbit');}
   if(take){await until(`${L}?.phase==='manual'`,30000).catch(()=>why('the offered flight'));await aimAtManual(name);assert.equal(await evaluate(`${T}.state().shot`),'arrivalFlight','the chase shot');assert.equal(await evaluate(`${T}.landing('skip')`),true);}
   else{await delay(5000);assert.equal(await evaluate(L),null,'no flight without the ask');assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,'no panel');}
   await until(`${A}.phase==='done'`,60000).catch(()=>why(`${name}: the arrival ends`));

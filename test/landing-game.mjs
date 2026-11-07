@@ -20,7 +20,10 @@ assert.equal(STORY_ARRIVAL_MANUAL.landing.startAltitude, LANDING_GAME.approach.s
 const shift = LANDING_GAME.approach.descent - STORY_ARRIVAL.landing.descent;
 const oldDown = STORY_ARRIVAL.landing.orbit + STORY_ARRIVAL.landing.descent;
 for (const k of STORY_ARRIVAL.rail) { const m = STORY_ARRIVAL_MANUAL.rail.find((x) => x.pos === k.pos); assert.ok(m); assert.equal(m.t, k.t >= oldDown ? k.t + shift : k.t, 'rail keys after the touchdown move with it'); }
-assert.ok(LANDING_GAME.approach.overrideAt < STORY_ARRIVAL_MANUAL.landing.descent, 'the override comes before the sequence would have touched down');
+assert.ok(LANDING_GAME.approach.overrideAt < STORY_ARRIVAL_MANUAL.landing.descent, "the story lab's rehearsed override comes before its sequence would have touched down");
+assert.ok(!('deployAltitude' in LANDING_GAME.approach), 'the approach no longer sets the legs (spec 14 C: no approach on a flown landing)');
+assert.equal(STORY_ARRIVAL_MANUAL.landing.deployAltitude, STORY_ARRIVAL.landing.deployAltitude, "the resumed sequence's legs are the base's");
+assert.ok(LANDING_GAME.override.aimWait > 0 && LANDING_GAME.override.seconds === 1.5, 'the hand-over in motion: a bounded wait for the aim, the 1.5 s burn');
 console.log('landing-game: arrival tune ok');
 import { BRIEFS } from '../src/isaobriefs.js';
 for (const id of Object.values(LANDING_GAME.lines)) assert.ok(BRIEFS[id]?.lines?.length, `brief ${id} exists`);

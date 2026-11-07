@@ -171,4 +171,30 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
     for (let i = 0; i < 60 * 40 && a.state().phase === 'landing' && a.state().landing?.phase !== 'done'; i++) w.frame(1 / 60, a);
     assert.equal(a.state().landing.grade, 'WRECK', `no input is a wreck (${JSON.stringify(a.state().landing)})`); assert.deepEqual(salvaged.map((x) => x.sections), [2], 'a flown contact sets the salvage'); }
 }
+// THE HAND-OVER IN MOTION (spec 14 C): a flown landing starts no orbit rail (the flight shot from start(), the rocket hidden until the override);
+// the flight waits for the sky disk's aim (never longer than override.aimWait), begins with the boosters lit, and the physics run through the
+// 1.5 s override at full throttle (the rocket sinking, the burn braking it, the arrival's clock held), then MANUAL
+{
+  const flown = (aimed) => {
+    const w = world(), a = createArrival({ on: true, base: w.base, beats: w.beats, site, metres: METRES, manual: true }); w.isao = true;
+    const scene = new THREE.Scene(), hole = new THREE.Group(); hole.name = 'sky-hole'; hole.userData.hole = { dir: [0.3, 0.2, -1] }; if (aimed) hole.userData.aimedFor = {}; scene.add(hole); w.api.scene = scene;
+    for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
+    return { w, a, hole };
+  };
+  const shots = (w) => w.log.filter(([k]) => k === 'shot').map(([, id]) => id);
+  { const { w, a, hole } = flown(false); run(w, a, 0.5);
+    assert.equal(a.state().phase, 'landing'); assert.deepEqual(shots(w), ['arrivalFlight'], 'the flight shot at once: no orbit rail');
+    assert.equal(a.state().landing, null, 'the flight waits for the disk aimed'); assert.equal(vis(w, 'sh02'), false, 'the rocket hidden until the override places it');
+    hole.userData.aimedFor = {}; w.frame(1 / 60, a);
+    const s0 = a.state().landing; assert.deepEqual([s0?.phase, s0?.throttle], ['override', 1], `the boosters lit on the first frame (${JSON.stringify(s0)})`);
+    assert.equal(vis(w, 'sh02'), true, 'the rocket shown at the entry'); assert.ok(a.state().aimWait > 0.3 && a.state().aimWait < 0.6, `the wait reported (${a.state().aimWait})`);
+    run(w, a, 0.5); const s1 = a.state().landing;
+    assert.deepEqual([s1.phase, s1.throttle], ['override', 1], 'the auto-lander burns through the override'); assert.ok(s1.altitude < s0.altitude, 'the rocket sinking'); assert.ok(s1.sink < s0.sink, 'the burn brakes the sink');
+    assert.equal(a.state().t, 0, 'the arrival\'s clock held');
+    run(w, a, LANDING_GAME.override.seconds - 0.4); assert.equal(a.state().landing.phase, 'manual', 'MANUAL after override.seconds'); assert.deepEqual(shots(w), ['arrivalFlight'], 'one shot from start() to the flight'); }
+  { const { w, a } = flown(false); run(w, a, LANDING_GAME.override.aimWait + 0.2); assert.equal(a.state().landing?.phase, 'override', 'a disk never aimed does not hold the flight past override.aimWait'); }
+  { const { w, a } = flown(true); w.frame(1 / 60, a); w.frame(1 / 60, a); assert.equal(a.state().landing?.phase, 'override', 'aimed: the flight at once'); assert.equal(a.state().aimWait, 0); }
+  // Esc on the flight shot before the override (the flight waiting on the aim) skips the whole arrival, ungraded: no flight to skip
+  { const { w, a } = flown(false); run(w, a, 0.3); w.skip(); assert.equal(a.state().phase, 'done'); assert.equal(a.state().skipped, true); assert.equal(a.state().landing, null); }
+}
 console.log(`Arrival: waits for the rocket, its salvage, the foundry and Isao; lands; swaps on the cut to his face; ${talk.toFixed(1)} s of lines; skips and give-ups land on the same end state.`);

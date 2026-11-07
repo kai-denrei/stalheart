@@ -220,7 +220,8 @@ section for them, the recording order as before):
   acceptance page.
 - **The skip inside the flight** is `Esc` or the on-screen SKIP, not any key: the sequence resumes at its touchdown on the pad, grade
   CLEAN for the record, no salvage (the foundry as today, section 2), the plain talk, the rail back in the same frame. Before the override (the approach) any key or tap skips the whole arrival as
-  today (a flown landing: Esc alone, section 13), ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
+  today (a flown landing: Esc alone, section 13; 2026-11-07, section 14 C: no approach on a flown landing, so its Esc before the override is the
+  signature's skip, and only past the signature, while the flight waits for the disk's aim, the whole arrival's), ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
   contact), then `Esc` alone skips it (on a phone, after the lock, a tap: 2026-11-07); an auto-repeated key never skips any shot (`src/fx/camera-shot.js`). The tutorial card's skip
   and the chapter links are unchanged (a chapter starts past the landing, as today).
 - **Acceptance runs** (`?acceptance=1`) land automatically unless they ask (`?landing=1`), and show the gate only with `?gate=1`.
@@ -293,8 +294,9 @@ smoothstep over 55 % of the remaining 4.6 s, held to 70 %, then geometrically do
 `STÅLHEART · ARRIVAL CORRIDOR`, the credit `LAUNCH SHADER · PULKIT · MIT` and a `SKIP CINEMATIC →` button. It plays once START (or
 FLY THE LANDING) has opened the gate and the landing is to be flown, BEFORE the approach: the arrival's clock holds at 0 under it, the
 rocket's thrust bed plays under it at full (the boosters firing; the 2D game's is silent only because its audio is not yet unlocked),
-and when it ends (black) the approach runs as today, then the override. `Esc` or the button skips the cinematic only (to the approach);
-every other key is eaten under it (the rail's any-key skip must not fire under the black). After the signature the approach's rail skips on Esc alone (2026-11-07, the final review: a Space tapped through the black would otherwise end the flown landing at the first fresh press); an automatic landing's approach skips on any key as today. Reduced motion or no WebGL2 skips it
+and when it ends (black) the approach runs as today, then the override (2026-11-07, section 14 C: no approach on a flown landing; the black
+opens on the flight at the override). `Esc` or the button skips the cinematic only (to the approach; since section 14 C, to the flight);
+every other key is eaten under it (the rail's any-key skip must not fire under the black). After the signature the approach's rail skips on Esc alone (2026-11-07, section 14 C: no approach on a flown landing; the flight shot skips on Esc alone) (2026-11-07, the final review: a Space tapped through the black would otherwise end the flown landing at the first fresh press); an automatic landing's approach skips on any key as today. Reduced motion or no WebGL2 skips it
 outright (the 2D game's rule); a phone plays it (the 2D game does, at its cap). The tune: `LANDING_GAME.signature { seconds: 8, hold:
 3, yEnd: -1048576 }`. The override's glare is no longer the shader: the plain fade (`landing-glare.js`'s CSS path, `override.glare
 { seconds: 1.2 }`), so the shader shows once, as the 2D game shows it. An automatic landing (START on a later run, `?landing=0`, the

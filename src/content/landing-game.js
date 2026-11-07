@@ -37,8 +37,12 @@ export const LANDING_GAME = Object.freeze({
   // sinking 102 m/s, a 590 m stopping distance: every flight a wreck), so the flight is seeded from `entry` above, under the glare, and the
   // approach is only the picture of a rocket coming in from orbit. At 3.5 s of 10 the sequence is at 900 x (1 - 0.35)² = 380 m, so the cut
   // to the entry's 300-400 m under the glare is small; its eased rate there (~117 m/s) is dropped for the entry's 30-40 m/s: the
-  // auto-lander's braking burn is what failed. The legs' 700 m is the sequence's own (the flown landing keeps them stowed: the player's).
-  approach: Object.freeze({ descent: 10, startAltitude: 900, overrideAt: 3.5, deployAltitude: 700 }),
+  // auto-lander's braking burn is what failed.
+  // Since spec 14 C (2026-11-07, the hand-over in motion) the GAME's flown landing has no approach from orbit: the signature opens on the flight at
+  // the entry, and `descent` / `startAltitude` only time the sequence a flown landing resumes at its touchdown (STORY_ARRIVAL_MANUAL: the rail
+  // after it, the cut). `overrideAt` is the story lab's alone now (labs.html#story&manual=1 still rehearses the cut from its approach,
+  // src/labs/story-tab.js). `deployAltitude: 700` retired (the legs at the base's 134 m: the sequence's legs are the player's or the shock's)
+  approach: Object.freeze({ descent: 10, startAltitude: 900, overrideAt: 3.5 }),
   // THE EXHAUST SIGNATURE (spec 13, src/fx/exhaust-signature.js): the 2D game's opening verbatim (Stalsfar_Landing CONFIG.cinematic
   // { opening: 8, ignitionHold: 3, launchYEnd: -1048576 }): the camera's Y holds at 2 for `hold` s (the boosters close up), falls to -8,
   // then geometrically to `yEnd`, where the frame is black
@@ -47,6 +51,7 @@ export const LANDING_GAME = Object.freeze({
   // FLY THE LANDING (src/fx/start-gate.js, 2026-11-07), no longer a SPACE window in the approach
   override: Object.freeze({
     seconds: 1.5,   // spec 14 C (2026-11-07): the auto-lander's last burn under the alarm, shorter so the player has the rocket sooner (was 3)
+    aimWait: 3,     // s at most the flight waits past the signature for the sky disk to be aimed (src/fx/arrival.js aimed): a Stålheart that never loads must not hold it
     glare: Object.freeze({ seconds: 1.2 }),   // the plain fade (2026-11-07, spec 13): the shader is the signature's, no longer the override's
   }),
   // THE SIDE VIEW (spec 14 A; src/fx/manual-landing.js chase, the shot's poseAt): a fixed level line of sight along the flight's -z toward

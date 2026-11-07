@@ -1,6 +1,7 @@
 // THE LANDING'S HOST (spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md section 4): while the arrival's OVERRIDE, MANUAL and
 // FLARE phases run, the rocket's pose comes from the flight model (src/domain/manual-landing.js) in its flight frame (below), the plumes burn with
-// the throttle, the side camera dollies with it (spec 14 A), the reticle lies on the ground under the predicted impact point, the HUD reads the state,
+// the throttle, the side camera dollies with it (spec 14 A), the reticle lies on the ground under the predicted impact point, the pad's ring marks
+// the landing zone (the owner's rule: the player must always see it), the HUD reads the state,
 // and the keys fly: SPACE held is the burn (LANDING_GAME.input.burnKey), A/D (and the arrows left/right) tilt left/right while held, L the
 // legs; nothing else (spec 14 B: three variables, the burn, the tilt and the legs). The arrival
 // keeps the clock, the sequence, the swap and the HUD panel (it shows the verdict through the cut, so it outlives this host: dispose()
@@ -42,6 +43,11 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   const reticle = new THREE.Group(); reticle.name = 'LandingReticle'; reticle.renderOrder = 999;
   const altRing = ring(0x7dff5a), fixed = game.reticle.rings.map(() => ring(0x4fae63)), square = ring(0xffffff); square.geometry.setFromPoints([[-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1], [-1, 0, -1]].map((p) => new THREE.Vector3(...p)));
   reticle.add(altRing, ...fixed, square); root.add(reticle); reticle.visible = false;
+  // THE PAD (2026-11-07, spec 14 C; the owner's rule, the player must always see the landing zone): a ring of pad.reach at the flight frame's
+  // origin, through the boundary conversion as the reticle, the reticle's green at half opacity, shown while the flight runs
+  const padRing = ring(0x7dff5a); padRing.name = 'LandingPad'; padRing.renderOrder = 999; padRing.material.opacity = 0.5; padRing.scale.set(game.pad.reach, 1, game.pad.reach);
+  { const [px, , pz] = flightToIsland([0, 0, 0], 0), g = floorAt(px, pz); padRing.position.set(px, g.y + 0.05, pz); padRing.quaternion.setFromUnitVectors(a.set(0, 1, 0), n.fromArray(g.normal).normalize()); }
+  root.add(padRing); padRing.visible = false;
   const keys = (ev, down) => {   // the flight keys, taken here in capture before the shot's listener; the shot eats the rest and keeps Escape as the skip (camera-shot skipKey; passKeys off since 2026-11-07)
     if (phase !== 'manual' && phase !== 'override' && phase !== 'flare') return;   // FLARE eats them too (2026-11-07): the auto-lander has the rocket, no flight key reaches the tank
     const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
@@ -109,14 +115,16 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   }
   const island = () => flightToIsland([s.x, s.y, s.z], az), ground = () => { const [x, , z] = island(); return floorAt(x, z); };   // the rocket in island metres, the ground under it
   function reading() { return { altitude: Math.max(0, s.y), sink: Math.max(0, -s.vy), driftAlong: s.vx, driftAcross: s.vz, tilt: Math.abs(s.tilt), tw: game.vehicle.thrust * Math.max(s.throttle, s.throttle > 0 ? game.vehicle.minThrottle : 0) / game.sim.gravity, hStop: hStop(s, game), fuel: s.fuel, legs: s.legs, phase }; }
-  function stopAll() { listen(false); hud.touch(false); held = { left: false, right: false, burn: false }; touchTilt = 0; if (thrust) { thrust.stop(0.4); thrust = null; } reticle.visible = false; }
+  function stopAll() { listen(false); hud.touch(false); held = { left: false, right: false, burn: false }; touchTilt = 0; if (thrust) { thrust.stop(0.4); thrust = null; } reticle.visible = false; padRing.visible = false; }
   const host = {
     hud,
     // OVERRIDE: the seeded problem (the entry: src/domain/manual-landing.js seedEntry; 2026-11-07, the sequence's own altitude and rate were
-    // not flyable, LANDING_GAME.approach), placed under the glare; clear the panel, arm the keys; MANUAL starts when the arrival calls manual()
+    // not flyable), placed under the glare with the boosters LIT (spec 14 C: the throttle and its set point at 1 from the first frame, the
+    // auto-lander's last burn); clear the panel, arm the keys; MANUAL starts when the arrival calls manual()
     begin(legs = 0) {
       az = typeof azimuth === 'function' ? azimuth() : azimuth;
-      s = createLanding(entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0;
+      s = createLanding(entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0; s.throttle = 1; s.set = 1;
+      padRing.visible = true;
       phase = 'override'; acc = 0; contact = null; harnessThrottle = null; rate = { tilt: 0 }; touchTilt = 0; follow.set(s.x, s.y, s.z);
       hud.clear(); hud.show(true); hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); hud.set(reading()); listen(true);
       if (coarse) hud.touch(true, { tilt: (r) => { touchTilt = r; }, burn: (on) => { held.burn = on; }, legs: () => { input.legs = true; }, skip: () => host.skip() });
@@ -129,15 +137,12 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       // the throttle's set point every step (the model spools toward it): the burn held, else the harness's held throttle, else idle;
       // the tilt a held key, else a held rail triangle, else the harness's rate
       const i = { throttle: held.burn ? 1 : (harnessThrottle ?? 0), tiltRate: ((held.right ? 1 : 0) - (held.left ? 1 : 0)) || touchTilt || rate.tilt, legs: input.legs };
-      if (phase === 'override') {   // the alarm beat: the rocket holds where the auto-lander left it, the keys already set the throttle and the legs
-        s.set = i.throttle;
-        if (i.legs && s.legs === 0) s.legs = 1e-6;
-        input.legs = false; acc = 0;
-      }
-      while (phase !== 'override' && acc >= game.sim.dt) {
+      // the alarm beat (spec 14 C): the auto-lander's last burn, the physics running with the throttle forced to 1; the tilt keys and the legs
+      // live, so the player can already lean; then MANUAL, where the burn follows Space
+      while (acc >= game.sim.dt) {
         acc -= game.sim.dt;
         if (phase === 'manual' && flareDue(s, game)) { phase = 'flare'; hud.annunciate('AUTO-LAND RESUMED', 'ok'); }
-        if (phase === 'flare') flareStep(s, game.sim.dt, game); else step(s, i, game.sim.dt, game);
+        if (phase === 'flare') flareStep(s, game.sim.dt, game); else step(s, phase === 'override' ? { throttle: 1, tiltRate: i.tiltRate, legs: i.legs } : i, game.sim.dt, game);
         i.legs = false; input.legs = false;   // a legs request is consumed by the step that reads it (the set point is held)
         if (touched(s, ground().y)) { phase = 'touched'; break; }
       }
@@ -170,7 +175,11 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       return { feet: ndc([x, y, z]), top: ndc([x, y + 1.5 * SH02_WELL.rim, z]), reticle: reticle.visible ? ndc([reticle.position.x, reticle.position.y, reticle.position.z]) : null, pad: ndc([0, 0, 0]) };
     },
     state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vx: +s.vx.toFixed(2), vz: +s.vz.toFixed(2), tilt: +s.tilt.toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +island()[0].toFixed(1), z: +island()[2].toFixed(1), along: +s.x.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2) } : null),
-    dispose() { stopAll(); reticle.removeFromParent(); for (const l of [altRing, ...fixed, square]) { l.geometry.dispose(); l.material.dispose(); } },   // the HUD is the arrival's
+    dispose() { stopAll(); reticle.removeFromParent(); padRing.removeFromParent(); for (const l of [altRing, ...fixed, square, padRing]) { l.geometry.dispose(); l.material.dispose(); } },   // the HUD is the arrival's
   };
+  // the keys listen FROM CREATION (spec 14 C): the arrival starts the flight shot right after creating this host, before begin(), and capture
+  // listeners on one target run in registration order, so the host's must come first or the shot (passKeys off) eats Space, A and D; keys()
+  // ignores every key until begin() and after the contact, so listening early takes nothing from the page
+  listen(true);
   return host;
 }
