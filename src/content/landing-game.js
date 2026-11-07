@@ -36,7 +36,7 @@ export const LANDING_GAME = Object.freeze({
   // to the entry's 300-400 m under the glare is small; its eased rate there (~117 m/s) is dropped for the entry's 30-40 m/s: the
   // auto-lander's braking burn is what failed. The legs' 700 m is the sequence's own (the flown landing keeps them stowed: the player's).
   approach: Object.freeze({ descent: 10, startAltitude: 900, overrideAt: 3.5, deployAltitude: 700 }),
-  // THE EXHAUST SIGNATURE (spec 10, src/fx/exhaust-signature.js): the 2D game's opening verbatim (Stalsfar_Landing CONFIG.cinematic
+  // THE EXHAUST SIGNATURE (spec 13, src/fx/exhaust-signature.js): the 2D game's opening verbatim (Stalsfar_Landing CONFIG.cinematic
   // { opening: 8, ignitionHold: 3, launchYEnd: -1048576 }): the camera's Y holds at 2 for `hold` s (the boosters close up), falls to -8,
   // then geometrically to `yEnd`, where the frame is black
   signature: Object.freeze({ seconds: 8, hold: 3, yEnd: -1048576 }),
@@ -44,7 +44,7 @@ export const LANDING_GAME = Object.freeze({
   // FLY THE LANDING (src/fx/start-gate.js, 2026-11-07), no longer a SPACE window in the approach
   override: Object.freeze({
     seconds: 3,
-    glare: Object.freeze({ seconds: 1.2 }),   // the plain fade (2026-11-07, spec 10): the shader is the signature's, no longer the override's
+    glare: Object.freeze({ seconds: 1.2 }),   // the plain fade (2026-11-07, spec 13): the shader is the signature's, no longer the override's
   }),
   // the chase (src/fx/manual-landing.js chase; 2026-11-07, the controller's call C): it looks at the reticle's ground point (the predicted
   // impact), the eye behind along -z by back + backPerMetre x height, above the rocket by up + upPerMetre x height, and to +x by `side` x
@@ -68,8 +68,8 @@ export const LANDING_GAME = Object.freeze({
   // the altitude ping's gap (src/fx/manual-landing.js sounds): `far` s at `nearAt + nearOver` m and above, ramping to `near` s at `nearAt` m.
   // nearOver 300 (2026-11-07, out of the logic at the final review): the ramp spans the entry's 300-400 m, so the ping quickens over the whole flight
   hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10, nearOver: 300 }), predictorSeconds: 35, predictorDt: 0.15 }),
-  // Space held is the burn (spec 10); the stick: the 2D game's floating thumb-stick, px of drag past the dead zone to the full throw
-  input: Object.freeze({ skipKey: 'Escape', offerKey: ' ', burnKey: ' ', stick: Object.freeze({ dead: 5, full: 48 }) }),
+  // Space held is the burn (spec 13); the stick: the 2D game's floating thumb-stick, px of drag past the dead zone to the full throw
+  input: Object.freeze({ skipKey: 'Escape', burnKey: ' ', stick: Object.freeze({ dead: 5, full: 48 }) }),
   // the contact (2026-11-07, review of Task 7): the rail that resumes at the touchdown, the shock clip, the shake and a wreck's marks
   touchdown: Object.freeze({
     lockSeconds: 1.5,   // s the resumed rail cannot be skipped: the keys the player was holding at the contact must not skip the door and Isao's rise

@@ -1,4 +1,4 @@
-// THE EXHAUST SIGNATURE (spec 10): the camera ramp is the 2D game's openingCameraY, pure, apart from the WebGL path
+// THE EXHAUST SIGNATURE (spec 13): the camera ramp is the 2D game's openingCameraY, pure, apart from the WebGL path
 import assert from 'node:assert/strict';
 import { signatureCameraY } from '../src/fx/exhaust-signature.js';
 import { LANDING_GAME } from '../src/content/landing-game.js';

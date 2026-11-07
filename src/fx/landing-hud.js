@@ -43,7 +43,7 @@ export function createLandingHud(root, tune = LANDING_GAME) {
       verdictEl.className = `lh-verdict ${grade.toLowerCase()}`;
     },
     clear() { verdictEl.textContent = ''; verdictEl.className = 'lh-verdict'; ann.textContent = ''; ann.className = 'lh-ann'; },   // a fresh flight reads nothing from an earlier one
-    touch(on, h = {}) {   // phones (spec 10): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js)
+    touch(on, h = {}) {   // phones (spec 13): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js)
       rail.hidden = !on; rail.replaceChildren();
       if (!on) return;
       // a press is captured to its button (2026-11-07, the review): a mouse leaving BURN before the release still releases it there, and a

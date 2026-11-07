@@ -1,5 +1,6 @@
 // manual-landing.mjs — the flight model is pure, fixed-step and deterministic
 import assert from 'node:assert/strict';
+import * as THREE from '../vendor/three.module.js';
 import { LANDING_GAME } from '../src/content/landing-game.js';
 import { createLanding, step, seedEntry } from '../src/domain/manual-landing.js';
 
@@ -164,3 +165,12 @@ import { tiltTotal } from '../src/domain/manual-landing.js';
   assert.ok(Math.abs(s.bank - 0.2) < 1e-12, 'the predictor does not touch the state');
 }
 console.log('manual-landing: bank ok');
+{ // the header's pose claim (2026-11-07, the final review): Rz(-bank)·Rx(tilt) puts the hull's up (0, 1, 0) on the thrust direction
+  // d = (sin bank·cos tilt, cos bank·cos tilt, sin tilt), the one step() pushes along
+  for (const [bank, tilt] of [[0.3, 0.2], [-0.25, 0.1], [0, 0.35], [0.2, -0.3]]) {
+    const v = new THREE.Vector3(0, 1, 0).applyMatrix4(new THREE.Matrix4().makeRotationZ(-bank).multiply(new THREE.Matrix4().makeRotationX(tilt)));
+    const d = [Math.sin(bank) * Math.cos(tilt), Math.cos(bank) * Math.cos(tilt), Math.sin(tilt)];
+    v.toArray().forEach((x, k) => assert.ok(Math.abs(x - d[k]) < 1e-12, `bank ${bank}, tilt ${tilt}: component ${k} ${x} vs ${d[k]}`));
+  }
+}
+console.log('manual-landing: pose ok');

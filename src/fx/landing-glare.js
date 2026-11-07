@@ -1,6 +1,6 @@
-// The override's plain fade (spec 10; the shader is the signature's, src/fx/exhaust-signature.js): a warm glow over the page, up over
+// The override's plain fade (spec 13; the shader is the signature's, src/fx/exhaust-signature.js): a warm glow over the page, up over
 // the first half and down over the second. Still a canvas so #landing-glare holds for the suite; no context is ever created on it.
-// Other options (the arrival still passes reducedMotion) are ignored: the fade is the same for everyone.
+// Other options are ignored: the fade is the same for everyone (reduced motion included).
 export function startLandingGlare(root, { seconds = 1.2 } = {}) {
   const canvas = document.createElement('canvas');
   canvas.id = 'landing-glare'; canvas.className = 'fade'; canvas.setAttribute('aria-hidden', 'true');

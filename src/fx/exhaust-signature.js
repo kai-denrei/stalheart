@@ -1,4 +1,4 @@
-// THE EXHAUST SIGNATURE (spec 10): the 2D game's full-screen opening on its own opaque canvas over the page, the launch shader
+// THE EXHAUST SIGNATURE (spec 13): the 2D game's full-screen opening on its own opaque canvas over the page, the launch shader
 // with the camera's Y animated and the 2D game's plate (SKIP CINEMATIC, or Esc). The FRAGMENT and VERTEX sources below are the 2D
 // game's landing/launch-plume.js verbatim (https://github.com/jelaludo/Stalsfar_Landing), as is its draw contract (the uniform set,
 // the 1600 x 1000 cap, a draw at most every 1/30 s). See ATTRIBUTIONS.md.

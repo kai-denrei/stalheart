@@ -2,7 +2,7 @@
 // fixed-step, deterministic: the same entry and input timeline give the same state. Ported from the owner's 2D game
 // (Stalsfar_Landing/landing/lander.js flightStep, evaluateTouchdown, predictImpact) onto the arrival's metres: x and z along the
 // ground, y up (the pad at 0), +z toward the pole; the tilt is about x, positive forward (+z); the rocket cannot hover at idle.
-// 2026-11-07 (spec 10): a second axis, the bank, about z, positive toward +x, so WASD and a mouse stick can steer both ways; the thrust direction
+// 2026-11-07 (spec 13): a second axis, the bank, about z, positive toward +x, so WASD and a mouse stick can steer both ways; the thrust direction
 // is d = (sin bank * cos tilt, cos bank * cos tilt, sin tilt) and the pose that puts the hull's up on it is Rz(-bank) * Rx(tilt).
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));

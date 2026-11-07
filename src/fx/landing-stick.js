@@ -1,4 +1,4 @@
-// THE STICK (spec 10): the 2D game's floating thumb-stick (Stalsfar_Landing/landing/touch-pilot.js) with the mouse allowed and a second
+// THE STICK (spec 13): the 2D game's floating thumb-stick (Stalsfar_Landing/landing/touch-pilot.js) with the mouse allowed and a second
 // axis. A press anywhere on the scene drops a ring at the press point; the drag from it, clamped to `full` px, past a `dead` px dead zone,
 // is the tilt (up is the nose forward, +z) and the bank (right is +x), each -1..1, linear between. Read once a step by the landing's host
 // (src/fx/manual-landing.js), which the keys outrank. The DOM is optional: without one (node, or no root) the stick is inert.

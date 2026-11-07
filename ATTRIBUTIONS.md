@@ -55,7 +55,7 @@ Standalone SH02 vehicle with its five authored clips from [SentryTowers_A6](http
 
 `src/fx/launch-plume.js` ports the raymarched plume from [pulkitxm/claude-directory](https://github.com/pulkitxm/claude-directory) (`shaders/launch-shader`), MIT, as studied in the local onkochishin atelier (`atelier/launch`). The march loop and its constants are kept; the ray setup is rewritten for a camera-facing quad in a Three.js scene and an intensity uniform is added.
 
-The same shader is drawn full-screen as the landing's EXHAUST SIGNATURE opening (`src/fx/exhaust-signature.js`): the 2D game's `landing/launch-plume.js` and its opening camera ramp (`openingCameraY`) from [jelaludo/Stalsfar_Landing](https://github.com/jelaludo/Stalsfar_Landing), source kept verbatim, MIT, Pulkit.
+The same shader is drawn full-screen as the landing's EXHAUST SIGNATURE opening (`src/fx/exhaust-signature.js`): the fragment shader is Pulkit's MIT code kept verbatim, as the 2D game [jelaludo/Stalsfar_Landing](https://github.com/jelaludo/Stalsfar_Landing) carries it in `landing/launch-plume.js`. The opening camera ramp (`signatureCameraY`) is not Pulkit's and not verbatim: it is re-implemented from jelaludo's `openingCameraY` in `Stalsfar_Landing/landing/lander.js` (the owner's own game), its constants taken from the tune.
 
 ## Rocket thrust sound
 

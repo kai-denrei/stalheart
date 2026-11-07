@@ -62,7 +62,7 @@ assert.equal(root.querySelector('#landing-hud').attrs['aria-live'], undefined); 
 hud.clear(); assert.equal(root.querySelector('#lh-verdict').textContent, ''); assert.equal(root.querySelector('#lh-verdict').className, 'lh-verdict');
 assert.equal(root.querySelector('#lh-ann').textContent, ''); assert.equal(root.querySelector('#lh-ann').className, 'lh-ann');
 
-// the touch rail (spec 10): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js). BURN's press and release drive the burn
+// the touch rail (spec 13): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js). BURN's press and release drive the burn
 const got = [];
 hud.touch(true, { burn: (on) => got.push(['burn', on]), legs: () => got.push(['legs']), skip: () => got.push(['skip']) });
 const rail = root.querySelector('#lh-touch'); assert.equal(rail.hidden, false); assert.equal(rail.children.length, 3);

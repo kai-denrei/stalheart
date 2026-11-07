@@ -6,7 +6,7 @@
 // page, the burger's Story, ?grow=1 at stage 1; never SKIP TUTORIAL, stage=N and story=N links or phase jumps).
 //
 // Two shots over the base's own landmarks (src/fx/story-base.js), no second rocket:
-//   (flown)        a flown landing opens on THE EXHAUST SIGNATURE (src/fx/exhaust-signature.js, spec 10; 2026-11-07, the owner's morning):
+//   (flown)        a flown landing opens on THE EXHAUST SIGNATURE (src/fx/exhaust-signature.js, spec 13; 2026-11-07, the owner's morning):
 //                  the 2D game's boosters full-screen over the page, the arrival's clock held at 0 and the thrust bed at full under it, Esc
 //                  or SKIP CINEMATIC to the approach; then SIGNATURE > APPROACH > OVERRIDE > MANUAL > FLARE > TOUCHDOWN on the rail below.
 //                  An automatic landing has none
@@ -85,8 +85,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // The islands' slabs off the pad are not modelled this round: a far wreck reads the bare sphere under it
   const R = 1 / metres;
   const floorAt = (x, z) => { const l = Math.hypot(x / R, 1, z / R); return { y: -(x * x + z * z) / (2 * R), normal: [x / R / l, 1 / l, z / R / l] }; };
-  const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;   // a phone: the touch rail, and the glare's plain fade (spec 8)
-  const still = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;   // reduced motion: the glare's plain fade, no rail jolt (2026-11-07, the final review)
+  const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;   // a phone: the touch rail, and a tap skips the resumed rail after its lock (spec 8)
+  const still = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;   // reduced motion: no signature, no rail jolt (the glare is the plain fade for everyone, spec 13)
   const talkBrief = () => (grade && grade.reason !== 'skipped' ? LANDING_GAME.lines[grade.grade] : tune.talk.brief);   // a skip is the plain talk (spec 7)
   // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
   // an acceptance run lands without it unless it asks (?gate=1)
@@ -185,7 +185,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     phase = 'landing'; t = 0;
     hud(true);
     camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
-    // THE EXHAUST SIGNATURE (spec 10) before the rail shot: capture listeners on one target run in registration order, so its window
+    // THE EXHAUST SIGNATURE (spec 13) before the rail shot: capture listeners on one target run in registration order, so its window
     // keydown runs before the shot's and eats the rail's any-key skip under the black. Null on reduced motion or without WebGL2: no signature
     if (manual && globalThis.document?.body) {
       signature = startExhaustSignature(globalThis.document.body, { ...LANDING_GAME.signature, reducedMotion: still, onSkip: () => { signature = null; } });
@@ -199,8 +199,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
         floorAt, clipScrub: (name, u) => { clip(name, u, true); rocket.root?.userData.mixer?.update(0); }, coarse });
     }
-    // the signature's seconds on the rail's length: its clock runs under the black while the arrival's holds
-    api.startShot({ id: 'arrival', dur: shot.cut + 2 + (signature ? LANDING_GAME.signature.seconds : 0), poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
+    // the signature's seconds on the rail's length: its clock runs under the black while the arrival's holds.
+    // A FLOWN APPROACH SKIPS ON ESC ALONE (2026-11-07, the final review): a player tapping Space through the signature's black would otherwise
+    // end the flight they chose with the first fresh press at the approach; an automatic landing keeps any key or tap, as today
+    api.startShot({ id: 'arrival', dur: shot.cut + 2 + (signature ? LANDING_GAME.signature.seconds : 0), poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, ...(manual ? { skipKey: LANDING_GAME.input.skipKey } : {}), onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
   function railPose(u, out) {
     const p = shot.camera(Math.min(t, shot.cut));
@@ -252,7 +254,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
     flying.begin(0);   // the flown approach keeps the legs stowed (apply): they are the player's
     api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
-    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare });   // the plain fade for everyone (spec 10: the shader is the signature's)
+    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare });   // the plain fade for everyone (spec 13: the shader is the signature's)
     cutting = true;   // starting a shot ends the rail's, whose onEnd would finish the arrival
     // passKeys off (2026-11-07, the final review): the host's capture listener (flying.begin above, registered before the shot's) takes the
     // flight keys itself; every other key is eaten during the flight, Escape still skips

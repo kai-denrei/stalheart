@@ -30,7 +30,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   const keys = (ev, down) => {   // the flight keys, taken here in capture before the shot's listener; the shot eats the rest and keeps Escape as the skip (camera-shot skipKey; passKeys off since 2026-11-07)
     if (phase !== 'manual' && phase !== 'override' && phase !== 'flare') return;   // FLARE eats them too (2026-11-07): the auto-lander has the stick, no flight key reaches the tank
     const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
-    if (k === game.input.burnKey) held.burn = down;   // spec 10: the burn is held, as the 2D game's (its key repeat only re-sets it)
+    if (k === game.input.burnKey) held.burn = down;   // spec 13: the burn is held, as the 2D game's (its key repeat only re-sets it)
     else if (k === 'w' || k === 'ArrowUp') held.fwd = down;
     else if (k === 's' || k === 'ArrowDown') held.back = down;
     else if (k === 'a' || k === 'ArrowLeft') held.left = down;
@@ -142,7 +142,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       if (phase === 'touched') {
         // the ground's slope (the angle of its normal from the pad's up) and the tilt against the LOCAL normal along the drift axis (z):
         // on the arrival's sphere that is s.tilt - atan2(z, R), the ground under a far wreck leaning away from the pad (2026-11-07); the
-        // bank likewise along x (spec 10), so the verdict's total angle is the hull's from the ground under it
+        // bank likewise along x (spec 13), so the verdict's total angle is the hull's from the ground under it
         const g = floorAt(s.x, s.z), ny = Math.max(-1, Math.min(1, g.normal[1])), slope = Math.acos(ny);
         contact = verdict({ ...s, tilt: s.tilt - Math.atan2(g.normal[2], g.normal[1]), bank: s.bank - Math.atan2(g.normal[0], g.normal[1]) }, slope, Math.hypot(s.x, s.z) > game.pad.reach, game);
         if (contact.grade === 'WRECK') sfx?.play('mech_landing_impact', { dist: 0 });
