@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-11-07-the-landing-s-entry-leans-against-its-drift-the-hand-over-s-burn-reduces-it",
+  "date": "2026-11-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "the landing's entry leans against its drift, the hand-over's burn reduces it",
+  "context": "Spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md section 14 C, branch landing-sideview (46be2441 and the final whole-branch review's fixes), unpushed. Under the seeded entry's free tilt sign, the override's 1.5 s full burn ran along a lean of the drift's own sign on about half the seeds and added ~3.8 m/s (5.8 -> 9.7 m/s at MANUAL on the acceptance seed, outside the retuned 4-7 range), and the no-input flight wrecked on `slope` ~120 m out. 46be2441 made the tilt lean against the drift but moved the drift's draws first, which reshuffled every planet's entry.",
+  "outcome": "BUILT. seedEntry (src/domain/manual-landing.js) draws in its old order (altitude, sink, the drift's size and sign, the tilt's size, a DISCARDED draw where the tilt's sign was, fuel) and sets tilt = -sign(drift) x size: every planet keeps the entry it had, only the tilt's sign changes (checked against 7a737a81's function on six seeds; test/manual-landing.mjs pins planet-7's old altitude, sink, drift, fuel and tilt size). The override's burn along that lean now takes the drift down: about -0.5 to +4 m/s at MANUAL along the drift's sign (-0.42 to +4.16 over 2,000 seeds in the model; 1.4-1.6 m/s on the acceptance seed), and the no-input flight is an `off-pad` wreck just past the pad's 14 m reach (20.3-20.6 m over two runs). The review's other fixes: begin() poses the plumes (plumesAt) so the first frame out of the black shows the boosters lit; the arrival's aim check is `aimedFor === base` (the sky rig stamps c.storyBase(), the same object story-world hands createArrival), so a stale world's stamp does not count (test/arrival.mjs asserts it); --landing's wreck check takes any wreck reason (sink, off-pad, slope) and prints the landed distance; its skip page presses D alone, then Space, because a burn held with D from a lean against the drift spends most of its 0.6 s leaning the other way. STATE and spec section 14's 'Changed in the build (2026-11-07)' carry the built rule; section 2's items 1-2 point to 14 C.",
+  "alternatives": [
+    "An upright auto-lander burn through the override (no lean until MANUAL): the drift at MANUAL would stay the entry's 4-7 m/s; kept as the owner's alternative to the sign rule.",
+    "The free tilt sign as before: half the seeds handed over 9-10 m/s of drift, outside the retuned range.",
+    "46be2441's draw order (the drift first): the same sign rule but every planet's altitude, sink and fuel reshuffled; reverted to the old order with a discarded draw."
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --landing: PASS 9 (landing-signature, -verdict, -wreck, -manual, -side-100, -side-20, -skip, -offer-taken, -offer-left), 'Browser acceptance passed (source)'; MANUAL drift 1.40-1.63 m/s on the acceptance seed (entry 5.5-5.7 m/s, tilt -0.228); the no-input wreck off-pad, landed 20.3 m from the pad [20.2, -0.3, 1.5] (sink 33.3, 20.6 m on the first run); the skip page D 0.6 s tilt -0.228 -> 0.163, then Space 0.6 s vx -0.51 -> 1.37; the drifting skip page 21.5 m out at 18.6 m, feet / pad NDC x 0.15 / -0.15.",
+    "npm test: 342 test programs passed; npm run check green.",
+    "Scratch comparison against `git show 7a737a81:src/domain/manual-landing.js` on planet-7, planet-8, lab, x, stalheart, a1: altitude, sink, drift, |tilt|, fuel and wind equal, only the tilt's sign differs on three of them."
+  ],
+  "supersedes": []
+}

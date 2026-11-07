@@ -47,9 +47,9 @@ APPROACH -> OVERRIDE -> MANUAL -> FLARE -> TOUCHDOWN -> RESULT
    (auto)    (alarm)   (player)  (auto)    (clips)    (the arrival's talk, graded)
 ```
 
-1. **APPROACH** (auto, about 6 s). The arrival's orbit shot as it is, from higher: the rocket burning in from `start.altitude` on the
+1. **APPROACH** (auto, about 6 s; superseded by 14 C on a flown landing). The arrival's orbit shot as it is, from higher: the rocket burning in from `start.altitude` on the
    sequence's own eased altitude. The start gate's START is still the first gesture.
-2. **OVERRIDE** (`override.seconds`, 3 s). At `approach.overrideAt` (3.5 s into the approach, the sequence at ~380 m) the auto-lander
+2. **OVERRIDE** (`override.seconds`, 3 s; superseded by 14 C on a flown landing). At `approach.overrideAt` (3.5 s into the approach, the sequence at ~380 m) the auto-lander
    faults: the alarm, the HUD's annunciator `AUTO-LAND FAULT · MANUAL OVERRIDE`, Isao's caption line (section 7), the full-screen
    plume glare swelling over the frame and clearing (2.4 s), and the hand-over: under the glare the flight state is the planet's seeded
    entry (`seedEntry`: 300-400 m, sink 30-40 m/s, drift ±8-12, tilt ±0.25-0.35, 18-22 s of fuel; section 3), not the sequence's own
@@ -357,3 +357,16 @@ acceptance suites without `?landing=1`) keeps the whole arrival sequence from or
 
 Not changed: the signature, the verdict, the flare, the touchdown, the salvage, the gate's offer, `?landing`, the touch rail's BURN.
 Open for the owner: the entry ranges above; whether the camera should pitch down a few degrees so more ground shows under the pad.
+
+**Changed in the build (2026-11-07).** The side view's dolly is across at the MIDPOINT of the rocket and the pad (the frame's x = 0),
+backed off with the gap: `back + backPerMetre × height + backPerMetreAcross × |x|` (0.8 a metre of the gap), so a drifting flight keeps
+the landing zone in frame; the eye is on the flight frame's +z side looking along −z toward the disk (A's "behind the rocket's ground
+point" was the first version). The flight waits for the sky disk to be aimed behind the Stålheart for THIS world's base before `begin()`
+reads the azimuth once, never longer than `override.aimWait` (3 s) past the signature. The flown rocket is hidden from the gate until
+the override places it at the entry. A green ring of the pad's 14 m reach (`game.pad.reach`, half opacity) marks the landing zone for
+the whole flight. The host listens for keys from its creation (the flight shot is started right after it, before `begin()`, and
+capture listeners on one target run in registration order; the host ignores every key until `begin()`). The entry's tilt leans
+AGAINST its drift (`seedEntry`: tilt = −sign(drift) × size, the draws in their old order with a discarded draw where the tilt's sign
+was, so every planet keeps its entry and only the tilt's sign changes): the override's 1.5 s burn along that lean takes the drift
+down rather than adding to it, about −0.5 to +4 m/s at MANUAL, and a no-input flight wrecks `off-pad` just past the pad's reach. The
+sign rule itself is the owner's call.
