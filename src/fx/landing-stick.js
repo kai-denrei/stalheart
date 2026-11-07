@@ -2,6 +2,9 @@
 // axis. A press anywhere on the scene drops a ring at the press point; the drag from it, clamped to `full` px, past a `dead` px dead zone,
 // is the tilt (up is the nose forward, +z) and the bank (right is +x), each -1..1, linear between. Read once a step by the landing's host
 // (src/fx/manual-landing.js), which the keys outrank. The DOM is optional: without one (node, or no root) the stick is inert.
+// The press is heard in CAPTURE on the window (2026-11-07, the review): the camera shot's tap listener is a capture listener on #tab-td
+// that eats every tap while a skippable shot runs, so a bubbling listener never heard one; the stick does not stop the event (the shot
+// may still take it). The drag and the release are heard on the window too.
 const INERT = Object.freeze({ tiltRate: 0, bankRate: 0, reset() {}, dispose() {} });
 
 // the rates for a drag of (dx, dy) px from the press point (screen y down): the throw clamped to `full`, then each axis past `dead`
@@ -11,7 +14,8 @@ export function stickRates(dx, dy, { dead, full }) {
   return { tiltRate: 0 - v(dy), bankRate: v(dx) };   // 0 - v: no -0 at rest
 }
 
-// `enabled()` says whether a press may take the stick (the host: during OVERRIDE and MANUAL); presses on the page's own controls are theirs
+// `enabled()` says whether a press may take the stick (the host: during OVERRIDE and MANUAL); presses on the page's own controls are theirs.
+// `root` gates the stick (no root: inert); the press itself is taken anywhere on the page, in capture on the window
 export function createStick(root, { dead, full, enabled = () => true }) {
   const view = globalThis, doc = globalThis.document;
   if (!root || typeof root.addEventListener !== 'function' || !doc?.body || typeof view.addEventListener !== 'function') return { ...INERT };
@@ -33,8 +37,8 @@ export function createStick(root, { dead, full, enabled = () => true }) {
     move(ev);
   };
   const up = (ev) => { if (ev.pointerId === pointer) reset(); };
-  const opts = { passive: false };
-  root.addEventListener('pointerdown', down, opts); view.addEventListener('pointermove', move, opts);
+  const opts = { passive: false }, press = { passive: false, capture: true };
+  view.addEventListener('pointerdown', down, press); view.addEventListener('pointermove', move, opts);
   const ends = ['pointerup', 'pointercancel', 'lostpointercapture'];
   for (const t of ends) view.addEventListener(t, up);
   view.addEventListener('blur', reset); view.addEventListener('resize', reset);
@@ -42,7 +46,7 @@ export function createStick(root, { dead, full, enabled = () => true }) {
     get tiltRate() { return rates.tiltRate; }, get bankRate() { return rates.bankRate; },
     reset,
     dispose() {
-      reset(); root.removeEventListener('pointerdown', down, opts); view.removeEventListener('pointermove', move, opts);
+      reset(); view.removeEventListener('pointerdown', down, press); view.removeEventListener('pointermove', move, opts);
       for (const t of ends) view.removeEventListener(t, up);
       view.removeEventListener('blur', reset); view.removeEventListener('resize', reset);
     },

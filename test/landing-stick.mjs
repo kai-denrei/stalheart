@@ -16,4 +16,26 @@ for (const root of [null, undefined, {}]) {
   const k = createStick(root, { ...S, enabled: () => true });
   assert.deepEqual([k.tiltRate, k.bankRate], [0, 0]); k.reset(); k.dispose();
 }
+// the press is heard in CAPTURE on the window (2026-11-07, the review: the shot's capture tap listener on #tab-td ate a bubbling one), and
+// the stick never stops it; a press on a control is the control's, one pointer at a time, dispose removes the press listener
+{
+  const on = {}, made = [], saved = { addEventListener: globalThis.addEventListener, removeEventListener: globalThis.removeEventListener, document: globalThis.document };
+  globalThis.addEventListener = (t, f, o) => { (on[t] ||= []).push({ f, o }); };
+  globalThis.removeEventListener = (t, f) => { on[t] = (on[t] || []).filter((h) => h.f !== f); };
+  const el = () => { const e = { style: {}, append() {}, remove() {} }; made.push(e); return e; };
+  globalThis.document = { body: { addEventListener() {}, append() {} }, createElement: el };
+  try {
+    const k = createStick(globalThis.document.body, { ...S, enabled: () => true });
+    assert.equal(on.pointerdown?.length, 1, 'the press listener is on the window'); assert.equal(on.pointerdown[0].o?.capture, true, 'in capture');
+    let stopped = false; const ev = (id, x, y, target = { closest: () => null }) => ({ pointerId: id, clientX: x, clientY: y, target, preventDefault() {}, stopPropagation() { stopped = true; }, stopImmediatePropagation() { stopped = true; } });
+    on.pointerdown[0].f(ev(1, 100, 100, { closest: (q) => (q.includes('button') ? {} : null) }));
+    assert.equal(made.length, 0, 'a press on a button is the button\'s');
+    on.pointerdown[0].f(ev(1, 100, 100)); assert.equal(made.length, 2, 'a press drops the ring and its knob');
+    on.pointerdown[0].f(ev(2, 300, 300)); assert.equal(made.length, 2, 'one pointer at a time');
+    on.pointermove[0].f(ev(1, 100, 52)); assert.ok(Math.abs(k.tiltRate - 1) < 1e-12 && k.bankRate === 0, 'a drag up 48 px is full forward');
+    assert.equal(stopped, false, 'the stick never stops the event');
+    on.pointerup[0].f(ev(1, 100, 52)); assert.deepEqual([k.tiltRate, k.bankRate], [0, 0], 'the release centres it');
+    k.dispose(); assert.equal(on.pointerdown.length, 0, 'dispose removes the press listener');
+  } finally { Object.assign(globalThis, saved); }
+}
 console.log('landing-stick: ok');

@@ -46,7 +46,14 @@ export function createLandingHud(root, tune = LANDING_GAME) {
     touch(on, h = {}) {   // phones (spec 10): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js)
       rail.hidden = !on; rail.replaceChildren();
       if (!on) return;
-      const mk = (cls, text, down, up) => { const b = document.createElement('button'); b.type = 'button'; b.className = `lh-btn ${cls}`; b.textContent = text; b.addEventListener('pointerdown', (e) => { e.preventDefault(); down?.(); }); if (up) { b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); } return b; };
+      // a press is captured to its button (2026-11-07, the review): a mouse leaving BURN before the release still releases it there, and a
+      // lost capture is a release too
+      const mk = (cls, text, down, up) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = `lh-btn ${cls}`; b.textContent = text;
+        b.addEventListener('pointerdown', (e) => { e.preventDefault(); if (e.pointerId != null) b.setPointerCapture?.(e.pointerId); down?.(); });
+        if (up) for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(t, up);
+        return b;
+      };
       rail.append(mk('burn', 'BURN', () => h.burn?.(true), () => h.burn?.(false)), mk('legs', 'LEGS', () => h.legs?.()), mk('skip', 'SKIP', () => h.skip?.()));
     },
     dispose() { el.remove(); },

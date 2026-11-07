@@ -2,9 +2,12 @@
 // FLARE phases run, the rocket's pose comes from the flight model (src/domain/manual-landing.js) in the island's metres, the plumes burn with
 // the throttle, the chase camera rides behind, the reticle lies on the ground under the predicted impact point, the HUD reads the state,
 // and the keys fly: SPACE held is the burn (LANDING_GAME.input.burnKey), W/S tilt forward/back and A/D bank left/right while held (the
-// arrows too), L the legs; a press on the scene is the floating stick (src/fx/landing-stick.js), which a held key outranks. The arrival
+// arrows too), L the legs; a press on the scene is the floating stick (src/fx/landing-stick.js, heard in capture on the window, ahead of the
+// shot's tap listener), which a held key outranks. The arrival
 // keeps the clock, the sequence, the swap and the HUD panel (it shows the verdict through the cut, so it outlives this host: dispose()
 // leaves it to the arrival).
+// The harness's state() reports the tilt SIGNED (the pitch about x, which the browser suite's scripted pilot steers on), the bank signed, and
+// `lean`, the total angle from upright (tiltTotal); the HUD's reading() shows the total.
 // Frames (2026-11-07): `toWorld` maps island metres with the pad's top at y = 0 to world units; `root` is a group whose local frame is
 // those same metres (the arrival's fxRoot, lifted to the pad's top), so the reticle is placed in it directly.
 import * as THREE from '../../vendor/three.module.js';
@@ -37,8 +40,9 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     ev.preventDefault(); ev.stopImmediatePropagation();
   };
   const onDown = (ev) => keys(ev, true), onUp = (ev) => keys(ev, false);
+  const onBlur = () => { held = { back: false, fwd: false, left: false, right: false, burn: false }; };   // a key held as the window loses focus never sees its keyup (Space then Cmd+Tab latched the burn)
   let listening = false;
-  const listen = (on) => { if (on === listening || typeof addEventListener !== 'function') return; listening = on; const f = on ? addEventListener : removeEventListener; f('keydown', onDown, true); f('keyup', onUp, true); };
+  const listen = (on) => { if (on === listening || typeof addEventListener !== 'function') return; listening = on; const f = on ? addEventListener : removeEventListener; f('keydown', onDown, true); f('keyup', onUp, true); f('blur', onBlur); };
   // once a frame, for the reticle and the ping: the predictor at the held throttle; under the auto-lander's flare the drift is being
   // eased out, so the point is under the rocket (the predictor's held set point would hover past its horizon)
   const predict = () => (phase === 'flare' ? { x: s.x, z: s.z, t: s.y / Math.max(0.1, -s.vy), reached: true } : predictImpact(s, game));
@@ -105,9 +109,9 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     // not flyable, LANDING_GAME.approach), placed under the glare; clear the panel, arm the keys; MANUAL starts when the arrival calls manual()
     begin(legs = 0) {
       s = createLanding(entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0;
-      phase = 'override'; acc = 0; contact = null; follow.set(s.x, s.y, s.z);
+      phase = 'override'; acc = 0; contact = null; harnessThrottle = null; rate = { tilt: 0, bank: 0 }; follow.set(s.x, s.y, s.z);
       hud.clear(); hud.show(true); hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); hud.set(reading()); listen(true);
-      // the stick on the scene, the lab's and the game's alike, taking presses only while the player has the rocket (not under FLARE)
+      // the stick on the scene, the lab's and the game's alike (in capture on the window: the shot's capture tap listener on #tab-td eats the rest), taking presses only while the player has the rocket (not under FLARE)
       stick?.dispose(); stick = createStick(globalThis.document?.body, { ...game.input.stick, enabled: () => phase === 'manual' || phase === 'override' });
       if (coarse) hud.touch(true, { burn: (on) => { held.burn = on; }, legs: () => { input.legs = true; }, skip: () => host.skip() });
       pred = predict(); aim.copy(aimTarget()); sfx?.play('danger_alert', { dist: 0 }); poseRocket(); placeReticle();
@@ -148,7 +152,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     },
     chase,
     // the harness: the throttle (when given) and both rates held until the next call; a held burn key or BURN button outranks the throttle
-    input(i) { if (i.throttle != null) harnessThrottle = i.throttle; rate.tilt = Math.max(-1, Math.min(1, i.tiltRate ?? 0)); rate.bank = Math.max(-1, Math.min(1, i.bankRate ?? 0)); if (i.legs) input.legs = true; },
+    input(i) { if (i.throttle != null) harnessThrottle = Math.max(0, Math.min(1, i.throttle)); rate.tilt = Math.max(-1, Math.min(1, i.tiltRate ?? 0)); rate.bank = Math.max(-1, Math.min(1, i.bankRate ?? 0)); if (i.legs) input.legs = true; },
     // Esc or SKIP (spec 8): graded CLEAN, the auto-lander never crashes; the arrival resumes its sequence at the touchdown
     skip() { if (!s || phase === 'touched') return; phase = 'touched'; contact = { grade: 'CLEAN', reason: 'skipped', sink: 0, drift: 0, tilt: 0 }; hud.verdict(contact); hud.annunciate('AUTO-LAND RESUMED', 'ok'); stopAll(); },
     contact: () => contact, phase: () => phase, pose: () => (s ? { x: s.x, y: s.y, z: s.z, tilt: s.tilt, bank: s.bank } : null),
@@ -158,7 +162,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       camera.updateMatrixWorld(); const ndc = (p) => { const v = toWorld(p, new THREE.Vector3()).project(camera); return [+v.x.toFixed(2), +v.y.toFixed(2)]; };
       return { feet: ndc([s.x, s.y, s.z]), top: ndc([s.x, s.y + 1.5 * SH02_WELL.rim, s.z]), reticle: reticle.visible ? ndc([reticle.position.x, reticle.position.y, reticle.position.z]) : null };
     },
-    state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vz: +s.vz.toFixed(2), tilt: +tiltTotal(s).toFixed(3), bank: +s.bank.toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +s.x.toFixed(1), z: +s.z.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2) } : null),
+    state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vz: +s.vz.toFixed(2), tilt: +s.tilt.toFixed(3), bank: +s.bank.toFixed(3), lean: +tiltTotal(s).toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +s.x.toFixed(1), z: +s.z.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2) } : null),
     dispose() { stopAll(); reticle.removeFromParent(); for (const l of [altRing, ...fixed, square]) { l.geometry.dispose(); l.material.dispose(); } },   // the HUD is the arrival's
   };
   return host;

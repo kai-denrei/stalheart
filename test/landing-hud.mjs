@@ -12,6 +12,7 @@ function node(tag) {
     replaceChildren(...c) { for (const n of el.children) n.parent = null; el.children = []; el.append(...c); },
     remove() { if (el.parent) el.parent.children = el.parent.children.filter((n) => n !== el); el.parent = null; },
     addEventListener(t, f) { (el.handlers[t] ||= []).push(f); },
+    setPointerCapture(id) { el.captured = id; },
     querySelector(q) {
       const id = q.startsWith('#') ? q.slice(1) : null;
       for (const c of el.children) { if (id !== null && c.id === id) return c; const r = c.querySelector(q); if (r) return r; }
@@ -71,6 +72,9 @@ btn('burn').handlers.pointerdown[0]({ preventDefault() {} }); btn('burn').handle
 btn('burn').handlers.pointerdown[0]({ preventDefault() {} }); btn('burn').handlers.pointercancel[0]();
 btn('legs').handlers.pointerdown[0]({ preventDefault() {} }); btn('skip').handlers.pointerdown[0]({ preventDefault() {} });
 assert.deepEqual(got, [['burn', true], ['burn', false], ['burn', true], ['burn', false], ['legs'], ['skip']]);
+// the press is captured to BURN, and a lost capture (a mouse leaving before the release, 2026-11-07 the review) is a release
+got.length = 0; btn('burn').handlers.pointerdown[0]({ preventDefault() {}, pointerId: 7 }); assert.equal(btn('burn').captured, 7, 'the press is captured to BURN');
+btn('burn').handlers.lostpointercapture[0](); assert.deepEqual(got, [['burn', true], ['burn', false]], 'a lost capture releases the burn');
 assert.equal(rail.children.find((c) => c.className.includes('lh-throttle')), undefined, 'no throttle slider: the burn is held');
 hud.touch(false); assert.equal(rail.hidden, true); assert.equal(rail.children.length, 0);
 
