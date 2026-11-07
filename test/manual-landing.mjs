@@ -190,9 +190,13 @@ console.log('manual-landing: pose ok');
 // centre `bell` m up the tilted hull, the eye intro.back on +z and intro.up above it (under the bells), no swing across (x, the drift axis)
 {
   const { introMix, engineShot } = await import('../src/fx/manual-landing.js');
-  const B = LANDING_GAME.signature.blend, I = LANDING_GAME.camera.intro, near = (a, b, m) => a.forEach((x, k) => assert.ok(Math.abs(x - b[k]) < 1e-9, `${m} (${a} vs ${b})`));
+  const B = LANDING_GAME.signature.blend, I = LANDING_GAME.camera.intro, H = I.hold, R = B - H, near = (a, b, m) => a.forEach((x, k) => assert.ok(Math.abs(x - b[k]) < 1e-9, `${m} (${a} vs ${b})`));
   assert.deepEqual(introMix(0, B), { u: 0, pos: 0, fov: 0 }); assert.deepEqual(introMix(B, B), { u: 1, pos: 1, fov: 1 }); assert.deepEqual(introMix(9, B), { u: 1, pos: 1, fov: 1 }, 'held at the side view');
   assert.equal(introMix(B / 2, B).pos, 0.5, 'the smoothstep\'s midpoint'); assert.ok(introMix(B / 4, B).pos < 0.25 && introMix(B / 4, B).fov === 0.25, 'eased in on the eye, linear on the lens');
+  // the hold (the coordinator's retune, 2026-11-07): the engine shot held H s, the ease over the remaining R s; u runs over the whole blend
+  { const m = introMix(H * 0.9, B, H); assert.deepEqual([m.pos, m.fov], [0, 0], 'held through the hold'); assert.ok(Math.abs(m.u - H * 0.9 / B) < 1e-12, 'the progress runs through it'); }
+  assert.equal(introMix(H + R / 2, B, H).pos, 0.5, 'the pull-back\'s midpoint'); assert.ok(Math.abs(introMix(H + R / 4, B, H).fov - 0.25) < 1e-12, 'the lens linear over the pull-back');
+  assert.deepEqual(introMix(B, B, H), { u: 1, pos: 1, fov: 1 }, 'the side view at the blend\'s end');
   assert.equal(introMix(0.1, 0).u, 1, 'no blend: the side view at once');
   const e = engineShot([10, 300, -2], 0, 3, I); near(e.look, [10, 303, -2], 'upright: the engines 3 m above the feet'); near(e.eye, [10, 301, 4], 'the eye 6 m on +z, 2 m under');
   const t = engineShot([0, 0, 0], 0.2, 3, I); near(t.look, [3 * Math.sin(0.2), 3 * Math.cos(0.2), 0], 'tilted: up the hull\'s axis'); assert.equal(t.eye[0], t.look[0], 'the eye straight back: no swing across');

@@ -1610,8 +1610,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
 // under the signature (no flight state until it ends); out of it, the flight begins at once (once the disk is aimed: `aimWait` printed per page),
 // OVERRIDE with the boosters lit (throttle > 0.5) and the rocket sinking (two reads 300 ms apart); Esc under the signature begins the flight too.
 // The offer left (START alone) keeps the rail 'arrival' and no signature.
-// THE CROSS-FADE (2026-11-07, spec 15 B): the played-out page's flight begins UNDER the signature at its blend (6 s of 8): by the blend's start the
-// flight is OVERRIDE while #exhaust-signature stands fading (opacity in (0, 1)); stills landing-blend-start (the superposition) and landing-blend mid-blend; a skip (the other pages) still
+// THE CROSS-FADE (2026-11-07, spec 15 B; retuned the same day: blend 3 s, the engine shot held 1 s, the canvas (1 - u)^1.5): the played-out page's
+// flight begins UNDER the signature at its blend (5 s of 8): by the blend's start the flight is OVERRIDE while #exhaust-signature stands fading
+// (opacity in (0, 1)); stills landing-blend-start (0.5 s in: the held engine shot through the bright plume) and landing-blend (1.5 s in, the
+// pull-back under way); the engine shot alone (landing-engine-shot) on the wreck page, whose Esc ends the signature before the blend, so its intro
+// runs with no canvas over it: the near plane and the in-game burn read there, inside the hold; a skip (the other pages) still
 // starts the flight at once. Every flown page: the flight opens on the engine shot (intro near 0) and the side view holds by MANUAL + 0.5 s.
  const T='window.__stalheartTest',A=`${T}.state().arrival`,L=`${A}.landing`,st=()=>evaluate(`${T}.state()`),briefs=()=>evaluate('window.__seen?.briefs??[]');
  const FLY='index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',OFFER='index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td';
@@ -1640,12 +1643,14 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.equal(s1.phase,'override',`${how}: OVERRIDE first (${JSON.stringify(s1)})`);assert.ok(s1.throttle>0.5,`${how}: the boosters lit from the first frame (${JSON.stringify(s1)})`);
   assert.ok(s2.altitude<s1.altitude,`${how}: the rocket sinking out of the signature (${s1.altitude} > ${s2.altitude})`);assert.ok(s2.phase!=='override'||s2.throttle>0.5,`the auto-lander's burn through the override (${JSON.stringify(s2)})`);
   return {wall,aimWait:w};};
- // THE INTRO (spec 15 B): the engine shot eased to the side view over the blend from the flight's begin(); on the flight's own clock (L.t), the
- // first frame at MANUAL and the first with intro 1: the side view holds by MANUAL + 0.5 s (the override's 1.5 s under the blend's 2), every flown page
+ // THE INTRO (spec 15 B): the engine shot held intro.hold s, then eased to the side view over the rest of the blend from the flight's begin(); on the
+ // flight's own clock (L.t), the first frame at MANUAL and the first with intro 1: the side view holds blend - override.seconds after MANUAL (1.5 s:
+ // MANUAL comes mid-pull-back), every flown page
+ const {LANDING_GAME:LG}=await import('../src/content/landing-game.js'),BLEND=LG.signature.blend,SIDE_AFTER=BLEND-LG.override.seconds;
  const INTRO=`(()=>{const T=window.__stalheartTest,R=window.__intro={};(function f(){const L=T.state().arrival?.landing;if(L&&L.t!=null){R.begin??=L.t;R.first??=L.intro;if(R.manual==null&&L.phase!=='override')R.manual=L.t;if(R.side==null&&L.intro>=1)R.side=L.t;}if(R.side==null||R.manual==null)requestAnimationFrame(f);})();})()`;
  const introDone=async(name)=>{await until('window.__intro?.side!=null&&window.__intro?.manual!=null',8000).catch(async()=>assert.fail(`${name}: the intro reaches 1 (${JSON.stringify(await evaluate('window.__intro'))})`));
   const R=await evaluate('window.__intro');console.log(`  ${name}: the intro ${JSON.stringify(R)} (the side view ${(R.side-R.manual).toFixed(2)} s after MANUAL)`);
-  assert.ok(R.first<0.2,`${name}: the flight opens on the engine shot (intro ${R.first} on its first frame)`);assert.ok(R.side-R.manual<=0.6,`${name}: the side view holds by MANUAL + 0.5 s (${JSON.stringify(R)})`);};
+  assert.ok(R.first<0.2,`${name}: the flight opens on the engine shot (intro ${R.first} on its first frame)`);assert.ok(R.side-R.manual<=SIDE_AFTER+0.1,`${name}: the side view holds by MANUAL + ${SIDE_AFTER} s (${JSON.stringify(R)})`);};
  // at MANUAL on every flown page: the hole aimed and the line of sight on it (the disk's NDC x within 0.3: measured 0.00, a 20-40 degree azimuth
  // error lands it at 0.6-1.3 of the 58 degree fov's half-width, so a frame turned off the disk fails here)
  const diskOk=(d)=>Array.isArray(d)&&Math.abs(d[0])<0.3&&Math.abs(d[1])<1;
@@ -1665,7 +1670,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.deepEqual([await evaluate(`${T}.state().shot`),await evaluate(L)],['arrivalFlight',null],'no rail from orbit: the flight shot under the signature, no flight until it ends');
   if(how===true){const t0=Date.now();await delay(1000);current='landing-signature';await finish();current=name;   // the boosters close up
    // THE CROSS-FADE (spec 15 B): the arrival's clock, sampled every poll while the signature plays alone, holds at 0; the flight begins UNDER it at
-   // seconds - blend (6 s), so by the blend's start (the canvas's opacity first under 1) the flight has begun (OVERRIDE, the boosters lit) while
+   // seconds - blend (5 s), so by the blend's start (the canvas's opacity first under 1) the flight has begun (OVERRIDE, the boosters lit) while
    // #exhaust-signature still stands, fading (opacity under 1 and over 0); a still mid-blend (landing-blend); then the signature ends on its own
    await until(`(a=>{window.__sigT=Math.max(window.__sigT||0,a.signature&&!a.landing?a.t:0);return !!a.landing;})(${A})`,30000).catch(()=>why('the flight begins under the signature'));
    const wall=(Date.now()-t0)/1000;   // t0 is taken once it is seen playing, so this reads a little short of the blend's start (no +1: the 1 s still is inside it)
@@ -1673,17 +1678,25 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    await until(`(${OP})!==null&&(${OP})<1`,5000).catch(()=>why('the signature begins to fade'));
    const b=await evaluate(`({op:${OP},signature:${A}.signature,landing:${L},shot:${T}.state().shot,aimWait:${A}.aimWait,aimed:${A}.diskAimed})`);
    console.log(`  ${name}: the flight began under the signature after ${wall.toFixed(1)} s of it (the wait for the aim ${b.aimWait} s), the clock at most ${await evaluate('window.__sigT')} s before; at the blend's start ${JSON.stringify(b)}`);
-   assert.ok(wall>=5,`the signature plays alone to its blend, not cut short (${wall.toFixed(1)} s wall, the blend at 6 s)`);
+   assert.ok(wall>=LG.signature.seconds-BLEND-1,`the signature plays alone to its blend, not cut short (${wall.toFixed(1)} s wall, the blend at ${LG.signature.seconds-BLEND} s)`);
    assert.ok((await evaluate('window.__sigT'))<0.5,'the clock held under the signature');
    assert.deepEqual([b.signature,b.shot,b.aimed],[true,'arrivalFlight',true],`at the blend's start the signature stands over the flight shot, the disk aimed (${JSON.stringify(b)})`);
    assert.ok(b.op>0&&b.op<1,`#exhaust-signature fading at the blend's start (opacity ${b.op})`);
    assert.equal(b.landing?.phase,'override',`the flight has begun by the blend's start: OVERRIDE (${JSON.stringify(b.landing)})`);assert.ok(b.landing.throttle>0.5,`the boosters lit under the blend (${JSON.stringify(b.landing)})`);
    assert.ok(b.landing.intro<0.5,`the engine shot at the blend's start (intro ${b.landing.intro})`);
-   current='landing-blend-start';await finish();current=name;   // the superposition: the engine shot under the canvas at ~0.9 opacity, the 2D plume from under at -8
-   await until(`(${L})?.intro>=0.4`,5000).catch(()=>why('the intro half way'));
+   // 0.5 s in: the engine shot HELD (the lens at intro.fov), the canvas eased out to ~0.75 over the bright plume from under at -8
+   await until(`(${L})?.intro>=${(0.5/BLEND).toFixed(3)}`,5000).catch(()=>why('0.5 s into the blend'));
+   const e=await evaluate(`({op:${OP},landing:${L},fov:${A}.fov,view:${A}.view})`);current='landing-blend-start';await finish();current=name;
+   console.log(`  ${name}: the blend-start still (0.5 s in): ${JSON.stringify(e)}`);
+   assert.ok(e.op>0.3&&e.op<0.95,`0.5 s in the canvas eased out, the game through it (opacity ${e.op})`);
+   assert.ok(Math.abs(e.fov-LG.camera.intro.fov)<0.05,`0.5 s in the engine shot still held (fov ${e.fov})`);
+   assert.ok(e.landing.intro<LG.camera.intro.hold/BLEND,`inside the hold (intro ${e.landing.intro})`);
+   // 1.5 s in: half way through the blend, the pull-back a quarter done
+   await until(`(${L})?.intro>=0.5`,5000).catch(()=>why('1.5 s into the blend'));
    const m=await evaluate(`({op:${OP},landing:${L},fov:${A}.fov,view:${A}.view})`);current='landing-blend';await finish();current=name;
-   console.log(`  ${name}: the blend still: ${JSON.stringify(m)}`);
-   assert.ok(m.op>0&&m.op<1,`the still is mid-blend: the signature's canvas half faded (opacity ${m.op})`);
+   console.log(`  ${name}: the blend still (1.5 s in): ${JSON.stringify(m)}`);
+   assert.ok(m.op>0&&m.op<0.6,`the still is mid-blend: the canvas past half faded on the ease-out (opacity ${m.op})`);
+   assert.ok(m.fov>LG.camera.intro.fov&&m.fov<LG.camera.fov,`pulling back at 1.5 s (fov ${m.fov})`);
    const s1=await evaluate(L);
    await until(`${A}.signature===false`,10000).catch(()=>why('the signature ends at its blend\'s end'));
    assert.equal(await evaluate(`!!document.querySelector('#exhaust-signature')`),false,'the signature gone at its end');
@@ -1727,7 +1740,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const {s,said}=await toEnd('landing-clean');console.log(`  clean: foundry ${JSON.stringify(s.story.foundry)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
   assert.equal(s.story.foundry.sections,3,'all three sections');assert.ok(said.some(b=>/Textbook landing!/.test(b)),`the clean talk (${JSON.stringify(said.slice(-4))})`);}
  // the wreck page's signature: a real W is eaten under it, a real Esc ends it and only it
- {const t0=Date.now();await toManual('landing-wreck',async()=>{await eatenUnder('w');await tap('esc');await flightNext('a real Esc','landing-wreck');});   // no input at all
+ {const t0=Date.now();await toManual('landing-wreck',async()=>{await eatenUnder('w');await tap('esc');await flightNext('a real Esc','landing-wreck');
+   // THE ENGINE SHOT with nothing over it (the skip came before the blend; the intro runs all the same): still inside intro.hold, the lens at intro.fov
+   const x=await evaluate(`({landing:${L},fov:${A}.fov,view:${A}.view,signature:${A}.signature})`);current='landing-engine-shot';await finish();current='landing-wreck';
+   console.log(`  landing-wreck: the engine shot: ${JSON.stringify(x)}`);
+   assert.equal(x.signature,false,'no canvas over it');assert.ok(Math.abs(x.fov-LG.camera.intro.fov)<0.05&&x.landing.intro<LG.camera.intro.hold/BLEND,`the engine shot held (fov ${x.fov}, intro ${x.landing.intro})`);});   // no input at all
   const a=await toContact('no input to the contact'),g=a.landing;console.log(`  wreck: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
   assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.ok(['sink','off-pad','slope'].includes(g.reason),`a no-burn wreck names a wreck reason (sink, off-pad or slope; ${JSON.stringify(g)})`);
   console.log(`  wreck: ${g.reason}, landed ${g.landed?Math.hypot(g.landed[0],g.landed[2]).toFixed(1)+' m from the pad '+JSON.stringify(g.landed.map(v=>+v.toFixed(2))):'(no landed point)'}`);

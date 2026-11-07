@@ -303,12 +303,13 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   }
   // THE CROSS-FADE (spec 15 B): the signature's own clock (its `t`, ticked here) decides; the flight begins at seconds - blend, and if the disk's
   // aim is late the signature is not ticked past that point (its canvas holds its last frame at opacity 1: never a cut to an unaimed frame)
-  // until it begins; from then on the canvas fades over the rest of its clock, to 0 at its end, where it removes itself
+  // until it begins; from then on the canvas fades over the rest of its clock, (1 - u)^1.5 of the blend's progress u (an ease-out: the game
+  // shows through while the shader's frame is still bright), to 0 at its end, where it removes itself
   function signatureTick(dt) {
     const S = LANDING_GAME.signature, at = S.seconds - S.blend, waiting = flying && !flying.pose();
     const step = waiting ? Math.min(dt, Math.max(0, at - signature.t)) : dt;
     if (step > 0) signature.tick(step);
-    if (signature && !signature.done && flying?.pose()) signature.fadeTo((S.seconds - signature.t) / S.blend);
+    if (signature && !signature.done && flying?.pose()) signature.fadeTo(Math.max(0, (S.seconds - signature.t) / S.blend) ** 1.5);   // (1 - u)^1.5: an ease-out, the game through early
     if (signature?.done) signature = null;
     return !signature || signature.t >= at - 1e-9;   // the flight may run (or begin) under it
   }

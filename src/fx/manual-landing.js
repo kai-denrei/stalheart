@@ -29,13 +29,14 @@ export function islandToFlight([x, y, z], azimuth) { const c = Math.cos(azimuth)
 // direction d = (sin tilt, cos tilt, 0)), turned to the island: Ry(azimuth) . Rz(-tilt) . Ry(-azimuth)
 const ry = new THREE.Matrix4(), rz = new THREE.Matrix4();
 export function hullTilt(tilt, azimuth, out = new THREE.Matrix4()) { return out.makeRotationY(azimuth).multiply(rz.makeRotationZ(-tilt)).multiply(ry.makeRotationY(-azimuth)); }
-// THE INTRO (spec 15 B): the engine shot eased to the side view over `blend` s. introMix: the intro's progress u (0..1) and the ease's
-// weights, a smoothstep for the eye and the look, linear for the lens. engineShot: the engine shot in flight metres, the engines' centre
+// THE INTRO (spec 15 B): the engine shot held `hold` s, then eased to the side view over the remaining `blend - hold` s. introMix: the
+// intro's progress u (0..1 over the whole blend) and the ease's weights over the pull-back, a smoothstep for the eye and the look, linear for the lens. engineShot: the engine shot in flight metres, the engines' centre
 // `bell` m up the hull from the feet at `rocket` (the hull's axis tilted by Rz(-tilt): up goes to (sin tilt, cos tilt, 0)), the eye `intro.back`
 // m on +z of it and `intro.up` m above it (negative: under the bells), the look on it. Pure, so a node test pins them
-export function introMix(t, blend) {
-  const u = blend > 0 ? Math.max(0, Math.min(1, t / blend)) : 1;
-  return { u, pos: u * u * (3 - 2 * u), fov: u };
+export function introMix(t, blend, hold = 0) {
+  const u = blend > 0 ? Math.max(0, Math.min(1, t / blend)) : 1, run = blend - hold;
+  const v = run > 0 ? Math.max(0, Math.min(1, (t - hold) / run)) : u;
+  return { u, pos: v * v * (3 - 2 * v), fov: v };
 }
 export function engineShot([x, y, z], tilt, bell, intro) {
   const look = [x + Math.sin(tilt) * bell, y + Math.cos(tilt) * bell, z];
@@ -108,12 +109,12 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   // camera.backPerMetre x height + camera.backPerMetreAcross x |x|` m from the rocket, `camera.up + camera.upPerMetre x height` m above the
   // pad, and across at the MIDPOINT of the rocket and the pad (the pad is the frame's x = 0), so a drifting flight keeps the landing zone in
   // view (the owner's rule, 2026-11-07: the player must always see it); the follow point trails the rocket by `camera.lag` (LANDING_GAME.camera)
-  // THE INTRO (spec 15 B): for signature.blend s from begin() the pose eases from THE ENGINE SHOT (engineShot: on the rocket itself, not the
+  // THE INTRO (spec 15 B): for signature.blend s from begin() the pose holds THE ENGINE SHOT intro.hold s, then eases from it (engineShot: on the rocket itself, not the
   // lagged follow point, 6 m off a hull sinking 30-40 m/s) to this side view; the side view's look is taken at the engine shot's distance along
   // its line of sight, so the eased look turns smoothly rather than racing to a point a metre ahead
   function chase(out) {
     const c = game.camera, h = Math.max(0, follow.y), back = c.back + c.backPerMetre * h + c.backPerMetreAcross * Math.abs(follow.x), rise = c.up + c.upPerMetre * h, x = follow.x / 2;
-    const mix = introT == null || !s ? null : introMix(introT, game.signature.blend);
+    const mix = introT == null || !s ? null : introMix(introT, game.signature.blend, game.camera.intro.hold);
     const fov = mix && mix.u < 1 ? c.intro.fov + (c.fov - c.intro.fov) * mix.fov : c.fov;
     if (camera && camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
     if (mix && mix.u < 1) {
@@ -146,7 +147,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     // OVERRIDE: the seeded problem (the entry: src/domain/manual-landing.js seedEntry; 2026-11-07, the sequence's own altitude and rate were
     // not flyable), placed under the glare with the boosters LIT (spec 14 C: the throttle and its set point at 1 from the first frame, the
     // auto-lander's last burn); clear the panel, arm the keys; MANUAL starts when the arrival calls manual()
-    // `intro` (spec 15 B): the flight opens under the signature's blend on the engine shot, eased to the side view over signature.blend s
+    // `intro` (spec 15 B): the flight opens under the signature's blend on the engine shot, held intro.hold s, then eased to the side view
     begin(legs = 0, { intro = false } = {}) {
       az = typeof azimuth === 'function' ? azimuth() : azimuth;
       introT = intro ? 0 : null;
@@ -205,7 +206,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       const [x, y, z] = island();
       return { feet: ndc([x, y, z]), top: ndc([x, y + 1.5 * SH02_WELL.rim, z]), reticle: reticle.visible ? ndc([reticle.position.x, reticle.position.y, reticle.position.z]) : null, pad: ndc([0, 0, 0]) };
     },
-    state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vx: +s.vx.toFixed(2), vz: +s.vz.toFixed(2), tilt: +s.tilt.toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +island()[0].toFixed(1), z: +island()[2].toFixed(1), along: +s.x.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2), intro: +(introT == null ? 1 : introMix(introT, game.signature.blend).u).toFixed(3) } : null),
+    state: () => (s ? { phase, grade: contact?.grade ?? null, reason: contact?.reason ?? null, sink: +Math.max(0, -s.vy).toFixed(2), drift: +Math.hypot(s.vx, s.vz).toFixed(2), vx: +s.vx.toFixed(2), vz: +s.vz.toFixed(2), tilt: +s.tilt.toFixed(3), fuel: +s.fuel.toFixed(1), altitude: +s.y.toFixed(1), x: +island()[0].toFixed(1), z: +island()[2].toFixed(1), along: +s.x.toFixed(1), throttle: +s.throttle.toFixed(2), legs: +s.legs.toFixed(2), t: +s.t.toFixed(2), intro: +(introT == null ? 1 : introMix(introT, game.signature.blend, game.camera.intro.hold).u).toFixed(3) } : null),
     dispose() { stopAll(); reticle.removeFromParent(); padRing.removeFromParent(); for (const l of [altRing, ...fixed, square, padRing]) { l.geometry.dispose(); l.material.dispose(); } },   // the HUD is the arrival's
   };
   // the keys listen FROM CREATION (spec 14 C): the arrival starts the flight shot right after creating this host, before begin(), and capture

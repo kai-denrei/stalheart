@@ -68,6 +68,23 @@ Evidence:
 - npm test: 342 test programs passed; npm run check green.
 - Scratch comparison against `git show 7a737a81:src/domain/manual-landing.js` on planet-7, planet-8, lab, x, stalheart, a1: altitude, sink, drift, |tilt|, fuel and wind equal, only the tilt's sign differs on three of them.
 
+## 2026-11-07 — the landing's cross-fade retuned: a 3 s blend, the engine shot held, an ease-out fade
+
+change · accepted · 2026-11-07-the-landing-s-cross-fade-retuned-a-3-s-blend-the-engine-shot-held-an-ease-out-fade
+
+Spec section 15 B, branch landing-polish, after 5632bfe2. At blend 2.0 with a linear fade and no hold the engine close-up was almost wholly under the canvas (0.95 opaque at the blend's start, the eye ~40 % out by mid-blend) and the cinematic frame was already black by mid-blend (the ramp's geometric fall from ~6.2 s), so the mid-blend still was a dark veil. The coordinator's retune: the cinematic plume is bright and large while its camera Y sits at -8 (~5.5-6.2 s).
+
+BUILT. LANDING_GAME.signature.blend 3.0 (the flight begins at 5 s of the signature), camera.intro.hold 1.0 (the engine shot held for the blend's first second, then the smoothstep to the side view over the remaining 2 s, the lens linear over the pull-back: introMix(t, blend, hold)), the canvas opacity ((seconds - t) / blend)^1.5, an ease-out. The override beat stays 1.5 s: MANUAL comes 0.5 s into the pull-back, the side view holds 1.5 s after it. --landing: the side view by MANUAL + (blend - override.seconds); landing-blend-start ~0.5 s in (the lens still at 40), landing-blend ~1.5 s in (pulling back), and landing-engine-shot on the wreck page (Esc before the blend: the intro runs with no canvas over it). Read from the stills: the engine shot frames the hull's underside large with nothing cut by the near plane, but up close the in-game burn is a broad translucent glow, so through the canvas it merges into the cinematic flame rather than reading as the game's own burn under the skirt (open: a brighter intro plume or a farther engine shot).
+
+Alternatives: The first build (blend 2.0, linear fade, no hold): the close-up hidden under the canvas, the superposition a few tenths of a second.; Hiding the signature's element for a game-layer still under the blend: the screenshot's latency put it ~1.2 s in, past the hold; the wreck page's intro (no canvas) gives the same shot inside the hold.
+
+Evidence:
+
+- scripts/browser-lock.sh node scripts/browser-test.mjs --landing: PASS 12 (landing-signature, -blend-start, -blend, -verdict, -engine-shot, -wreck, -manual, -side-100, -side-20, -skip, -offer-taken, -offer-left), 'Browser acceptance passed (source)'; the flight under the signature after 4.9 s, opacity 0.95 at the blend's start, 0.73 at 0.5 s in (fov 40, intro 0.191), 0.30 at 1.5 s in (fov 45.8, MANUAL); the side view 1.47-1.50 s after MANUAL on every flown page.
+- npm test: 342 test programs passed; npm run check green.
+
+Supersedes: 2026-11-07-the-landing-s-third-look-the-top-closed-and-the-thruster-cross-fade
+
 ## 2026-11-07 — THE LANDING: the arrival's auto-lander fails, the player flies the SH02 down from the seeded entry, and the grade decides the foundry's salvage and Isao's talk
 
 change · accepted · 2026-11-07-the-landing-flown-the-manual-override-in-the-arrival-graded-and-salvaged

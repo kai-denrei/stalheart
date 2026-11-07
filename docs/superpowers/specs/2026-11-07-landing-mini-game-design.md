@@ -380,17 +380,19 @@ booster to the cinematic boosters, and as it zooms out, the cinematic disappears
 **A. The top closed.** The flown rocket's `Top_Door_Open` and `Landing_Shock` clips are scrubbed to 0 at the override (the rail's
 `apply()` used to do it on every frame and no longer runs on a flown landing). Done, 50012d9d.
 
-**B. The cross-fade.** The signature no longer ends on black with a cut. Over its last `signature.blend` seconds (2.0 s; the ramp's
-camera Y is then falling from −8 toward black, the plume seen from under, large and darkening) the flight ALREADY runs underneath and
-the game's camera starts on a close-up of the SH02's engines, the in-game plumes filling the frame, and dollies out to the side view:
-the signature's canvas fades from opacity 1 to 0 over the same seconds (a CSS opacity on the element; the shader keeps drawing its
-darkening frame beneath it), so the two plumes are superposed, the in-game one growing as the cinematic one dims, and the game alone
-remains. Concretely:
-- The flight begins (the override, the alarm, Isao's line, the boosters lit) at `signature.seconds − signature.blend` (6 s) instead of
+**B. The cross-fade.** The signature no longer ends on black with a cut. Over its last `signature.blend` seconds (3.0 s, retuned the same
+day from 2.0; the ramp's camera Y reaches −8 at ~5.5 s and holds there to ~6.2 s, the plume seen from under, bright and large, then falls
+to black by ~7.6 s) the flight ALREADY runs underneath and the game's camera starts on a close-up of the SH02's engines, the in-game plumes
+filling the frame, holds it `camera.intro.hold` s (1.0) and dollies out to the side view: the signature's canvas fades from opacity 1 to 0
+over the same seconds on an ease-out, `opacity = (1 − u)^1.5` of the blend's progress u (a CSS opacity on the element; the shader keeps
+drawing its frame beneath it), so the game shows through early while the cinematic plume is still bright, the two plumes superposed, and
+the game alone remains. Concretely:
+- The flight begins (the override, the alarm, Isao's line, the boosters lit) at `signature.seconds − signature.blend` (5 s) instead of
   at the signature's end, the disk's aim permitting (the aim wait as today; if the aim is late the blend starts late and the signature
   holds its last frame, opacity 1, until then: never a cut to an unaimed frame). The override beat (1.5 s) therefore runs under the
-  blend; MANUAL comes as the blend ends.
-- The camera's intro: for `blend` seconds the host's `chase()` eases from the ENGINE SHOT to the side view's dolly: the engine shot's
+  blend; MANUAL comes mid-pull-back (0.5 s into the 2 s ease), 1.5 s before the side view holds.
+- The camera's intro: for `blend` seconds the host's `chase()` holds the ENGINE SHOT `intro.hold` s, then eases over the remaining
+  `blend − hold` s (2.0) to the side view's dolly: the engine shot's
   eye is `camera.intro.back` m (6) from the engines' centre along the side view's line of sight and `camera.intro.up` m (−2, under the
   bells) with the look at the engines' centre (the hull's bottom, `SH02_WELL.bell` in the model's metres scaled), its fov
   `camera.intro.fov` (40); the ease is a smoothstep on both the eye and the look (not on the fov: the fov eases linearly), the side
@@ -401,17 +403,22 @@ remains. Concretely:
 - Reduced motion / no WebGL2 (no signature): no intro either, the side view from the first frame.
 - The harness: `state().arrival.signature` stays true through the blend; `state().arrival.landing.intro` (0..1, the intro's progress,
   1 once the side view holds) for the suite; `--landing` asserts that at the blend's start the flight has begun (`landing.phase ===
-  'override'`) while `#exhaust-signature` still stands with opacity under 1 and over 0, and that `intro` reaches 1 by MANUAL + 0.5 s;
-  a still mid-blend (`landing-blend`).
+  'override'`) while `#exhaust-signature` still stands with opacity under 1 and over 0, and that `intro` reaches 1 by MANUAL + 1.5 s
+  (`blend − override.seconds`); stills `landing-blend-start` (~0.5 s in, the held engine shot through the bright plume), `landing-blend`
+  (~1.5 s in), and `landing-engine-shot` (the wreck page, whose Esc comes before the blend: its intro runs with no canvas over it).
 
 **B as built (2026-11-07, branch `landing-polish`).** The signature's handle reports its own clock `t` and gains `fadeTo(opacity)`; the arrival
 (`signatureTick`) starts the flight on that clock at `seconds − blend` and, while the aim is late, does not tick it past that point (the canvas
-keeps its last frame at opacity 1), then sets the opacity to `(seconds − t) / blend` every frame until the signature removes itself at its end.
-Under the fade the signature's capture listeners let every key but Esc and every press through to the flight (an addition to the text above: the
-override's tilt keys and MANUAL's burn are live under the blend). The engines' centre is `SH02_WELL.bell` times the holder's scale (its placement's
-scale over the world units a metre: 1.5, so 3 m) up the tilted hull from the rocket's own position (not the side view's lagged follow point, which
-trails a hull sinking 30-40 m/s by metres); the side view's look in the ease is taken at the engine shot's distance along its line of sight.
-`introMix` (the weights) and `engineShot` (the pose) are pure exports of `src/fx/manual-landing.js`. Measured: the flight begins after 5.9-6.0 s of
-the signature, the opacity 0.95 at the blend's start, ~0.5 with the intro at ~0.45 mid-blend; the side view holds 0.5 s after MANUAL. The still
-shows the signature's own frame near black by mid-blend (the ramp's geometric fall starts at 6.2 s), so the superposition is mostly over the
-blend's first few tenths of a second.
+keeps its last frame at opacity 1), then sets the opacity to `((seconds − t) / blend)^1.5` every frame until the signature removes itself at its
+end. Under the fade the signature's capture listeners let every key but Esc and every press through to the flight (an addition to the text above:
+the override's tilt keys and MANUAL's burn are live under the blend). The engines' centre is `SH02_WELL.bell` times the holder's scale (its
+placement's scale over the world units a metre: 1.5, so 3 m) up the tilted hull from the rocket's own position (not the side view's lagged follow
+point, which trails a hull sinking 30-40 m/s by metres); the side view's look in the ease is taken at the engine shot's distance along its line of
+sight. `introMix(t, blend, hold)` (the weights: the progress u over the blend, the smoothstep and the linear lens over the pull-back after the hold)
+and `engineShot` (the pose) are pure exports of `src/fx/manual-landing.js`. First built at blend 2.0 with a linear fade and no hold: the still
+showed the close-up almost wholly under the canvas and the cinematic frame already black by mid-blend; retuned the same day to blend 3.0, hold 1.0
+and the (1 − u)^1.5 ease-out. Measured (retuned): the flight begins after 4.9-5.0 s of the signature, the opacity ~0.73 half a second in with the
+lens still at 40, ~0.30 at 1.5 s in (fov ~46, MANUAL just past); the side view holds 1.47-1.50 s after MANUAL. Read from the stills: the engine shot
+alone (`landing-engine-shot`) frames the hull's underside large (the skirt, the engine housings, a leg's foot pad at the corner), nothing cut by the
+near plane; the in-game burn there is a broad warm glow down the frame's centre rather than a defined column, and through the canvas
+(`landing-blend-start`) it merges into the cinematic flame, the hull and legs dark silhouettes around it.
