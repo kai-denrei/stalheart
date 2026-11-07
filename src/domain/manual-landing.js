@@ -23,8 +23,13 @@ export function seedEntry(seed, tune) {
   const r = rng(seed), e = tune.entry;
   // the tilt leans AGAINST the drift (2026-11-07, spec 14 C): the auto-lander's last burn, which runs through the override beat, was
   // fighting the drift, so the hand-over does not add to it; the player still has the lean to take out and the sink to kill
+  const altitude = pick(r, e.altitude), sink = pick(r, e.sink);
   const drift = pick(r, e.drift) * (r() < 0.5 ? -1 : 1);
-  return { altitude: pick(r, e.altitude), sink: pick(r, e.sink), drift, tilt: -Math.sign(drift) * pick(r, e.tilt), fuelSeconds: pick(r, e.fuelSeconds), wind: e.wind };
+  const tiltSize = pick(r, e.tilt);
+  // a discarded draw where the tilt's sign used to be drawn, so the draws after it keep their order: every planet keeps the entry
+  // it had (altitude, sink, drift, the tilt's size, fuel), only the tilt's sign changes
+  r();
+  return { altitude, sink, drift, tilt: -Math.sign(drift) * tiltSize, fuelSeconds: pick(r, e.fuelSeconds), wind: e.wind };
 }
 
 export function createLanding(entry) {

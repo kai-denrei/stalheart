@@ -275,8 +275,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   }
   // the flight waits for the sky disk to be aimed behind the Stålheart (src/fx/sky-rig.js) before its begin() reads the azimuth once: aimed
   // late, the frame was turned up to 43 degrees off the disk. No planes (a context that refuses the shader): nothing to wait for; and never
-  // longer than override.aimWait s past the signature (a Stålheart that never loads must not hold the flight)
-  const aimed = () => { const h = api?.scene?.getObjectByName('sky-hole'); return !h || !!h.userData.aimedFor; };
+  // longer than override.aimWait s past the signature (a Stålheart that never loads must not hold the flight). Aimed for THIS base: the rig
+  // stamps c.storyBase(), the same object story-world hands in as `base`, so a stale world's stamp does not count
+  const aimed = () => { const h = api?.scene?.getObjectByName('sky-hole'); return !h || h.userData.aimedFor === base; };
   // TOUCHDOWN: the grade to the foundry, the sequence resumes at its touchdown where the rocket stands, the rail shot back
   function touchdown() {
     const p = flying.pose(); grade = flying.contact(); landed = grade.reason === 'skipped' ? null : [p.x, floorAt(p.x, p.z).y, p.z];
@@ -360,7 +361,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
         manual, offer, offered, signature: !!signature, aimWait: aimWait == null ? null : +aimWait.toFixed(2), flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
-        view: flying?.view() ?? null, azimuth: azimuth == null ? null : +azimuth.toFixed(3), disk: disk(), diskAimed: !!api?.scene?.getObjectByName('sky-hole')?.userData.aimedFor, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
+        view: flying?.view() ?? null, azimuth: azimuth == null ? null : +azimuth.toFixed(3), disk: disk(), diskAimed: api?.scene?.getObjectByName('sky-hole')?.userData.aimedFor === base, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
     },
   };
 }

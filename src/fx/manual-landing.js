@@ -128,7 +128,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       phase = 'override'; acc = 0; contact = null; harnessThrottle = null; rate = { tilt: 0 }; touchTilt = 0; follow.set(s.x, s.y, s.z);
       hud.clear(); hud.show(true); hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); hud.set(reading()); listen(true);
       if (coarse) hud.touch(true, { tilt: (r) => { touchTilt = r; }, burn: (on) => { held.burn = on; }, legs: () => { input.legs = true; }, skip: () => host.skip() });
-      pred = predict(); sfx?.play('danger_alert', { dist: 0 }); poseRocket(); placeReticle();
+      pred = predict(); sfx?.play('danger_alert', { dist: 0 }); poseRocket(); plumesAt(); placeReticle();   // the plumes now, so the first frame out of the black shows the boosters lit
     },
     manual() { if (phase === 'override') { phase = 'manual'; hud.annunciate('MANUAL', 'info'); } },
     tick(dt) {

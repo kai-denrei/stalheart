@@ -1588,10 +1588,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // THE LANDING FLOWN (owner, 2026-11-07; spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md sections 8-9): five fresh pages, the
  // acceptance page's planet seed fixed, so the seeded entry is the same each run. 1. the scripted pilot (the Task 7 fix flights' rule: legs down, the
  // tilt toward a drift that returns to the pad, a half burn while the drift is off, the full burn at the stopping distance + 30 m) to CLEAN through the
- // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK off the pad (on this seed the entry's drift, 5.8 m/s
- // of the 4-7 since spec 14 B, and since spec 14 C the override's 1.5 s burn along the entry's lean of the same sign, ~9.7 m/s at MANUAL, carry it
- // ~120 m out, where the sphere's ground is past the 9 degree slope limit: `slope`, which the verdict names before `off-pad`; `sink` would be the
- // reason on the pad), two sections, the wreck's fourth caption. 3. the skip
+ // flare: the grade, the panel, "Textbook landing!", the swap, three sections. 2. no input: a WRECK (since 46be2441 the entry's tilt leans
+ // against its drift, so the override's 1.5 s burn takes the drift down rather than adding to it; on this seed the flight lands an `off-pad` wreck
+ // a little past the pad's reach; the check takes any wreck reason, `sink`, `off-pad` or `slope`, so another entry still passes, and prints the
+ // landed distance), two sections, the wreck's fourth caption. 3. the skip
  // mid-flight (the still at ~200 m first: the rocket, the reticle on the ground): CLEAN · skipped, the plain talk, three sections. 4-5. a later start's
  // offer on the START gate (`?landing=offer` stands in for the store's flag, `?gate=1` shows the gate on an acceptance page): taken by its FLY THE
  // LANDING button it flies; START alone lands itself, no flight. Stills: landing-manual, landing-verdict, landing-wreck (+ each page's end).
@@ -1702,7 +1702,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // the wreck page's signature: a real W is eaten under it, a real Esc ends it and only it
  {const t0=Date.now();await toManual('landing-wreck',async()=>{await eatenUnder('w');await tap('esc');await flightNext('a real Esc','landing-wreck');});   // no input at all
   const a=await toContact('no input to the contact'),g=a.landing;console.log(`  wreck: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
-  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.ok(['off-pad','slope'].includes(g.reason)&&g.landed&&Math.hypot(g.landed[0],g.landed[2])>14,`a no-burn wreck on this seed lands off the pad (the drift and the override's burn carry it ~120 m out, past the slope limit; ${JSON.stringify(g)})`);
+  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.ok(['sink','off-pad','slope'].includes(g.reason),`a no-burn wreck names a wreck reason (sink, off-pad or slope; ${JSON.stringify(g)})`);
+  console.log(`  wreck: ${g.reason}, landed ${g.landed?Math.hypot(g.landed[0],g.landed[2]).toFixed(1)+' m from the pad '+JSON.stringify(g.landed.map(v=>+v.toFixed(2))):'(no landed point)'}`);
   assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/WRECK/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_wreck');
   await finish();
   const {s,said}=await toEnd('landing-wreck');console.log(`  wreck: foundry ${JSON.stringify(s.story.foundry)}`);
@@ -1712,13 +1713,16 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   {await keyDown('space');await delay(600);const on=await evaluate(L);await keyUp('space');await delay(600);const off=await evaluate(L);
    console.log(`  skip: a real Space held: throttle ${on?.throttle} (alt ${on?.altitude}), released: ${off?.throttle} (alt ${off?.altitude})`);
    assert.ok(on?.throttle>0.5,`a real Space held lights the burn (${JSON.stringify(on)})`);assert.ok(off?.throttle<0.3,`its release kills it (${JSON.stringify(off)})`);}
-  // D held with the burn: the tilt toward +x, the drift toward +x, the screen's right (the feet stand on the pad's right when `along` > 0; the eye sits
-  // at their midpoint, so the gap is checked, not the pad's sign alone, which rounds to 0 near the pad; the tilt is the proof that D acts)
+  // D held, then the burn: the tilt toward +x, then the drift toward +x, the screen's right (the feet stand on the pad's right when `along` > 0; the eye
+  // sits at their midpoint, so the gap is checked, not the pad's sign alone, which rounds to 0 near the pad; the tilt is the proof that D acts). D comes
+  // first and alone: since 46be2441 the entry leans against its drift (here -0.228 on a +x drift), and a burn held with D from the entry's lean spends
+  // most of its 0.6 s still leaning toward -x; D's ~0.44 rad takes any entry's lean (0.15-0.25) past +0.05 before the burn
   // (A held as long again after it, the burn off, puts the tilt back near where it was, so the stills below fly the entry's own drift, not a sideways dive)
-  {const b=await evaluate(L);await keyDown('space');await keyDown('d');await delay(600);await keyUp('d');await keyUp('space');await delay(300);const e=await evaluate(L),v=await evaluate(`${A}.view`);
+  {const b=await evaluate(L);await keyDown('d');await delay(600);await keyUp('d');await delay(150);const m=await evaluate(L);
+   await keyDown('space');await delay(600);await keyUp('space');await delay(300);const e=await evaluate(L),v=await evaluate(`${A}.view`);
    await keyDown('a');await delay(600);await keyUp('a');
-   console.log(`  skip: Space + D for 0.6 s: tilt ${b.tilt} > ${e.tilt}, vx ${b.vx} > ${e.vx}, along ${b.along} > ${e.along}, view ${JSON.stringify(v)}`);
-   assert.ok(e.tilt>b.tilt+0.05,`a real D leans toward +x (${b.tilt} > ${e.tilt})`);assert.ok(e.vx>b.vx+0.3,`the burn pushes the drift toward +x (${b.vx} > ${e.vx})`);
+   console.log(`  skip: D for 0.6 s: tilt ${b.tilt} > ${m.tilt}; then Space for 0.6 s: vx ${m.vx} > ${e.vx}, along ${b.along} > ${e.along}, view ${JSON.stringify(v)}`);
+   assert.ok(m.tilt>b.tilt+0.05&&m.tilt>0.05,`a real D leans toward +x (${b.tilt} > ${m.tilt})`);assert.ok(e.vx>m.vx+0.3,`the burn on that lean pushes the drift toward +x (${m.vx} > ${e.vx})`);
    const sep=v.feet[0]-v.pad[0];if(Math.abs(sep)>=0.02&&e.along!==0)assert.equal(Math.sign(sep),Math.sign(e.along),`the flight's +x is the screen's right: the feet on the side of the pad (x = 0) the rocket's along ${e.along} names (${JSON.stringify(v)})`);}
   const diskIn=async(what)=>{const d=await evaluate(`${A}.disk`);assert.ok(diskOk(d),`the disk on the line of sight ${what} (${JSON.stringify(d)})`);return d;};
   const side=async(alt,name)=>{await until(`(L=>!L||L.phase==='touched'||L.phase==='done'||L.altitude<=${alt})(${L})`,60000).catch(()=>why(`down to ${alt} m`));
@@ -1726,7 +1730,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    assert.ok(s&&s.phase!=='touched'&&s.phase!=='done',`still flying at ${alt} m (${JSON.stringify(s)})`);return {s,v,d};};
   {const {s}=await side(200,'manual still');assert.equal(s?.phase,'manual','still flying at 200 m');await diskIn('at the MANUAL still');}
   current='landing-manual';await finish();   // the side view: the rocket, the reticle on the ground, the disk behind
-  // THE PAD STAYS IN VIEW (the owner's rule): the no-input flight drifts ~100 m off, the eye at the midpoint of the rocket and the pad, backed off with the gap
+  // THE PAD STAYS IN VIEW (the owner's rule): the no-input flight drifts off (~100 m before 46be2441, ~20 m since the entry leans against its drift), the eye at the midpoint of the rocket and the pad, backed off with the gap
   const both=(alt,v)=>{for(const k of ['pad','feet'])assert.ok(Array.isArray(v?.[k])&&Math.abs(v[k][0])<=0.9,`the ${k} within 0.9 NDC x at ~${alt} m on the drifting flight (${JSON.stringify(v)})`);};
   {const {v}=await side(100,'landing-side-100');both(100,v);}current='landing-side-100';await finish();
   await side(50);await diskIn('at ~50 m');

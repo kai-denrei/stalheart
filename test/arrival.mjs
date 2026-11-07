@@ -177,7 +177,7 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
 {
   const flown = (aimed) => {
     const w = world(), a = createArrival({ on: true, base: w.base, beats: w.beats, site, metres: METRES, manual: true }); w.isao = true;
-    const scene = new THREE.Scene(), hole = new THREE.Group(); hole.name = 'sky-hole'; hole.userData.hole = { dir: [0.3, 0.2, -1] }; if (aimed) hole.userData.aimedFor = {}; scene.add(hole); w.api.scene = scene;
+    const scene = new THREE.Scene(), hole = new THREE.Group(); hole.name = 'sky-hole'; hole.userData.hole = { dir: [0.3, 0.2, -1] }; if (aimed) hole.userData.aimedFor = w.base; scene.add(hole); w.api.scene = scene;
     for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
     return { w, a, hole };
   };
@@ -185,7 +185,8 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
   { const { w, a, hole } = flown(false); run(w, a, 0.5);
     assert.equal(a.state().phase, 'landing'); assert.deepEqual(shots(w), ['arrivalFlight'], 'the flight shot at once: no orbit rail');
     assert.equal(a.state().landing, null, 'the flight waits for the disk aimed'); assert.equal(vis(w, 'sh02'), false, 'the rocket hidden until the override places it');
-    hole.userData.aimedFor = {}; w.frame(1 / 60, a);
+    hole.userData.aimedFor = {}; w.frame(1 / 60, a); assert.equal(a.state().landing, null, 'a stale world\'s stamp is not this base\'s aim');
+    hole.userData.aimedFor = w.base; w.frame(1 / 60, a);
     const s0 = a.state().landing; assert.deepEqual([s0?.phase, s0?.throttle], ['override', 1], `the boosters lit on the first frame (${JSON.stringify(s0)})`);
     assert.equal(vis(w, 'sh02'), true, 'the rocket shown at the entry'); assert.ok(a.state().aimWait > 0.3 && a.state().aimWait < 0.6, `the wait reported (${a.state().aimWait})`);
     run(w, a, 0.5); const s1 = a.state().landing;
