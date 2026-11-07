@@ -137,7 +137,7 @@ export function startExhaustSignature(root, { seconds, hold, yEnd, reducedMotion
     + '<button type="button" class="es-skip" data-skip-cinematic>SKIP CINEMATIC →</button></div>';
   el.prepend(canvas);
   const tune = { seconds, hold, yEnd };
-  let t = 0, done = false;
+  let t = 0, done = false, skipped = false;
   const handle = {
     tick(dt) {
       if (done) return;
@@ -146,15 +146,16 @@ export function startExhaustSignature(root, { seconds, hold, yEnd, reducedMotion
       if (t >= seconds) handle.dispose();
     },
     get done() { return done; },
-    skip() {
-      if (done) return;
+    skip() {   // the host's too (the arrival's harness skip); `skipped` first, so an onSkip that calls back in cannot run it twice
+      if (done || skipped) return;
+      skipped = true;
       onSkip?.();
       handle.dispose();
     },
     dispose() {
       if (done) return;
       done = true;
-      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('keydown', onKey, true); window.removeEventListener('pointerdown', onTap, true);
       try { pipe.free(); gl.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* the context may already be gone */ }
       el.remove();
     },
@@ -164,7 +165,10 @@ export function startExhaustSignature(root, { seconds, hold, yEnd, reducedMotion
     ev.preventDefault(); ev.stopImmediatePropagation();
     if (ev.key === 'Escape') handle.skip();
   }
-  window.addEventListener('keydown', onKey, true);
+  // and no press reaches the page under it either (the shot's tap skip, the scene): stopped in capture, not prevented, so the SKIP
+  // CINEMATIC button's click still fires (2026-11-07)
+  function onTap(ev) { ev.stopImmediatePropagation(); }
+  window.addEventListener('keydown', onKey, true); window.addEventListener('pointerdown', onTap, true);
   el.querySelector('.es-skip').addEventListener('click', () => handle.skip());
   root.append(el);
   return handle;

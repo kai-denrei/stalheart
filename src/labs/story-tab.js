@@ -138,6 +138,7 @@ export function initStoryTab(root) {
     // high over the corridor from +x and behind the pad (measured in the headless lab, 2026-11-07): the rocket at the entry's 350 m in the
     // upper frame, the pad and the reticle on it in the lower; side-on from 200 m up the clearing's rim hid the pad
     onRail = false; frameCamera({ pos: [300, 520, -120], look: [0, 120, 30], fov: 50 }); controls.update();
+    controls.enabled = false;   // 2026-11-07: the stick's drag is the flight's, not an orbit (back at the touchdown or endFlight)
   }
   function flightTick(dt) {
     overrideT += dt; if (flight.phase() === 'override' && overrideT >= LANDING_GAME.override.seconds) flight.manual();
@@ -145,12 +146,12 @@ export function initStoryTab(root) {
     if (ph !== 'touched') return;
     const p = flight.pose(), g = floorAt(p.x, p.z);
     if (flight.contact().reason !== 'skipped') landing.place([p.x, g.y, p.z], g.normal);
-    flight.dispose(); flight = null; landing.flying(false);
+    flight.dispose(); flight = null; landing.flying(false); controls.enabled = true;   // the orbit back (2026-11-07)
     heard = { legs: true, down: false, door: false };   // the legs are down: the shock's pneumatics next, no second legs cue
     seek(sequence.touchdown);
   }
   function endFlight() {   // R, L, K, O, a seek: the host and its panel go, the rocket back on the pad
-    armed = false; flight?.dispose(); flight = null; lhud?.dispose(); lhud = null; flown = null;
+    armed = false; flight?.dispose(); flight = null; lhud?.dispose(); lhud = null; flown = null; controls.enabled = true;   // the orbit back (2026-11-07)
     if (landing) { landing.flying(false); landing.place(null); }
     if (statusText) status.textContent = statusText;
   }
