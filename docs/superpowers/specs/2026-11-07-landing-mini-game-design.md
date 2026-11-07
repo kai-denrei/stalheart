@@ -316,3 +316,40 @@ buttons go. The harness's `landing('input', { throttle, tiltRate, bankRate, legs
 Not changed: the approach, the override beat (its alarm, Isao's line, the hand-over under a plain fade), the chase, the reticle, the
 HUD rows, the grades, the salvage, the gate's offer, `?landing`. Open for the owner: whether the signature should also precede an
 automatic landing (today it does not), and the mouse's sense (a drag up is the nose away).
+
+## 14. The owner's second look (2026-11-07): the side view, three controls, the hand-over in motion
+
+Owner, with a still of a drifted flight low over the island's rim: "it is not working, as it is too easy for the user to entirely drift
+and miss the landing zone, which makes no sense game-wise. there is also a display problem whereby being too close to the ground while
+drifting reveals a secondary layer of ground mapping, perhaps the other side? 2) let's try this. a) we force a fixed camera view,
+essentially making a temporary 2D game from our 3d Assets. It is a fixed camera angle with the large Black Hole in the background. b)
+the user has limited controls, space bar for thrusters, A and D for the angle adjustement, we simplify the game to these three
+variables. 3) small change but when transitioning from the thruster animation full screen to the 2D game, we want both the motion to
+be already occuring and the boosters to be on, for continuity". Section 13's stick, bank axis and mouse go; its signature stays.
+
+**A. The side view.** The flight is a 2D game again, in the plane the camera looks across. The camera's ANGLE is fixed: level, looking
+along the island's ground toward the accretion disk (the world's `sky-hole` planes, `api.scene`, their `userData.hole.dir` turned into
+the island's frame: the look azimuth), so the disk is the background of every frame (the brief's call 3, now met by design). Only its
+POSITION moves, a dolly on that fixed line of sight: `camera.back + camera.backPerMetre × altitude` behind the rocket's ground point and
+`camera.up + camera.upPerMetre × altitude` above the pad, the numbers chosen so the rocket and the pad share the frame from the entry's
+altitude down to the contact (starting values back 20 + 0.95/m, up 10 + 0.5/m, fov 58; measured in the browser with the harness's
+`view()` and re-priced). The flight frame is turned about the pad's up by that azimuth: the model's +x is the camera's right, the
+model's z the line of sight, so the drift and the tilt read as screen motion; the host converts to island metres at its boundary
+(`pose()`, the reticle, `landed`). The reticle stays on the ground under the predicted point. Off-island ground is the planet's sphere
+as before; the camera never looks down at it from above, which is what showed the lattice under the rim.
+
+**B. Three variables.** Space held is the burn (as section 13); `A` / `D` (and the arrows) tilt the rocket left / right in the camera's
+plane, a held rate as before; `L` legs, `Esc` the skip. Nothing else: no W/S, no bank, no stick, no mouse. The bank axis leaves the
+flight model, `src/fx/landing-stick.js` goes, the harness's `bankRate` and `lean` go, `state().tilt` is the signed tilt. A phone's rail
+is `◂` `▸` `BURN` (held) `LEGS` `SKIP`. The entry is retuned so a miss is the player's doing, not the entry's: drift 4-7 m/s (was
+8-12), tilt 0.15-0.25 rad (was 0.25-0.35); the rest of the entry as before.
+
+**C. The hand-over in motion.** A flown landing has no approach rail from orbit any more: the signature's black opens directly on the
+side view with the rocket already sinking and drifting at the entry's state and the boosters LIT. The flight begins when the signature
+ends (or is skipped); for `override.seconds` (now 1.5 s) the auto-lander's last burn runs: the physics step with the throttle forced to
+1, under the alarm, the annunciator and Isao's line; then MANUAL, where the burn follows Space. The flight shot (the fixed camera) is
+started under the signature so the first visible frame is the flight. The automatic landing (START on a later run, `?landing=0`, the
+acceptance suites without `?landing=1`) keeps the whole arrival sequence from orbit as today.
+
+Not changed: the signature, the verdict, the flare, the touchdown, the salvage, the gate's offer, `?landing`, the touch rail's BURN.
+Open for the owner: the entry ranges above; whether the camera should pitch down a few degrees so more ground shows under the pad.
