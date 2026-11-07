@@ -4765,7 +4765,10 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 #landing-hud .lh-touch[hidden] { display: none; }
 #landing-hud .lh-touch { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; justify-content: space-between; padding: 12px; pointer-events: auto; }
 #landing-hud .lh-btn { font: inherit; color: #b8ffca; background: rgba(4, 12, 8, 0.7); border: 1px solid #4fae63; padding: 14px 16px; min-width: 88px; }
-#landing-hud .lh-throttle { flex: 1; accent-color: #4fae63; writing-mode: horizontal-tb; }
+#landing-hud .lh-btn.burn { flex: 1; }
+/* THE STICK (src/fx/landing-stick.js): the floating ring at the press point, its knob at the clamped drag */
+.lh-stick { position: fixed; width: 96px; height: 96px; margin: -48px 0 0 -48px; border: 1px solid rgba(79, 174, 99, 0.7); border-radius: 50%; pointer-events: none; z-index: 42; }
+.lh-stick i { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: rgba(184, 255, 202, 0.6); }
 /* #landing-hud sits in the body, not in #td-app, so the arrival's chrome-hiding rule does not reach it; :not([hidden]) keeps show(false) true */
 body.arrival-on #landing-hud:not([hidden]) { display: block; }
 /* THE LANDING'S GLARE (src/fx/landing-glare.js): the override beat's plain CSS fade (the shader is the signature's, below) */

@@ -124,7 +124,7 @@ export function initStoryTab(root) {
   function flightLine(st) {
     const nums = `sink ${fixed(st.sink)} m/s, drift ${fixed(st.drift)} m/s, tilt ${fixed(st.tilt * 180 / Math.PI)} deg, fuel ${fixed(st.fuel)} s`;
     return st.grade ? `LANDING · ${st.grade} (${st.reason}): ${nums}, at x ${fixed(st.x)} z ${fixed(st.z)} m. R resets, L flies again.`
-      : `${st.phase.toUpperCase()} · alt ${fixed(st.altitude)} m, ${nums}, throttle ${fixed(st.throttle, 2)}, legs ${fixed(st.legs, 2)}, x ${fixed(st.x)} z ${fixed(st.z)}. W/S throttle, A/D tilt, L legs.`;
+      : `${st.phase.toUpperCase()} · alt ${fixed(st.altitude)} m, ${nums}, throttle ${fixed(st.throttle, 2)}, legs ${fixed(st.legs, 2)}, x ${fixed(st.x)} z ${fixed(st.z)}. SPACE burn, W/S tilt, A/D bank, drag to steer, L legs.`;
   }
   function startFlight() {
     armed = false; audioSync(null, false);   // the host's own thrust bed takes over

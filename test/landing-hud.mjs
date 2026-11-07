@@ -61,16 +61,17 @@ assert.equal(root.querySelector('#landing-hud').attrs['aria-live'], undefined); 
 hud.clear(); assert.equal(root.querySelector('#lh-verdict').textContent, ''); assert.equal(root.querySelector('#lh-verdict').className, 'lh-verdict');
 assert.equal(root.querySelector('#lh-ann').textContent, ''); assert.equal(root.querySelector('#lh-ann').className, 'lh-ann');
 
-// the touch rail: five controls, the buttons call their handlers, the slider is the throttle
+// the touch rail (spec 10): BURN held, LEGS, SKIP; the stick is on the scene (src/fx/landing-stick.js). BURN's press and release drive the burn
 const got = [];
-hud.touch(true, { tilt: (d) => got.push(['tilt', d]), legs: () => got.push(['legs']), skip: () => got.push(['skip']), throttle: (v) => got.push(['throttle', v]) });
-const rail = root.querySelector('#lh-touch'); assert.equal(rail.hidden, false); assert.equal(rail.children.length, 5);
+hud.touch(true, { burn: (on) => got.push(['burn', on]), legs: () => got.push(['legs']), skip: () => got.push(['skip']) });
+const rail = root.querySelector('#lh-touch'); assert.equal(rail.hidden, false); assert.equal(rail.children.length, 3);
 const btn = (cls) => rail.children.find((c) => c.className.includes(cls));
-btn('tilt-fwd').handlers.pointerdown[0]({ preventDefault() {} }); btn('tilt-fwd').handlers.pointerup[0]();
+assert.deepEqual(rail.children.map((c) => c.textContent), ['BURN', 'LEGS', 'SKIP']);
+btn('burn').handlers.pointerdown[0]({ preventDefault() {} }); btn('burn').handlers.pointerup[0]();
+btn('burn').handlers.pointerdown[0]({ preventDefault() {} }); btn('burn').handlers.pointercancel[0]();
 btn('legs').handlers.pointerdown[0]({ preventDefault() {} }); btn('skip').handlers.pointerdown[0]({ preventDefault() {} });
-const slider = rail.children.find((c) => c.className.includes('lh-throttle')); slider.value = '50'; slider.handlers.input[0]();
-assert.deepEqual(got, [['tilt', 1], ['tilt', 0], ['legs'], ['skip'], ['throttle', 0.5]]);
-assert.deepEqual([btn('tilt-back').textContent, btn('tilt-fwd').textContent], ['TILT ◂', 'TILT ▸'], 'the small triangles, not the emoji-prone ◀ ▶');
+assert.deepEqual(got, [['burn', true], ['burn', false], ['burn', true], ['burn', false], ['legs'], ['skip']]);
+assert.equal(rail.children.find((c) => c.className.includes('lh-throttle')), undefined, 'no throttle slider: the burn is held');
 hud.touch(false); assert.equal(rail.hidden, true); assert.equal(rail.children.length, 0);
 
 hud.dispose(); assert.equal(root.querySelector('#landing-hud'), null);
