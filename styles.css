@@ -4765,12 +4765,26 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 #landing-hud .lh-touch[hidden] { display: none; }
 #landing-hud .lh-touch { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; justify-content: space-between; padding: 12px; pointer-events: auto; }
 #landing-hud .lh-btn { font: inherit; color: #b8ffca; background: rgba(4, 12, 8, 0.7); border: 1px solid #4fae63; padding: 14px 16px; min-width: 88px; }
-#landing-hud .lh-throttle { flex: 1; accent-color: #4fae63; writing-mode: horizontal-tb; }
+#landing-hud .lh-btn.burn { flex: 1; }
+/* THE STICK (src/fx/landing-stick.js): the floating ring at the press point, its knob at the clamped drag */
+.lh-stick { position: fixed; width: 96px; height: 96px; margin: -48px 0 0 -48px; border: 1px solid rgba(79, 174, 99, 0.7); border-radius: 50%; pointer-events: none; z-index: 42; }
+.lh-stick i { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: rgba(184, 255, 202, 0.6); }
 /* #landing-hud sits in the body, not in #td-app, so the arrival's chrome-hiding rule does not reach it; :not([hidden]) keeps show(false) true */
 body.arrival-on #landing-hud:not([hidden]) { display: block; }
-/* THE LANDING'S GLARE (src/fx/landing-glare.js): the override beat's full-screen launch shader, or its CSS fade */
+/* the arrival's flight: a drag on the scene is the landing's stick, never a pan (the universal manipulation above would take it) */
+body.arrival-on #tab-td { touch-action: none; }
+/* THE LANDING'S GLARE (src/fx/landing-glare.js): the override beat's plain CSS fade (the shader is the signature's, below) */
 #landing-glare { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 39; pointer-events: none; mix-blend-mode: screen; }
 #landing-glare.fade { background: radial-gradient(circle at 50% 60%, rgba(255,203,133,0.9), rgba(255,120,60,0.4) 40%, transparent 70%); opacity: 0; }
+/* THE EXHAUST SIGNATURE (src/fx/exhaust-signature.js): the 2D game's opening over the page, opaque; the plate as the 2D game's */
+#exhaust-signature { position: fixed; inset: 0; z-index: 41; background: #000; }
+#exhaust-signature canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#exhaust-signature .es-plate { position: absolute; inset: 0; padding: 32px; pointer-events: none; font-family: var(--font-ui); letter-spacing: 0.25em; background: linear-gradient(rgba(5, 11, 16, 0.47), transparent 20%, transparent 80%, rgba(5, 11, 16, 0.53)); }
+#exhaust-signature .es-eyebrow { display: block; color: #ffe0a1; font-size: 11px; }
+#exhaust-signature .es-subtitle { display: block; color: #b2aa96; font-size: 9px; letter-spacing: 0.2em; margin-top: 10px; }
+#exhaust-signature .es-credit { position: absolute; left: 32px; bottom: 32px; color: #b2aa96; font-size: 9px; letter-spacing: 0.2em; text-decoration: none; pointer-events: auto; }
+#exhaust-signature .es-skip { position: absolute; right: 32px; bottom: 32px; pointer-events: auto; font: inherit; font-size: 10px; letter-spacing: 0.2em; color: #ffe0a1; background: rgba(7, 18, 23, 0.7); border: 1px solid #b2aa96; padding: 10px 14px; cursor: pointer; }
+@media (max-width: 700px) { #exhaust-signature .es-plate { padding: 18px; } #exhaust-signature .es-credit { left: 18px; bottom: 18px; } #exhaust-signature .es-skip { right: 18px; bottom: 18px; } }
 
 #showcase {
   position: absolute; inset: 0; z-index: 90;

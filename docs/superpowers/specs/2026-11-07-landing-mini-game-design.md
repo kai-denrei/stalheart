@@ -220,7 +220,7 @@ section for them, the recording order as before):
   acceptance page.
 - **The skip inside the flight** is `Esc` or the on-screen SKIP, not any key: the sequence resumes at its touchdown on the pad, grade
   CLEAN for the record, no salvage (the foundry as today, section 2), the plain talk, the rail back in the same frame. Before the override (the approach) any key or tap skips the whole arrival as
-  today, ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
+  today (a flown landing: Esc alone, section 13), ungraded. After a flown touchdown the resumed rail is locked for `touchdown.lockSeconds` (1.5 s, the keys held at the
   contact), then `Esc` alone skips it (on a phone, after the lock, a tap: 2026-11-07); an auto-repeated key never skips any shot (`src/fx/camera-shot.js`). The tutorial card's skip
   and the chapter links are unchanged (a chapter starts past the landing, as today).
 - **Acceptance runs** (`?acceptance=1`) land automatically unless they ask (`?landing=1`), and show the gate only with `?gate=1`.
@@ -275,3 +275,44 @@ The cockpit interior and the first-person seat (owner's call 4, deferred); a top
 stands); multiple entries or boosters (the 2D game's six); a landing-site choice (one pad, the island the base is built on; the
 corridor and the fuel are the problem, not the map); mass loss; a retry loop (the arrival never replays in a run); any change to the
 chapters, the skip links or the acceptance routes beyond `?landing`.
+
+## 13. The owner's morning (2026-11-07): the exhaust signature and the stick
+
+Owner, after the first look, with a still of his 2D game's opening: "the beginning is not working as intended. 1) we want the 'exhaust
+signature' effect in full screen, a close up of the boosters firing, as in the stalheart landing fleet 2d mini game. 2) the space bar
+must be the booster, and some form of wasd + mouse to orient the rocket and try to smooth the landing." Two things change; the rest of
+this spec stands.
+
+**A. THE EXHAUST SIGNATURE opens the flown landing.** The 2D game's opening (`Stalsfar_Landing/landing/lander.js` `openingCameraY`,
+`CONFIG.cinematic { opening: 8, ignitionHold: 3, launchYEnd: -1048576 }`): the launch shader full-screen on an OPAQUE canvas over the
+page, the exposure held at the shader's 1000, only the camera's Y animated: 2 for `hold` s (the boosters close up), then down to -8 on a
+smoothstep over 55 % of the remaining 4.6 s, held to 70 %, then geometrically down to `yEnd` where the frame is black; drawn at up to
+30 Hz, capped at 1600 x 1000 as the 2D game. Over it the 2D game's plate: the eyebrow `SH02 / EXHAUST SIGNATURE`, the subtitle
+`STÅLHEART · ARRIVAL CORRIDOR`, the credit `LAUNCH SHADER · PULKIT · MIT` and a `SKIP CINEMATIC →` button. It plays once START (or
+FLY THE LANDING) has opened the gate and the landing is to be flown, BEFORE the approach: the arrival's clock holds at 0 under it, the
+rocket's thrust bed plays under it at full (the boosters firing; the 2D game's is silent only because its audio is not yet unlocked),
+and when it ends (black) the approach runs as today, then the override. `Esc` or the button skips the cinematic only (to the approach);
+every other key is eaten under it (the rail's any-key skip must not fire under the black). After the signature the approach's rail skips on Esc alone (2026-11-07, the final review: a Space tapped through the black would otherwise end the flown landing at the first fresh press); an automatic landing's approach skips on any key as today. Reduced motion or no WebGL2 skips it
+outright (the 2D game's rule); a phone plays it (the 2D game does, at its cap). The tune: `LANDING_GAME.signature { seconds: 8, hold:
+3, yEnd: -1048576 }`. The override's glare is no longer the shader: the plain fade (`landing-glare.js`'s CSS path, `override.glare
+{ seconds: 1.2 }`), so the shader shows once, as the 2D game shows it. An automatic landing (START on a later run, `?landing=0`, the
+acceptance suites without `?landing=1`) has no signature.
+
+**B. The stick.** Space HELD is the burn (the set point 1 while held, 0 on release; the spool is the model's, so the engine takes
+`vehicle.spool` to light and to die, the 2D game's feel); the stepped W/S throttle goes. Two tilt axes: `tilt` about x as today
+(forward toward +z, away from the chase camera) and a new `bank` about z (toward +x, the chase camera's right). The thrust direction
+is `d = (sin bank · cos tilt, cos bank · cos tilt, sin tilt)`, unit; the pose that maps the hull's up to it is `Rz(-bank) · Rx(tilt)`
+(a node test checks the two agree). The verdict's, the flare's and the HUD's tilt are the TOTAL angle from vertical, `acos(d.y)`; the
+flare eases the bank out as it does the tilt. Keys: `W` / `S` tilt forward / back, `A` / `D` bank left / right (held: rates, as A / D
+were), `L` legs, `Esc` the skip; the arrows as W / S / A / D. The mouse: a floating stick, the 2D game's touch-pilot with the mouse
+allowed: a press anywhere on the scene (not on a button) and a drag; the displacement from the press point past a `stick.dead` px
+dead zone up to `stick.full` px is the rate, dx the bank rate (right is +x), dy the tilt rate (drag UP is forward: pushing the stick
+away is the nose away); a ring drawn at the press point, the knob at the clamped displacement; release, blur or resize reset it. A
+phone's rail is the same floating stick on the scene plus `BURN` (held), `LEGS`, `SKIP`; the throttle slider and the two tilt
+buttons go. The harness's `landing('input', { throttle, tiltRate, bankRate, legs })`: the throttle is now HELD until the next call
+(as the key is), `bankRate` beside `tiltRate`; `state().arrival.landing` adds `bank`. The story lab's status line names the new keys.
+`vehicle.minThrottle` stays (the spool's tail still burns at least 0.2); fuel, the entries, the flare and the grades are unchanged.
+
+Not changed: the approach, the override beat (its alarm, Isao's line, the hand-over under a plain fade), the chase, the reticle, the
+HUD rows, the grades, the salvage, the gate's offer, `?landing`. Open for the owner: whether the signature should also precede an
+automatic landing (today it does not), and the mouse's sense (a drag up is the nose away).

@@ -6,6 +6,10 @@
 // page, the burger's Story, ?grow=1 at stage 1; never SKIP TUTORIAL, stage=N and story=N links or phase jumps).
 //
 // Two shots over the base's own landmarks (src/fx/story-base.js), no second rocket:
+//   (flown)        a flown landing opens on THE EXHAUST SIGNATURE (src/fx/exhaust-signature.js, spec 13; 2026-11-07, the owner's morning):
+//                  the 2D game's boosters full-screen over the page, the arrival's clock held at 0 and the thrust bed at full under it, Esc
+//                  or SKIP CINEMATIC to the approach; then SIGNATURE > APPROACH > OVERRIDE > MANUAL > FLARE > TOUCHDOWN on the rail below.
+//                  An automatic landing has none
 //   'arrival'      the SH02 comes down along its own up on src/domain/arrival-shot.js's clock (the lab's timeline, cut short), its
 //                  legs, shock and door clips scrubbed, the lab's plumes, scorch and dust under it; Isao climbs out of the well
 //                  (smaller than his game size: the six metre drone would not fit it) and flies clear toward the pole
@@ -39,6 +43,7 @@ import { seedEntry } from '../domain/manual-landing.js';
 import { createManualLanding } from './manual-landing.js';
 import { createLandingHud } from './landing-hud.js';
 import { startLandingGlare } from './landing-glare.js';
+import { startExhaustSignature } from './exhaust-signature.js';
 import { storage } from '../storage.js';
 
 const IDS = ['sh02', 'sh02-salvage', 'foundry'];
@@ -65,9 +70,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
   // THE LANDING FLOWN (2026-11-07, spec section 2): `flying` the host (src/fx/manual-landing.js) from the start when the landing may be flown,
-  // `lhud` its panel (the arrival's: the verdict reads through the cut), `grade` the contact once the ground is met, `landed` where the
+  // `lhud` its panel (the arrival's: the verdict reads through the cut), `signature` the exhaust signature while it plays (`missionDue`: the
+  // mission card waits for its end, its timers are the wall clock's and would run out under the black), `grade` the contact once the ground is met, `landed` where the
   // rocket stood (island metres; null on a skip), `jolt` the rail's shake after a hard or wrecked contact, `offered` the gate's offer taken
-  let flying = null, lhud = null, glare = null, overrideAt = Infinity, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0;
+  let flying = null, lhud = null, glare = null, signature = null, missionDue = false, overrideAt = Infinity, overrideT = 0, offered = false, grade = null, landed = null, jolt = 0;
   // from the contact to the cut the arrival's island-metre points all move by `landed`: the holder (`placedLanded`, its placement with the
   // offset baked in), the rail's eye and aim, Isao's rise and arc, the scorch and dust; settle() and deploy() stay on the plan's spots
   let placedLanded = null;
@@ -79,8 +85,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // The islands' slabs off the pad are not modelled this round: a far wreck reads the bare sphere under it
   const R = 1 / metres;
   const floorAt = (x, z) => { const l = Math.hypot(x / R, 1, z / R); return { y: -(x * x + z * z) / (2 * R), normal: [x / R / l, 1 / l, z / R / l] }; };
-  const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;   // a phone: the touch rail, and the glare's plain fade (spec 8)
-  const still = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;   // reduced motion: the glare's plain fade, no rail jolt (2026-11-07, the final review)
+  const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;   // a phone: the touch rail, and a tap skips the resumed rail after its lock (spec 8)
+  const still = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;   // reduced motion: no signature, no rail jolt (the glare is the plain fade for everyone, spec 13)
   const talkBrief = () => (grade && grade.reason !== 'skipped' ? LANDING_GAME.lines[grade.grade] : tune.talk.brief);   // a skip is the plain talk (spec 7)
   // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
   // an acceptance run lands without it unless it asks (?gate=1)
@@ -179,7 +185,13 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     phase = 'landing'; t = 0;
     hud(true);
     camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
-    api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
+    // THE EXHAUST SIGNATURE (spec 13) before the rail shot: capture listeners on one target run in registration order, so its window
+    // keydown runs before the shot's and eats the rail's any-key skip under the black. Null on reduced motion or without WebGL2: no signature
+    if (manual && globalThis.document?.body) {
+      signature = startExhaustSignature(globalThis.document.body, { ...LANDING_GAME.signature, reducedMotion: still, onSkip: () => { signature = null; } });
+      if (signature) { thrust ??= api.sfx?.loop('rocket_thrust', { dist: 0, gain: 0 }); thrust?.set(1, 1); }   // the boosters at full; sound() takes the bed over at the approach's first frame
+    }
+    if (signature) missionDue = true; else api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
     if (manual) {   // THE LANDING (2026-11-07): the host in island metres with the pad's top at 0, its reticle under a group lifted there
       const pad = new THREE.Vector3().setFromMatrixPosition(rocket.holder.userData.placed).applyMatrix4(inv).divideScalar(metres).y;
       const flightRoot = new THREE.Group(); flightRoot.name = 'LandingFlight'; flightRoot.position.y = pad; fxRoot.add(flightRoot);
@@ -187,7 +199,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
         floorAt, clipScrub: (name, u) => { clip(name, u, true); rocket.root?.userData.mixer?.update(0); }, coarse });
     }
-    api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
+    // the signature's seconds on the rail's length: its clock runs under the black while the arrival's holds.
+    // A FLOWN APPROACH SKIPS ON ESC ALONE (2026-11-07, the final review): a player tapping Space through the signature's black would otherwise
+    // end the flight they chose with the first fresh press at the approach; an automatic landing keeps any key or tap, as today
+    api.startShot({ id: 'arrival', dur: shot.cut + 2 + (signature ? LANDING_GAME.signature.seconds : 0), poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, ...(manual ? { skipKey: LANDING_GAME.input.skipKey } : {}), onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
   function railPose(u, out) {
     const p = shot.camera(Math.min(t, shot.cut));
@@ -222,9 +237,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     const d = api.drone(); if (d) d.obj.visible = true;
     deploy(); look();
   }
-  // the host and the glare go at the touchdown; the panel (its verdict) at the end of the arrival
+  // the host and the glare go at the touchdown; the panel (its verdict) at the end of the arrival. The signature with them: a skip of the
+  // whole arrival under it (the tutorial card's NEXT ends the rail shot: finish) must not leave it over the base
   function endFlight(all) {
-    flying?.dispose(); flying = null; glare?.dispose(); glare = null;
+    flying?.dispose(); flying = null; glare?.dispose(); glare = null; signature?.dispose(); signature = null; missionDue = false;
     if (!all) return;
     lhud?.dispose(); lhud = null;
   }
@@ -238,7 +254,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     if (thrust) { thrust.stop(0.08); thrust = null; }   // the host's own thrust bed takes over
     flying.begin(0);   // the flown approach keeps the legs stowed (apply): they are the player's
     api.brief(LANDING_GAME.lines.override); storage.setItem('td.landing.flown', '1');
-    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare, reducedMotion: coarse || still });   // a phone never builds the WebGL2 glare (spec 8): the plain fade
+    if (globalThis.document?.body) glare = startLandingGlare(globalThis.document.body, { ...LANDING_GAME.override.glare });   // the plain fade for everyone (spec 13: the shader is the signature's)
     cutting = true;   // starting a shot ends the rail's, whose onEnd would finish the arrival
     // passKeys off (2026-11-07, the final review): the host's capture listener (flying.begin above, registered before the shot's) takes the
     // flight keys itself; every other key is eaten during the flight, Escape still skips
@@ -263,7 +279,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     // A phone has no Esc: after the lock any tap skips it (2026-11-07, the final review; the lock and the repeat rule already stop a held key)
     cutting = true; api.startShot({ id: 'arrival', dur: shot.cut - t + 2, poseAt: railPose, lockFor: LANDING_GAME.touchdown.lockSeconds, skipKey: coarse ? null : LANDING_GAME.input.skipKey, onEnd: () => { if (!cutting) finish(true); } }); cutting = false;
   }
-  function landingTick(dt) {   // the landing branch; while the flight holds the clock `t` stands still (the rail and the sequence wait)
+  function landingTick(dt) {   // the landing branch; while the signature or the flight holds the clock `t` stands still (the rail and the sequence wait)
+    if (signature) { signature.tick(dt); if (!signature.done) return; signature = null; }   // the boosters full-screen, the clock held at 0
+    if (missionDue) { missionDue = false; api.mission?.(); }   // the mission card over the approach, as without the signature
     t += dt;
     if (flying && t >= overrideAt && !flying.pose()) override();
     if (flying?.pose()) {   // the window: OVERRIDE for override.seconds, then MANUAL / FLARE, until the ground
@@ -297,10 +315,11 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
-    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip', 'override' (takes the gate's offer before START)
+    // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, bankRate, legs }, held until the next), 'skip' (the
+    // signature while it plays: 'signature', as Esc; else the flight), 'override' (takes the gate's offer before START)
     landing(cmd, arg) {
       if (cmd === 'input') { flying?.input(arg ?? {}); return !!flying?.pose(); }
-      if (cmd === 'skip') { if (flying?.pose()) { flying.skip(); return true; } return false; }
+      if (cmd === 'skip') { if (signature) { signature.skip(); return 'signature'; } if (flying?.pose()) { flying.skip(); return true; } return false; }
       if (cmd === 'override') return takeOffer();
       return null;
     },
@@ -310,7 +329,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
-        manual, offer, offered, flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
+        manual, offer, offered, signature: !!signature, flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
         view: flying?.view() ?? null, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
     },
   };
