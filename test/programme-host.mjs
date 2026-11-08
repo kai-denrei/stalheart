@@ -7,7 +7,7 @@ import { createColonyTick } from '../src/fx/colony-tick.js';
 import { createAutoSupport } from '../src/fx/auto-support.js';
 import { createCanyonRun } from '../src/fx/canyon-run.js';
 import { createEndingHost } from '../src/fx/ending-host.js';
-import { makeBuildProgramme, snapshot } from '../src/domain/build-programme.js';
+import { makeBuildProgramme, snapshot, buy } from '../src/domain/build-programme.js';
 import { BASE_PROGRAMME, BASE_REPAIR, BASE_PERKS } from '../src/content/base-programme.js';
 import { BLOCKED, PATH } from '../src/dungeon.js';
 
@@ -17,9 +17,11 @@ const upTo = (id) => (s) => (id === 'backgate' ? s.id !== 'backgate' : BASE_PROG
 // a recording controller: the host's values, getters and setters over one state object `s`
 function controller(o = {}) {
   const log = [], rec = (k) => (...a) => log.push([k, ...a]);
+  // the first orders' steps are bought, as a chapter's start leaves them (2026-11-08, THE SETTLING: an unbought board step is never Isao's next)
+  const programme = makeBuildProgramme(BASE_PROGRAMME, { standing: upTo(o.at ?? 'gate') }); for (const st of BASE_PROGRAMME) if (st.first) buy(programme, st.id);
   const s = {
     story: {
-      programme: makeBuildProgramme(BASE_PROGRAMME, { standing: upTo(o.at ?? 'gate') }), sectorN: 0, hull: null, grow: true, backOpen: false,
+      programme, sectorN: 0, hull: null, grow: true, backOpen: false,
       beats: { phase: () => o.phase ?? 'rotor-ready' }, wallCells: [4, 5], gateCell: 9, gateCellOf: (id) => (id === 'back' ? 11 : 9), socketToward: {},
       print: { cellOf: (st) => ({ gate: 3, stalheart: 6, backgate: 12 })[st.id] ?? 8, bed: (st) => `bed:${st.id}`, repairBed: (r, tune) => `repair:${r.kind}:${tune.seconds}`, finish: rec('finish') },
     },
@@ -34,7 +36,7 @@ function controller(o = {}) {
     syncLifeContainers: rec('lives'), rebuildAfterBreach: rec('rebuild'), recomputePortalDist: rec('portalDist'), adoptBays: rec('adoptBays'), eco: () => ({ addBiomass: rec('biomass') }),
     laserStation: { seated: () => false }, shotId: () => null, deployStart: (n) => { log.push(['deployStart', n]); s.deploy = { n }; }, deployStep: () => { s.deploy = null; },
     leavePilot: rec('leavePilot'), camera: null, startShot: rec('shot'), deployFramePoseFor: rec('frame'), camA: {}, setView: rec('view'),
-    callout: rec('callout'), enemies: () => s.enemies ?? [], graph: () => ({ centers: Array.from({ length: 16 }, (_, i) => [i, 0, 0]) }), cellSide: () => 0.1,
+    grant: rec('grant'), callout: rec('callout'), enemies: () => s.enemies ?? [], graph: () => ({ centers: Array.from({ length: 16 }, (_, i) => [i, 0, 0]) }), cellSide: () => 0.1,
     setPlayerHP: (v) => { s.playerHP = v; }, setBerths: (v) => { s.berths = v; }, setPlayerDown: (v) => { s.playerDown = v; }, setDeploy: (v) => { s.deploy = v; },
   };
   for (const k of ['story', 'playerHP', 'sectorRun', 'waveActive', 'dungeon', 'tdFullTags', 'storyBase', 'pilotMode', 'briefQ', 'pilot', 'deploy', 't', 'storyViews']) c[k] = () => s[k];
@@ -63,6 +65,13 @@ function storyApiOf(c) {
   assert.equal(api.hasPerk('gate'), true); assert.deepEqual([...api.perks()], ['gate']);
   assert.deepEqual([s.dungeon.tags[4], s.dungeon.tags[5], s.tdFullTags[4], s.tdFullTags[5]], [BLOCKED, BLOCKED, BLOCKED, BLOCKED]);
   assert.deepEqual(log, [['finish', step('gate')], ['note', { type: 'print', id: 'gate' }], ['forgetWalls'], ['rebuild'], ['portalDist']]);
+}
+// THE RECYCLER'S WORK PAYS (2026-11-08, THE SETTLING): the foundry step standing grants its `pays`, and no other step grants anything
+{
+  const { api, log } = controller({ at: 'stalheart' });
+  api.printed(step('foundry')); assert.deepEqual(log.filter((l) => l[0] === 'grant'), [['grant', 60]], 'one more barrel\'s worth');
+  log.length = 0; api.printed(step('landing')); assert.deepEqual(log.filter((l) => l[0] === 'grant'), [], 'the pad pays nothing');
+  { const r = controller({ at: 'stalheart' }); r.api.printed(step('foundry'), { replay: true }); assert.deepEqual(r.log.filter((l) => l[0] === 'grant'), [], 'a chapter\'s replayed print grants nothing (its start pays the salvage itself)'); }
 }
 // A TUTORIAL CHAPTER'S START (src/content/story-defaults.js STORY_CHAPTERS) finds the Stålheart's print under way: its order carries
 // the share already done, and only that step's does

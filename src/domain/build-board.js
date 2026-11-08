@@ -7,6 +7,7 @@
 //         dearest the bank can buy (tune.sentryKinds), when the book has room; (iii) an upgrade of the weakest standing sentry; (iv) the hull:
 //         its dents mended, a spare hull, the shield rack full; (v) a companion with an `offer`, from its sector; then, still short of six, the
 //         other sentry kinds and the next weakest sentry's upgrade (w.upgrades, weakest first). A short pool shows what it has.
+//   firstOffers(w, tune) -> the first orders' pool (2026-11-08): the Rotor on w.rotorCell at the radial's price unless it stands or is on the book, then the steps marked `first` not standing and not bought at tune.first.structures' prices
 //   pickable(offers, picked, id, bank) -> can `id` join the picks: affordable after the others picked are paid, and picks below tune.picks
 //   toggle(offers, picked, id, bank, max) -> the new picks (a refused pick leaves them as they were)
 //   jumpBought(steps, sector) -> the board steps a jump to `sector` stands in for having bought (the history a skipped run implies)
@@ -42,6 +43,16 @@ export function boardOffers(w, tune) {
   for (const k of kinds.slice().reverse()) sentry(k);
   for (const u of ups.slice(1)) upgrade(u);
   return out;
+}
+
+// THE FIRST ORDERS (owner, 2026-11-08, THE SETTLING; spec 2026-11-08-the-settling-design.md 2.B): the board's pool at the landing. `w.rotor` is the
+// Rotor's kind ({ key, name, cost }, the radial's price) or null, `w.rotorCell` the plan's socket (the card orders there, not on the emptiest lane),
+// `w.rotorBuilt` / `w.rotorPending` whether it stands or is on the book. The steps come in the programme's order; the prices are the salvage's scale, no index
+export function firstOffers(w, tune) {
+  const out = [];
+  if (w.rotor && (w.rotorCell ?? -1) >= 0 && !w.rotorBuilt && !w.rotorPending) out.push({ id: `sentry:${w.rotor.key}`, kind: 'sentry', key: w.rotor.key, site: w.rotorCell, label: String(w.rotor.name).toUpperCase(), price: w.rotor.cost, effect: tune.first.words.rotor });
+  for (const s of (w.steps ?? []).filter((s) => s.first && !w.done.has(s.id) && !w.bought.has(s.id) && tune.first.structures[s.id])) out.push({ id: `build:${s.id}`, kind: 'structure', step: s.id, label: String(s.label).toUpperCase(), price: tune.first.structures[s.id].price, effect: tune.first.structures[s.id].effect });
+  return out.slice(0, tune.offers);
 }
 
 const priceOf = (offers, id) => offers.find((o) => o.id === id)?.price ?? Infinity;

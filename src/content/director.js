@@ -48,6 +48,9 @@ export const DIRECTOR_SHOTS = freeze([
 // the board lists them under "could not place".
 export const DIRECTOR_CODE_BRIEFS = freeze([
   ...['rough_landing', 'so_much_to_build', 'foundry_deploy'].map((id) => ({ id, at: { chapter: 'landing' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'the arrival\'s close-up, line by line' })),
+  // THE SETTLING (2026-11-08): the first orders' close, and Isao's own Rotor at the settle's end, both while the opening sits in `printing`
+  { id: 'scout_material', at: { phase: 'printing' }, file: 'src/fx/first-orders.js', find: "'scout_material'", trigger: 'the first orders\' close (the board shut after the landers\' tour): the scouting line' },
+  { id: 'rotor_emergency', at: { phase: 'printing' }, file: 'src/domain/story-beats.js', find: "'rotor_emergency'", trigger: 'the settle\'s end with no Rotor standing or on the book: Isao\'s own order' },
   { id: 'tremor', at: { phase: 'tremor' }, file: 'src/domain/story-beats.js', find: "api.brief?.('tremor')", trigger: 'the gate stands: the tremor' },
   { id: 'manual_override', at: { phase: 'override' }, file: 'src/domain/story-beats.js', find: "'manual_override'", trigger: 'the first wave near the gate: the Rotor\'s manual override' },
   { id: 'rotor_auto', at: { phase: 'override' }, file: 'src/domain/story-beats.js', find: "'rotor_auto'", trigger: 'the same moment with STORY_BEATS.rotorAuto (off)' },
@@ -55,7 +58,7 @@ export const DIRECTOR_CODE_BRIEFS = freeze([
   ...['quiver_intro', 'quiver_override'].map((id) => ({ id, at: { phase: 'cleared' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'the wave cleared: the Quiver printed and handed over' })),
   { id: 'quiver_cleared', at: { phase: 'quiver-piloting' }, file: 'src/domain/story-beats.js', find: "'quiver_cleared'", trigger: 'the two hard cores down' },
   ...['sinkhole_strike', 'sinkhole_strike_again', 'sinkhole_sealed'].map((id) => ({ id, at: { phase: 'construction' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'sector 0: a construction wave cleared, the sinkhole open or filled' })),
-  { id: 'gunship_overhead', at: { phase: 'construction' }, file: 'src/td-tab.js', find: "showBrief('gunship_overhead')", trigger: 'sector 0 begins: the gunship comes on station' },
+  { id: 'gunship_overhead', at: { phase: 'construction' }, file: 'src/td-tab.js', find: "briefs.want('gunship_overhead')", trigger: 'sector 0 begins (or, on a settled opening that skips it, the handover): the gunship comes on station' },
   { id: 'stalheart_stands', at: { phase: 'construction' }, file: 'src/fx/hull-issue.js', find: "'stalheart_stands'", trigger: 'the Stålheart stands' },
   { id: 'vibration_study', at: { phase: 'study-talk' }, file: 'src/domain/story-beats.js', find: "api.brief?.('vibration_study')", trigger: 'the study\'s close-up' },
   { id: 'rocket_sites', at: { phase: 'study' }, file: 'src/domain/story-beats.js', find: "api.brief?.('rocket_sites')", trigger: 'the study\'s screen closed: the expeditions begin' },

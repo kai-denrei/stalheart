@@ -446,3 +446,71 @@ console.log('story-beats: a tutorial chapter starts where its beats do');
   const g3 = fakeGame({ printSeconds: 2 }); assert.equal(bare.deploy(g3.api), true); run(bare, g3, 2);
   assert.ok(kinds(g3, 'spawn').length === 2 && kinds(g3, 'spawn').every((l) => l[3].cell === undefined), 'no lane to walk (no laneCell): the crater');
 }
+
+// THE SETTLING (owner, 2026-11-08; spec 2026-11-08-the-settling-design.md 2.A, 2.C, 2.D): on an arrival from `landed` with `settle`, nothing
+// comes up until the settle has run out; the Rotor is the player's to order; the emergency order at the settle's end; the tremor waits for the
+// shot; the breach's head start; the gunship at `settled` when the Stålheart already stands
+{
+  const mk = (over = {}) => makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 0, tremorDelay: 0.5, breachDelay: 1, overrideDelay: 0.5, spawnDelay: 0.2, fodderEvery: 1, fodderAlive: 3, fodderTotal: 5, faceDelays: [0, 0], earlyBreach: 0, arrival: true, settle: 20, laneCell: (hops) => 9000 + hops, fodderEmerge: { headStart: { hops: 4, depth: 2 } }, ...over });
+  // the player buys the Rotor: ordered from outside the beats, the beats never order it
+  {
+    const beats = mk({ quiverSocket: 4244, quiver: { key: 'quiver', delay: 0.3, hardcore: 'barbed', secondDelay: 1 } }); const g = fakeGame({ printSeconds: 2 }); let pending = false; g.api.pending = () => pending;
+    run(beats, g, 1); assert.equal(beats.state().phase, 'landed', 'an arrival holds landed until its cut');
+    assert.equal(beats.deploy(g.api), true); run(beats, g, 0.2);
+    assert.equal(beats.state().phase, 'printing', 'past foundry with nothing ordered'); assert.deepEqual(kinds(g, 'order'), [], 'the Rotor is not Isao\'s to order');
+    assert.deepEqual(kinds(g, 'breach'), [], 'no quiet breach at the deploy'); assert.equal(beats.state().settle, 20); assert.ok(beats.state().settleLeft > 19);
+    pending = true; g.api.order('rotor', 4242); pending = false;   // the first orders' pick: the fake's order stamps its clock, built 2 s later
+    assert.deepEqual(kinds(g, 'order'), [['order', 'rotor', 4242]], 'the one Rotor order is the test\'s pick');
+    run(beats, g, 2.5); assert.equal(beats.state().phase, 'rotor-ready', 'the player\'s Rotor ends printing');
+    run(beats, g, 10); assert.equal(beats.state().phase, 'rotor-ready', 'no tremor before the settle'); assert.deepEqual(kinds(g, 'tremor'), []); assert.deepEqual(kinds(g, 'spawn'), []);
+    assert.ok(beats.state().gateAt !== null, 'the gate stood: the Quiver is on the book'); assert.ok(kinds(g, 'order').some((l) => l[1] === 'quiver'));
+    let shot = true; g.api.shot = () => shot;
+    run(beats, g, 8); assert.equal(beats.state().phase, 'rotor-ready', 'the settle ran out under a shot: the tremor waits for it'); assert.equal(beats.state().settleLeft, 0);
+    shot = false; run(beats, g, 0.2); assert.equal(beats.state().phase, 'tremor'); assert.equal(kinds(g, 'brief').at(-1)[1], 'tremor'); assert.equal(beats.state().emergency, false);
+    run(beats, g, 1); assert.equal(beats.state().phase, 'breach'); assert.deepEqual(kinds(g, 'breach'), [['breach', 4300]]);   // 1 s: the tremor began 0.1 s into the last run, the breach's spawnDelay is 0.2
+    run(beats, g, 0.3); assert.equal(beats.state().phase, 'approach'); assert.equal(kinds(g, 'spawn')[0][3].cell, 9004, 'the settled breach rises with the head start: hops - k % depth up the lane');
+    run(beats, g, 3); assert.equal(beats.state().phase, 'override'); run(beats, g, 0.6); assert.equal(beats.state().phase, 'piloting'); assert.deepEqual(kinds(g, 'pilot'), [['pilot', 4242, 4243]]);
+    assert.equal(kinds(g, 'order').filter((l) => l[1] === 'rotor').length, 1, 'the beats added no Rotor order of their own');
+  }
+  // nobody buys: at the settle's end Isao grants the Rotor's cost once, orders it, says so; the tremor follows once it stands
+  {
+    const beats = mk({ settle: 3 }); const g = fakeGame({ printSeconds: 1 }); g.api.pending = () => false;
+    beats.deploy(g.api); run(beats, g, 2.9); assert.deepEqual(kinds(g, 'order'), [], 'nothing before the settle');
+    run(beats, g, 0.2); assert.deepEqual(kinds(g, 'order'), [['order', 'rotor', 4242]]); assert.deepEqual(kinds(g, 'grant'), [['grant', 45]], 'the Rotor\'s cost, once');
+    assert.equal(kinds(g, 'brief').at(-1)[1], 'rotor_emergency'); assert.equal(beats.state().emergency, true);
+    run(beats, g, 1.1); assert.equal(beats.state().phase, 'rotor-ready'); run(beats, g, 0.6); assert.equal(beats.state().phase, 'tremor', 'the tremor once the emergency Rotor stands');
+  }
+  // a Rotor on the book (ordered, not standing) at the settle's end is not ordered again
+  {
+    const beats = mk({ settle: 1 }); const g = fakeGame({ printSeconds: 50 }); g.api.pending = () => true;
+    beats.deploy(g.api); run(beats, g, 3); assert.deepEqual(kinds(g, 'order'), [], 'pending: no emergency order'); assert.deepEqual(kinds(g, 'grant'), []); assert.equal(beats.state().emergency, false);
+  }
+  // an order that fails is retried next tick with no second grant
+  {
+    const beats = mk({ settle: 1 }); const g = fakeGame(); g.api.pending = () => false; let n = 0; g.api.order = (key, ci) => { g.log.push(['order', key, ci]); n++; return n >= 3; };
+    beats.deploy(g.api); run(beats, g, 1.5); assert.equal(kinds(g, 'order').length, 3); assert.equal(kinds(g, 'grant').length, 1, 'granted once');
+  }
+  // ?settle=0: a settle that has run out from the deploy; no shot: the tremor as soon as the Rotor and the gate stand
+  {
+    const beats = mk({ settle: 0 }); const g = fakeGame({ printSeconds: 1 }); g.api.pending = () => false;
+    beats.deploy(g.api); run(beats, g, 0.2); assert.deepEqual(kinds(g, 'order'), [['order', 'rotor', 4242]], 'the emergency order at once');
+    run(beats, g, 1.7); assert.equal(beats.state().phase, 'tremor');
+  }
+  // the Stålheart standing at the Quiver's clear on a growing base: no construction, the gunship comes on station at `settled`
+  {
+    const quiver = { key: 'quiver', delay: 0.3, hardcore: 'barbed', secondDelay: 1, studyDelay: 2 };
+    const beats = mk({ settle: 0, quiverSocket: 4244, quiver, construction: { first: 1, every: 5, waves: [[{ type: 'amoeba', count: 2 }]] }, fodderTotal: 1, fodderAlive: 1 });
+    const g = fakeGame({ printSeconds: 0.5, walk: 0.5 }); g.api.pending = () => false; g.api.stalheartStands = () => true; g.api.gunshipArrive = () => { g.log.push(['gunshipArrive']); };
+    beats.deploy(g.api); run(beats, g, 6); assert.equal(beats.state().phase, 'piloting', JSON.stringify(beats.state()));
+    g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'quiver-piloting');
+    g.kill(1); run(beats, g, 1.5); g.kill(1); run(beats, g, 1);
+    assert.equal(beats.state().phase, 'settled', 'the Stålheart stood: no sector 0'); assert.deepEqual(kinds(g, 'gunshipArrive'), [['gunshipArrive']], 'GS01 comes on station at the hand-over');
+  }
+  // a late start (a chapter) with `settle` keeps today's opening: the Rotor ordered at foundry, the gunship only in construction
+  {
+    const tune = { deployDelay: 1, firstCycle: 4, cycleSeconds: 6, feedstockPerBarrel: 60, sections: ['A', 'B', 'C'], targets: ['tA', 'tB', 'tC'], events: { arcOn: 0.5, arcOff: 1, scrap: 2, barrel: 3 } };   // a chapter's start always has its foundry
+    const beats = mk({ settle: 20, startPhase: 'foundry', foundry: tune, foundryCut: 0 }); const g = fakeGame({ printSeconds: 1 });
+    run(beats, g, 0.3); assert.deepEqual(kinds(g, 'order'), [['order', 'rotor', 4242]], 'a chapter orders the Rotor as before'); assert.equal(beats.state().settle, null);
+  }
+}
+console.log('story-beats: the settling');

@@ -6,14 +6,16 @@
 // What a pick does: a structure is bought on the programme (src/domain/build-programme.js buy: Isao prints it at its own gate); a sentry is
 // Isao's order on the emptiest lane's socket (orderTower, the radial's price); an upgrade is his order on the weakest sentry (orderUpgrade);
 // the hull's dents mended now, a spare hull, the shield rack full; a companion printed now (its unit's `offer`, stream A).
-//   createBuildBoard(c) -> { interlude(go, { n, via }), state(), test: { toggle(id), confirm(), skip() } }
+// THE FIRST ORDERS (2026-11-08, THE SETTLING, spec 2.B): first(go) opens the same card once at the landing with the first pool (src/domain/build-board.js
+// firstOffers: the Rotor on the plan's own socket, the opening's `first` steps at the salvage's prices) and BUILD_BOARD.first's words; src/fx/first-orders.js opens it
+//   createBuildBoard(c) -> { interlude(go, { n, via }), first(go), state(), test: { toggle(id), confirm(), skip() } }
 //   c: root, endShot(), eco(), story(), towers(), orders, placeError(ci), graph(), cellSide(), orderTower(key, ci, opts), orderUpgrade(tower),
 //      hull() -> { dents, max, hulls, maxHulls }, mendHull(), addHull(), shield() -> { rack, cap }, fillRack(), petLife(i) (a companion's life:
 //      'unborn' may be offered), printPet(i), callout(text, cls), sentryKeys(), manned() (SOL's manned passes: the launcher's gate),
 //      spriteShot(key, build), towerLook() (the cards' wireframe thumbnails, round 7: src/fx/board-thumbs.js; none without spriteShot)
 import { BUILD_BOARD } from '../content/build-board.js';
 import { TOWER_BY_KEY, upgradeCost } from '../towers.js';
-import { boardOffers, toggle as togglePick, totalOf, emptiestLaneSite } from '../domain/build-board.js';
+import { boardOffers, firstOffers, toggle as togglePick, totalOf, emptiestLaneSite } from '../domain/build-board.js';
 import { buy, hasPerk } from '../domain/build-programme.js';
 import { COMPANIONS } from '../content/companions.js';
 import { createBoardThumbs } from './board-thumbs.js';
@@ -38,9 +40,11 @@ export function createBuildBoard(c) {
   const pets = () => (COMPANIONS.units ?? []).map((u, index) => ({ u, index })).filter(({ u, index }) => u.offer && c.petLife(index) === 'unborn').map(({ u, index }) => ({ ...u.offer, id: u.id, index, label: u.name }));
   function world(n) {
     const s = c.story(), pg = s.programme;
+    const rotorCell = s.beats?.state?.().socket ?? -1;   // the first orders' Rotor goes on the plan's own socket (the beats'), not the emptiest lane
     const sentries = c.sentryKeys().map((k) => TOWER_BY_KEY[k]).filter(Boolean).map((d) => ({ key: d.key, name: d.name, cost: d.cost }));
     return { w: { steps: pg.steps, done: pg.done, bought: pg.bought ?? new Set(), ctx: { phase: s.beats?.phase?.() ?? null, sector: n, back: s.backOpen ? 'held' : null, manned: c.manned(), standing: s.stands },   // standing: `when.stand` (2026-11-07)
-      bank: bank(), sentryRoom: site() >= 0, sentries, upgrades: weakest(), hull: c.hull(), shield: c.shield(), pets: pets() } };
+      bank: bank(), sentryRoom: site() >= 0, sentries, upgrades: weakest(), hull: c.hull(), shield: c.shield(), pets: pets(),
+      rotor: TOWER_BY_KEY.rotor ? { key: 'rotor', name: TOWER_BY_KEY.rotor.name, cost: TOWER_BY_KEY.rotor.cost } : null, rotorCell, rotorBuilt: c.towers().some((t) => t.ci === rotorCell), rotorPending: c.orders.some((o) => o.ci === rotorCell) } };
   }
   const div = (cls, text, tag = 'div') => { const el = document.createElement(tag); el.className = cls; if (text != null) el.textContent = text; return el; };
   function render() {
@@ -58,7 +62,7 @@ export function createBuildBoard(c) {
   function pick(id) { const b = togglePick(offers, picked, id, bank(), BUILD_BOARD.picks); if (b === picked) return false; picked = b; render(); return true; }
   function apply(o) {
     const s = c.story(), e = c.eco();
-    if (o.kind === 'sentry') { const ci = site(); return ci >= 0 && c.orderTower(o.key, ci, { quiet: true }); }
+    if (o.kind === 'sentry') { const ci = o.site ?? site(); return ci >= 0 && c.orderTower(o.key, ci, { quiet: true }); }
     if (o.kind === 'upgrade') { const t = c.towers().find((x) => x.ci === o.ci); return !!t && c.orderUpgrade(t); }
     if (!e.spend(o.price, { category: 'board' })) return false;
     if (o.kind === 'structure') buy(s.programme, o.step);
@@ -94,14 +98,14 @@ export function createBuildBoard(c) {
     else return;
     ev.preventDefault();
   }
-  function show(n, go) {
+  function show(n, go, { pool = (w) => boardOffers(w, BUILD_BOARD), words = W } = {}) {
     const { w } = world(n);
-    offers = boardOffers(w, BUILD_BOARD); picked = [];
+    offers = pool(w); picked = [];
     if (!offers.length) return false;
     open = { n, go, bank: bank() };
     c.endShot();   // a live cut (a print close-up begun before the debrief) would take the board's keys and taps: it ends, as its skip would
     card = div('build-board'); card.setAttribute('role', 'dialog'); card.setAttribute('aria-live', 'assertive'); card.dataset.sector = String(n);
-    const head = div('bb-head'); head.append(div('bb-who', W.who), div('bb-title', W.title), div('bb-line', W.line), div('bb-bank', ''));
+    const head = div('bb-head'); head.append(div('bb-who', W.who), div('bb-title', words.title ?? W.title), div('bb-line', words.line ?? W.line), div('bb-bank', ''));
     const grid = div('bb-grid');
     offers.forEach((o, i) => {
       const t = div(`bb-tile bb-${o.kind}`, null, 'button'); t.type = 'button'; t.dataset.offer = o.id;
@@ -125,7 +129,9 @@ export function createBuildBoard(c) {
       if (via !== 'continue' || n < 2 || !c.story()?.programme) return false;
       return show(n, go);
     },
-    state: () => ({ open: !!card, n: open?.n ?? null, bank: bank(), thumbs: card ? [...card.querySelectorAll('.bb-thumb')].filter((im) => im.src).length : 0, offers: offers.map((o) => ({ id: o.id, kind: o.kind, label: o.label, price: o.price })), picked: picked.slice(), last, boards: history.length,
+    // THE FIRST ORDERS (2026-11-08, THE SETTLING, spec 2.B): the card once at the landing with the first pool and words (src/fx/first-orders.js opens it)
+    first: (go) => !card && !!c.story()?.programme && show('first', go, { pool: (w) => firstOffers(w, BUILD_BOARD), words: BUILD_BOARD.first.words }),
+    state: () => ({ open: !!card, n: open?.n ?? null, first: open?.n === 'first', bank: bank(), thumbs: card ? [...card.querySelectorAll('.bb-thumb')].filter((im) => im.src).length : 0, offers: offers.map((o) => ({ id: o.id, kind: o.kind, label: o.label, price: o.price })), picked: picked.slice(), last, boards: history.length,
       bought: [...(c.story()?.programme?.bought ?? [])] }),
     test: { toggle: (id) => pick(id), confirm, skip },
   };

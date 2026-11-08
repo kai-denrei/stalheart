@@ -94,7 +94,7 @@ import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js'; import { garrisonSites as pickGarrisonSites } from './domain/garrison.js';
 import { wallCushion as cushionWalls, breachBlocked as craterBlocked, CRATER_PAD } from './domain/wall-cushion.js'; import { createCtlWatch } from './platform/ctl-watch.js'; import { createShellFlight } from './fx/shell-flight.js';   /* refactor round 4 (2026-10-22) */
 import {TOWERS, TOWER_BY_KEY, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER} from './towers.js';
-import { makeEconomy, sellRefund } from './economy.js'; import { createBuildBoard } from './fx/build-board.js';
+import { makeEconomy, sellRefund } from './economy.js'; import { createBuildBoard } from './fx/build-board.js'; import { createFirstOrders } from './fx/first-orders.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
@@ -2365,7 +2365,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
-    const built = buildGameWorld({ bossStart: flags.boss === '1', arena: flags.arena != null ? parseInt(flags.arena, 10) : null, world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, base: storyQuery.base, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
+    const built = buildGameWorld({ bossStart: flags.boss === '1', arena: flags.arena != null ? parseInt(flags.arena, 10) : null, world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, base: storyQuery.base, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, settle: storyQuery.settle, scene, sfx, warm: warmShaders });
     // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     mesh = built.mesh;
     dungeon = built.dungeon;
@@ -4499,7 +4499,7 @@ export function initTdTab(root) {
     // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
     // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels
     foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
-    order: (key, ci) => orderTower(key, ci, { quiet: true }),
+    order: (key, ci) => orderTower(key, ci, { quiet: true }), pending: (ci) => orderByCell.has(ci),   /* an order on that cell (the beats' emergency Rotor, 2026-11-08) */
     grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); },
     built: (ci) => towerByCell.has(ci),
     cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0,
@@ -4667,6 +4667,7 @@ export function initTdTab(root) {
   const buildBoard = createBuildBoard({ root, endShot, eco: () => eco, story: () => story, towers: () => towers, orders, placeError, graph: () => graph, cellSide: () => cellSide, orderTower, orderUpgrade, callout: (x, c) => showCallout(x, c), manned: () => laserStation.manned?.() ?? 0, petLife: (i) => companions?.life?.(i) ?? null, printPet: (i) => petPrint?.force(i),
     hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
     shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base), spriteShot, towerLook: () => params.towerLook });
+  const firstOrders = createFirstOrders({ board: buildBoard, story: () => story, touring: () => storyApi.touring(), pause: (v) => { paused = !!v; }, brief: (id) => briefs.want(id), acceptance: flags.acceptance === '1', wanted: storyQuery.first });   // THE FIRST ORDERS (2026-11-08, THE SETTLING; src/fx/first-orders.js); want: the scouting line waits for a busy panel (--settling saw showBrief's one-deep slot drop it behind the Stålheart's lines)
   // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
   const endingHost = createEndingHost({
     storyBase: () => storyBase,
@@ -4686,7 +4687,7 @@ export function initTdTab(root) {
   });
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, tankReady, the programme's part of the tick, repaired, printed
   const programme = createProgrammeHost({
-    orders,
+    orders, grant: (n) => eco.addBiomass(n, { category: 'grant' }),   /* a step's `pays` (the recycler's work, 2026-11-08) */
     breachQueue,
     breachedCells,
     gunshipRig,
@@ -4749,7 +4750,7 @@ export function initTdTab(root) {
     // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
-    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, scene, startShot, snapCamera, sfx, drone: () => isao,
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); briefs.want('gunship_overhead'); }, camera, scene, startShot, snapCamera, sfx, drone: () => isao, shot: shotActive,   /* a camera shot plays: the settled tremor waits (2026-11-08) */
     mission: () => (isaoSay(sfx, 'mission'), showMission(root, STORY_MISSION)), touring: () => !story?.arrival.done() || shotId() === 'sitesTour',
     freeLook: () => { const done = (glide) => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; if (!glide) snapCamera(); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
       if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = tourSeconds(pts.length);
@@ -4768,7 +4769,7 @@ export function initTdTab(root) {
     build: () => {
       skyRig.tick();
       isaoMoments.tick();
-      const f = colonyTick.open();
+      const f = colonyTick.open(); firstOrders.tick();   // THE FIRST ORDERS once after the landers' tour (2026-11-08)
       // THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (src/fx/hull-issue.js): the camera runs to the door's framing with the hull
       // standing under the gantry, then it drives out as any deploy does; under a gunner it is set down outside the door
       story.hull?.tick(story.hullHost ??= makeHullHost());

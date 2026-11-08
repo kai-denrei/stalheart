@@ -35,11 +35,11 @@ for (const doorAt of [t.sectorDoor.earliest, t.sectorDoor.latest]) {
   // PRINTS
   const prints = lane('prints').filter((r) => r.step), offers = lane('board');
   const at0 = (rows, id) => rows.find((r) => r.step === id)?.col;
-  ok(`door ${doorAt}: the ${t.programme.length} programme steps are placed, fifteen printed on their own and thirteen bought on the board (round 8: the depot, the fourth pearl; 2026-11-07: the six domes on the board, their four bridges on their own)`, t.programme.length === 28 && prints.length === 15 && offers.length === 13 && t.programme.every((s) => [...prints, ...offers].some((r) => r.step === s.id)));
+  ok(`door ${doorAt}: the ${t.programme.length} programme steps are placed, fifteen printed (the three first orders' steps among them, 2026-11-08) and thirteen bought on the board (round 8: the depot, the fourth pearl; 2026-11-07: the six domes on the board, their four bridges on their own)`, t.programme.length === 28 && prints.length === 15 && offers.length === 13 && t.programme.every((s) => [...prints, ...offers].some((r) => r.step === s.id)));
   ok(`door ${doorAt}: a bridge sits with the later of its two domes and says it waits for them`, at0(prints, 'bridge-w1') === 's:2' && at0(prints, 'bridge-w2') === 's:3' && /once dome-nw and dome-w stand/.test(prints.find((r) => r.step === 'bridge-w1').rule));
   ok(`door ${doorAt}: the board's structures run from the first board they may be on to the end, priced`, offers.every((r) => r.to === 'endless' && / kg · offered from sector \d/.test(r.sub)) && offers.find((r) => r.step === 'board').col === 's:2' && offers.find((r) => r.step === 'farm').col === 's:3');
   const at = (id) => [...prints, ...offers].find((r) => r.step === id).col;
-  ok(`door ${doorAt}: the gate in ROTOR, the solar array in EXPEDITION, the radar in S2, the launcher in S4`, at('gate') === 'ch:rotor' && at('solar') === 'ch:expedition' && at('radar') === 's:2' && at('launcher') === 's:4');
+  ok(`door ${doorAt}: the gate in ROTOR, the solar array in ROTOR too (2026-11-08, THE SETTLING: bought at the first orders, it prints from the deploy), the radar in S2, the launcher in S4`, at('gate') === 'ch:rotor' && at('solar') === 'ch:rotor' && at('radar') === 's:2' && at('launcher') === 's:4');
   ok(`door ${doorAt}: the back gate waits for the door (s:${doorAt}), passable`, at('backgate') === `s:${doorAt}` && prints.find((r) => r.step === 'backgate').tags.includes('passable'));
   ok(`door ${doorAt}: idle steps say "at the lull"`, prints.filter((r) => t.programme.find((s) => s.id === r.step).when.idle).every((r) => r.tags.includes('at the lull')));
   // DROPS & COMPANIONS
@@ -56,6 +56,8 @@ for (const doorAt of [t.sectorDoor.earliest, t.sectorDoor.latest]) {
   // ISAO
   const placed = new Set(lane('isao').flatMap((r) => r.items.map((x) => x.id))), unplaced = b.unplaced.briefs.map((x) => x.id);
   ok(`door ${doorAt}: every brief is placed or listed unplaced, once`, placed.size + unplaced.length === Object.keys(BRIEFS).length && unplaced.every((id) => !placed.has(id)));
+  // THE SETTLING's two lines from code (2026-11-08 final review): the first orders' close and Isao's emergency Rotor, both in ROTOR (the beat `printing`)
+  ok(`door ${doorAt}: scout_material and rotor_emergency are placed in ROTOR`, ['scout_material', 'rotor_emergency'].every((id) => lane('isao').some((r) => r.col === 'ch:rotor' && r.items.some((x) => x.id === id))));
   ok(`door ${doorAt}: the briefs come as counts with lists (${lane('isao').length} cards for ${placed.size} briefs)`, lane('isao').length < placed.size / 3);
   // JUMPS
   const jumps = lane('jumps');

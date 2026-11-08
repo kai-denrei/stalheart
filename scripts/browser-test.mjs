@@ -77,7 +77,7 @@ async function click(selector){
 }
 try{
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Server did not start')),10000);server.stdout.once('data',()=>{clearTimeout(timer);resolve();});server.once('error',reject);server.once('exit',code=>{if(code)reject(Error(`Server exited ${code}`));});});
- browser=launchChrome([...(process.env.HEADED==='1'?['--no-first-run','--no-default-browser-check']:['--headless=new']),'--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:1200000});
+ browser=launchChrome([...(process.env.HEADED==='1'?['--no-first-run','--no-default-browser-check']:['--headless=new']),'--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:args.includes('--grow')?1800000:1200000});   // --grow: 30 min (THE SETTLING, 2026-11-08: the Rotor stands behind the Stålheart's 75 s on its page)
  const chromePort=await browser.port;
  let page=null;for(let k=0;k<50&&!page;k++){page=(await(await fetch(`http://127.0.0.1:${chromePort}/json`)).json()).find(t=>t.type==='page');if(!page)await delay(200);}   // a headed window lists its page a moment later
  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));
@@ -946,8 +946,12 @@ try{
  assert(summary.sectors[1].firstContact<=40,`sector 1's first body reaches a door within 40 s of its card (${summary.sectors[1].firstContact})`);
   if(summary.sectors[2]?.arrivals)assert(summary.sectors[2].firstContact<=40,`sector 2's first body reaches a door within 40 s of its card (${summary.sectors[2].firstContact})`);}
  } else if(args.includes('--grow')) {
- // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover
- // while Isao prints the gate (the tremor waits for it), the landing pad and the Stålheart, then the rest as the phases and sectors come.
+ // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover.
+ // THE SETTLED ORDER (2026-11-08, THE SETTLING; measured by Task 4): the gate from the deploy, the Stålheart straight after it with no sentry
+ // up, no Rotor bought (an acceptance page skips the first orders), so at the settle's end (&settle=10) Isao orders his emergency Rotor and it
+ // queues behind the Stålheart's 75 s print; once it stands (the Stålheart standing too), the Quiver, then the tremor path: the tremor, the
+ // breach, the fodder, the override, the first wave cleared, no construction (the hull already out), the handover with GS01 on station, then
+ // the rest as the phases and sectors come (the pad, the recycler's work and the array not bought, so never printed on this page).
  const hiddenNear='(window.__stalheartTest.state().storyLod||[]).filter(l=>!l.visible&&l.nearLoaded).map(l=>l.id)';
  const shotBase=async(name)=>{await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);assert.deepEqual(await evaluate(hiddenNear),[],`${name}: no hidden landmark fetched its near tier`);current=name;await finish();};
  // ?story=0 IS THE STORY FROM ITS START (owner, 2026-09-25): the growing base, the landing, the full threat, as a bare page
@@ -959,7 +963,7 @@ try{
  {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'gate','the gate is his first print (2026-10-03: the recycler beat waits for the Stålheart)');assert.equal(b.programme.gate.built,false);
   assert.equal(b.hull?.state,'held','SECTOR 0: a bare page has no hull until the Stålheart stands');}
  await finish();
- await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);
+ await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1&settle=10#td');await until('!!window.__stalheartTest',90000);   // &settle=10: the settle's 120 s is two minutes of a headless clock (THE SETTLING, 2026-11-08)
  const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);   /* every mark from the page being ready (before the arrival, from after its first checks) */
  // THE ARRIVAL (owner, 2026-09-25: "bring back the landing, short and sweet but showing the landing. Isao comes out, close up on his
  // face; he's the narrator ... The state change from rocket intact to dismantled should happen off camera"). Every frame is logged in the
@@ -999,28 +1003,39 @@ try{
  // THE PLAYER LOOKS AROUND (owner, 2026-09-30: "first beat, player should be in charge of something, a free camera"): the landing
  // hands over to the orbit camera, and no seat has glided in yet
  {const s=await evaluate('window.__stalheartTest.state()');assert.ok(s.view==='orbit'||s.shot==='sitesTour',`the landing ends on the free camera or the landers' tour (${s.view}, ${s.shot})`);assert.equal(s.glide.n,0);}
- const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
+ const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert(g0.programme.printed.every(x=>x==='gate'),`at most the gate by the landing's end: it prints from the deploy since 2026-11-08 (${g0.programme.printed})`);assert.equal(g0.programme.gate.built,g0.programme.printed.includes('gate'));const walls0=g0.wallCount,gate0=g0.programme.gate.built;assert.deepEqual(g0.bays,[],'the bays are not printed yet');
  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the opening is Isao coming out and building; no MÖRK is drawn or driven
  assert.equal(g0.hull.state,'held','no hull at the landing');assert.equal(g0.hull.visible,false,'the hull is not drawn');assert(g0.hull.door>=0,`the Stålheart has a door to roll the hull out of (${JSON.stringify(g0.hull)})`);
  assert.deepEqual(await evaluate(hiddenNear),[]);current='grow-landing';await finish();
  await mark('landed (the base, the rocket recycling)');
- await until('window.__stalheartTest.state().towers===1',120000);await mark('Rotor printed');
- // THE GATE FOLLOWS THE ROTOR (2026-10-03, "faster intro, more intensity"): the recycler beat waits behind the Stålheart's print now
- await until('window.__stalheartTest.state().programme.active==="gate"',60000);const walls0=(await evaluate('window.__stalheartTest.state()')).wallCount;await mark('gate print begins');await until('window.__stalheartTest.state().programme.print?.step==="gate"&&window.__stalheartTest.state().programme.print.k>0',30000);
- {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'rotor-ready','the Rotor waits for the tour while the gate prints');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
+ // THE SETTLED ORDER (owner, 2026-11-08, THE SETTLING: "first we leave time to settle"; spec docs/superpowers/specs/2026-11-08-the-settling-design.md
+ // 2.A-2.D): the gate and the Stålheart print from the deploy, the Rotor is the first orders' (not shown here: no &first=1), so with &settle=10 Isao
+ // prints it himself at the settle's end (rotor_emergency), at the back of his book: behind the Stålheart's 75 s; then the tremor, the quiet breach
+ // up the lane, the override. Each wait below waits for its own fact, not for an order between them.
+ const T='window.__stalheartTest',tremored=`(window.__ph||[]).some(r=>r[0]==='tremor')`;   // the phase alone: td.briefs persists across the run's pages
+ await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`);   // the beats' phases (the tremor is not booked in story.said)
+ await until(`${T}.state().programme.active==="gate"||${T}.state().programme.printed.includes("gate")`,60000);await mark('gate print begins');
+ await until(`${T}.state().programme.print?.step==="gate"&&${T}.state().programme.print.k>0||${T}.state().programme.printed.includes("gate")`,30000);
+ {const s=await evaluate(`${T}.state()`);if(!s.programme.printed.includes('gate')){assert.equal(s.story.phase,'printing','the gate prints from the deploy; the Rotor is the first orders\' (2026-11-08)');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
+  else console.log('  grow: the gate already stood at the first look (no still of its print)');}
  current='grow-gate-printing';await finish();
- await until('window.__stalheartTest.state().programme.printed.includes("gate")',90000);await mark('gate stands');
- {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.gate.built,true);assert(s.wallCount>walls0&&s.wallCount<=walls0+12,`the walls are rock once printed (${walls0} -> ${s.wallCount})`);assert.notEqual(s.story.gateAt,null);}
- // STRAIGHT TO THE ACTION (owner, 2026-10-05): the sinkhole opened quiet over the beacons' tour and the Rotor is taken as the tour ends,
- // the gate standing or not: no tremor, breach or override beat on a landing
- await until('window.__stalheartTest.state().story.spawned>0',40000);await mark('first fodder');
- {const s=await evaluate('window.__stalheartTest.state()');assert(!s.story.said.includes('tremor'),'no tremor beat on a landing');}
- await until('window.__stalheartTest.state().towerCells.some(([k])=>k==="quiver")',60000);await mark('Quiver stands');   // ordered by the beats the moment the gate stood, ahead of the Stålheart in Isao's queue
- await until('(()=>{const p=window.__stalheartTest.state().programme;return p.isao?.state==="build"&&p.isao.order==="structure"&&p.print.step==="stalheart";})()',90000);await mark('Stålheart print begins');
- {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.active,'stalheart');assert(!s.programme.printed.includes('landing'),'the Stålheart prints straight after the gate: the pad waits behind it');assert.equal(s.hull.state,'held');}
+ await until(`${T}.state().programme.printed.includes("gate")`,90000);await mark('gate stands');
+ {const s=await evaluate(`${T}.state()`);assert.equal(s.programme.gate.built,true);if(!gate0)assert(s.wallCount>walls0&&s.wallCount<=walls0+12,`the walls are rock once printed (${walls0} -> ${s.wallCount})`);}
+ // THE STÅLHEART FROM THE DEPLOY (spec 2.C): Isao's own step straight after the gate, with no Rotor standing yet
+ await until(`(()=>{const p=${T}.state().programme;return p.isao?.state==="build"&&p.isao.order==="structure"&&p.print.step==="stalheart";})()`,90000);await mark('Stålheart print begins');
+ {const s=await evaluate(`${T}.state()`);assert.equal(s.programme.active,'stalheart');assert(!s.programme.printed.includes('landing'),'the pad is a first order, not bought on this page');assert.equal(s.hull.state,'held');console.log(`  grow: the Stålheart begins with ${s.towers} sentry up (phase ${s.story.phase}, settle left ${s.story.settleLeft})`);}
  await delay(8000);assert.deepEqual(await evaluate(hiddenNear),[]);
  assert(/STÅLHEART \d+%/.test(await evaluate('document.querySelector("#td-stats").textContent')),`the HUD reads the Stålheart's progress (${await evaluate('document.querySelector("#td-stats").textContent')})`);
  current='grow-stalheart-rising';await finish();
+ await until(`${T}.state().story.emergency===true`,90000).catch(async()=>assert.fail(`no first orders on an acceptance page: Isao's emergency at the settle's end (${JSON.stringify((await evaluate(`${T}.state()`)).story)})`));await mark('the settle ends: Isao orders the Rotor himself');
+ await until(`${T}.state().towers===1`,240000);await mark('Rotor printed (Isao\'s emergency: no first orders on an acceptance page)');
+ {const s=await evaluate(`${T}.state()`);assert.equal(s.story.emergency,true);assert(s.story.said.includes('rotor_emergency'),'his line');
+  assert(['rotor-ready','tremor','breach','approach','override','piloting'].includes(s.story.phase),`the Rotor stands: rotor-ready or past it (${s.story.phase})`);
+  assert(s.towerCells.some(([k,ci])=>k==='rotor'&&ci===s.story.socket),'on the plan\'s socket');console.log(`  grow: the Rotor stands with the Stålheart ${s.programme.printed.includes('stalheart')?'standing':'printing'}`);}
+ await until(`${T}.state().story.gateAt!==null`,30000);   // set in rotor-ready, the tick the gate is found standing
+ await until(`${T}.state().towerCells.some(([k])=>k==="quiver")`,90000);await mark('Quiver stands');   // ordered by the beats as the gate is found standing at rotor-ready
+ await until(tremored,90000).catch(async()=>assert.fail(`the tremor (${JSON.stringify((await evaluate(`${T}.state()`)).story)} ${JSON.stringify(await evaluate('window.__ph'))})`));await mark('the tremor (the settled opening: a tremor, not the quiet breach at the deploy)');
+ await until(`${T}.state().story.spawned>0`,40000);await mark('first fodder');
  await until('/^(override|piloting)$/.test(window.__stalheartTest.state().story.phase)',150000);await mark('override');   // the override is 0.8 s since the seventh notes: the poll can miss it
  await until('!!window.__stalheartPilotTest',30000);await mark('first kill possible (the Rotor is the players)');
  // THE SEAT GLIDE (owner, 2026-09-30: "switch between rotor and quiver is too abrupt"): each scripted hand-over eases the camera in
@@ -1053,7 +1068,9 @@ try{
   if((await evaluate('window.__stalheartTest.state().story.phase'))==='construction'){await seat('rotor');await until(aimOn('s.story.phase!=="construction"'),180000);await mark('sector 0 down');}}
  else{const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.hull.state,'out',`no construction only when the Stålheart already stood at the Quiver's clear (${JSON.stringify(s.hull)})`);}
  await until('["settled","study-talk","study","expedition"].includes(window.__stalheartTest.state().story.phase)',30000);
- await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('settled (the handover)');current='grow-settled';await finish();
+ await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('settled (the handover)');console.log(`  grow: the gunship at the handover ${JSON.stringify((await evaluate('window.__stalheartTest.state()')).gunship?.station)} (on station: construction's, or GS01 at settled on a settled opening, 2026-11-08)`);current='grow-settled';await finish();
+ // GS01's line comes with the Quiver's clear, as quiver_cleared holds the panel: it waits its turn (the one-deep slot), so it is waited for here (2026-11-08)
+ await until(`(s=>['gunship_overhead','stalheart_stands'].every(id=>s.includes(id)))(JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]"))`,60000).catch(()=>{});
  {const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['gunship_overhead','stalheart_stands'])assert(seen.includes(id),`Isao said ${id} (${seen})`);}   /* stalheart_begins: since 2026-10-03 its print starts with the player already in the Rotor's seat, and he never talks over a manned seat */
  await until('window.__stalheartTest.state().screenOpen',60000);await mark('study screen');current='grow-study';await finish();
  await click('#synthetic-modal [data-continue]');await until('window.__stalheartTest.state().story.phase==="expedition"',8000);await mark('expedition');
@@ -1062,10 +1079,9 @@ try{
  // away; after the sites shot the player is on the hull's own camera, not the seat's bird's-eye view, and the strip says TANK
  await until('window.__stalheartTest.state().shot===null',20000);await delay(600);
  {const v=await evaluate('[window.__stalheartTest.state().view,document.querySelector("#story-views button.active")?.dataset.view]');console.log(`  grow: after the study the view is ${v[0]}, the strip ${v[1]}`);assert(['third','pov'].includes(v[0])&&v[1]==='tank',`back to the hull after the study from a seat (${v})`);}
- await until('window.__stalheartTest.state().programme.printed.includes("landing")',90000);await mark('landing pad stands');
- await until('window.__stalheartTest.state().programme.active==="solar"',90000);await delay(7000);await shotBase('grow-solar-rising');
- await until('window.__stalheartTest.state().programme.printed.includes("solar")',90000);await mark('solar stands');
- {const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.perks.includes('station'),'the array station is on');assert.equal(s.programme.next,'bays');}
+ // THE FIRST ORDERS WERE NOT TAKEN ON THIS PAGE (2026-11-08): the pad, the recycler's work and the array are the first orders' and nothing else's
+ // (spec 2.B), so a page without &first=1 stands none of them; the bays come next, in sector 1
+ {const s=await evaluate('window.__stalheartTest.state()');assert(!s.programme.printed.includes('landing')&&!s.programme.printed.includes('solar'),'the first orders were not taken on this page: no pad, no array (2026-11-08)');assert(!s.programme.perks.includes('station'));assert.equal(s.programme.next,'bays','an unbought first step is not next');}
  await delay(8000);{const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.active===null||(s.sector?.n??0)>=1,`the bays wait for sector 1 (active ${s.programme.active}, sector ${s.sector?.n})`);}
  await evaluate('(window.__stalheartTest.state().sector?.n??0)>=1||window.__stalheartTest.setSector(1)');   // the sector loop owns story.sectorN once sector 1 starts; the test only stands in if it has not
  await until('window.__stalheartTest.state().programme.printed.includes("bays")',240000);await mark('bays stand');
@@ -1076,7 +1092,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','landing','foundry','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,[],`nothing is owed: the colony is the build board's now (round 6), the passable back gate and launcher never were (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','bays','hugin','depot','radar','assembly'],'every step, in order (the pad, the recycler\'s work and the array are the first orders\', not bought here: 2026-11-08; the depot after HUGIN since round 8, 2026-11-05: this list was never reached since)');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,[],`nothing is owed: the colony is the build board's now (round 6), the passable back gate and launcher never were (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['depot','gate','gunship','hulls','rebuild','stalheart','uplink'],'no array station: the array is a first order (2026-11-08); the depot\'s perk since round 8');assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
@@ -1584,6 +1600,97 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`${T}.rover.spend(${PEARLS.capacity})`);
  await until(`${T}.rover.state().mode!=='full'`,20000).catch(async()=>assert.fail(`a spend lets it unload (${JSON.stringify(await R())})`));
  current='rover-after';await finish();
+ } else if(args.includes('--settling')) {
+ // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to
+ // build first with limited building material, the Stalheart being non-negotiable ... Isao tells the player that we will need to scout for more
+ // building material"; spec docs/superpowers/specs/2026-11-08-the-settling-design.md). Page 1, the story's own start with the card asked for
+ // (&first=1: an acceptance page passes it by otherwise) and a 12 s settle (the tune's 120 s is two minutes of a headless clock): the landing, the
+ // landers' tour, then THE FIRST ORDERS over the paused game (four cards, the bank up by the rocket's 180 kg, nothing on the field); the Rotor (45,
+ // a real key) and the recycler's work (40, a real tap) bought; Isao's scouting line; the gate, the bought Rotor on the plan's socket (no
+ // emergency), the Stålheart printing from the deploy, the tremor once the settle has run out and the Rotor stands (behind the Stålheart), the Rotor's seat; the recycler's work pays its 60 kg when
+ // it stands. Page 2 (&settle=16, see its note below): the card skipped, nobody ordered: Isao's emergency Rotor at the settle's end, then the tremor.
+ // Stills: settling-board, settling-stalheart, settling-seat, settling-emergency.
+ // THE TREMOR IS READ FROM THE PHASE: the beats say it (api.brief) but do not book it in story.said (rotor_emergency is booked), so a per-frame
+ // log of the beats' phase and clock (window.__ph) times it, and the deploy (landed -> printing) it is measured against
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),briefs='JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")';
+ const PH=`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`;
+ const seenPhase=(p)=>`(window.__ph||[]).some(r=>r[0]===${JSON.stringify(p)})`,phaseAt=async(p)=>(await evaluate(`(window.__ph||[]).find(r=>r[0]===${JSON.stringify(p)})?.[1]??null`));
+ const tremored=seenPhase('tremor');   // the phase alone: td.briefs persists across this run's pages (page 2 would find page 1's tremor there)
+ const PAGE='index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1';
+ await go('settling',`${PAGE}&settle=12&first=1#td`);
+ await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);
+ // the bank before the deploy: the page lands first, the deploy is on the cut to Isao's face (~20 s in)
+ const s00=await st();assert.equal(s00.story.phase,'landed',`read before the deploy (${s00.story.phase})`);const b0=s00.biomass;console.log(`  settling: the bank at the landing ${b0} kg (story clock ${s00.story.clock})`);
+ await until(`${T}.state().story.phase!=="landed"`,90000).catch(async()=>assert.fail(`the arrival deploys (${JSON.stringify((await st()).arrival)})`));
+ {const s=await st();console.log(`  settling: deployed at story clock ${await phaseAt('printing')??s.story.clock} (phase ${s.story.phase}, settle ${s.story.settle}, left ${s.story.settleLeft})`);assert.equal(s.story.settle,12,'?settle=12 on the beats');}
+ await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,90000).catch(async()=>assert.fail(`the first orders open after the tour (${JSON.stringify((await st()).board)} shot ${(await st()).shot})`));
+ const sb=await st(),bd=sb.board;
+ console.log(`  settling: THE FIRST ORDERS at story clock ${sb.story.clock}: bank ${bd.bank} kg; ${bd.offers.map(o=>`${o.id} ${o.price} kg`).join(' · ')}; settle left ${sb.story.settleLeft} s; Isao's book: printed ${JSON.stringify(sb.programme.printed)}, printing ${sb.programme.print?.step??'-'} k ${sb.programme.print?.k?.toFixed?.(2)??'-'}`);
+ assert.equal(sb.paused,true,'over the paused game');
+ assert.deepEqual(bd.offers.map(o=>o.id),['sentry:rotor','build:landing','build:foundry','build:solar'],'the Rotor and the opening\'s three first steps');
+ assert.deepEqual(bd.offers.map(o=>o.price),[45,60,40,120],'the radial\'s Rotor, then the salvage\'s scale (BUILD_BOARD.first)');
+ assert.equal(bd.bank,b0+180,`the whole salvage at the deploy: an automatic landing's three barrels (${b0} -> ${bd.bank})`);
+ // NOTHING ON THE FIELD BUT THE NESTS: the other landers' nests are manned from the start (owner, 2026-10-03: "they should be there from the start"), so
+ // enemiesAlive counts their guards (200 on this page); the fodder is the beats' own count, and no breach has opened
+ assert.equal(sb.story.spawned,0,'no fodder up');assert(!(await evaluate(seenPhase('breach'))),'no breach');console.log(`  settling: ${sb.enemiesAlive} alive at the first orders (the landers' nest guards), ${sb.story.spawned} fodder`);assert.equal(sb.story.phase,'printing','the beats at printing, the Rotor nobody\'s yet');assert.equal(sb.towers,0,'no sentry stands');
+ assert(!(await evaluate(tremored)),'no tremor before the settle');assert.equal(sb.story.emergency,false);
+ assert.equal(await evaluate(`document.querySelector('.build-board .bb-title')?.textContent`),'THE FIRST ORDERS','the card\'s own title');
+ // the settle is the beats' clock: the card holds it (2 s of wall, settleLeft unmoved)
+ {const l0=(await st()).story.settleLeft;await delay(2000);const l1=(await st()).story.settleLeft;assert.equal(l1,l0,`the card holds the settle (${l0} -> ${l1})`);}
+ // THE CONTROLS CARD (first visit) may stand with it (Task 3's review): it does not pause and closes on an outside click; the board's keys and taps
+ // must still be the board's, so the picks are a real key (1: the Rotor) and a real tap (the recycler's tile)
+ const cc=await evaluate(`(()=>{const e=document.querySelector('#controls-card');return e?{shown:getComputedStyle(e).display!=='none'&&!e.hidden&&!e.classList.contains('hidden'),cls:e.className}:null;})()`);console.log(`  settling: the controls card with the first orders: ${JSON.stringify(cc)}`);
+ await until(`(()=>{const b=${T}.state().board;return b.thumbs===b.offers.length;})()`,8000).catch(()=>console.log('  settling: not every thumbnail drawn within 8 s'));
+ current='settling-board';await finish();
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'1',code:'Digit1',text:'1'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'1',code:'Digit1'});await delay(200);
+ await click('.build-board .bb-tile[data-offer="build:foundry"]');await delay(300);
+ {const p=(await st()).board.picked;if(p.length<2){console.log(`  settling: the real key and tap left the picks at ${JSON.stringify(p)}: the harness's hands finish them`);for(const id of ['sentry:rotor','build:foundry'])if(!p.includes(id))await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);}
+  assert.deepEqual((await st()).board.picked,['sentry:rotor','build:foundry'],'the Rotor and the recycler\'s work picked');console.log(`  settling: picked by ${p.length===2?'a real key and a real tap':'the harness (see above)'}`);}
+ await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
+ {const s=await st();console.log(`  settling: ordered ${JSON.stringify(s.board.last)}; bank ${bd.bank} -> ${s.biomass}`);
+  assert.equal(s.biomass,b0+180-85,'paid at the pick: 45 + 40 out of 180');assert(s.board.bought.includes('foundry'),'the recycler\'s work bought on the programme');
+  assert.equal(s.board.last.n,'first','the history row is the first orders\'');assert.deepEqual(s.board.last.took,['sentry:rotor','build:foundry'],'both placed');assert.equal(s.paused,false,'the game runs again');}
+ await until(`${briefs}.includes('scout_material')||/That was the rocket/.test(document.querySelector('#td-brief:not(.hidden) #td-brief-line')?.textContent||'')`,30000).catch(async()=>assert.fail(`Isao's scouting line as the card closes (seen ${JSON.stringify(await evaluate(briefs))}; the panel's log ${JSON.stringify(await evaluate('window.__seen?.briefs'))})`));
+ console.log('  settling: Isao said scout_material');
+ // the recycler's work's pay, read in the page across its print (it may print while the suite waits on something else): the grants as it begins and as it stands
+ await evaluate(`(()=>{const T=window.__stalheartTest,F=window.__fdy={};(function f(){try{const s=T.state(),p=s.programme;if(F.g0==null&&p.active==='foundry'){F.g0=s.ledger.grants;F.b0=s.biomass;F.c0=s.story.clock;}if(F.g1==null&&p.printed.includes('foundry')){F.g1=s.ledger.grants;F.b1=s.biomass;F.c1=s.story.clock;return;}}catch(e){}requestAnimationFrame(f);})();})()`);
+ // THE STÅLHEART FIRST (spec 2.C): the gate and the Stålheart print from the deploy; the gate (4 s) stands during the landers' tour and the Stålheart's
+ // 75 s is already under way when the card opens, so the bought Rotor, the next order on Isao's book, stands after it (spec 2.C expected it before:
+ // measured, the Rotor at story clock ~92, the Stålheart a moment earlier; the settle's 120 s still holds the first contact behind both)
+ await until(`${T}.state().programme.active==='stalheart'||${T}.state().programme.printed.includes('stalheart')`,90000).catch(async()=>assert.fail(`the Stålheart's print (${JSON.stringify((await st()).programme)})`));
+ {const s=await st();console.log(`  settling: the Stålheart ${s.programme.active==='stalheart'?`printing (k ${s.programme.print?.k?.toFixed?.(2)})`:'standing'} at story clock ${s.story.clock}; gate ${s.programme.printed.includes('gate')?'standing':'not yet'}, ${s.towers} sentry up`);
+  if(s.programme.active==='stalheart'){assert.equal(s.hull.state,'held','no hull while it prints');await delay(1500);current='settling-stalheart';await finish();}else console.log('  settling: no still of the Stålheart printing');}
+ await until(`${T}.state().programme.printed.includes('gate')`,90000);
+ await until(`${T}.state().towers===1`,240000).catch(async()=>assert.fail(`the bought Rotor, Isao's next job (${JSON.stringify((await st()).programme)})`));
+ {const s=await st();console.log(`  settling: the Rotor stood at story clock ${s.story.clock} (readyAt ${s.story.readyAt}), the Stålheart ${s.programme.printed.includes('stalheart')?'standing':'printing'}; settle left ${s.story.settleLeft}`);
+  assert.equal(s.story.emergency,false,'the player\'s Rotor: no emergency');assert(!s.story.said.includes('rotor_emergency'));
+  assert(s.towerCells.some(([k,ci])=>k==='rotor'&&ci===s.story.socket),`the Rotor on the plan's own socket ${s.story.socket} (${JSON.stringify(s.towerCells)})`);}
+ await until(tremored,120000).catch(async()=>assert.fail(`the tremor at the settle's end (${JSON.stringify((await st()).story)} ${JSON.stringify(await evaluate('window.__ph'))})`));
+ {const tDeploy=await phaseAt('printing'),tTrem=await phaseAt('tremor');console.log(`  settling: the tremor at story clock ${tTrem}, ${tDeploy!=null&&tTrem!=null?(tTrem-tDeploy).toFixed(1):'?'} s after the deploy (settle 12, the card's pause not counted); phases ${JSON.stringify(await evaluate('window.__ph'))}`);
+  if(tDeploy!=null&&tTrem!=null)assert(tTrem-tDeploy>=12,'the tremor waits for the settle');}
+ await until(`/^(override|piloting)$/.test(${T}.state().story.phase)`,120000).catch(async()=>assert.fail(`the override (${JSON.stringify((await st()).story)})`));
+ await until(`${T}.seatState().seatKey==='rotor'`,30000).catch(async()=>assert.fail(`the Rotor's seat (${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
+ {const s=await st();assert(s.story.spawned>0,'the first fodder is up');console.log(`  settling: the Rotor's seat at story clock ${s.story.clock}, ${s.story.spawned} spawned, Stålheart ${s.programme.printed.includes('stalheart')?'standing':`printing (${s.programme.active})`}`);}
+ await delay(1500);current='settling-seat';await finish();
+ // THE RECYCLER'S WORK PAYS (spec 2.B: foundry 40, pays 60): it prints behind the Stålheart's 75 s (and the Rotor); the page's watcher read the grants
+ await until(`window.__fdy?.g1!=null`,180000).catch(()=>{});
+ {const F=await evaluate('window.__fdy');console.log(`  settling: the recycler's work ${JSON.stringify(F)}`);
+  if(F?.g0!=null&&F?.g1!=null)assert.equal(F.b1-F.b0,60,`the recycler's work pays its barrel (bank ${F.b0} -> ${F.b1}; the grants count the Quiver's cost too, granted and spent at its order: ${F.g0} -> ${F.g1})`);else console.log('  settling: the recycler\'s work not measured within the budget');}
+ // PAGE 2: the card skipped, nobody ordered the Rotor: Isao prints it himself at the settle's end
+ // &settle=16, not 8: the landers' tour takes ~10.4 s of the beats' clock before the card opens, so an 8 s settle ran out under it (the emergency
+ // came before the card, which then offered no Rotor); 16 leaves ~5 s after the card
+ await go('settling-emergency',`${PAGE}&settle=16&first=1#td`);
+ await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);
+ await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,150000).catch(async()=>assert.fail(`the first orders open (${JSON.stringify((await st()).board)})`));
+ await evaluate(`${T}.board.skip()`);await until(`!${T}.state().board.open`,8000);
+ {const s=await st();assert.deepEqual(s.board.last.took,[],'nothing taken');assert.equal(s.board.last.n,'first');assert.equal(s.towers,0,'no Rotor on the field');assert.equal(s.story.emergency,false,'not before the settle\'s end');console.log(`  settling: skipped at story clock ${s.story.clock}, bank ${s.biomass}, settle left ${s.story.settleLeft}`);}
+ await until(`${T}.state().story.emergency===true`,90000).catch(async()=>assert.fail(`nobody ordered: Isao's Rotor at the settle's end (${JSON.stringify((await st()).story)})`));
+ {const s=await st();assert(s.story.said.includes('rotor_emergency'),'his line');console.log(`  settling: the emergency at story clock ${s.story.clock} (deploy ${await phaseAt('printing')}), settle left ${s.story.settleLeft}`);}
+ await until(`${T}.state().towers===1`,240000).catch(async()=>assert.fail(`Isao's Rotor stands (${JSON.stringify((await st()).programme)})`));
+ {const s=await st();assert(s.towerCells.some(([k,ci])=>k==='rotor'&&ci===s.story.socket),'on the plan\'s socket');console.log(`  settling: the emergency Rotor stood at story clock ${s.story.clock}`);}
+ await until(tremored,120000).catch(async()=>assert.fail(`the tremor after it (${JSON.stringify((await st()).story)})`));
+ {const s=await st();console.log(`  settling: the tremor at story clock ${await phaseAt('tremor')} (now ${s.story.phase})`);}
+ await delay(1000);current='settling-emergency';await finish();
  } else if(args.includes('--landing')) {
  // THE LANDING FLOWN (owner, 2026-11-07; spec docs/superpowers/specs/2026-11-07-landing-mini-game-design.md sections 8-9): five fresh pages, the
  // acceptance page's planet seed fixed, so the seeded entry is the same each run. 1. the scripted pilot (the Task 7 fix flights' rule: legs down, the
@@ -3205,10 +3312,12 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // a) planet view, the beacons lit one by one, b) then the view deep dives directly towards the rotor, without cut"): every frame's
  // camera from the end of the close-up to the Rotor's optic; no frame may move the eye by more than `cut` x the planet's radius
  const T='window.__stalheartTest',cut=0.06;
- await go('opening-cuts','index.html?sw=0&acceptance=1&world=story#td');
+ // THE SETTLING (2026-11-08): the story's own start waits a settle before the first contact; &settle=10 keeps it short (the tune's 120 s is two
+ // minutes of a headless clock), and the Rotor's seat now comes after the emergency Rotor at the settle's end, behind the Stålheart's print in Isao's book
+ await go('opening-cuts','index.html?sw=0&acceptance=1&world=story&settle=10#td');
  await until(`!!${T}`,90000);
  await evaluate(`(()=>{const T=${T},L=window.__cam=[];(function f(){try{const s=T.seatState(),st=T.state();L.push([performance.now()/1000,s.pos,st.shot||"",s.view,s.seatKey||"",(st.programme?.colony?.beaconPulse||[]).filter(b=>b.lit).map(b=>b.id).join(",")]);}catch(e){}requestAnimationFrame(f);})();})()`);
- await until(`${T}.seatState().seatKey==="rotor"`,150000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);
+ await until(`${T}.seatState().seatKey==="rotor"`,300000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);   // 300 s: the seat behind the settle, the Stålheart's 75 s and the emergency Rotor (was 150 s)
  const L=await evaluate('window.__cam'),d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
  const from=L.findIndex(r=>r[2]==='sitesTour');assert(from>=0,'the tour of the landers plays');
  const jumps=[];for(let i=Math.max(1,from);i<L.length;i++){const m=d(L[i][1],L[i-1][1]);if(m>cut){jumps.push(`${(L[i][0]-L[from][0]).toFixed(2)} s ${L[i-1][2]||L[i-1][3]} -> ${L[i][2]||L[i][3]} ${m.toFixed(3)}`);if(args.includes('--probe'))for(let k=Math.max(0,i-4);k<Math.min(L.length,i+4);k++)console.log(`    ${(L[k][0]-L[from][0]).toFixed(3)} ${L[k][2]||'-'} ${L[k][3]} r=${Math.hypot(...L[k][1]).toFixed(4)} step=${k?d(L[k][1],L[k-1][1]).toFixed(4):0}`);}}

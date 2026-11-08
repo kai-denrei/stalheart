@@ -6,7 +6,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
 import { voiceSounds } from '../content/voice-hooks.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK, STORY_CALM } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK, STORY_CALM, STORY_SETTLE } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -93,6 +93,9 @@ export function readStoryQuery(search) {
     // uses to open at the back door (src/fx/sector-run.js: a first sector at or past SECTOR_DOOR.earliest is the door)
     firstSector: skip ? Math.max(1, parseInt(q.get('sector') ?? '', 10) || STORY_SKIP.sector) : 1,
     grow: !!chapter || (!skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && (!q.has('story') || fromStart)))),
+    // THE SETTLING (2026-11-08): ?settle=N the seconds before the first contact on the story's own start (null: STORY_SETTLE's); ?first=1 the first orders' card on an acceptance page (a headless page would wait on it)
+    settle: Number.isFinite(parseFloat(q.get('settle') ?? '')) ? Math.max(0, parseFloat(q.get('settle'))) : null,
+    first: q.get('first') === '1',
   };
 }
 
@@ -145,7 +148,7 @@ function laneBerth(planet, dungeon, from, to, [a, b]) {
 
 // `gantry`: ?gantry=kidou (src/platform/game-flags.js gantryMode), read here off the page's own query and not passed by the controller, so the
 // look costs src/td-tab.js nothing (the owner's note of 2026-11-07, call C)
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', base: baseMode = BASE_LAYOUT_DEFAULT, gantry = gantryMode(globalThis.location?.search), phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', base: baseMode = BASE_LAYOUT_DEFAULT, gantry = gantryMode(globalThis.location?.search), phase = null, grow = false, warm = null, chapter = null, bossStart = false, arena = null, settle = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -199,7 +202,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // wanders within it. The Quiver's two rise beyond it (STORY_QUIVER.rise), on the horizon as its optic opens, and walk in (owner, 2026-10-05)
   const perch = plan.sockets[1]?.pos ?? null, ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, perch), far = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.rise, perch);
   const rise = riseCells(far.size >= 2 ? far : ring, planet.graph.centers, plan.cells.forward);
-  const beats = stage >= 1 ? makeStoryBeats({ fodderType: STORY_FODDER.type ?? 'amoeba', fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
+  const beats = stage >= 1 ? makeStoryBeats({ fodderType: STORY_FODDER.type ?? 'amoeba', fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null, settle: arrives ? (settle ?? STORY_SETTLE.seconds) : null }) : null;   // THE SETTLING (2026-11-08): ?settle=N or STORY_SETTLE's 120 s, only on the story's own arrival
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`

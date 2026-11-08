@@ -4,6 +4,7 @@
 //   landed        Isao out: "rough landing", then "so much to build". With `arrival` (src/fx/arrival.js plays the landing in the game,
 //                 and the lines are its own) nothing is said or deployed here: the arrival calls deploy(api) on its cut to his face
 //   foundry       (with a foundry tune) Isao deploys the AFR-01; the arm cuts the SH02; the first barrel is the Rotor's feedstock
+//   (settling)    with `settle` (STORY_SETTLE): no breach at the deploy; foundry -> printing with nothing ordered (the Rotor is the first orders'); at the settle's end an unordered Rotor is Isao's (rotor_emergency); the tremor waits for the settle, the Rotor, the gate and a quiet camera; the breach rises with the head start
 //   printing      Isao prints the Rotor on the wall beside the tunnel mouth
 //   rotor-ready   the sentry stands. On a landing (`arrival`) the sinkhole has opened, quiet, during the beacons' tour (`earlyBreach`)
 //                 and the Rotor is taken the moment the tour is over: no tremor, breach, approach or override (owner, 2026-10-05)
@@ -39,6 +40,7 @@ export function makeStoryBeats({
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
   arrival = false,          // the landing plays in the game (src/fx/arrival.js): `landed` waits for its deploy(api)
   foundryCut = null,        // a tutorial chapter's start: the rocket sections the AFR-01 has already cut (src/content/story-defaults.js STORY_CHAPTERS)
+  settle = null,            // THE SETTLING (owner, 2026-11-08; spec docs/superpowers/specs/2026-11-08-the-settling-design.md): on an arrival from `landed`, seconds from the deploy before the first contact; the Rotor is the player's to order (the first orders), ordered by Isao at the settle's end if nobody did; null: the opening as before
 }) {
   const gated = gate >= 0 && fodder >= 0;
   // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
@@ -64,7 +66,11 @@ export function makeStoryBeats({
   const late = startPhase !== 'landed';
   let offered = false, released = !arrival;   // an arrival holds `landed` until its cut
   // STRAIGHT TO THE ACTION: a landing opens the sinkhole while the beacons are toured, so the swarm is up the lane when the Rotor is taken
-  const early = arrival && gated && earlyBreach != null;
+  // THE SETTLING: only the story's own start settles (a chapter or a jump keeps its flow); the quiet breach at the deploy is off on it
+  const settling = settle != null && arrival && startPhase === 'landed';
+  const early = arrival && gated && earlyBreach != null && !settling;
+  let emergency = false;   // Isao's own Rotor order at the settle's end (its cost granted once)
+  const settleOver = () => released && clock - releasedAt >= settle;
   let releasedAt = null, opened = false, quiet = false, nukes0 = null, nukeAt = null;   // quiet: the sinkhole opened unseen, during the tour
   if (late || arrival) faces = 2;
   const enter = (p) => { phase = p; at = clock; };
@@ -95,24 +101,25 @@ export function makeStoryBeats({
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
       if (early && released && !opened && clock - releasedAt >= earlyBreach && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) { api.breach?.(fodder, { quiet: true }); opened = true; quiet = true; nextSpawn = clock + spawnDelay; }
       if (opened && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) spawnTick(api);
-      if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(perBarrel); }
+      if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel' && !settling) api.grant(perBarrel); }   // a settled opening had the rocket's worth at the deploy
       if (phase === 'landed' && fd && released && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); api.brief?.('foundry_deploy'); enter('foundry'); }
       // THE ROTOR DOES NOT WAIT FOR THE FIRST BARREL (owner, 2026-10-03: "faster intro, more intensity"): Isao prints it from the landing's
       // stock the moment the AFR-01 is down, and the barrels it cuts pay for what comes after
       // THE OTHER LANDERS ARE MANNED FROM THE START (owner, 2026-10-03: "they should be there from the start"): their nests rise as the
       // AFR-01 goes down, not after the first wave (idempotent: the expedition beat opens them again harmlessly)
-      else if (phase === 'foundry') { api.expeditionsBegin?.(); if (!fd.barrels) api.grant(api.cost(key)); if (api.order(key, socket)) { enter('printing'); orderedAt = clock; } }
+      else if (phase === 'foundry') { api.expeditionsBegin?.(); if (settling) enter('printing'); else { if (!fd.barrels) api.grant(api.cost(key)); if (api.order(key, socket)) { enter('printing'); orderedAt = clock; } } }
       else if (phase === 'landed' && !fd && released && clock >= rotorDelay) {
         api.expeditionsBegin?.();
-        api.grant(api.cost(key));
-        if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
+        if (settling) enter('printing'); else { api.grant(api.cost(key)); if (api.order(key, socket)) { enter('printing'); orderedAt = clock; } }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }
+      // NO SENTRY UP AT THE SETTLE'S END: Isao prints the Rotor himself (its cost granted once; a Rotor already on the book is left to stand)
+      else if (phase === 'printing' && settling && orderedAt === null && settleOver() && !api.pending?.(socket)) { if (!emergency) { emergency = true; api.grant(api.cost(key)); api.brief?.('rotor_emergency'); said.add('rotor_emergency'); } if (api.order(key, socket)) orderedAt = clock; }
       else if (phase === 'rotor-ready' && opened) { if (gateAt === null && gateReady()) { gateAt = clock; orderQuiver(api); } if (!api.touring?.()) { api.brief?.(overrideLine); said.add(overrideLine); takeRotor(api); enter('piloting'); } }   // the tour over: straight into the Rotor (or Isao's, rotorAuto)
       else if (phase === 'rotor-ready' && gated && gateAt === null) { if (gateReady()) { gateAt = clock; orderQuiver(api); } }   // THE TREMOR WAITS FOR THE GATE: no fodder before it stands; the Quiver goes on the book with it
-      else if (phase === 'rotor-ready' && clock - Math.max(at, gateAt ?? at) >= (gated ? tremorDelay : controlDelay)) {
+      else if (phase === 'rotor-ready' && clock - Math.max(at, gateAt ?? at) >= (gated ? tremorDelay : controlDelay) && (!settling || (settleOver() && !api.shot?.()))) {   // a settled opening: the settle run out and no camera shot playing
         if (gated) { api.tremor?.(fodder); api.brief?.('tremor'); enter('tremor'); }
         else { takeRotor(api); enter('piloting'); nextSpawn = clock + fodderEvery; }
-      } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder, { quiet: true }); api.tremor?.(-1);   /* no cut-away to it: the opening dives straight to the Rotor (2026-10-04) */ enter('breach'); nextSpawn = clock + spawnDelay; }
+      } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder, { quiet: true }); if (settling) quiet = true;   /* THE SETTLED BREACH RISES UP THE LANE (owner, 2026-10-30: within shooting range): the head start, as the quiet breach's */ api.tremor?.(-1);   /* no cut-away to it: the opening dives straight to the Rotor (2026-10-04) */ enter('breach'); nextSpawn = clock + spawnDelay; }
       else if (phase === 'breach') { spawnTick(api); if (spawned > 0) enter('approach'); }
       else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate, overrideCells)) { api.brief?.(overrideLine); said.add(overrideLine); enter('override'); } }
       else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { takeRotor(api); enter('piloting'); orderQuiver(api); } }   // Isao prints the Quiver while the wave is fought (normally ordered with the gate already)
@@ -137,7 +144,9 @@ export function makeStoryBeats({
         if (hardcores >= 2 && api.enemies() === 0) {
           api.brief?.('quiver_cleared'); said.add('quiver_cleared');
           if (construction && api.stalheartStands && !api.stalheartStands()) { enter('construction'); api.gunshipArrive?.(); if (tankAfterNuke != null) api.gunshipSeat?.(); nukes0 = api.nukes?.() ?? 0; nextSpawn = clock + (construction.first ?? construction.every); }
-          else { enter('settled'); api.unlock?.('views'); }
+          // THE STÅLHEART ALREADY STANDS (the settling, spec 2.D): no sector 0, so GS01 comes on station here (a settled opening only: an
+          // unsettled one that finds it standing keeps today's flow, no gunship, test/story-beats.mjs 'no construction, no free pass')
+          else { enter('settled'); api.unlock?.('views'); if (settling && construction) api.gunshipArrive?.(); }
         }
       } else if (phase === 'construction') {
         // THE STÅLHEART STANDS, ITS FIRST HULL IS OUT AND SECTOR 0 IS DOWN: the handover. Its last bodies are the new MÖRK's first
@@ -168,7 +177,8 @@ export function makeStoryBeats({
     deploy(api) {
       if (released || phase !== 'landed') return false;
       released = true; releasedAt = clock;
-      if (fd) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); for (let i = 0; i < bonusBarrels; i++) api.grant(perBarrel); }
+      // THE ROCKET'S WORTH AT ONCE on a settled opening (spec 2.B: the first orders' budget); else the bonus barrel(s) as before
+      if (fd) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); const n = (settling ? fd.sections.length : 0) + bonusBarrels; if (n > 0) api.grant(perBarrel * n); }
       return true;
     },
     // THE ARRIVAL'S GRADE (src/content/landing-game.js salvage[grade]): before deploy(api); false when there is no foundry or it is already released
@@ -178,6 +188,6 @@ export function makeStoryBeats({
       return true;
     },
     phase: () => phase,
-    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, gateAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null, construction: { waves: cWaves, sent: cSent, sealed, reminded } }),
+    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, gateAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null, construction: { waves: cWaves, sent: cSent, sealed, reminded }, settle: settling ? settle : null, settleLeft: settling && released ? +Math.max(0, settle - (clock - releasedAt)).toFixed(1) : null, emergency }),
   };
 }

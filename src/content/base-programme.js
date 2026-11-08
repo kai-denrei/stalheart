@@ -15,21 +15,30 @@ export const BASE_PROGRAMME = Object.freeze([
   // flight out and back is what this beat costs the gate behind it, and the tremor waits for the gate: the first wave pays for every
   // second spent here, which is why it is eight and not the twelve the job would like
   // the gate next, and the tremor waits for it: without a gate no fodder comes, and without fodder the tutorial never reaches the
-  // handover. Printed straight after the Rotor, which stands beside it, so the wait before the tremor is one print and no trip
-  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 4, metres: 6, brief: 'build_gate', perk: 'gate' },
+  // handover. THE GATE PRINTS FROM THE DEPLOY (2026-11-08, THE SETTLING): the Rotor no longer gates it, for the Rotor is the first orders' and the
+  // player may take it or leave it; until then the gate waited on `rotor-ready`, straight after the Rotor which stands beside it, so the wait
+  // before the tremor was one print and no trip
+  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'foundry' }, seconds: 4, metres: 6, brief: 'build_gate', perk: 'gate' },
   // SECTOR 0: THE STÅLHEART'S CONSTRUCTION IS DEFENDED (owner, 2026-09-24: "The Tank is built by the Stalheart ... the first few waves
   // before the stalheart is ready could be more intense POV sentries and Gunship shooting from above to protect the construction").
+  // THE STÅLHEART IS NON-NEGOTIABLE (owner, 2026-11-08, THE SETTLING: "the player chooses what to build first with limited building material, the
+  // Stålheart being non-negotiable"): straight after the gate, from the deploy; until then it waited on `rotor-ready` like the gate.
   // Straight after the gate, and one long print: while it runs the first wave, the Quiver's cores and the construction waves are
   // fought from the seats (src/domain/story-beats.js `construction`). The story beats put the Quiver on Isao's book the moment the
   // gate stands, so it is ahead of this step in his queue and stands before the long print takes him. `hull`: the first MÖRK rolls
   // out of it when it stands (src/fx/hull-issue.js), and until then a growing page has no hull. `readout` is the HUD's objective
   // while it prints (src/fx/build-readout.js)
-  { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'rotor-ready' }, seconds: 75, metres: 24, brief: 'stalheart_begins', perk: 'stalheart', hull: true, readout: 'STÅLHEART' },
-  { id: 'landing', label: 'landing pad', islands: ['landing'], when: { phase: 'rotor-ready' }, seconds: 4, metres: 2, brief: 'build_landing', perk: null },
+  { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'foundry' }, seconds: 75, metres: 24, brief: 'stalheart_begins', perk: 'stalheart', hull: true, readout: 'STÅLHEART' },
+  // THE FIRST ORDERS (owner, 2026-11-08, THE SETTLING: "the player chooses what to build first with limited building material, the Stalheart being
+  // non-negotiable"; spec docs/superpowers/specs/2026-11-08-the-settling-design.md 2.B): the pad, Isao's work on the recycler and the array are bought
+  // once, on the build board at the landing (src/content/build-board.js first; src/fx/first-orders.js), out of the rocket's salvage, and print as
+  // bought from the deploy (`when: foundry`), after the gate and the Stålheart in Isao's queue. Not bought is not built: no sector board carries them;
+  // a skipped opening (jumpBought) and a chapter (src/fx/story-entry.js) buy them. `pays`: the recycler's work cuts one more barrel's worth (the host grants it when the step stands)
+  { id: 'landing', label: 'landing pad', islands: ['landing'], board: true, first: true, when: { phase: 'foundry' }, seconds: 4, metres: 2, brief: 'build_landing', perk: null },
   // (2026-10-03) Isao's work on the recycler comes after the Stålheart's print, not before the gate: the gate and the tremor no longer
   // wait on it (owner: "faster intro, more intensity")
-  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], when: { phase: 'rotor-ready' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
-  { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], when: { phase: 'expedition' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
+  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], board: true, first: true, pays: 60, when: { phase: 'foundry' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
+  { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], board: true, first: true, when: { phase: 'foundry' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
   { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
   // THE DEPOT (owner, 2026-11-05, round 8 note 7): the Bio-Pearls the bank lives in, the rover's pad and the SAI-92's bay, printed straight after

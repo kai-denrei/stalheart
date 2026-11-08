@@ -7,7 +7,7 @@
 //   build(f)                 the last part of the story's tick: at most one order for Isao (a repair, or the next step of the base);
 //                            f is the frame the colony's tick opened (its programme, sector and SOL's manned count)
 //   repaired(repair)         a repair order done: the gate back to full, or the wall cell closed by a kit wall (not rock)
-//   printed(step)            a print order done: the step stands, and its perk switches on in the world
+//   printed(step, { replay }) a print order done: the step stands, and its perk switches on in the world (replay: a chapter start's, no `pays`)
 // THE REST OF THE STORY'S TICK has its own owners since the refactor run (2026-10-07): the sky (src/fx/sky-rig.js), Isao's moments
 // (src/fx/isao-moments.js), the colony's props (src/fx/colony-tick.js), the fire support (src/fx/auto-support.js), the canyon and
 // the side breach (src/fx/canyon-run.js) and the ending (src/fx/ending-host.js); the controller's storyApi.build runs them in order.
@@ -15,7 +15,7 @@
 // `c` hands in the controller: its fixed objects and functions as values (orders, breachQueue, breachedCells, gunshipRig, showBrief,
 // spawnIsao, updateHud, rebuildAfterBreach, recomputePortalDist, adoptBays, laserStation, startShot, sfx), call-throughs to its
 // neighbours (danger, from Isao's moments; hullHost, the first hull's host, src/fx/hull-issue.js createHullHost, one per story),
-// what it rebinds as getters (story, sectorRun, waveActive, dungeon, tdFullTags, storyBase, pilotMode, briefQ, graph, cellSide,
+// grant(n) (biomass into the bank: the recycler's work pays through it), what it rebinds as getters (story, sectorRun, waveActive, dungeon, tdFullTags, storyBase, pilotMode, briefQ, graph, cellSide,
 // enemies, t, storyViews) and the lets the members write as setters (setBerths).
 import { BLOCKED } from '../dungeon.js';
 import { BASE_REPAIR } from '../content/base-programme.js';
@@ -91,10 +91,11 @@ export function createProgrammeHost(c) {
       else { const rci = repair.ci, printed = (c.story().backHoles ?? []).includes(rci) ? !!c.storyBase()?.patchLine?.(rci, 'back', (p) => ownCell(rci, p)) : !(c.story().wallCells ?? []).includes(rci) && !!c.storyBase()?.patchWall?.(rci, c.graph().centers[rci], (p) => ownCell(rci, p)), walled = printed || (c.story().wallCells ?? []).includes(rci); /* a hole that was rock comes back as a wall (story-base patchWall) */ if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
       updateHud();
     },
-    printed: (step) => {
+    printed: (step, { replay = false } = {}) => {   // replay: a chapter's start standing its earlier prints (src/fx/story-entry.js), which grants nothing (2026-11-08)
       c.story().print.finish(step);
       c.story().lapse?.shoot(String(step.label ?? step.id).toUpperCase());
       programmeFinish(c.story().programme, step);
+      if (step.pays > 0 && !replay) c.grant?.(step.pays);   // THE RECYCLER'S WORK PAYS (2026-11-08, the first orders): one more barrel's worth; a chapter's replay is not new work
       // THE BACK GATE STANDS: it seals its mouth through story.sealed, and its mounts beside the back lane become sockets a sentry
       // can be ordered on
       // AND THEN HE CHECKS THE MOUTH (owner, 2026-10-03: "he only fixes one gate, with openings left and right; he needs to do a check. Is it

@@ -30,4 +30,17 @@ function beatsWith(salvage) {
   b.deploy(api);
   assert.deepEqual(grants, [60], 'one bonus barrel on the deploy');
 }
+{ // THE SETTLING (2026-11-08, spec 2.B): the whole salvage at the deploy, nothing per barrel; today's drip without `settle`
+  const grants = [];
+  const b = makeStoryBeats({ foundry: FOUNDRY_TUNE, arrival: true, settle: 120 });
+  const api = { grant: (n) => grants.push(n), foundry() {}, brief() {}, order: () => true, cost: () => STOCK, built: () => false, pending: () => false };
+  b.salvage({ sections: 3, feedstockPerBarrel: 60, bonus: 1 }); b.deploy(api);
+  assert.deepEqual(grants, [240], 'CLEAN: three sections and the bonus barrel, granted at once');
+  for (let i = 0; i < 900; i++) b.tick(0.1, api);
+  assert.deepEqual(grants, [240], 'the barrels the AFR-01 cuts grant nothing more');
+  const w = makeStoryBeats({ foundry: FOUNDRY_TUNE, arrival: true, settle: 120 }); const wg = []; w.salvage({ sections: 2, feedstockPerBarrel: 48, bonus: 0 }); w.deploy({ ...api, grant: (n) => wg.push(n) });
+  assert.deepEqual(wg, [96], 'a WRECK: two sections of 48');
+  const a = makeStoryBeats({ foundry: FOUNDRY_TUNE, arrival: true, settle: 120 }); const ag = []; a.deploy({ ...api, grant: (n) => ag.push(n) });
+  assert.deepEqual(ag, [180], 'an automatic landing: the tune\'s three barrels');
+}
 console.log('story-beats-salvage: ok');
