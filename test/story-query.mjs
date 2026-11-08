@@ -34,4 +34,7 @@ for (const [i, c] of STORY_CHAPTERS.entries()) {
   assert.equal(chapterAt(STORY_CHAPTERS, c.from ?? 'landed', i), i, `a page opened at ${c.id} reads as ${c.id}`);
 }
 assert.equal(chapterAt(STORY_CHAPTERS, 'rotor-ready'), 1, 'rotor-ready in the opening is still ROTOR'); assert.equal(chapterAt(STORY_CHAPTERS, 'tremor', 1), 2, 'the tremor is the FIRST WAVE');
+// THE SETTLING (2026-11-08): ?settle=N the settle's seconds (null: the tune's), ?first=1 the first orders on an acceptance page
+assert.equal(readStoryQuery('').settle, null); assert.equal(readStoryQuery('?settle=10').settle, 10); assert.equal(readStoryQuery('?settle=0').settle, 0); assert.equal(readStoryQuery('?settle=x').settle, null);
+assert.equal(readStoryQuery('').first, false); assert.equal(readStoryQuery('?first=1').first, true);
 console.log('Story query: a bare page and ?story=0 open the session from the landing; ?story=N and ?stage=N stay deep links; ?skip=<chapter> opens a tutorial chapter.');

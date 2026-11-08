@@ -93,6 +93,9 @@ export function readStoryQuery(search) {
     // uses to open at the back door (src/fx/sector-run.js: a first sector at or past SECTOR_DOOR.earliest is the door)
     firstSector: skip ? Math.max(1, parseInt(q.get('sector') ?? '', 10) || STORY_SKIP.sector) : 1,
     grow: !!chapter || (!skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && (!q.has('story') || fromStart)))),
+    // THE SETTLING (2026-11-08): ?settle=N the seconds before the first contact on the story's own start (null: STORY_SETTLE's); ?first=1 the first orders' card on an acceptance page (a headless page would wait on it)
+    settle: Number.isFinite(parseFloat(q.get('settle') ?? '')) ? Math.max(0, parseFloat(q.get('settle'))) : null,
+    first: q.get('first') === '1',
   };
 }
 

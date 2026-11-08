@@ -342,6 +342,16 @@ export const BRIEFS = {
     id: 'stalheart_stands', face: 'glee', title: 'COMMS · ISAO', once: true,
     lines: ['The Stålheart stands. Here comes your MÖRK.', 'The ground is yours now. What we need is out there.'],
   },
+  // THE SETTLING (owner, 2026-11-08: "Isao tells the player that we will need to scout for more building material, rocks, crystals, liquid,
+  // biomass"): said as the first orders close; and his own Rotor when nobody ordered one by the settle's end
+  scout_material: {
+    id: 'scout_material', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['That was the rocket. For the rest we scout: rock, crystals, liquid, biomass.', 'The rover goes out once the Stålheart stands.'],
+  },
+  rotor_emergency: {
+    id: 'rotor_emergency', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['Contact on the radar and no sentry up.', 'Printing the Rotor myself. Get ready.'],
+  },
   build_solar: {
     id: 'build_solar', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The hull can drink from the sun.', 'Printing the array. Park on its pad for shield.'],

@@ -214,10 +214,17 @@ export const STORY_CALM = Object.freeze({ near: 8, calm: 3, maxHold: 120, heartH
 // on its own from the first wave (src/domain/story-beats.js autoTower; src/fx/tower-combat.js exempts it from the tutorial's hush) and the player watches the gate
 // REVERTED THE SAME NIGHT (owner: 'the player has nothing to do for too long, we are stuck in top-down view forever as the rotor apparently fails to hit the
 // first wave entirely... we revert back to user doing the manual override'): rotorAuto false; the path stays behind the flag
+// earlyBreach: the quiet breach at the deploy; on a settled opening (STORY_SETTLE) it is off
 export const STORY_BEATS = Object.freeze({
   rotorAuto: false, rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
   tremorDelay: 0.6, breachDelay: 1.5, spawnDelay: 0.3, overrideDelay: 0.8, overrideCells: 99, earlyBreach: 0, tankAfterNuke: 1.6,
 });
+// THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle"; spec
+// docs/superpowers/specs/2026-11-08-the-settling-design.md 2.A): on the story's own start (the arrival from `landed`) nothing comes up for
+// `seconds` of game time from Isao's deploy; then the tremor, the quiet breach with its head start, the override and the Rotor's seat (the
+// gated opening that STORY_BEATS.earlyBreach short-cut since 2026-10-05: the quiet breach at the deploy is a chapter's now). The clock
+// is the beats', so the first orders' card (src/fx/first-orders.js) holds it. ?settle=N overrides it (acceptance pages use 10).
+export const STORY_SETTLE = Object.freeze({ seconds: 120 });
 // THE NUKE'S TANK: the berth on the lane outside the gate it is handed on, `berth` [from, to] cells out from the forward cell along the
 // line to the sinkhole, so it stands nose to the blast with the smoke ahead of it
 export const STORY_NUKE_TANK = Object.freeze({ berth: Object.freeze([1.5, 3]) });
