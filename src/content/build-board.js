@@ -41,7 +41,10 @@ export const BUILD_BOARD = Object.freeze({
   // THE FIRST ORDERS (owner, 2026-11-08, THE SETTLING; spec docs/superpowers/specs/2026-11-08-the-settling-design.md 2.B): the board once at the landing, over
   // the paused game when the landers' tour ends (src/fx/first-orders.js): the Rotor at the radial's price (45) on the plan's own socket and the opening's
   // three `first` steps (src/content/base-programme.js) priced in the salvage's scale: the deploy grants the whole rocket, 180 kg after an automatic or
-  // HARD landing, 240 after CLEAN, 96 after a WRECK, so a WRECK buys the Rotor and the foundry's work, CLEAN the Rotor and the array. Never index-scaled,
+  // HARD landing, 240 after CLEAN, 96 after a WRECK; on the pure rule alone a WRECK buys the Rotor and the foundry's work, CLEAN the Rotor and the array.
+  // IN PLAY THE BUDGET DOES NOT BIND (final review, 2026-11-08): the page's GAME_START_BIOMASS (170 kg, src/domain/campaign.js) sits under the salvage, so
+  // the bank at the card is 266 / 350 / 410 kg (WRECK / automatic or HARD / CLEAN; 350 measured by --settling) and every grade affords any pair (the
+  // dearest pair is 180). Whether a settled opening starts at 0 or these prices rise is the owner's call. Never index-scaled,
   // never on a sector board (BUILD_BOARD.structures has no entry for them): not bought is not built. The recycler's work pays its barrel back (`pays`)
   first: Object.freeze({
     structures: Object.freeze({

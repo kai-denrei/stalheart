@@ -56,6 +56,8 @@ for (const doorAt of [t.sectorDoor.earliest, t.sectorDoor.latest]) {
   // ISAO
   const placed = new Set(lane('isao').flatMap((r) => r.items.map((x) => x.id))), unplaced = b.unplaced.briefs.map((x) => x.id);
   ok(`door ${doorAt}: every brief is placed or listed unplaced, once`, placed.size + unplaced.length === Object.keys(BRIEFS).length && unplaced.every((id) => !placed.has(id)));
+  // THE SETTLING's two lines from code (2026-11-08 final review): the first orders' close and Isao's emergency Rotor, both in ROTOR (the beat `printing`)
+  ok(`door ${doorAt}: scout_material and rotor_emergency are placed in ROTOR`, ['scout_material', 'rotor_emergency'].every((id) => lane('isao').some((r) => r.col === 'ch:rotor' && r.items.some((x) => x.id === id))));
   ok(`door ${doorAt}: the briefs come as counts with lists (${lane('isao').length} cards for ${placed.size} briefs)`, lane('isao').length < placed.size / 3);
   // JUMPS
   const jumps = lane('jumps');

@@ -946,8 +946,12 @@ try{
  assert(summary.sectors[1].firstContact<=40,`sector 1's first body reaches a door within 40 s of its card (${summary.sectors[1].firstContact})`);
   if(summary.sectors[2]?.arrivals)assert(summary.sectors[2].firstContact<=40,`sector 2's first body reaches a door within 40 s of its card (${summary.sectors[2].firstContact})`);}
  } else if(args.includes('--grow')) {
- // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover
- // while Isao prints the gate (the tremor waits for it), the landing pad and the Stålheart, then the rest as the phases and sectors come.
+ // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover.
+ // THE SETTLED ORDER (2026-11-08, THE SETTLING; measured by Task 4): the gate from the deploy, the Stålheart straight after it with no sentry
+ // up, no Rotor bought (an acceptance page skips the first orders), so at the settle's end (&settle=10) Isao orders his emergency Rotor and it
+ // queues behind the Stålheart's 75 s print; once it stands (the Stålheart standing too), the Quiver, then the tremor path: the tremor, the
+ // breach, the fodder, the override, the first wave cleared, no construction (the hull already out), the handover with GS01 on station, then
+ // the rest as the phases and sectors come (the pad, the recycler's work and the array not bought, so never printed on this page).
  const hiddenNear='(window.__stalheartTest.state().storyLod||[]).filter(l=>!l.visible&&l.nearLoaded).map(l=>l.id)';
  const shotBase=async(name)=>{await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);assert.deepEqual(await evaluate(hiddenNear),[],`${name}: no hidden landmark fetched its near tier`);current=name;await finish();};
  // ?story=0 IS THE STORY FROM ITS START (owner, 2026-09-25): the growing base, the landing, the full threat, as a bare page
@@ -959,7 +963,7 @@ try{
  {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'gate','the gate is his first print (2026-10-03: the recycler beat waits for the Stålheart)');assert.equal(b.programme.gate.built,false);
   assert.equal(b.hull?.state,'held','SECTOR 0: a bare page has no hull until the Stålheart stands');}
  await finish();
- await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1&settle=10#td');   // &settle=10: the settle's 120 s is two minutes of a headless clock (THE SETTLING, 2026-11-08)await until('!!window.__stalheartTest',90000);
+ await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1&settle=10#td');await until('!!window.__stalheartTest',90000);   // &settle=10: the settle's 120 s is two minutes of a headless clock (THE SETTLING, 2026-11-08)
  const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);   /* every mark from the page being ready (before the arrival, from after its first checks) */
  // THE ARRIVAL (owner, 2026-09-25: "bring back the landing, short and sweet but showing the landing. Isao comes out, close up on his
  // face; he's the narrator ... The state change from rocket intact to dismantled should happen off camera"). Every frame is logged in the
@@ -1603,8 +1607,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // (&first=1: an acceptance page passes it by otherwise) and a 12 s settle (the tune's 120 s is two minutes of a headless clock): the landing, the
  // landers' tour, then THE FIRST ORDERS over the paused game (four cards, the bank up by the rocket's 180 kg, nothing on the field); the Rotor (45,
  // a real key) and the recycler's work (40, a real tap) bought; Isao's scouting line; the gate, the bought Rotor on the plan's socket (no
- // emergency), the Stålheart printing from the deploy, the tremor at the settle's end, the Rotor's seat; the recycler's work pays its 60 kg when
- // it stands. Page 2 (&settle=8): the card skipped, nobody ordered: Isao's emergency Rotor at the settle's end, then the tremor.
+ // emergency), the Stålheart printing from the deploy, the tremor once the settle has run out and the Rotor stands (behind the Stålheart), the Rotor's seat; the recycler's work pays its 60 kg when
+ // it stands. Page 2 (&settle=16, see its note below): the card skipped, nobody ordered: Isao's emergency Rotor at the settle's end, then the tremor.
  // Stills: settling-board, settling-stalheart, settling-seat, settling-emergency.
  // THE TREMOR IS READ FROM THE PHASE: the beats say it (api.brief) but do not book it in story.said (rotor_emergency is booked), so a per-frame
  // log of the beats' phase and clock (window.__ph) times it, and the deploy (landed -> printing) it is measured against

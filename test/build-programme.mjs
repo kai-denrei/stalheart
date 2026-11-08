@@ -168,10 +168,10 @@ console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a 
     assert.equal(due(st, {})?.id, 'e', 'due(): an empty stand list comes due without standing(), as whenHolds says');
   }
   // a board step nobody bought is not `next` (2026-11-08: the first orders' steps sit before the spine's later prints)
-{
-  const steps = [{ id: 'a', islands: [], structures: [], when: {} }, { id: 'b', islands: [], structures: [], board: true, when: {} }, { id: 'c', islands: [], structures: [], when: {} }];
-  const st = makeBuildProgramme(steps); finish(st, steps[0]);
-  assert.equal(snapshot(st).next, 'c', 'the unbought board step is passed over'); buy(st, 'b'); assert.equal(snapshot(st).next, 'b', 'bought, it is next');
-}
-console.log('build-programme: ok');
+  {
+    const steps = [{ id: 'a', islands: [], structures: [], when: {} }, { id: 'b', islands: [], structures: [], board: true, when: {} }, { id: 'c', islands: [], structures: [], when: {} }];
+    const st = makeBuildProgramme(steps); finish(st, steps[0]);
+    assert.equal(snapshot(st).next, 'c', 'the unbought board step is passed over'); buy(st, 'b'); assert.equal(snapshot(st).next, 'b', 'bought, it is next');
+  }
+  console.log('build-programme: ok');
 }

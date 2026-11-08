@@ -20,7 +20,9 @@ export function openStoryAt(query, story, h) {
   // THE BUILD BOARD (round 6): the jump stands in for the boards before its sector: the board steps whose sector gate it has reached are bought
   if (query.skip) { for (const id of jumpBought(story.programme.steps, query.firstSector ?? STORY_SKIP.sector)) buy(story.programme, id); h.expeditions().preDeliver(STORY_SKIP.parts); h.grant(STORY_SKIP.biomass); h.fillRack(); h.refillArrays(); h.showBrief(STORY_SKIP.brief); return; }
   const ch = story.chapter; if (!ch) return;
-  // THE FIRST ORDERS (2026-11-08, THE SETTLING): a chapter starts after them, so it stands in for the player's picks: the three first steps bought (printed at their turn, as before 2026-11-08)
+  // THE FIRST ORDERS (2026-11-08, THE SETTLING): a chapter starts after them, so it stands in for the player's picks: the three first steps bought. Those not in
+  // ch.printed print at their turn, and all three are `when: foundry` now: the array (before 2026-11-08 `when: expedition`) prints right after the pad, its
+  // station perk on, in the first wave (FIRST WAVE), the Quiver's fight (QUIVER) or sector 0 (STÅLHEART), no longer at the expedition
   for (const s of story.programme.steps) if (s.first) buy(story.programme, s.id);
   for (const id of ch.printed) { const step = story.programme.steps.find((s) => s.id === id); if (step && !story.programme.done.has(id)) h.printed(step, { replay: true }); }   // replay: the recycler's `pays` is not granted twice (2026-11-08)
   for (const t of ch.towers) if (t.ci >= 0) h.commitTower(t.key, t.ci, 0);

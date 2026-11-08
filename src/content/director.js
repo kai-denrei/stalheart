@@ -48,6 +48,9 @@ export const DIRECTOR_SHOTS = freeze([
 // the board lists them under "could not place".
 export const DIRECTOR_CODE_BRIEFS = freeze([
   ...['rough_landing', 'so_much_to_build', 'foundry_deploy'].map((id) => ({ id, at: { chapter: 'landing' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'the arrival\'s close-up, line by line' })),
+  // THE SETTLING (2026-11-08): the first orders' close, and Isao's own Rotor at the settle's end, both while the opening sits in `printing`
+  { id: 'scout_material', at: { phase: 'printing' }, file: 'src/fx/first-orders.js', find: "'scout_material'", trigger: 'the first orders\' close (the board shut after the landers\' tour): the scouting line' },
+  { id: 'rotor_emergency', at: { phase: 'printing' }, file: 'src/domain/story-beats.js', find: "'rotor_emergency'", trigger: 'the settle\'s end with no Rotor standing or on the book: Isao\'s own order' },
   { id: 'tremor', at: { phase: 'tremor' }, file: 'src/domain/story-beats.js', find: "api.brief?.('tremor')", trigger: 'the gate stands: the tremor' },
   { id: 'manual_override', at: { phase: 'override' }, file: 'src/domain/story-beats.js', find: "'manual_override'", trigger: 'the first wave near the gate: the Rotor\'s manual override' },
   { id: 'rotor_auto', at: { phase: 'override' }, file: 'src/domain/story-beats.js', find: "'rotor_auto'", trigger: 'the same moment with STORY_BEATS.rotorAuto (off)' },

@@ -59,6 +59,10 @@ ONCE as THE FIRST ORDERS, over the paused game (the same card, the same keys, th
   barrel): 180 kg after an automatic or HARD landing, 240 after CLEAN, 96 after a WRECK; the barrels the AFR-01 cuts afterwards are the
   picture of it and grant nothing more. The Rotor's stock is no longer granted free: it is bought like the rest (a WRECK buys the Rotor and
   the foundry's work, not the pad; CLEAN buys the Rotor and the array).
+- *Changed in the build (final review, 2026-11-08):* the budget does not bind in play. The page starts every run with `GAME_START_BIOMASS`
+  (170 kg, `src/domain/campaign.js`) and the salvage lands on top of it, so the bank at the card is 266 / 350 / 410 kg (WRECK / automatic or
+  HARD / CLEAN; 350 measured by `--settling`) and every grade affords any pair (the dearest is 180). The sentence above holds for the pure rule
+  at the salvage alone. Whether a settled opening starts at 0 or the prices rise is the owner's call.
 - when the card closes (ORDER or SKIP) Isao says `scout_material`: "That was the rocket. For the rest we scout: rock, crystals, liquid,
   biomass." / "The rover goes out once the Stålheart stands." The game unpauses; the settle clock runs.
 - an acceptance run (`acceptance=1`) skips the first orders unless the query says `&first=1` (a headless page would wait on the card for
@@ -81,6 +85,14 @@ opening; the beats go to `settled`. So that the gunship still comes: when a grow
 as today, so TANK is offered after it). Sector 0 remains in the STÅLHEART chapter (`?skip=stalheart`), in `--round23`, and on any opening
 whose settle is shorter than the Stålheart's print (the acceptance pages with `&settle=10` play it as before). This is the owner's call to
 overturn: a longer Stålheart print, or a settle shorter than it, brings sector 0 back on the default opening.
+
+*Changed in the build (final review, 2026-11-08):* sector 0 plays on NO settled opening, whatever the settle's length. A Rotor bought at the
+first orders (the card opens once the Stålheart's print has begun: the Stålheart is claimed at the deploy, the card comes after the landers'
+tour at ~10.8 s) and Isao's emergency Rotor both queue behind the Stålheart's 75 s print, and the tremor waits for the Rotor, so the Stålheart
+stands before the first contact on every settled opening, the `&settle=10` acceptance pages included (measured by `--settling` and `--grow`).
+The lever "or a settle shorter than it" is gone. The levers that remain are the owner's: hold the Stålheart until the card closes, or let a
+sentry order interrupt a print. Sector 0 stays in the STÅLHEART chapter (`--chapters` PASS) and after the QUIVER chapter's fight (`--round23`'s path; that
+suite is red at its first assertion on the base as on this branch, 7.9 cells against its 8, so the path went unmeasured).
 
 ## 3. What this round builds
 

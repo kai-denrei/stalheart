@@ -201,16 +201,22 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
   assert.ok(!firstOffers(fw({ rotorPending: true }), BUILD_BOARD).some((o) => o.id === 'sentry:rotor'), 'nor one on the book');
   assert.ok(!firstOffers(fw({ rotor: null }), BUILD_BOARD).some((o) => o.kind === 'sentry'), 'no Rotor kind, no card');
   assert.deepEqual(firstOffers(fw({ bought: new Set(['landing']), done: new Set(['solar']) }), BUILD_BOARD).map((o) => o.id), ['sentry:rotor', 'build:foundry']);
-  assert.equal(pickable(all, [], 'build:solar', 96), false, 'a WRECK (96 kg) cannot buy the array'); assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:foundry', 96), ['sentry:rotor', 'build:foundry'], 'the Rotor and the foundry\'s work fit');
+  // no socket, no Rotor card (the plan has none): rotorCell undefined or -1; a short tune.offers slices the pool (the Rotor and the pad only)
+  for (const rotorCell of [undefined, -1]) assert.deepEqual(firstOffers(fw({ rotorCell }), BUILD_BOARD).map((o) => o.id), ['build:landing', 'build:foundry', 'build:solar'], `rotorCell ${rotorCell}: no Rotor card`);
+  assert.deepEqual(firstOffers(fw(), { ...BUILD_BOARD, offers: 2 }).map((o) => o.id), ['sentry:rotor', 'build:landing'], 'offers: 2 keeps the Rotor and the pad');
+  // the pure rule at the salvage alone (96 / 240): in play the page's 170 kg start bank sits under it (266 / 410 at the card), so every grade affords any pair
+  assert.equal(pickable(all, [], 'build:solar', 96), false, 'the pure rule: a bank of 96 kg (a WRECK\'s salvage alone, without the page\'s 170 kg start) cannot buy the array'); assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:foundry', 96), ['sentry:rotor', 'build:foundry'], 'the Rotor and the foundry\'s work fit');
   assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:solar', 240), ['sentry:rotor', 'build:solar'], 'CLEAN buys the Rotor and the array');
   assert.deepEqual(toggle(all, ['sentry:rotor', 'build:solar'], 'build:landing', 240), ['sentry:rotor', 'build:solar'], 'two picks');
 }
 // A CHAPTER STANDS IN FOR THE FIRST ORDERS (2026-11-08, src/fx/story-entry.js): its start buys the three first steps, and only those
 {
   const { openStoryAt } = await import('../src/fx/story-entry.js');
-  const programme = makeBuildProgramme(CLASSIC), story = { programme, chapter: { printed: [], towers: [] } };
-  openStoryAt({}, story, { printed() {}, commitTower() {}, setBerths() {} });
+  const programme = makeBuildProgramme(CLASSIC), story = { programme, chapter: { printed: ['foundry'], towers: [] } }, calls = [];
+  openStoryAt({}, story, { printed(step, opts) { calls.push([step.id, opts]); }, commitTower() {}, setBerths() {} });
   assert.deepEqual([...programme.bought], FIRST_STEPS, 'the pad, the recycler\'s work and the array are bought');
   assert.equal(snapshot(programme).next, 'gate', 'the programme\'s own next is unchanged');
+  // the chapter's printed steps are REPLAYED: a regression here grants the recycler's 60 kg (`pays`) on every chapter start
+  assert.equal(calls.length, 1, 'the one printed step, once'); assert.equal(calls[0][0], 'foundry'); assert.equal(calls[0][1]?.replay, true, 'printed(step, { replay: true })');
 }
 console.log('Build board: six offers in priority, two picks within the bank, the bought set gates the programme.');
