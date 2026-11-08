@@ -117,13 +117,15 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
 
   // PRINTS: every automatic programme step at its `when`; BUILD BOARD (round 6): the six the player buys between sectors, from the first board
   // that may offer one (the break before sector 2 at the earliest) to the end
-  const prints = t.programme.filter((s) => !s.board).map((s) => ({ id: `print-${s.id}`, col: stepCol(s), label: s.label.toUpperCase(), sub: `${s.seconds} s print${s.perk ? ` · perk ${s.perk}` : ''}`, rule: whenText(s.when), when: s.when,
-    tags: [s.when.idle && 'at the lull', s.passable && 'passable', s.closeup && 'close-up', s.hull && 'first hull', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
+  // THE FIRST ORDERS (2026-11-08, THE SETTLING): the three `first` steps are bought once at the landing, not on a sector board, and print from the deploy: they sit with the prints, their price (BUILD_BOARD.first) in the line
+  const firstPrice = (s) => t.buildBoard?.first?.structures?.[s.id]?.price;
+  const prints = t.programme.filter((s) => !s.board || s.first).map((s) => ({ id: `print-${s.id}`, col: stepCol(s), label: s.label.toUpperCase(), sub: `${s.seconds} s print${s.perk ? ` · perk ${s.perk}` : ''}${s.first ? ` · bought at the first orders, ${firstPrice(s) ?? '?'} kg` : ''}`, rule: whenText(s.when), when: s.when,
+    tags: [s.when.idle && 'at the lull', s.first && 'bought at the first orders', s.passable && 'passable', s.closeup && 'close-up', s.hull && 'first hull', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
     src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }] }));
   if (t.strike) prints.push({ id: 'isao-strike', col: `s:${t.strike.minSector}`, to: endCol, label: 'ISAO\'S MISSILE', sub: `once a run, from sector ${t.strike.minSector}`, rule: `a door under ${t.strike.gateShare} of its hp, ${t.strike.alive}+ bodies, the hull on screen`, when: { minSector: t.strike.minSector, gateShare: t.strike.gateShare, alive: t.strike.alive }, tags: ['once'], src: [{ file: PROGRAMME_FILE, find: 'export const ISAO_STRIKE' }] });
 
   const boardFrom = (s) => Math.max(2, s.when.sector ?? 2), price = (s) => t.buildBoard?.structures?.[s.id]?.price ?? null;
-  const offers = t.programme.filter((s) => s.board).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: `${price(s)} kg · offered from sector ${boardFrom(s)}`,
+  const offers = t.programme.filter((s) => s.board && !s.first).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: `${price(s)} kg · offered from sector ${boardFrom(s)}`,
     rule: `on THE BUILD BOARD before sector ${boardFrom(s)} (the debrief's CONTINUE); once bought Isao prints it ${whenText(s.when)}`, when: s.when, tags: ['bought on the board', s.passable && 'passable', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
     src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }, { file: 'src/content/build-board.js', find: `${/^\w+$/.test(s.id) ? s.id : `'${s.id}'`}: Object.freeze({ price` }] }));   // a dome's key is quoted (2026-11-07)
 

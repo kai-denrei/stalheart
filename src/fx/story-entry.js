@@ -8,6 +8,7 @@
 //   programme that a run has printed by the chapter's start stand, through the same storyApi.printed a finished print calls (the gate
 //   is built, its walls are rock, the perks are on; a piece still loading keeps its print height, src/fx/story-base.js), and the
 //   sentries stand on their story sockets as a finished order leaves them. Past the hull's issue the Stålheart's door is every berth.
+//   A chapter also stands in for THE FIRST ORDERS (2026-11-08): the steps marked `first` are bought, as the player's picks would have left them.
 // `h` is the controller's hands: printed(step), commitTower(key, ci, spent), setBerths(berths), expeditions(), grant(n), fillRack(),
 // refillArrays(), showBrief(id).
 import { STORY_SKIP } from '../content/story-defaults.js';
@@ -19,6 +20,8 @@ export function openStoryAt(query, story, h) {
   // THE BUILD BOARD (round 6): the jump stands in for the boards before its sector: the board steps whose sector gate it has reached are bought
   if (query.skip) { for (const id of jumpBought(story.programme.steps, query.firstSector ?? STORY_SKIP.sector)) buy(story.programme, id); h.expeditions().preDeliver(STORY_SKIP.parts); h.grant(STORY_SKIP.biomass); h.fillRack(); h.refillArrays(); h.showBrief(STORY_SKIP.brief); return; }
   const ch = story.chapter; if (!ch) return;
+  // THE FIRST ORDERS (2026-11-08, THE SETTLING): a chapter starts after them, so it stands in for the player's picks: the three first steps bought (printed at their turn, as before 2026-11-08)
+  for (const s of story.programme.steps) if (s.first) buy(story.programme, s.id);
   for (const id of ch.printed) { const step = story.programme.steps.find((s) => s.id === id); if (step && !story.programme.done.has(id)) h.printed(step); }
   for (const t of ch.towers) if (t.ci >= 0) h.commitTower(t.key, t.ci, 0);
   if (ch.berths) h.setBerths(ch.berths);

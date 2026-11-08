@@ -15,7 +15,7 @@
 // `c` hands in the controller: its fixed objects and functions as values (orders, breachQueue, breachedCells, gunshipRig, showBrief,
 // spawnIsao, updateHud, rebuildAfterBreach, recomputePortalDist, adoptBays, laserStation, startShot, sfx), call-throughs to its
 // neighbours (danger, from Isao's moments; hullHost, the first hull's host, src/fx/hull-issue.js createHullHost, one per story),
-// what it rebinds as getters (story, sectorRun, waveActive, dungeon, tdFullTags, storyBase, pilotMode, briefQ, graph, cellSide,
+// grant(n) (biomass into the bank: the recycler's work pays through it), what it rebinds as getters (story, sectorRun, waveActive, dungeon, tdFullTags, storyBase, pilotMode, briefQ, graph, cellSide,
 // enemies, t, storyViews) and the lets the members write as setters (setBerths).
 import { BLOCKED } from '../dungeon.js';
 import { BASE_REPAIR } from '../content/base-programme.js';
@@ -95,6 +95,7 @@ export function createProgrammeHost(c) {
       c.story().print.finish(step);
       c.story().lapse?.shoot(String(step.label ?? step.id).toUpperCase());
       programmeFinish(c.story().programme, step);
+      if (step.pays > 0) c.grant?.(step.pays);   // THE RECYCLER'S WORK PAYS (2026-11-08, the first orders): one more barrel's worth
       // THE BACK GATE STANDS: it seals its mouth through story.sealed, and its mounts beside the back lane become sockets a sentry
       // can be ordered on
       // AND THEN HE CHECKS THE MOUTH (owner, 2026-10-03: "he only fixes one gate, with openings left and right; he needs to do a check. Is it

@@ -3,26 +3,28 @@
 import assert from 'node:assert/strict';
 import { BASE_PROGRAMME } from '../src/content/base-programme.js';
 import { BUILD_BOARD } from '../src/content/build-board.js';
-import { boardOffers, pickable, toggle, totalOf, jumpBought, emptiestLaneSite } from '../src/domain/build-board.js';
+import { boardOffers, firstOffers, pickable, toggle, totalOf, jumpBought, emptiestLaneSite } from '../src/domain/build-board.js';
 import { makeBuildProgramme, due, begin, finish, buy, snapshot } from '../src/domain/build-programme.js';
 import { DOME_STRUCTURES } from '../src/content/dome-city.js';
 
 const COLONY_STEPS = ['board', 'garage', 'armory', 'farm', 'chips', 'launcher', 'pearl'];   // round 8 note 7: the fourth Bio-Pearl
 // THE DOME CITY ON THE BOARD (the owner's note of 2026-11-07: the base from scratch): the six domes are board steps after the colony's own
 const DOME_STEPS = ['dome-nw', 'dome-w', 'dome-sw', 'dome-ne', 'dome-e', 'dome-se'];
-const BOARD_STEPS = [...COLONY_STEPS, ...DOME_STEPS];
+const FIRST_STEPS = ['landing', 'foundry', 'solar'];   // THE SETTLING (2026-11-08): the opening's steps, bought at the first orders
+const BOARD_STEPS = [...FIRST_STEPS, ...COLONY_STEPS, ...DOME_STEPS];
 // the programme a CLASSIC plan holds (src/platform/story-world.js keeps only the steps whose pieces the plan has: no dome, no bridge), which the
 // colony's cards below were written against; the dome city's own pool is its block after them
 const CITY = new Set(DOME_STRUCTURES.map((s) => s.id)), CLASSIC = BASE_PROGRAMME.filter((s) => !s.structures.some((id) => CITY.has(id)));
 const SENTRIES = [{ key: 'rotor', name: 'Rotor', cost: 45 }, { key: 'quiver', name: 'Quiver', cost: 90 }, { key: 'mortar', name: 'Mortar', cost: 110 }];
-const world = (over = {}) => ({ steps: CLASSIC, done: new Set(), bought: new Set(), ctx: { phase: 'expedition', sector: 2, back: null, manned: 0 }, bank: 300, sentryRoom: true, sentries: SENTRIES,
+const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), bought: new Set(), ctx: { phase: 'expedition', sector: 2, back: null, manned: 0 }, bank: 300, sentryRoom: true, sentries: SENTRIES,
   upgrade: { ci: 7, name: 'Rotor', tier: 0, cost: 31 }, hull: { dents: 4, max: 4, hulls: 3, maxHulls: 3 }, shield: { rack: 4, cap: 4 }, pets: [], ...over });
 
 // the content: exactly the six non-spine steps are the board's, each priced; the spine stays automatic
 {
-  assert.deepEqual(BASE_PROGRAMME.filter((s) => s.board).map((s) => s.id), BOARD_STEPS, 'the seven structures that left the automatic programme, then the six domes');
-  assert.deepEqual(CLASSIC.filter((s) => s.board).map((s) => s.id), COLONY_STEPS, 'a classic plan holds the seven');
-  for (const id of BOARD_STEPS) assert.ok(BUILD_BOARD.structures[id]?.price > 0 && BUILD_BOARD.structures[id].effect, `${id}: a price and an effect`);
+  assert.deepEqual(BASE_PROGRAMME.filter((s) => s.board).map((s) => s.id), BOARD_STEPS, 'the three first steps, the seven colony structures, then the six domes');
+  assert.deepEqual(CLASSIC.filter((s) => s.board).map((s) => s.id), [...FIRST_STEPS, ...COLONY_STEPS], 'a classic plan holds the three and the seven');
+  for (const id of [...COLONY_STEPS, ...DOME_STEPS]) assert.ok(BUILD_BOARD.structures[id]?.price > 0 && BUILD_BOARD.structures[id].effect, `${id}: a price and an effect`);
+  for (const id of FIRST_STEPS) { assert.ok(BUILD_BOARD.first.structures[id]?.price > 0 && BUILD_BOARD.first.structures[id].effect, `${id}: a first price and an effect`); assert.equal(BUILD_BOARD.structures[id], undefined, `${id}: never on a sector board`); }
   assert.equal(BUILD_BOARD.offers, 6); assert.equal(BUILD_BOARD.picks, 2);
 }
 
@@ -113,14 +115,14 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(), bought: new Set
 
 // a jump stands in for the boards before it: every board step whose sector gate the jump has reached
 {
-  assert.deepEqual(jumpBought(CLASSIC, 1), ['board', 'garage']);
-  assert.deepEqual(jumpBought(CLASSIC, 4), COLONY_STEPS);
-  assert.deepEqual(jumpBought(CLASSIC, 3), ['board', 'garage', 'armory', 'farm', 'pearl']);   // the fourth pearl's gate is sector 3 (round 8)
+  assert.deepEqual(jumpBought(CLASSIC, 1), [...FIRST_STEPS, 'board', 'garage'], 'the first steps carry no sector gate: every jump has reached them');
+  assert.deepEqual(jumpBought(CLASSIC, 4), [...FIRST_STEPS, ...COLONY_STEPS]);
+  assert.deepEqual(jumpBought(CLASSIC, 3), [...FIRST_STEPS, 'board', 'garage', 'armory', 'farm', 'pearl']);   // the fourth pearl's gate is sector 3 (round 8)
   // the dome city's programme: the domes whose gate the jump has reached too (a skipped opening is a stage-8 base, where they already stand, so
   // the programme's buy() refuses them and the bought set the --board step reads stays the board and the garage)
-  assert.deepEqual(jumpBought(BASE_PROGRAMME, 1), ['board', 'garage', 'dome-nw', 'dome-ne']);
+  assert.deepEqual(jumpBought(BASE_PROGRAMME, 1), [...FIRST_STEPS, 'board', 'garage', 'dome-nw', 'dome-ne']);
   assert.deepEqual(jumpBought(BASE_PROGRAMME, 4), BOARD_STEPS);
-  { const pg = makeBuildProgramme(BASE_PROGRAMME, { standing: (st) => st.id.startsWith('dome-') || st.id.startsWith('bridge-') });
+  { const pg = makeBuildProgramme(BASE_PROGRAMME, { standing: (st) => FIRST_STEPS.includes(st.id) || st.id.startsWith('dome-') || st.id.startsWith('bridge-') });   // a skipped opening is a finished base: the first steps stand too
     for (const id of jumpBought(BASE_PROGRAMME, 1)) buy(pg, id);
     assert.deepEqual([...pg.bought].sort(), ['board', 'garage'], 'standing domes are not bought by a jump'); }
 }
@@ -173,5 +175,29 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(), bought: new Set
   assert.equal(due(programme, { phase: 'expedition', sector: 2 }).id, 'armory', 'the bought armory is due at its gate');
   assert.equal(bb.interlude(go, { n: 3, via: 'continue' }), true); key('Escape');
   assert.equal(went, 2, 'Escape takes none and goes on'); assert.deepEqual(bb.state().last.took, []);
+}
+// THE FIRST ORDERS (2026-11-08, THE SETTLING, spec 2.B): the Rotor on its own socket at the radial's price, then the three first steps at their prices; no Rotor card once it stands or is on the book; a bought or standing step is not offered; the pick of two within the salvage
+{
+  const rotor = { key: 'rotor', name: 'Rotor', cost: 45 };
+  const fw = (over = {}) => ({ steps: CLASSIC, done: new Set(), bought: new Set(), rotor, rotorCell: 77, rotorBuilt: false, rotorPending: false, ...over });
+  const all = firstOffers(fw(), BUILD_BOARD);
+  assert.deepEqual(all.map((o) => o.id), ['sentry:rotor', 'build:landing', 'build:foundry', 'build:solar']);
+  assert.deepEqual(all[0], { id: 'sentry:rotor', kind: 'sentry', key: 'rotor', site: 77, label: 'ROTOR', price: 45, effect: BUILD_BOARD.first.words.rotor });
+  assert.deepEqual(all.slice(1).map((o) => [o.step, o.price]), [['landing', 60], ['foundry', 40], ['solar', 120]], 'the salvage\'s scale, no index');
+  assert.deepEqual(firstOffers(fw({ rotorBuilt: true }), BUILD_BOARD).map((o) => o.id), ['build:landing', 'build:foundry', 'build:solar'], 'a standing Rotor is not a card');
+  assert.ok(!firstOffers(fw({ rotorPending: true }), BUILD_BOARD).some((o) => o.id === 'sentry:rotor'), 'nor one on the book');
+  assert.ok(!firstOffers(fw({ rotor: null }), BUILD_BOARD).some((o) => o.kind === 'sentry'), 'no Rotor kind, no card');
+  assert.deepEqual(firstOffers(fw({ bought: new Set(['landing']), done: new Set(['solar']) }), BUILD_BOARD).map((o) => o.id), ['sentry:rotor', 'build:foundry']);
+  assert.equal(pickable(all, [], 'build:solar', 96), false, 'a WRECK (96 kg) cannot buy the array'); assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:foundry', 96), ['sentry:rotor', 'build:foundry'], 'the Rotor and the foundry\'s work fit');
+  assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:solar', 240), ['sentry:rotor', 'build:solar'], 'CLEAN buys the Rotor and the array');
+  assert.deepEqual(toggle(all, ['sentry:rotor', 'build:solar'], 'build:landing', 240), ['sentry:rotor', 'build:solar'], 'two picks');
+}
+// A CHAPTER STANDS IN FOR THE FIRST ORDERS (2026-11-08, src/fx/story-entry.js): its start buys the three first steps, and only those
+{
+  const { openStoryAt } = await import('../src/fx/story-entry.js');
+  const programme = makeBuildProgramme(CLASSIC), story = { programme, chapter: { printed: [], towers: [] } };
+  openStoryAt({}, story, { printed() {}, commitTower() {}, setBerths() {} });
+  assert.deepEqual([...programme.bought], FIRST_STEPS, 'the pad, the recycler\'s work and the array are bought');
+  assert.equal(snapshot(programme).next, 'gate', 'the programme\'s own next is unchanged');
 }
 console.log('Build board: six offers in priority, two picks within the bank, the bought set gates the programme.');

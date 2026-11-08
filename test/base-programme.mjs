@@ -35,10 +35,10 @@ const domeOf = (id) => DOME_STRUCTURES.find((s) => s.id === id);
   assert.deepEqual(DOMES.filter((id) => step(id).when.sector === 3).sort(), ['dome-se', 'dome-sw']);
 }
 
-// the board's prices, by the dome's module, and an effect line that names the dome; every board step has its price; structuresMax stays 4
+// the board's prices, by the dome's module, and an effect line that names the dome; every sector-board step has its price (the three `first` steps are priced in BUILD_BOARD.first, 2026-11-08); structuresMax stays 4
 {
   const price = { habitat: 2400, biosphere: 3000, fabrication: 2800, logistics: 2400 };
-  for (const s of BASE_PROGRAMME.filter((x) => x.board)) assert.ok(BUILD_BOARD.structures[s.id]?.price > 0 && BUILD_BOARD.structures[s.id].effect, `${s.id}: a board step has a price and an effect`);
+  for (const s of BASE_PROGRAMME.filter((x) => x.board && !x.first)) assert.ok(BUILD_BOARD.structures[s.id]?.price > 0 && BUILD_BOARD.structures[s.id].effect, `${s.id}: a board step has a price and an effect`);
   for (const id of DOMES) {
     const card = BUILD_BOARD.structures[id], module = domeOf(id).module;
     assert.equal(card.price, price[module], `${id}: a ${module} dome costs ${price[module]} kg`);
@@ -134,5 +134,14 @@ const domeOf = (id) => DOME_STRUCTURES.find((s) => s.id === id);
   assert.deepEqual(BRIEFS.build_dome && { face: BRIEFS.build_dome.face, title: BRIEFS.build_dome.title, lines: BRIEFS.build_dome.lines }, { face: 'glee', title: 'ISAO · THE DOMES', lines: ['A dome for the colony. Everyone wants a window.'] });
   assert.deepEqual(BRIEFS.build_bridge?.lines, ['And a bridge between them. No helmets indoors.']);
   assert.ok(!BRIEFS.build_dome.once && !BRIEFS.build_bridge.once, 'said at every dome and bridge, not once a browser');
+}
+// THE SETTLING (2026-11-08, spec 2.B, 2.C): the gate and the Stålheart print from the deploy; the pad, the recycler's work and the array are the first
+// orders' steps, printed as bought, the recycler's work paying a barrel
+{
+  const by = Object.fromEntries(BASE_PROGRAMME.map((s) => [s.id, s]));
+  assert.deepEqual(by.gate.when, { phase: 'foundry' }); assert.deepEqual(by.stalheart.when, { phase: 'foundry' });
+  for (const id of ['landing', 'foundry', 'solar']) { assert.equal(by[id].board, true, `${id} on the board`); assert.equal(by[id].first, true, `${id} a first order`); assert.deepEqual(by[id].when, { phase: 'foundry' }, `${id} prints as bought`); }
+  assert.equal(by.foundry.pays, 60, 'Isao\'s work on the AFR-01 pays a barrel'); assert.equal(by.landing.pays, undefined); assert.equal(by.solar.perk, 'station');
+  assert.deepEqual(BASE_PROGRAMME.filter((s) => s.first).map((s) => s.id), ['landing', 'foundry', 'solar'], 'the three, in the programme\'s order');
 }
 console.log('Base programme: six domes on the board at their sector gates and prices, four bridges after their two domes on their own frame strip, every pending piece of the dome city printed once, Isao\'s two lines.');

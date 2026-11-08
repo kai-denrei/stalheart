@@ -94,4 +94,5 @@ export const rebuildDue = (st, sector) => sectorStarted(st, sector) && st.perks.
 
 // `owed`: the steps not yet printed that the programme must still print in order (a passable step, waiting on the door or the player, is not
 // owed; nor is a board step nobody bought); `bought`: the board's purchases
-export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id))?.id ?? null, owed: st.steps.filter((s) => !st.done.has(s.id) && !s.passable && (!s.board || st.bought.has(s.id))).map((s) => s.id), bought: [...st.bought], perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });
+export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id) && (!s.board || st.bought.has(s.id)))?.id ?? null,   // next: a board step nobody bought is not next (2026-11-08)
+   owed: st.steps.filter((s) => !st.done.has(s.id) && !s.passable && (!s.board || st.bought.has(s.id))).map((s) => s.id), bought: [...st.bought], perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });

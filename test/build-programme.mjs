@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { BASE_PROGRAMME, BASE_PERKS, BASE_BUILDER } from '../src/content/base-programme.js';
-import { makeBuildProgramme, due, whenHolds, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost } from '../src/domain/build-programme.js';
+import { makeBuildProgramme, due, whenHolds, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost, buy } from '../src/domain/build-programme.js';
 import { STORY_PHASES } from '../src/domain/automation.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
@@ -33,10 +33,10 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   // (2026-10-03, "faster intro, more intensity") the gate is the first print, the recycler's work comes after the Stålheart's print
   assert.equal(BASE_PROGRAMME[0].id, 'gate', 'the gate prints first of the base: the tremor waits for it');
   assert.ok(BASE_PROGRAMME.findIndex((s) => s.id === 'foundry') > BASE_PROGRAMME.findIndex((s) => s.id === 'stalheart'), 'the recycler beat is off the critical path');
-  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the Stålheart is the next print, due with the Rotor, and its
+  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the Stålheart is the next print, due from the deploy (2026-11-08; with the Rotor before), and its
   // long print IS the construction the first waves attack; the first hull rolls out of it and the HUD reads its progress
   { const sh = BASE_PROGRAMME[1];
-    assert.equal(sh.id, 'stalheart', 'the Stålheart prints straight after the gate'); assert.equal(sh.when.phase, 'rotor-ready', 'due as soon as the Rotor stands: it waits only for the gate and the Quiver ahead of it');
+    assert.equal(sh.id, 'stalheart', 'the Stålheart prints straight after the gate'); assert.equal(sh.when.phase, 'foundry', 'due from the deploy (2026-11-08, THE SETTLING: the Rotor is the first orders\', no longer the gate\'s wait): it waits only for the gate and the Quiver ahead of it');
     assert.ok(sh.seconds >= 45, `its print is the sector-0 clock, not a four-second rise (${sh.seconds} s)`);
     assert.equal(sh.hull, true, 'the first hull rolls out of it'); assert.equal(sh.readout, 'STÅLHEART', 'its progress is the objective on the HUD');
     assert.equal(BASE_PROGRAMME.filter((s) => s.hull).length, 1, 'one step issues the hull'); }
@@ -167,5 +167,11 @@ console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a 
     const st = makeBuildProgramme([{ id: 'e', when: { stand: [] }, structures: [] }]);
     assert.equal(due(st, {})?.id, 'e', 'due(): an empty stand list comes due without standing(), as whenHolds says');
   }
-  console.log('build-programme: ok');
+  // a board step nobody bought is not `next` (2026-11-08: the first orders' steps sit before the spine's later prints)
+{
+  const steps = [{ id: 'a', islands: [], structures: [], when: {} }, { id: 'b', islands: [], structures: [], board: true, when: {} }, { id: 'c', islands: [], structures: [], when: {} }];
+  const st = makeBuildProgramme(steps); finish(st, steps[0]);
+  assert.equal(snapshot(st).next, 'c', 'the unbought board step is passed over'); buy(st, 'b'); assert.equal(snapshot(st).next, 'b', 'bought, it is next');
+}
+console.log('build-programme: ok');
 }
