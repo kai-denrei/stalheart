@@ -152,9 +152,10 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
   const programme = makeBuildProgramme(CLASSIC, { standing: (st) => !st.board });
   const story = { programme, gateCell: 0, socketToward: { 2: [0, 1], 3: [0, 1] }, beats: { phase: () => 'expedition' }, expeditions: null };
   const towers = [{ ci: 3, tier: 0, def: { key: 'rotor', name: 'Rotor', cost: 45, upgradeCost: [31, 54] } }];
-  const bb = createBuildBoard({ root, endShot: () => log.push(['endShot']), eco: () => eco, story: () => story, towers: () => towers, orders: [], placeError: (ci) => (ci === 3 ? 'occupied' : null), graph: () => ({ centers: [[0, 0, 0], [5, 0, 0], [1, 0, 0], [2, 0, 0]] }), cellSide: () => 1,
+  const cfg = { root, endShot: () => log.push(['endShot']), eco: () => eco, story: () => story, towers: () => towers, orders: [], placeError: (ci) => (ci === 3 ? 'occupied' : null), graph: () => ({ centers: [[0, 0, 0], [5, 0, 0], [1, 0, 0], [2, 0, 0]] }), cellSide: () => 1,
     orderTower: (k, ci) => { log.push(['order', k, ci]); return eco.spend(45, { category: 'sentry' }); }, orderUpgrade: () => true, callout: (x) => log.push(['callout', x]), manned: () => 0, petLife: () => null, printPet: () => {},
-    hull: () => ({ dents: armour, max: 4, hulls: 3, maxHulls: 3 }), mendHull: () => { armour = 4; log.push(['mend']); }, addHull: () => {}, shield: () => ({ rack: 4, cap: 4 }), fillRack: () => {}, sentryKeys: () => ['rotor', 'quiver'] });
+    hull: () => ({ dents: armour, max: 4, hulls: 3, maxHulls: 3 }), mendHull: () => { armour = 4; log.push(['mend']); }, addHull: () => {}, shield: () => ({ rack: 4, cap: 4 }), fillRack: () => {}, sentryKeys: () => ['rotor', 'quiver'] };
+  const bb = createBuildBoard(cfg);
   let went = 0; const go = () => went++;
   assert.equal(bb.interlude(go, { n: 2, via: 'hold' }), false, 'KEEP HOLDING passes the board by');
   assert.equal(bb.interlude(go, { n: 2, via: 'harness' }), false, 'so does an acceptance run reading on');
@@ -175,6 +176,18 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
   assert.equal(due(programme, { phase: 'expedition', sector: 2 }).id, 'armory', 'the bought armory is due at its gate');
   assert.equal(bb.interlude(go, { n: 3, via: 'continue' }), true); key('Escape');
   assert.equal(went, 2, 'Escape takes none and goes on'); assert.deepEqual(bb.state().last.took, []);
+  // THE FIRST ORDERS (2026-11-08): first(go) shows the first pool with its words and orders the Rotor on its own socket (a fresh programme with
+  // nothing bought, no sentry standing or on the book, the bank well over the Rotor and the foundry's work)
+  {
+    const ordered = [], pg2 = makeBuildProgramme(BASE_PROGRAMME);
+    const c2 = { ...cfg, towers: () => [], orders: [], orderTower: (key, ci) => { ordered.push([key, ci]); return true; }, story: () => ({ ...cfg.story(), programme: pg2, beats: { state: () => ({ socket: 77 }) } }) };
+    const bb2 = createBuildBoard(c2); let went2 = 0;
+    assert.equal(bb2.first(() => went2++), true); assert.equal(bb2.state().first, true); assert.equal(bb2.state().n, 'first');
+    assert.deepEqual(bb2.state().offers.map((o) => o.id), ['sentry:rotor', 'build:landing', 'build:foundry', 'build:solar']);
+    assert.equal(root.children.at(-1).querySelector('.bb-title').textContent, 'THE FIRST ORDERS');
+    bb2.test.toggle('sentry:rotor'); bb2.test.toggle('build:foundry'); bb2.test.confirm();
+    assert.deepEqual(ordered, [['rotor', 77]], 'the Rotor on the plan\'s socket'); assert.ok(bb2.state().bought.includes('foundry')); assert.equal(went2, 1); assert.equal(bb2.state().last.n, 'first'); assert.equal(bb2.state().first, false);
+  }
 }
 // THE FIRST ORDERS (2026-11-08, THE SETTLING, spec 2.B): the Rotor on its own socket at the radial's price, then the three first steps at their prices; no Rotor card once it stands or is on the book; a bought or standing step is not offered; the pick of two within the salvage
 {
