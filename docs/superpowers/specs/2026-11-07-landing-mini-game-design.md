@@ -423,3 +423,7 @@ alone (`landing-engine-shot`) framed the hull's underside from inside the skirt'
 it was still a haze under the skirt, and the build stands at **`intro { back: 22, up: −6, fov: 40, hold: 1 }`**: the whole skirt, its bells and
 the legs in the frame's upper half, the burn a soft cone streaming down from the bells toward the disk, nothing cut by the near plane. The look
 stays on the engines' centre (the text above), so the bells sit near the frame's middle rather than its upper third.
+
+## 16. The settling (2026-11-08)
+
+After the landing the opening changed: spec `docs/superpowers/specs/2026-11-08-the-settling-design.md` (owner, 2026-11-08, notes 4-6 on the third look). No quiet breach at the deploy: the first contact waits a settle of `STORY_SETTLE.seconds` (120) game seconds from Isao's deploy; the deploy grants the whole salvage at once (section 6's grades: 96 / 180 / 240 kg), spent on THE FIRST ORDERS, the build board opened once after the landers' tour over the paused game (the Rotor 45, the pad 60, the recycler's work 40 paying 60, the array 120; two picks), while the gate and the Stålheart print from the deploy.

@@ -55,7 +55,7 @@ export const DIRECTOR_CODE_BRIEFS = freeze([
   ...['quiver_intro', 'quiver_override'].map((id) => ({ id, at: { phase: 'cleared' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'the wave cleared: the Quiver printed and handed over' })),
   { id: 'quiver_cleared', at: { phase: 'quiver-piloting' }, file: 'src/domain/story-beats.js', find: "'quiver_cleared'", trigger: 'the two hard cores down' },
   ...['sinkhole_strike', 'sinkhole_strike_again', 'sinkhole_sealed'].map((id) => ({ id, at: { phase: 'construction' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'sector 0: a construction wave cleared, the sinkhole open or filled' })),
-  { id: 'gunship_overhead', at: { phase: 'construction' }, file: 'src/td-tab.js', find: "showBrief('gunship_overhead')", trigger: 'sector 0 begins: the gunship comes on station' },
+  { id: 'gunship_overhead', at: { phase: 'construction' }, file: 'src/td-tab.js', find: "briefs.want('gunship_overhead')", trigger: 'sector 0 begins (or, on a settled opening that skips it, the handover): the gunship comes on station' },
   { id: 'stalheart_stands', at: { phase: 'construction' }, file: 'src/fx/hull-issue.js', find: "'stalheart_stands'", trigger: 'the Stålheart stands' },
   { id: 'vibration_study', at: { phase: 'study-talk' }, file: 'src/domain/story-beats.js', find: "api.brief?.('vibration_study')", trigger: 'the study\'s close-up' },
   { id: 'rocket_sites', at: { phase: 'study' }, file: 'src/domain/story-beats.js', find: "api.brief?.('rocket_sites')", trigger: 'the study\'s screen closed: the expeditions begin' },
