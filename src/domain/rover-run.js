@@ -141,6 +141,8 @@ export function stepRover(run, dt, now, host) {
 // ground and keep rotting: the owner's "it is not automatic anymore" stands, the field must have been flagged. Cargo that does not fit stays aboard
 // (the rover waits home, STORAGE FULL); a pile that does not fit stays on the ground. The rover starts the next sector at home, its orders gone
 // (the caller clears the flares). host: { flares: [{ id, cell }], near(cell, reach), take(cell, kg), deposit(kg) -> fitted, room() -> kg that still fit }
+// HALF THE FLAGGED GROUND (the economy design 2.6, 2026-11-12: "banking it all for free made the trip, and the escort, pointless at every sector's
+// end"): a flagged pile banks tune.breakShare of its kg (1 when unset, the rule of round 8); the rest stays on the ground, still seeping
 // -> { cargo, field, kept }: kg banked from the hold, from the flagged piles, and left aboard
 export function settleBreak(run, now, host) {
   const T = run.tune, out = { cargo: 0, field: 0, kept: 0 };
@@ -148,7 +150,7 @@ export function settleBreak(run, now, host) {
   const seen = new Set();
   for (const f of host.flares ?? []) for (const p of host.near(f.cell, T.reach)) {
     if (seen.has(p.cell)) continue; seen.add(p.cell);
-    const ask = Math.floor(Math.min(p.kg, host.room())); if (ask < 1) continue;
+    const ask = Math.floor(Math.min(p.kg * (T.breakShare ?? 1), host.room())); if (ask < 1) continue;
     const n = host.take(p.cell, ask), got = Math.max(0, host.deposit(n));
     run.harvested += n; run.delivered += got; out.field += got;
   }

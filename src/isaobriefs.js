@@ -296,7 +296,7 @@ export const BRIEFS = {
   },
   rover_break: {
     id: 'rover_break', face: 'glee', title: 'COMMS · ISAO', once: true,
-    lines: ['The rover brought the rest home during the break.', 'What you flagged is in the pearls. The rest still lies out there.'],
+    lines: ['The rover brought its load home during the break.', 'Half of what you flagged made the pearls. The rest still lies out there.'],   // half since 2026-11-12 (ROVER.breakShare)
   },
   storage_full: {
     id: 'storage_full', face: 'determined', title: 'COMMS · ISAO', once: true,

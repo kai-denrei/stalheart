@@ -46,7 +46,7 @@ export const BUILD_BOARD = Object.freeze({
   // x10 AND NO START BANK (owner, 2026-11-12: "remove the start bank for now", "let's raise prices 10x not 20x"; the economy design 2.7): the story's
   // bank starts at 0 (src/domain/campaign.js STORY_START_BIOMASS), so the card is paid from the salvage by grade (2,400 / 1,800 / 960), the survey
   // (3 x 150) and the first harvest; the pairs cost 850 to 1,800. On the dog's opening the Rotor stands (Isao's), so its card is the SECOND ROTOR on
-  // the wall's other socket at the radial's price (`second`, src/domain/build-board.js firstOffers). Never index-scaled,
+  // the wall beside the first (the gate's other socket is the Quiver's) at the radial's price (`second`, src/domain/build-board.js firstOffers). Never index-scaled,
   // never on a sector board (BUILD_BOARD.structures has no entry for them): not bought is not built. The recycler's work pays its barrel back (`pays`)
   first: Object.freeze({
     structures: Object.freeze({
@@ -54,7 +54,7 @@ export const BUILD_BOARD = Object.freeze({
       foundry: Object.freeze({ price: 400, effect: 'Isao works the AFR-01: one more barrel, +600 kg' }),
       solar: Object.freeze({ price: 1200, effect: 'the array: the hull\'s shield charges on its island' }),
     }),
-    words: Object.freeze({ title: 'THE FIRST ORDERS', line: 'The rocket is all we have. The Stålheart I print whatever you choose. Two more things: choose.', rotor: 'the first sentry, on the wall beside the mouth', second: 'SECOND ROTOR', secondEffect: 'a second Rotor on the wall\'s other socket' }),
+    words: Object.freeze({ title: 'THE FIRST ORDERS', line: 'The rocket is all we have. The Stålheart I print whatever you choose. Two more things: choose.', rotor: 'the first sentry, on the wall beside the mouth', second: 'SECOND ROTOR', secondEffect: 'a second Rotor on the wall beside the first' }),
   }),
   // the cards' wireframe thumbnails (round 7 note 4, src/fx/board-thumbs.js): fitted to `frame` units on the largest side, centred at `centre`
   // units up, where the sprite rig's camera looks (src/fx/wave-card.js); the dome stands for the shield charges (no model of its own)

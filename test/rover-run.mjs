@@ -8,7 +8,7 @@ import { ROVER } from '../src/content/rover.js';
 // a line of cells 10 m apart: cell n stands at x = 10 n; the home is cell 0, the bearing of a step is 0 east and pi west
 const line = (a, b) => { const out = []; for (let c = a; c !== b; c += Math.sign(b - a)) out.push(c); out.push(b); return out; };
 function world({ capacity = 1000, room = 1e9, wall = null } = {}) {
-  const field = createField({ decaySeconds: 1e9, maxPiles: 100 }), pearls = createPearls({ count: 1, capacity: room }), live = new Set();
+  const field = createField({ seep: null, maxPiles: 100 }), pearls = createPearls({ count: 1, capacity: room }), live = new Set();
   let now = 0;
   const host = {
     path: (a, b) => (wall != null && Math.min(a, b) < wall && Math.max(a, b) > wall ? null : line(a, b)),
@@ -52,8 +52,10 @@ function world({ capacity = 1000, room = 1e9, wall = null } = {}) {
   assert.equal(w.run.mode, 'idle'); assert.equal(roverWord(w.run), 'NO ROAD'); assert.equal(w.run.order, null); }
 { const w = world({ wall: 4 }); w.field.drop(3, 10, 0); w.field.drop(5, 50, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 2 });
   w.step(30); assert.equal(w.pearls.stored(), 10, 'cell 3 taken, cell 5 behind the wall skipped'); assert.equal(w.run.mode, 'idle'); assert.equal(w.run.trips, 1, 'no second trip for a pile it cannot reach'); }
-// THE BREAK: mid-trip at the sector's end the hold and the flagged ground come home at once, under the cap; the unflagged ground stays and rots
-{ const w = world({ room: 1000 }); w.field.drop(20, 300, 0); w.field.drop(21, 200, 0); w.field.drop(40, 700, 0); w.field.drop(60, 900, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 20 });
+// THE BREAK: mid-trip at the sector's end the hold and the flagged ground come home at once, under the cap; the unflagged ground stays and seeps.
+// The round-8 rule (breakShare 1: all the flagged ground) first, then the economy design's half (2026-11-12, ROVER.breakShare 0.5)
+assert.equal(ROVER.breakShare, 0.5, 'the break banks half the flagged ground');
+{ const w = world({ room: 1000 }); w.run.tune = { ...w.run.tune, breakShare: 1 }; w.field.drop(20, 300, 0); w.field.drop(21, 200, 0); w.field.drop(40, 700, 0); w.field.drop(60, 900, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 20 });
   w.step(25); assert.equal(w.run.mode, 'harvest'); w.step(1.5); assert.ok(w.run.cargo > 0 && w.run.cargo < 500, `raking (${w.run.cargo})`);
   const breakHost = (flares) => ({ ...w.host, flares, room: () => w.pearls.room() });
   const aboard = w.run.cargo, out = settleBreak(w.run, w.now(), breakHost([{ id: 'f', cell: 20 }, { id: 'g', cell: 41 }]));
@@ -62,6 +64,10 @@ function world({ capacity = 1000, room = 1e9, wall = null } = {}) {
   assert.ok(w.field.piles().some((p) => p.cell === 60 && p.kg === 900), 'the unflagged pile stays on the ground');
   assert.equal(w.field.total(), 1100, 'what did not fit stays on the ground (2,100 laid, 1,000 home)');
   assert.equal(w.run.mode, 'idle'); assert.equal(w.run.cell, 0, 'home'); assert.equal(w.run.order, null); assert.equal(w.run.path, null); assert.equal(w.run.trips, 1); }
+{ const w = world({ room: 1e6 }); w.field.drop(20, 300, 0); w.field.drop(21, 201, 0); w.field.drop(40, 700, 0); w.field.drop(60, 900, 0);
+  const out = settleBreak(w.run, 0, { ...w.host, flares: [{ id: 'f', cell: 20 }, { id: 'g', cell: 41 }], room: () => w.pearls.room() });
+  assert.equal(out.field, 150 + 100 + 350, 'half of each flagged pile, whole kilos (300, 201, 700 -> 150, 100, 350)');
+  assert.deepEqual(w.field.piles().map((p) => [p.cell, p.kg]), [[20, 150], [21, 101], [40, 350], [60, 900]], 'the other half stays on the ground, the unflagged pile whole'); }
 { const w = world({ room: 100 }); w.field.drop(5, 400, 0); w.live.add('f'); dispatch(w.run, { id: 'f', cell: 5 }); w.step(10); assert.ok(w.run.cargo > 100, `aboard (${w.run.cargo})`);
   const aboard = w.run.cargo, out = settleBreak(w.run, w.now(), { ...w.host, flares: [], room: () => w.pearls.room() });
   assert.equal(out.cargo, 100); assert.equal(out.kept, aboard - 100, 'the cargo that does not fit stays aboard'); assert.equal(w.run.mode, 'full', 'home, STORAGE FULL'); assert.equal(w.run.cell, 0); }

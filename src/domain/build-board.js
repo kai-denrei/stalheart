@@ -53,7 +53,7 @@ export function firstOffers(w, tune) {
   const out = [];
   if (w.rotor && (w.rotorCell ?? -1) >= 0 && !w.rotorBuilt && !w.rotorPending) out.push({ id: `sentry:${w.rotor.key}`, kind: 'sentry', key: w.rotor.key, site: w.rotorCell, label: String(w.rotor.name).toUpperCase(), price: w.rotor.cost, effect: tune.first.words.rotor });
   // THE SECOND ROTOR (the economy design 2.7, 2026-11-12): the dog's opening has Isao's Rotor standing at the card, so the card offers a second one on
-  // the wall's other socket (the emptiest lane's, w.secondCell) at the radial's price
+  // the wall (w.secondCell: the free wall cell nearest the Rotor's socket, src/fx/build-board.js) at the radial's price
   else if (w.rotor && (w.rotorBuilt || w.rotorPending) && (w.secondCell ?? -1) >= 0 && tune.first.words.second) out.push({ id: `sentry:${w.rotor.key}`, kind: 'sentry', key: w.rotor.key, site: w.secondCell, label: tune.first.words.second, price: w.rotor.cost, effect: tune.first.words.secondEffect ?? '' });
   for (const s of (w.steps ?? []).filter((s) => s.first && !w.done.has(s.id) && !w.bought.has(s.id) && tune.first.structures[s.id])) out.push({ id: `build:${s.id}`, kind: 'structure', step: s.id, label: String(s.label).toUpperCase(), price: tune.first.structures[s.id].price, effect: tune.first.structures[s.id].effect });
   return out.slice(0, tune.offers);

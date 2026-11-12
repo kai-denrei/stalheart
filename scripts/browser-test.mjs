@@ -1680,27 +1680,30 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until('!!window.__stalheartPilotTest',30000);await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000).catch(async()=>assert.fail(`the first wave cleared (${JSON.stringify((await st()).story)} alive ${(await st()).enemiesAlive})`));
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('the first wave cleared');
+ {const r=await evaluate(`${T}.rover.state()`),s=await st();console.log(`  dog: at the clear the field ${r.field} kg on ${r.piles} piles, ${r.seeped??r.rotted} kg seeped, ledger.field ${Math.round(s.ledger.field)} kg laid; bank ${s.biomass}`);budget.push(['wave cleared (bank)',s.biomass],['wave cleared (laid)',Math.round(s.ledger.field)]);}
  await until(`${T}.state().programme.printed.includes('depot')`,180000).catch(async()=>assert.fail(`the depot at the harvest (${JSON.stringify((await st()).programme)})`));await mark('the depot stands');
  await until(`${T}.state().story.scout.flared`,60000).catch(async()=>assert.fail(`Isao's flare (${JSON.stringify(await evaluate(`${T}.rover.state()`))})`));await mark('Isao\'s flare: the rover dispatched');
- {const r=await evaluate(`${T}.rover.state()`);console.log(`  dog: rover ${r.mode}, field ${r.field} kg on ${r.piles} piles, flares ${JSON.stringify(r.flares)}`);assert.ok(r.field>0,'the first wave\'s bodies on the ground');}
+ {const r=await evaluate(`${T}.rover.state()`);console.log(`  dog: rover ${r.mode}, field ${r.field} kg on ${r.piles} piles (${r.seeped} kg seeped so far), flares ${JSON.stringify(r.flares.map(f=>f.cell))}`);budget.push(['field at the flare',r.field]);assert.ok(r.field>0,'the first wave\'s bodies on the ground');}
  await until(`${T}.rover.state().mode==='harvest'`,180000).then(async()=>{await delay(800);current='dog-harvest';await finish();}).catch(()=>console.log('  dog: no still of the harvest'));
  await until(`${T}.state().story.phase==='orders'`,240000).catch(async()=>assert.fail(`the rover's first run home (${JSON.stringify(await evaluate(`${T}.rover.state()`))})`));
- {const r=await evaluate(`${T}.rover.state()`);await mark(`the rover home (${r.trips} trip, ${r.delivered} kg)`);}
+ {const r=await evaluate(`${T}.rover.state()`);await mark(`the rover home (${r.trips} trip, ${r.delivered} kg)`);budget.push(['first harvest poured',r.delivered]);}
  await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,30000).catch(async()=>assert.fail(`THE FIRST ORDERS (${JSON.stringify((await st()).board)})`));await mark('THE FIRST ORDERS');
  {const s=await st(),bd=s.board;console.log(`  dog: the card: bank ${bd.bank}; ${bd.offers.map(o=>`${o.id} ${o.price}`).join(' · ')}`);
   budget.push(['card',bd.bank]);assert.equal(s.paused,true);assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'four cards at x10: the Rotor stands, so the SECOND ROTOR');
   assert(!s.programme.printed.includes('stalheart')&&s.programme.active!=='stalheart','the Stålheart waits for the card');}
  current='dog-first-orders';await finish();
- for(const id of ['build:landing','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
+ for(const id of ['sentry:rotor','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
  await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
- {const s=await st();budget.push(['after the card',s.biomass]);assert.equal(s.biomass,budget.at(-2)[1]-1000,`the pad and the foundry's work paid (600 + 400): ${s.biomass}`);}
+ {const s=await st();budget.push(['after the card',s.biomass]);assert.deepEqual(s.board.last.took,['sentry:rotor','build:foundry'],'both placed: the second Rotor on the wall');assert.equal(s.biomass,budget.at(-2)[1]-850,`the second Rotor and the foundry's work paid (450 + 400): ${s.biomass}`);}
  await until(`${T}.state().programme.active==='stalheart'`,120000).catch(async()=>assert.fail(`the Stålheart's print after the card (${JSON.stringify((await st()).programme)})`));await mark('the Stålheart\'s print begins');
  await until(`${T}.state().story.phase==='quiver-piloting'`,120000).catch(async()=>assert.fail(`the Quiver's hard cores (${JSON.stringify((await st()).story)})`));await mark('the Quiver\'s seat');
  await evaluate('window.__stalheartPilotTest?.hold(true)');
  await until(`(()=>{const s=window.__stalheartTest.state();if(['construction','settled'].includes(s.story.phase))return true;const t=window.__stalheartPilotTest;if(t&&!s.gunship.seat){if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();t.aimEnemy();}}return false;})()`,240000).catch(async()=>assert.fail(`sector 0 (${JSON.stringify((await st()).story)})`));
  await evaluate('window.__stalheartPilotTest?.hold(false)');
- {const s=await st();await mark(`after the Quiver: ${s.story.phase}`);assert.equal(s.story.phase,'construction','sector 0 under the Stålheart\'s print');assert.equal(s.gunship.station,true,'GS01 on station');assert.equal(s.programme.active,'stalheart','still printing');}
+ {const s=await st();await mark(`after the Quiver: ${s.story.phase}, ${s.towers} sentries`);assert.equal(s.story.phase,'construction','sector 0 under the Stålheart\'s print');assert.equal(s.gunship.station,true,'GS01 on station');assert.equal(s.programme.active,'stalheart','still printing');}
  await delay(1000);current='dog-sector-0';await finish();
+ // THE SECOND ROTOR waits on Isao's book behind the Stålheart's 75 s print (as THE SETTLING's bought Rotor did), then stands on the wall
+ await until(`${T}.state().towers>=3`,300000).catch(async()=>assert.fail(`the second Rotor printed after the Stålheart (${JSON.stringify((await st()).programme)}, ${(await st()).towers} sentries)`));await mark('the second Rotor stands');
  console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
  } else if(args.includes('--settling')) {
  // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to
