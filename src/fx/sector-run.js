@@ -56,7 +56,7 @@ export function createSectorRun(h) {
   const sps = new Map(), reports = [], omens = new Set();
   let bossDownAt = null;   // THE MECH'S PRINT (round 6, 2026-11-05): the sector clock when THE ARENA read SECURE, its mother dead (bossLeft 0); kept for the run
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
-  let readySince = null, graceRun = 0, graceAway = 0;   // the first sector's grace: seconds counted, and seconds held (the hull out, a line, a shot)   // when the story first said it was ready for the first sector
+  let readySince = null, graceRun = 0, graceAway = 0, graceFrom = null;   // the first sector's grace: seconds counted, and seconds held (the hull out, a line, a shot)   // when the story first said it was ready for the first sector
   // THE SECTOR'S OWN CLOCK (2026-09-25): it runs only while the sector ticks, and the controller skips the tick while the world is
   // paused or frozen under a shot; the game's global t kept running under a dive shot and the openings, the feast's timeout and the
   // first sector's grace ran out behind it. Every time the sector keeps (its books included) is on this clock.
@@ -417,7 +417,10 @@ export function createSectorRun(h) {
       // after the story first was ready it opens whatever the player is doing
       if (readySince === null && !h.ready()) return;
       readySince ??= t;
-      const away = (h.hullHops?.() ?? -1) > (SECTOR_TIMING.firstAwayHops ?? Infinity);
+      // OUT ON THE ERRAND is further out than the hull stood when the story was first ready (sector 0 leaves it parked by the sinkhole, ~28 hops out:
+      // measured, a hull left there held the grace to the cap) and past the clearing; `firstAwayMargin` hops of slack
+      const hops = h.hullHops?.() ?? -1; graceFrom ??= hops;
+      const away = hops > Math.max(SECTOR_TIMING.firstAwayHops ?? Infinity, graceFrom + (SECTOR_TIMING.firstAwayMargin ?? 0));
       if (!away && !h.graceHeld?.()) graceRun += dt; else graceAway += dt;
       if (!h.ready()) return;
       const first = Math.max(1, h.firstSector ?? 1);   // a harness or drawer entry may open the run past the lane (?skip=defence&sector=N)
