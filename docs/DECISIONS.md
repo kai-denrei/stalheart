@@ -8,9 +8,9 @@ How to use it: answer an item with a line under it (date, the call). An answered
 
 ## The ten that shape the whole game
 
-1. **Kill pay** (E1). A sector earns 11k-78k kg while a structure costs 1,500-4,000: nothing on the build board is a real choice.
-2. **How constrained the player should be** (E2). The proposed target (afford the cheapest sentry 40-60 % of fighting time) is the only measurable definition; nothing is tuned to it.
-3. **The sentry cap and upgrade prices** (E3, E4). The flat cap of 10 is the main build limit and was never set against the base's growth.
+1. APPROVED IN DIRECTION 2026-11-12 evening, at 10x (below). **Kill pay** (E1). A sector earns 11k-78k kg while a structure costs 1,500-4,000: nothing on the build board is a real choice.
+2. APPROVED IN DIRECTION 2026-11-12 evening, at 10x (below). **How constrained the player should be** (E2). The proposed target (afford the cheapest sentry 40-60 % of fighting time) is the only measurable definition; nothing is tuned to it.
+3. APPROVED IN DIRECTION 2026-11-12 evening, at 10x (below). **The sentry cap and upgrade prices** (E3, E4). The flat cap of 10 is the main build limit and was never set against the base's growth.
 4. **The difficulty curve** (S1, S2, S5). Towers alone lose sector 1 at about 60 s; difficulty has never been called; the curve rework is still the first listed priority.
 5. DECIDED 2026-11-12 (below). **Automation against the seat** (S10, X3). Automated SOL passes, the auto gunship and the Ridgebacks may make taking a seat optional.
 6. DECIDED 2026-11-12 (below). **The colony: keep, cut or fold, and what it produces** (E8, E9, E10). Structures give perks, domes do nothing yet.
@@ -45,27 +45,39 @@ Second set, same day (entry `2026-11-12-no-start-bank-biomass-as-the-building-ma
 - **The colony's order is the player's (6, E9, E10).** The Stålheart builds the domes; the player chooses what goes where and when; some
   structures carry a real function: shell replenishment, the radar that calls the mech reinforcements, the catapult that launches an automated SOL.
 
-Still open among the ten: 1 kill pay, 2 the constraint target, 3 the sentry cap, 4 the difficulty curve, 7 close early or hold.
+The owner's review of the design agent's calls, 2026-11-12 evening (entry `2026-11-12-the-owner-s-review-of-the-design-agent-s-calls-10x-the-dome-city-grid`):
+
+- "dome city would be like this https://jelaludo.github.io/SentryTowers_A6/dome-city/ or https://jelaludo.github.io/SentryTowers_A6/elevator-city-diorama/ this."
+- "sounds good about the economy. let's raise prices 10x not 20x, we will tune the difficulty later, first we want the flow of stages."
+
+Still open among the ten: 4 the difficulty curve (tuned after the flow of stages stands), 7 close early or hold. Items 1, 2 and 3 (kill pay,
+the constraint target, the sentry cap) are approved in direction with the design agent's economy below, at 10x.
 
 ## Called by the design agent on 2026-11-12, for the owner's review
 
 The owner asked, leaving: "use a separate agent to make tough decisions and note them." These are that agent's calls, nothing built.
-Details and the measurement that would prove each wrong: `docs/superpowers/specs/2026-11-12-economy-and-escort-design.md` (economy, escort)
-and `docs/superpowers/specs/2026-11-12-colony-layout-design.md` (colony). Entry `2026-11-12-the-design-agent-s-calls-economy-escort-colony`.
-Overturn any with one line under it.
+Details and the measurement that would prove each wrong: `docs/superpowers/specs/2026-11-12-economy-and-escort-design.md` (the flow of
+stages, the economy, the escort) and `docs/superpowers/specs/2026-11-12-colony-layout-design.md` (the colony). Entries
+`2026-11-12-the-design-agent-s-calls-economy-escort-colony` (the calls) and `2026-11-12-the-owner-s-review-of-the-design-agent-s-calls-10x-the-dome-city-grid`
+(his review). Overturn any with one line under it.
+
+**The economy: APPROVED IN DIRECTION by the owner (2026-11-12 evening), at 10x.** Difficulty is tuned later; the flow of stages comes first
+(the economy design's section 0 lays out the run's nineteen stages, which exist and which are new; its build order now puts the stages'
+hand-offs first).
 
 Economy and escort (items 1, 2, 3; E1-E5, E7, E8, O3, F4):
 
-- **Kill pay stays; the old small prices rise x20** (sentries 900-5,200 kg, salvage 1,920 / 3,600 / 4,800, the barrel 1,200, held pay
-  800-1,200, the farm 800 a sector). *Why:* since round 8 the rover's trips, not the kills, set the income (the ledger banks 1-24k kg of
-  12-107k laid), so a kill-pay cut would starve the rover; only the pre-board prices were out of scale. *Or:* cut kill pay to about a third.
+- ~~**Kill pay stays; the old small prices rise x20**~~ **OVERTURNED BY THE OWNER: 10x.** Kill pay stays; the old small prices rise **x10**:
+  sentries 450-2,600 kg, salvage 960 / 1,800 / 2,400 (WRECK / HARD / CLEAN), the barrel and the foundry's pay-back 600, held pay 400-600, the
+  farm (BIOSPHERE dome) 400 a sector, a skipped opening 2,000. *Why:* since round 8 the rover's trips, not the kills, set the income (the
+  ledger banks 1-24k kg of 12-107k laid), so a kill-pay cut would starve the rover; only the pre-board prices were out of scale.
 - **The constraint target:** the cheapest buildable sentry affordable 40-60 % of fighting time in sectors 1-3, and each board before
   sectors 2-4 buys one mid card, not two. *Why:* the first is already measured by the code, the second makes the two picks a choice.
   *Or:* round 6's bar (two mid cards at the first board).
 - **The streak is unchanged** (0.05, x3, reset by a leak), told as bonding. *Why:* in crowds any counter saturates; seepage carries the
   "close together" half of the fiction. *Or:* the economy plan's 0.04 plus a second step for kills within 2 cells.
-- **Sentry cap 6, +2 with the fabrication dome, +2 with the logistics dome** (classic: assembly line, armory). *Why:* it binds about
-  sector 3, when the colony's choices open, and makes two domes economic. *Or:* the flat 10.
+- **Sentry cap 6, +2 with a FABRICATION dome, +2 with a LOGISTICS dome** (classic: assembly line, armory). *Why:* at 10x it binds about
+  sectors 2-3, when the colony's choices open, and makes two dome kinds economic. *Or:* the flat 10.
 - **Upgrades 0.8x / 1.5x, refund 60 %.** *Why:* the top tier is the luxury once the cap binds. *Or:* today's 0.7x / 1.2x and 75 %.
 - **The rover's trip unchanged** (6,000 kg, 16 m/s, 400 / 1,000 kg/s). *Why:* measured into place; it is the income's clock. *Or:* smaller
   trips so the harvest bites harder.
@@ -77,35 +89,48 @@ Economy and escort (items 1, 2, 3; E1-E5, E7, E8, O3, F4):
 - **Whites and yellows hunt the rover outside the walls; each jab eats 100 kg of its hold; it cannot be destroyed.** *Why:* the soft hunt's
   ring already exists, and no wreck means no rebuild flow and no friendly-fire rule. *Or:* hit points and a wreck rebuilt for 3,600 kg.
 - **The escort is the tank near the rover:** the hull outranks the rover in the hunt, so it draws the hunters off; its kills land in the
-  rover's reach. A sortie is the 4-flare stock, restocked at the base. *Why:* no new verb; defence (sentries, the automation) buys the time
-  away from the gate. *Or:* a dedicated escort order.
+  rover's reach. A sortie is the 4-flare stock, restocked at the base (the gantry, the garage, the LOGISTICS pad, the rover's pad). *Why:* no
+  new verb; defence (sentries, the automation) buys the time away from the gate. *Or:* a dedicated escort order.
 - **The pearls' cap stays 36,000 kg.** *Why:* at the new prices it only stops a hoarder.
-- **No start bank; THE FIRST ORDERS at about 3,100 / 4,800 / 6,000 kg** (WRECK / HARD / CLEAN: salvage, survey 3 x 300, first harvest),
-  four cards: pad 1,200, the foundry's work 800 (pays 1,200), the array 2,400, a **second Rotor 900** (new card). *Why:* a WRECK cannot pair
-  the array, CLEAN keeps two to four sentries' worth for sector 1: the grade carries into the first fight. *Or:* three cards as the dog spec has.
-- **Survey pay 300 kg a point** (x10, not x20). *Why:* the dog's walk should not be worth more than a landing grade.
-- **The board's index [1, 2, 4, 4.5, 5]** until the escort ledger re-derives it. *Why:* the rover flattened income from sector 3.
+- **No start bank; THE FIRST ORDERS at about 1,710 / 2,550 / 3,150 kg** (WRECK / HARD / CLEAN: salvage, survey 3 x 150, first harvest ~300),
+  four cards: pad 600, the foundry's work 400 (pays 600), the array 1,200, a **second Rotor 450** (new card). *Why:* what is left for sector
+  1 is none or one Rotor after a WRECK, three to five after CLEAN: the grade carries into the first fight. *Or:* three cards as the dog spec has.
+- **Survey pay 150 kg a point** (x5, so the three points stay under the gap between two landing grades). *Or:* 300 (x10).
+- **The board's index [1, 2, 4, 4.5, 5]** until the escort ledger re-derives it (it does not depend on the 10x). *Why:* the rover flattened
+  income from sector 3.
 - **Isao's three lines** for no bank, bonding and seepage (captions, in the economy design 2.7).
 
 Colony (item 6; E9, E10):
 
 - **The KIDOU is the default Stålheart on the dome base.** *Why:* the domes cannot be printed by a gantry that does not move.
-- **Six slots in today's dome positions round a cleared plaza**, the KIDOU home at the centre, the mouth side the one way in. *Why:* the
-  clearing already has the diorama's grid; the plaza and the functions make it read as the diorama. *Or:* seven slots in a closed U, the bays
-  moved out (a second round).
-- **HUGIN, the launcher, the depot, the solar, the scoreboard, the garage and the bays move** (positions in the colony design 2.3) so the
-  KIDOU's corridors are clear; radar, armory, farm, chip plant and assembly line are not placed on the dome base. *Or:* the old buildings kept
-  beside their domes on the outer belt.
-- **Six kinds, each once, carrying the old buildings' perks:** LOGISTICS (shells and flares, +2 cap), RESEARCH (the radar: the mech
-  cavalry), FABRICATION (hulls rebuilt, +2 cap), BIOSPHERE (+800 kg a sector), POWER (SOL a fifth sooner), HABITAT (nothing mechanical).
-  Base prices 2,400-3,200 times the index. *Why:* no new perk invented; skipping RESEARCH means no cavalry ever. *Or:* habitat gives a spare hull.
-- **The catapult stays its own building**, a board card from sector 4 after two manned passes. *Why:* a 46 m rail is not a dome.
-- **The board gains a row, THE COLONY, every buildable kind; a dome is one of the two picks.** *Why:* a drawn card would choose the order
-  for the player. *Or:* domes drawn among the six cards as today.
-- **Slots open in pairs** (front from the first board, middle from the second, back from the third); **the player picks the slot** (stage 4;
-  until then the nearest free). Only the logistics pad's place changes play. *Or:* where matters more (domes damaged in a breach).
-- **The KIDOU drives at 4 m/s, turns in place, straddles the slot, prints a dome in 30 s, comes home; the bridges wait for it.** *Why:* the
-  author's own numbers and the diorama's print. Measure the six modules' heights at 0.65 against its 25 m working height first.
+- ~~**Six slots in today's dome positions round a cleared plaza**~~ **OVERTURNED BY THE OWNER: the dome-city 3 x 3 grid with four courts.**
+  Revised call: **the dome-city's 3 x 3 grid at 70.2 m** (the domes at 0.65, the bridges full length), its **four courts** (01 LAUNCH, 02
+  FABRICATION, 03 SOLAR SERVICES, 04 CARGO); **seven dome cells**: NW, NE, W, E, SW, S, SE. *Why:* the owner's reference.
+- **The centre is an open plaza, the Stålheart's home** (the elevator-city's centre), not the dome-city's power dome. *Why:* the 42 m
+  gantry is as wide as a 51 m court and never passes under a bridge; from the centre it reaches the ring along the grid's lines, while a
+  centre dome's four bridges would shut it in one court. POWER is a kind for any other cell. *Or:* the power dome at the centre and the
+  gantry's home outside the grid behind `dome-S`.
+- **The front-middle cell is the way in**: the landing pad, the gate's corridor, the sightline; **the space elevator stands there at the
+  run's end**, joined to NW and NE. *Why:* a dome would block the corridor and the sightline; the elevator-city puts its station on the front.
+  *Or:* nine domes, the corridor moved off x = 0.
+- **The courts:** LAUNCH (front-left) the ARC-01 launcher; CARGO (front-right) the depot with the pearls, the rover and the flares' restock;
+  SOLAR SERVICES (back-left) the array; FABRICATION (back-right) the garage. HUGIN, the bays and the scoreboard go on the outer belt; radar,
+  armory, farm, chip plant and assembly line are not placed on the dome base (their roles are kinds). Cargo and fabrication are swapped
+  against the dome-city's numbering so the rover's road to the gate is short. *Or:* the dome-city's own corners.
+- **Six bridges in a U open toward the gate** (the columns and the back row). *Why:* the other six of the dome-city's twelve have no dome to meet.
+- **Six kinds carrying the old buildings' perks**, each once, HABITAT up to twice (five kinds and two habitats fill seven cells): LOGISTICS
+  (shells and flares, +2 cap), RESEARCH (the radar: the mech cavalry), FABRICATION (hulls rebuilt, +2 cap), BIOSPHERE (+400 kg a sector),
+  POWER (SOL a fifth sooner), HABITAT (nothing mechanical). Base prices 2,400-3,200 times the index. *Or:* habitat gives a spare hull.
+- **The catapult stays its own building** in the launch court, a card from sector 4 after two manned passes. *Why:* a 46 m rail is not a dome.
+- **The board gains a row, THE COLONY; a dome is one of the two picks; the player picks kind and cell.** *Why:* a drawn card would choose
+  the order for the player. *Or:* domes drawn among the six cards as today.
+- **All cells open from the first board, with one rule: W after NW and SW, E after NE and SE** (the gantry drives through a column's
+  middle to reach its corners). *Or:* slots in pairs as before.
+- **The default city:** NW RESEARCH, NE LOGISTICS, W BIOSPHERE, E FABRICATION, SW HABITAT, S POWER, SE HABITAT; **the first dome Isao proposes
+  is NE, LOGISTICS**, at the first board. No dome in the opening; the Stålheart is printed on the plaza as today.
+- **The KIDOU drives the grid's lines at 4 m/s, turns in place, straddles a cell, prints a dome in 30 s, comes home; the bridges wait for it.**
+  The domes fit under it: one envelope for all six kinds (the dome-colony's data), at 0.65 the shell 18.2 m, the mast cradle 23.3 m, under its
+  25 m working height by 0.9 m; check in the engine.
 
 ## O. Landing and opening
 
