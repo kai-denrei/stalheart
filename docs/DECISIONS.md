@@ -47,6 +47,66 @@ Second set, same day (entry `2026-11-12-no-start-bank-biomass-as-the-building-ma
 
 Still open among the ten: 1 kill pay, 2 the constraint target, 3 the sentry cap, 4 the difficulty curve, 7 close early or hold.
 
+## Called by the design agent on 2026-11-12, for the owner's review
+
+The owner asked, leaving: "use a separate agent to make tough decisions and note them." These are that agent's calls, nothing built.
+Details and the measurement that would prove each wrong: `docs/superpowers/specs/2026-11-12-economy-and-escort-design.md` (economy, escort)
+and `docs/superpowers/specs/2026-11-12-colony-layout-design.md` (colony). Entry `2026-11-12-the-design-agent-s-calls-economy-escort-colony`.
+Overturn any with one line under it.
+
+Economy and escort (items 1, 2, 3; E1-E5, E7, E8, O3, F4):
+
+- **Kill pay stays; the old small prices rise x20** (sentries 900-5,200 kg, salvage 1,920 / 3,600 / 4,800, the barrel 1,200, held pay
+  800-1,200, the farm 800 a sector). *Why:* since round 8 the rover's trips, not the kills, set the income (the ledger banks 1-24k kg of
+  12-107k laid), so a kill-pay cut would starve the rover; only the pre-board prices were out of scale. *Or:* cut kill pay to about a third.
+- **The constraint target:** the cheapest buildable sentry affordable 40-60 % of fighting time in sectors 1-3, and each board before
+  sectors 2-4 buys one mid card, not two. *Why:* the first is already measured by the code, the second makes the two picks a choice.
+  *Or:* round 6's bar (two mid cards at the first board).
+- **The streak is unchanged** (0.05, x3, reset by a leak), told as bonding. *Why:* in crowds any counter saturates; seepage carries the
+  "close together" half of the fiction. *Or:* the economy plan's 0.04 plus a second step for kills within 2 cells.
+- **Sentry cap 6, +2 with the fabrication dome, +2 with the logistics dome** (classic: assembly line, armory). *Why:* it binds about
+  sector 3, when the colony's choices open, and makes two domes economic. *Or:* the flat 10.
+- **Upgrades 0.8x / 1.5x, refund 60 %.** *Why:* the top tier is the luxury once the cap binds. *Or:* today's 0.7x / 1.2x and 75 %.
+- **The rover's trip unchanged** (6,000 kg, 16 m/s, 400 / 1,000 kg/s). *Why:* measured into place; it is the income's clock. *Or:* smaller
+  trips so the harvest bites harder.
+- **Seepage replaces the 240 s rot:** a pile loses max(0.5 kg, kg / 400) a second. *Why:* the owner's "partly lost", and a big bonded pile
+  keeps a larger share than a lone kill. *Or:* the rot as it is.
+- **The break banks the hold and half the flagged ground** (today all of it). *Why:* banking it all at the break made the trip, and the
+  escort, pointless at every sector's end. *Or:* all, or none.
+- **Kills lie on the ground from the story's first kill**, not from the depot. *Why:* the first harvest is the Rotor fight's bodies.
+- **Whites and yellows hunt the rover outside the walls; each jab eats 100 kg of its hold; it cannot be destroyed.** *Why:* the soft hunt's
+  ring already exists, and no wreck means no rebuild flow and no friendly-fire rule. *Or:* hit points and a wreck rebuilt for 3,600 kg.
+- **The escort is the tank near the rover:** the hull outranks the rover in the hunt, so it draws the hunters off; its kills land in the
+  rover's reach. A sortie is the 4-flare stock, restocked at the base. *Why:* no new verb; defence (sentries, the automation) buys the time
+  away from the gate. *Or:* a dedicated escort order.
+- **The pearls' cap stays 36,000 kg.** *Why:* at the new prices it only stops a hoarder.
+- **No start bank; THE FIRST ORDERS at about 3,100 / 4,800 / 6,000 kg** (WRECK / HARD / CLEAN: salvage, survey 3 x 300, first harvest),
+  four cards: pad 1,200, the foundry's work 800 (pays 1,200), the array 2,400, a **second Rotor 900** (new card). *Why:* a WRECK cannot pair
+  the array, CLEAN keeps two to four sentries' worth for sector 1: the grade carries into the first fight. *Or:* three cards as the dog spec has.
+- **Survey pay 300 kg a point** (x10, not x20). *Why:* the dog's walk should not be worth more than a landing grade.
+- **The board's index [1, 2, 4, 4.5, 5]** until the escort ledger re-derives it. *Why:* the rover flattened income from sector 3.
+- **Isao's three lines** for no bank, bonding and seepage (captions, in the economy design 2.7).
+
+Colony (item 6; E9, E10):
+
+- **The KIDOU is the default Stålheart on the dome base.** *Why:* the domes cannot be printed by a gantry that does not move.
+- **Six slots in today's dome positions round a cleared plaza**, the KIDOU home at the centre, the mouth side the one way in. *Why:* the
+  clearing already has the diorama's grid; the plaza and the functions make it read as the diorama. *Or:* seven slots in a closed U, the bays
+  moved out (a second round).
+- **HUGIN, the launcher, the depot, the solar, the scoreboard, the garage and the bays move** (positions in the colony design 2.3) so the
+  KIDOU's corridors are clear; radar, armory, farm, chip plant and assembly line are not placed on the dome base. *Or:* the old buildings kept
+  beside their domes on the outer belt.
+- **Six kinds, each once, carrying the old buildings' perks:** LOGISTICS (shells and flares, +2 cap), RESEARCH (the radar: the mech
+  cavalry), FABRICATION (hulls rebuilt, +2 cap), BIOSPHERE (+800 kg a sector), POWER (SOL a fifth sooner), HABITAT (nothing mechanical).
+  Base prices 2,400-3,200 times the index. *Why:* no new perk invented; skipping RESEARCH means no cavalry ever. *Or:* habitat gives a spare hull.
+- **The catapult stays its own building**, a board card from sector 4 after two manned passes. *Why:* a 46 m rail is not a dome.
+- **The board gains a row, THE COLONY, every buildable kind; a dome is one of the two picks.** *Why:* a drawn card would choose the order
+  for the player. *Or:* domes drawn among the six cards as today.
+- **Slots open in pairs** (front from the first board, middle from the second, back from the third); **the player picks the slot** (stage 4;
+  until then the nearest free). Only the logistics pad's place changes play. *Or:* where matters more (domes damaged in a breach).
+- **The KIDOU drives at 4 m/s, turns in place, straddles the slot, prints a dome in 30 s, comes home; the bridges wait for it.** *Why:* the
+  author's own numbers and the diorama's print. Measure the six modules' heights at 0.65 against its 25 m working height first.
+
 ## O. Landing and opening
 
 - **O1 How forgiving the flown landing is.** Entry 300-400 m, sink 30-40 m/s, fuel 18-22 s; CLEAN needs sink under 2.5 m/s, drift under 1.5, tilt under 4 degrees. About half the seeds drift toward the mouth.
