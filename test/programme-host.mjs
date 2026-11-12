@@ -170,4 +170,29 @@ function storyApiOf(c) {
   const both = make((id) => id === 'dome-nw' || id === 'dome-w'); both.api.build();   // the grid's west column (2026-11-12 night)
   assert.deepEqual(both.orders.map((x) => [x.kind, x.step.id, x.bed]), [['structure', 'bridge-nw-w', 'bed:bridge-nw-w']], 'both west domes stand: Isao prints their bridge');
 }
+// THE COLONY ON THE GRID (2026-11-12 night): a bought cell is the gantry's job (no order for Isao), held while it is out; its hand-over is Isao's
+// order begun at the gantry's share; the dome standing switches on its KIND's perk with the kind's caption, a LOGISTICS dome's pad the shells' pad
+{
+  const { s, api, log, orders } = controller({ at: 'dome-nw' }), pg = s.story.programme, jobs = [];
+  let home = true;
+  s.story.gantry = { home: () => home, start: (st, h) => { jobs.push({ st, h }); home = false; return true; }, tick() {}, state: () => null };
+  s.story.colonyPads = { se: { cell: 7, pos: [0, 0, 1], standing: false } }; s.story.stands = () => false; s.story.armoryPad = null; s.story.sectorN = 2; s.story.wallCells = [];
+  assert.equal(buy(pg, 'dome-se', { kind: 'logistics', perk: 'armory' }), true); assert.equal(buy(pg, 'dome-s', { kind: 'habitat', perk: null }), true);
+  for (const st of BASE_PROGRAMME) if (!st.cell && !st.id.startsWith('bridge-')) pg.done.add(st.id);   // the rest of the base stands: only the cells are owed
+  api.build();
+  assert.deepEqual(jobs.map((j) => j.st.id), ['dome-s'], 'the first bought cell in the table\'s order is the gantry\'s job');
+  assert.deepEqual(orders, [], 'no order for Isao'); assert.equal(pg.active, 'dome-s'); assert.ok(log.some((l) => l[0] === 'brief' && l[1] === 'build_dome'));
+  api.build(); assert.equal(jobs.length, 1, 'one job at a time');
+  jobs[0].h.hand(jobs[0].st, 0.6);
+  assert.deepEqual(orders.map((o) => [o.kind, o.step.id, o.head]), [['structure', 'dome-s', 0.6]], 'the mast handed to Isao where the gantry stopped');
+  api.printed(jobs[0].st); orders.length = 0;
+  assert.ok(!log.some((l) => l[0] === 'callout'), 'a habitat has no caption'); assert.equal(pg.active, null);
+  api.build(); assert.equal(jobs.length, 1, 'the gantry still out: SE waits (when.home)');
+  home = true; api.build();
+  assert.deepEqual(jobs.map((j) => j.st.id), ['dome-s', 'dome-se'], 'home again: SE');
+  jobs[1].h.hand(jobs[1].st, 1);   // a tool that reached the top: the step stands at once
+  assert.ok(pg.done.has('dome-se') && pg.perks.has('armory'), 'SE stands, LOGISTICS\'s perk on');
+  assert.ok(log.some((l) => l[0] === 'callout' && l[1] === 'LOGISTICS ONLINE · SHELLS ON THE PAD'), 'its caption');
+  assert.deepEqual(s.story.armoryPad, { cell: 7, pos: [0, 0, 1], standing: true }, 'its pad is the shells\' pad');
+}
 console.log('Programme host: one order at a time with his line, the gate\'s walls in both worlds, repairs between waves (the worst door first), the back gate only once held, the perks in the world, the rebuilt hull, the first hull through the same host.');

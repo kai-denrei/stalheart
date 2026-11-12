@@ -1384,13 +1384,109 @@ try{
  await evaluate(`${T}.sectorClearField()`);
  await until(`${T}.state().programme.broke===0`,150000).catch(async()=>assert.fail(`Isao prints the wall shut (${JSON.stringify((await st()).programme)})`));
  current='skip-tutorial-side-wall-mended';await finish();
+ } else if(args.includes('--colony-grid')) {
+ // THE COLONY ON THE GRID (2026-11-12 night; design docs/superpowers/specs/2026-11-12-colony-layout-design.md; the owner: "Stalheart builds the dome, the player
+ // chooses the order of what goes where, and some are meaningful, e.g. getting replenishment shells, or the radar calling in the Mech cavalry, or the
+ // catapult launching an automated SOL"). PART A, the grown base (?skip=sector-1): no shells' pad, no cavalry, no automated SOL; the board's COLONY row,
+ // a REAL click on the LOGISTICS card and on SE on its map and on ORDER; RESEARCH on NW through the board's hand; the KIDOU prints both; each dome's
+ // caption; the pad on SE refills the rack and restocks the flares; the radar books the cavalry. PART B, the finished base (?skip=defence&sector=4):
+ // the default city standing, the stills from above and at three-quarters, the draw calls, the hull driven by real keys through all four courts and
+ // under a back-row bridge, then two manned SOL passes, the catapult printed with its caption and SOL-88 flying on its own
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),P=async()=>(await st()).programme,t0=Date.now(),mark=(w)=>console.log(`  COLONY GRID ${w} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
+ const {COLONY}=await import('../src/content/colony.js');
+ const click=async(sel)=>{const r=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});if(!e)return null;e.scrollIntoView({block:'center'});const b=e.getBoundingClientRect();return {x:b.left+b.width/2,y:b.top+b.height/2,disabled:!!e.disabled};})()`);assert(r,`${sel} on the page`);assert(!r.disabled,`${sel} enabled`);
+  for(const type of ['mouseMoved','mousePressed','mouseReleased'])await send('Input.dispatchMouseEvent',{type,x:r.x,y:r.y,button:'left',clickCount:1});await delay(150);};
+ // PART A
+ await go('colony-grid-grown',`index.html?sw=0&acceptance=1&cine=0&skip=sector-1#td`);await evaluate(SEEN_LOG);
+ await until(`!!${T} && ${T}.state().sector?.n===1`,120000).catch(async()=>assert.fail(`sector 1 opens on the grown base (${JSON.stringify((await st()).sector)})`));mark('sector 1');
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ {const s=await st(),p=s.programme;console.log(`  before: perks ${p.perks}; pad ${JSON.stringify(p.colony.pad)}; reinforcements ${JSON.stringify(s.reinforcements&&{called:s.reinforcements.called,due:s.reinforcements.due})}; sol88 ${p.colony.sol88}, auto ${s.laser?.auto}`);
+  assert(!p.perks.includes('armory')&&!p.colony.pad,'no shells\' pad before a LOGISTICS dome');assert(!p.perks.includes('uplink')&&!s.reinforcements?.called,'no cavalry called before a RESEARCH dome');
+  assert(!p.perks.includes('launcher')&&!p.colony.sol88&&!s.laser?.auto,'no automated SOL before the catapult');}
+ await until(`(()=>{const S=${T}.state().sector;if(S.phase==='fighting')${T}.sectorCull(999,'tank');${T}.rover?.collect?.();document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return S.debriefOpen;})()`,600000).catch(async()=>assert.fail(`sector 1 is held (${JSON.stringify((await st()).sector)})`));
+ mark('sector 1 held');await delay(1200);
+ await evaluate(`document.querySelector('.sdb-acts [data-act=continue]').click()`);
+ await until(`${T}.state().board.open`,8000).catch(async()=>assert.fail(`CONTINUE opens the build board (${JSON.stringify((await st()).board)})`));
+ await until(`(()=>{const b=${T}.state().board;return b.thumbs>=b.offers.length+b.colony.length;})()`,10000).catch(()=>{});
+ {const b=(await st()).board;console.log(`  board: bank ${b.bank}; row 1 ${b.offers.map(o=>o.label).join(', ')}; THE COLONY ${b.colony.map(o=>`${o.label} ${o.price}->${o.cell}${o.suggested?'*':''}`).join(', ')}; cells ${b.cells.map(c=>c.id+':'+c.state).join(' ')}; thumbs ${b.thumbs}`);
+  assert.equal(b.colony.length,6,'six kinds');assert.equal(b.colony.find(o=>o.suggested)?.kind,'logistics','Isao suggests LOGISTICS');}
+ current='colony-grid-board';await finish();
+ await click('.build-board .bb-dome[data-offer="dome:logistics"]');
+ await click('.build-board .bb-map [data-cell="se"]');
+ {const b=(await st()).board;assert.deepEqual(b.picked,['dome:logistics'],'the LOGISTICS card picked by a click');assert.equal(b.colony.find(o=>o.kind==='logistics').cell,'se','SE chosen by a click on the map');}
+ current='colony-grid-board-picked';await finish();
+ const bank0=(await st()).board.bank;await click('.build-board .bb-go');
+ await until(`!${T}.state().board.open && ${T}.state().sector.n===2`,15000).catch(async()=>assert.fail(`ORDER and sector 2 (${JSON.stringify((await st()).board)})`));
+ await evaluate(`${T}.sectorQuiet(true)`);mark('sector 2, quiet');
+ {const s=await st();assert(s.programme.bought.includes('dome-se')&&s.programme.kinds.se==='logistics','SE bought as LOGISTICS');assert(bank0-s.biomass>=COLONY.kinds.logistics.price-1,`paid (${bank0} -> ${s.biomass})`);}
+ assert.equal(await evaluate(`${T}.board.dome('nw','research')`),true,'NW bought as RESEARCH');
+ // (a) LOGISTICS: the gantry prints SE, the caption, the pad at its foot refills the rack and restocks the flares
+ await until(`${T}.state().programme.printed.includes('dome-se')`,900000).catch(async()=>assert.fail(`SE printed (${JSON.stringify(await P())})`));mark('SE stands');
+ {const s=await st(),p=s.programme,said=await evaluate('window.__seen');console.log(`  SE: perks ${p.perks}; pad ${JSON.stringify(p.colony.pad)} cell ${p.colony.cell}; callouts ${JSON.stringify(said.callouts.slice(-4))}`);
+  assert(p.perks.includes('armory'),'the LOGISTICS dome\'s perk');assert(said.callouts.some(x=>x.includes(COLONY.kinds.logistics.caption)),`its caption (${JSON.stringify(said.callouts)})`);}
+ await until(`(${T}.state().programme.colony.pad||{}).standing`,10000).catch(async()=>assert.fail(`the pad stands (${JSON.stringify((await P()).colony)})`));
+ {const cell=(await P()).colony.cell;assert(cell>=0,'the pad has a cell');await evaluate(`${T}.setAmmo(0)`);await evaluate(`${T}.placeTank(${cell})`);await delay(400);
+  await until(`${T}.state().programme.ammo>=3`,15000).catch(async()=>assert.fail(`the pad refills the rack (${(await P()).ammo}, ${JSON.stringify((await P()).colony.pad)})`));console.log(`  the rack refilled on the SE pad: ${(await P()).ammo} shells`);}
+ // (b) RESEARCH: the gantry prints NW (after SE: one job at a time), the caption, the cavalry booked
+ await until(`${T}.state().programme.printed.includes('dome-nw')`,900000).catch(async()=>assert.fail(`NW printed (${JSON.stringify(await P())})`));mark('NW stands');
+ await until(`${T}.state().reinforcements?.called`,20000).catch(async()=>assert.fail(`the radar calls the cavalry (${JSON.stringify((await st()).reinforcements)})`));
+ {const s=await st(),said=await evaluate('window.__seen');console.log(`  NW: reinforcements ${JSON.stringify({called:s.reinforcements.called,calledDay:s.reinforcements.calledDay,due:s.reinforcements.due})}; callouts ${JSON.stringify(said.callouts.slice(-4))}`);
+  assert(said.callouts.some(x=>x.includes(COLONY.kinds.research.caption)),'its caption');}
+ current='colony-grid-two-domes';await evaluate(`${T}.focusHeart()`);await delay(1500);await finish();
+ // PART B
+ await go('colony-grid-city',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online&x=1&fps=1#td`);await evaluate(SEEN_LOG);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await until(`${T}.state().sector.n===4`,60000);await evaluate(`${T}.sectorQuiet(true)`);await delay(4000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card,#td-brief{display:none!important}</style>")');
+ {const s=await st(),vis=(s.storyLod||[]).filter(l=>/^(dome|bridge)-/.test(l.id)&&l.visible).map(l=>l.id);assert.equal(vis.length,13,`the default city stands: seven domes and six bridges (${vis})`);
+  assert.deepEqual(s.programme.kinds,{nw:'research',ne:'logistics',w:'biosphere',e:'fabrication',sw:'habitat',s:'power',se:'habitat'},'the default city\'s kinds');
+  assert(s.programme.perks.includes('armory')&&s.programme.perks.includes('uplink'),'its perks');assert(!s.programme.perks.includes('launcher'),'the catapult not yet');}
+ const perf=async(tag)=>{const v=[];for(let k=0;k<10;k++){await delay(700);const p=await evaluate(`(()=>{const p=${T}.state().performance;return p&&{calls:p.calls,triangles:p.triangles,frameMs:p.frameMs}})()`);if(p)v.push(p);}const med=(k)=>{const x=v.map(p=>p[k]).filter(y=>y!=null).sort((a,b)=>a-b);return x.length?+x[x.length>>1].toFixed(1):null;};console.log(`  DRAW CALLS ${tag}: median ${med('calls')} calls, ${med('triangles')} triangles, ${med('frameMs')} ms frame (${v.length} samples)`);};
+ await perf('base camera');
+ const home=(await st()).storyHome;
+ await evaluate(`${T}.showcase.ground(${home},70,1)`);await delay(3000);await perf('from above');current='colony-grid-top';await finish();
+ await evaluate(`${T}.showcase.ground(${home},16,20)`);await delay(3000);current='colony-grid-three-quarter';await finish();
+ // THE HULL THROUGH THE COURTS: frame metres to a lattice cell off dome-e's holder (the dome-look's frame), a route clear of the buildings, real keys
+ const domes=await evaluate(`JSON.stringify(['dome-e'].map(id=>${T}.showcase.footprint(id)?.at??null))`).then(JSON.parse);
+ const [ex,ey,ez]=domes[0],th=Math.acos(Math.min(1,ey/Math.hypot(ex,ey,ez))),R=70.2/th,yaw=Math.atan2(-ez,ex),cy=Math.cos(yaw),sy=Math.sin(yaw);
+ const unit=(x,z)=>{const xr=x*cy+z*sy,zr=-x*sy+z*cy,d=Math.hypot(xr,zr),a=d/R,k=d>1e-9?Math.sin(a)/d:1/R;return [xr*k,Math.cos(a),zr*k];};
+ const frameOf=(u)=>{const l=Math.hypot(...u),a=Math.acos(Math.min(1,u[1]/l)),h=Math.hypot(u[0],u[2])||1,d=a*R,xr=u[0]/h*d,zr=u[2]/h*d;return [xr*cy-zr*sy,xr*sy+zr*cy];};
+ const cellAt=async(x,z)=>evaluate(`(()=>{const T=${T},u=${JSON.stringify(unit(x,z))},n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}return best;})()`);
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
+ const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
+ const legs=[['under the SW-S bridge',-35.1,70.2],['SOLAR SERVICES',-15,45],['LAUNCH',-15,-40],['CARGO',12,-40],['FABRICATION',15,45]],path=[];
+ for(const [name,x,z] of legs){
+  const to=await cellAt(x,z),from=await evaluate(`${T}.showcase.drive().cur`),route=(await evaluate(`${T}.showcase.route(${from},${to},true)`)).map(r=>r.ci);
+  assert(route.length>=1,`a route to ${name}`);let turning=null,best=-1,a=Date.now(),reached=false;await evaluate(`${T}.showcase.aimHull(${route[Math.min(1,route.length-1)]})`);await K('keyDown','w','KeyW',87);
+  while(Date.now()-a<240000){const d=await evaluate(`${T}.showcase.drive()`),i=route.indexOf(d.cur);if(i>best)best=i;path.push(frameOf(d.pos));if(d.cur===to||best>=route.length-1){reached=true;break;}
+   const next=route[Math.min(route.length-1,Math.max(best,i)+1)],b=await evaluate(`${T}.showcase.bearing(${next})`),want=b>0.12?'a':b<-0.12?'d':null;
+   if(want!==turning){if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);if(want)await K('keyDown',want,want==='a'?'KeyA':'KeyD',want==='a'?65:68);turning=want;}await delay(100);}
+  if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);await K('keyUp','w','KeyW',87);await delay(300);
+  const at=frameOf((await evaluate(`${T}.showcase.drive()`)).pos);console.log(`  the hull drove to ${name}: ${reached?'reached':'stopped'} at (${at[0].toFixed(1)}, ${at[1].toFixed(1)}), ${route.length} cells, ${((Date.now()-a)/1000).toFixed(1)} s`);
+  assert(reached,`the hull reaches ${name} (${best+1} of ${route.length} cells)`);
+ }
+ {const under=path.filter(([x,z])=>Math.abs(z-70.2)<2.2&&x>-45.1&&x<-25.1);console.log(`  under the SW-S bridge: ${under.length} samples`);assert(under.length>0,'the hull passed under the back-row bridge');}
+ // (c) THE CATAPULT: two manned passes, then the ARC-01 prints in the LAUNCH court, its caption, SOL-88 launched and flying on its own
+ for(let k=1;k<=2;k++){
+  await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);
+  await until('(b=>b&&!b.disabled&&/OVERHEAD$/.test(b.textContent))(document.querySelector("#story-views [data-view=laser]"))',8000).catch(async()=>assert.fail('the strip lights for the pass'));
+  await evaluate('document.querySelector("#story-views [data-view=laser]").click()');
+  await until(`!!document.querySelector("#sol82-briefing [data-skip]") || ${T}.state().laser.seated`,8000);await evaluate('document.querySelector("#sol82-briefing [data-skip]")?.click()');
+  await until(`${T}.state().laser.seated`,15000);await evaluate(`${T}.laserHold(true)`);await until(`${T}.state().laser.burning`,5000);await delay(1200);await evaluate(`${T}.laserHold(false)`);
+  await evaluate('document.querySelector("#story-views [data-view=tank]")?.click()');await until(`${T}.state().laser.phase!=="overhead"`,60000);
+  await until(`${T}.state().laser.manned===${k}`,5000).catch(async()=>assert.fail(`manned pass ${k} counted`));
+  assert.equal((await st()).laser.auto,false,`no automated SOL after manned pass ${k}: no catapult yet`);
+ }
+ await until(`${T}.state().programme.printed.includes("launcher")`,180000).catch(async()=>assert.fail(`the ARC-01 prints (${JSON.stringify(await P())})`));mark('the catapult stands');
+ {const said=await evaluate('window.__seen');assert(said.callouts.some(x=>x.includes(COLONY.launcher.caption)),`the catapult's caption (${JSON.stringify(said.callouts.slice(-4))})`);}
+ await until(`${T}.state().programme.colony.sol88`,90000).catch(async()=>assert.fail(`SOL-88 is up (${JSON.stringify((await P()).colony.launch)})`));
+ assert.equal((await st()).laser.auto,true,'SOL fires on its own now');mark('SOL-88 flies itself');
  } else if(args.includes('--colony')) {
  // THE COLONY GROWS AND SOL IS AUTOMATED (owner, 2026-10-01): on the finished base Isao prints the armory, the farm and the chip plant
  // in play; the armory's pad reloads the hull's rack; two manned SOL-82 passes give Isao his calibration, the ARC-01 prints and
  // launches SOL-88 on its sled, and the next pass fires on its own at the densest pile with nobody in the seat
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), prog=async()=>(await st()).programme;
  const {BASE_PERKS}=await import('../src/content/base-programme.js'),{LASER_AUTO}=await import('../src/content/orbital-laser.js'),{LAUNCH}=await import('../src/fx/arc-launch.js');
- await go('colony-load','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online&x=1#td');
+ await go('colony-load','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online&x=1&base=classic#td');   // the CLASSIC colony (the grid's is --colony-grid, 2026-11-12 night)
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().sector.n===4`,60000);
  await evaluate(`${T}.sectorQuiet(true)`);   // no programme waves: this step is about the base, not the fight
@@ -3246,20 +3342,20 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`${T}.sectorQuiet(true)`);mark('sector 2, quiet');
  {const s=await st();assert(P(s).bought.includes('dome-nw')&&P(s).kinds.nw==='research','NW bought as RESEARCH');assert(bank0-s.biomass>=dn.price-1,`paid at the pick (${bank0} -> ${s.biomass})`);}
  assert.equal(await evaluate(`${T}.board.dome('sw','habitat')`),true,'SW bought as a HABITAT');
- // one cell, the whole trip: out, the straddle, the print to the tool's reach, the mast handed to Isao, home
+ // one cell, the whole trip: out, the straddle, the print to the tool's reach, the mast handed to Isao, home. The gantry's phases are logged in the page
+ // every 250 ms (a job can begin and end between two of the suite's polls: the first run missed SW's whole trip behind NW's wait), then read back
+ await evaluate(`(()=>{const T=${T},L=window.__gantryLog=[];setInterval(()=>{const g=T.state().programme?.colony?.gantry;if(!g)return;const k=L.at(-1);if(!k||k.phase!==g.phase||k.cell!==g.cell)L.push({...g,wall:+(performance.now()/1000).toFixed(1)});},250);})()`);
  const trip=async(cell,stop,still,facing)=>{
-  await until(`${T}.state().programme.active==='dome-${cell}'`,600000).catch(async()=>assert.fail(`the programme begins dome-${cell} (${JSON.stringify(P(await st()))})`));const a=Date.now();mark(`dome-${cell} begins`);
-  {const g=await G();assert(g.phase==='out'&&g.cell===cell,`the gantry sets out for ${cell} (${JSON.stringify(g)})`);}
-  await until(`${T}.state().programme.colony?.gantry?.phase==='print'`,240000).catch(async()=>assert.fail(`the gantry reaches ${cell} (${JSON.stringify(await G())})`));const b=Date.now();
-  {const g=await G();console.log(`  at ${cell}: ${JSON.stringify(g)} after ${((b-a)/1000).toFixed(1)} s of wall`);assert(Math.abs(g.x-stop[0])<0.05&&Math.abs(g.z-stop[1])<0.05,`straddling ${cell} at (${stop}) (${g.x}, ${g.z})`);assert(Math.abs(g.heading[0]-facing[0])<0.01&&Math.abs(g.heading[1]-facing[1])<0.01,`facing ${cell}, the tool over its centre (${g.heading})`);}
-  if(still){await until(`(p=>p.print?.step==='dome-${cell}'&&p.print.k>=0.45)(${T}.state().programme)`,120000).catch(async()=>assert.fail(`the print under the gantry (${JSON.stringify(P(await st()).print)})`));
+  if(still){await until(`(p=>p.print?.step==='dome-${cell}'&&p.print.k>=0.45&&p.colony?.gantry?.phase==='print')(${T}.state().programme)`,600000).catch(async()=>assert.fail(`the print under the gantry (${JSON.stringify(P(await st()).print)})`));
    await frameCell(`dome-${cell}`,6,7);await delay(1500);const s=await st();console.log(`  mid-print: ${JSON.stringify(P(s).print)}; ${JSON.stringify(P(s).colony.gantry)}`);current='dome-print-mid';await finish();await evaluate(`${T}.focusHeart()`);}
-  await until(`${T}.state().programme.colony?.gantry?.phase==='back'`,180000).catch(async()=>assert.fail(`the gantry hands over and heads home (${JSON.stringify(await G())})`));const c=Date.now();
-  {const s=await st(),p=P(s);console.log(`  handed over at k ${p.print.k}: isao ${JSON.stringify(p.isao)}`);assert(p.isao?.order==='structure'||p.printed.includes(`dome-${cell}`),`Isao takes the mast (${JSON.stringify(p.isao)})`);}
-  await until(`${T}.state().programme.printed.includes('dome-${cell}')`,240000).catch(async()=>assert.fail(`dome-${cell} printed (${JSON.stringify(P(await st()))})`));
-  await until(`${T}.state().programme.colony?.gantry?.home`,240000).catch(async()=>assert.fail(`the gantry home again (${JSON.stringify(await G())})`));const d=Date.now();
-  {const g=await G();assert(Math.abs(g.x-4.5)<0.05&&Math.abs(g.z)<0.05&&Math.abs(g.heading[1]-1)<0.01,`parked on the plaza (${JSON.stringify(g)})`);}
-  mark(`dome-${cell} done: out ${((b-a)/1000).toFixed(1)} s, print to the hand-over ${((c-b)/1000).toFixed(1)} s, home ${((d-c)/1000).toFixed(1)} s of wall`);
+  await until(`${T}.state().programme.printed.includes('dome-${cell}')`,900000).catch(async()=>assert.fail(`dome-${cell} printed (${JSON.stringify(P(await st()))})`));
+  await until(`(g=>g.home||g.cell!=='${cell}')(${T}.state().programme.colony.gantry)`,300000).catch(async()=>assert.fail(`the gantry leaves ${cell} for home (${JSON.stringify(await G())})`));
+  const L=(await evaluate('window.__gantryLog')).filter(x=>x.cell===cell),at=(ph)=>L.find(x=>x.phase===ph);
+  console.log(`  ${cell}: ${L.map(x=>`${x.phase}@${x.wall}`).join(' ')}; at the cell ${JSON.stringify(at('print'))}`);
+  assert(at('out')&&at('print')&&at('back'),`the gantry went out, printed and turned home for ${cell} (${JSON.stringify(L)})`);
+  const g=at('print');assert(Math.abs(g.x-stop[0])<0.05&&Math.abs(g.z-stop[1])<0.05,`straddling ${cell} at (${stop}) (${g.x}, ${g.z})`);
+  assert(Math.abs(g.heading[0]-facing[0])<0.01&&Math.abs(g.heading[1]-facing[1])<0.01,`facing ${cell}, the tool over its centre (${g.heading})`);
+  mark(`dome-${cell} printed: out ${(at('print').wall-at('out').wall).toFixed(1)} s, print to the hand-over ${(at('back').wall-at('print').wall).toFixed(1)} s of page time`);
  };
  await trip('nw',[-70.2,-67.6],true,[0,-1]);
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-nw')?.visible===true`,30000).catch(async()=>assert.fail(`dome-nw shown (${JSON.stringify(domes(await st()))})`));

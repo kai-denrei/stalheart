@@ -19,7 +19,8 @@
 // enemies, t, storyViews) and the lets the members write as setters (setBerths).
 import { BLOCKED } from '../dungeon.js';
 import { BASE_REPAIR } from '../content/base-programme.js';
-import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks } from '../domain/build-programme.js';
+import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, kindOf } from '../domain/build-programme.js';
+import { COLONY } from '../content/colony.js';
 import { createArcLaunch } from './arc-launch.js';
 const LAUNCH_SHOT = 22;   // seconds of the first launch's cinematic: the charge, the release, the petals unfolding
 import { isaoSpeak } from './isao-voice.js';
@@ -114,6 +115,12 @@ export function createProgrammeHost(c) {
       // above came out empty. The flank is his: a kit wall on each shoulder, out to the rock
       if (step.gate === 'back') { for (const sk of c.story().backSockets ?? []) c.story().socketToward[sk.cell] = sk.toward; const m = c.story().backMouth; if (m) c.story().backHoles = m.flank.filter((ci) => !m.cells.includes(ci)); recomputePortalDist(); }
       c.sectorRun()?.note({ type: 'print', id: step.id });   // the sector books Isao's base prints too, not only tower orders
+      // THE DOMES THAT DO SOMETHING (2026-11-12 night; the owner: "replenishment shells, or the radar calling in the Mech cavalry, or the catapult
+      // launching an automated SOL"): the kind's caption when its dome stands (src/content/colony.js), the catapult's when it does; a LOGISTICS dome's
+      // pad at its foot becomes the shells' pad (src/fx/colony-tick.js stands its ring on the 'armory' perk)
+      const kind = step.cell ? kindOf(c.story().programme, step).kind : null, caption = kind ? COLONY.kinds[kind]?.caption : perk === 'launcher' ? COLONY.launcher.caption : null;
+      if (caption && !replay) c.callout?.(caption, 'co-victory');
+      if (perk === 'armory' && step.cell && c.story().colonyPads?.[step.cell]) { c.story().armoryPad?.ring?.dispose?.(); c.story().armoryPad = { ...c.story().colonyPads[step.cell], standing: true }; }
       if (perk === 'uplink') c.reinforce()?.called();   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the radar's uplink up, Isao calls the colony (src/fx/reinforcements-host.js)
       // the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it
       if (step.walls) { for (const ci of c.story().wallCells) { c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }

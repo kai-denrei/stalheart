@@ -99,6 +99,9 @@ export const DOME_DROPPED = Object.freeze(['radar', 'assembly', 'armory', 'farm'
 // foot) and Isao flies the mast's rest, as the design's fallback says. Its root is the ground under its centre; the tool's fabrication origin
 // stands `tool` m ahead of it along its heading, so the dome's centre stands under the nozzle. `speed` m/s along its beams and `turn` rad/s in
 // place are the author's peaks; a turn picks the nearer of driving on or reversing, so it never turns more than a quarter at a corner.
+// THE LOGISTICS DOME'S PAD (2026-11-12 night; design 3.4: "its pad (12 m, at the dome's foot toward the plaza) refills the hull's shells two a second
+// and restocks the flares"): `foot` m from the dome's centre toward the plaza (the dome is 9.5 m round, the pad's ring BASE_PERKS.armory.radiusMetres)
+export const COLONY_PAD = Object.freeze({ foot: 18 });
 export const COLONY_GANTRY = Object.freeze({
   home: Object.freeze([4.5, 0]), heading: Object.freeze([0, 1]),
   speed: 4, turn: 0.39, tool: 2.6,

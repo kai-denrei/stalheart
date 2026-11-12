@@ -10,11 +10,14 @@ assert.equal(sentryBookFull({ towers: 7, orders, ci: 9, cap: 10 }), false, 'room
 // assembly line on ?base=classic), +2 with a LOGISTICS one (a logistics dome, or the armory), at most 10
 assert.equal(STORY_SENTRIES.cap, 6); assert.equal(STORY_SENTRIES.max, 10);
 assert.equal(sentryCap(new Set(), STORY_SENTRIES), 6, 'six at the start');
-assert.equal(sentryCap(new Set(['gate', 'stalheart', 'dome-e']), STORY_SENTRIES), 8, 'the fabrication dome: +2');
-assert.equal(sentryCap(new Set(['dome-ne']), STORY_SENTRIES), 8, 'a logistics dome: +2');
-assert.equal(sentryCap(new Set(['dome-ne', 'dome-se']), STORY_SENTRIES), 8, 'two logistics domes are one group');
-assert.equal(sentryCap(['assembly', 'armory'], STORY_SENTRIES), 10, 'classic: the assembly line and the armory');
-assert.equal(sentryCap(new Set(['dome-e', 'dome-ne', 'dome-se', 'assembly', 'armory']), { ...STORY_SENTRIES, plus: [...STORY_SENTRIES.plus, { steps: ['dome-e'], add: 5 }] }), 10, 'never past max');
+// BY PERK SINCE THE GRID (2026-11-12 night): the programme handed in whole, its perks pay the groups, whatever cell the kind stands on
+const pg = (perks, done = []) => ({ done: new Set(done), perks: new Set(perks) });
+assert.equal(sentryCap(pg(['gate', 'stalheart', 'rebuild']), STORY_SENTRIES), 8, 'a fabrication dome (or the assembly line): +2');
+assert.equal(sentryCap(pg(['armory']), STORY_SENTRIES), 8, 'a logistics dome (or the armory): +2');
+assert.equal(sentryCap(pg(['rebuild', 'armory']), STORY_SENTRIES), 10, 'both: 10');
+assert.equal(sentryCap(pg([], ['dome-e', 'dome-ne', 'assembly', 'armory']), STORY_SENTRIES), 6, 'steps alone pay nothing: a cell bought as a habitat is not a fabrication dome');
+assert.equal(sentryCap(pg(['rebuild', 'armory']), { ...STORY_SENTRIES, plus: [...STORY_SENTRIES.plus, { steps: ['dome-e'], add: 5 }] }), 10, 'never past max');
+assert.equal(sentryCap(['assembly'], { ...STORY_SENTRIES, plus: [{ steps: ['assembly'], add: 2 }] }), 8, 'a group may still name steps');
 assert.equal(sentryCap(null, STORY_SENTRIES), 6, 'no programme: the base');
 assert.match(STORY_SENTRIES.fullAt(8), /^Isao keeps 8 sentries running/);
 console.log('sentry-cap: the cap refuses new orders, never the order being finished; 6, +2 fabrication, +2 logistics, at most 10, the refusal at the live cap.');

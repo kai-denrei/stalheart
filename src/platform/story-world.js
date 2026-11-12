@@ -16,7 +16,7 @@ const STORY_WORLD_SOUNDS = Object.freeze({ ...STORY_SOUNDS, ...LASER_AUDIO, ...v
 export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode, withBaseLayout, baseLayoutMode, BASE_LAYOUT_DEFAULT, stalheartEntry } from '../content/base-layout.js';
 import { gantryMode } from './game-flags.js';
-import { COLONY_CELLS, COLONY_GANTRY, domeId, domeFiles } from '../content/dome-city.js';
+import { COLONY_CELLS, COLONY_GANTRY, COLONY_DEFAULT, COLONY_PAD, domeId, domeFiles } from '../content/dome-city.js';
 import { COLONY } from '../content/colony.js';
 import { createGantryDrive } from '../fx/gantry-drive.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
@@ -211,13 +211,19 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const perch = plan.sockets[1]?.pos ?? null, ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, perch), far = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.rise, perch);
   const rise = riseCells(far.size >= 2 ? far : ring, planet.graph.centers, plan.cells.forward);
   const beats = stage >= 1 ? makeStoryBeats({ fodderType: STORY_FODDER.type ?? 'amoeba', fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null, settle: arrives ? settle : null, scout: scouts ? { contact: DOG_SCOUT.contact, harvestMax: DOG_SCOUT.harvest.maxS, lines: DOG_SCOUT.words.exposition } : null }) : null;   // THE SETTLING (2026-11-08): ?settle=N or STORY_SETTLE's 120 s, only on the story's own arrival
+  // the pads of the colony's cells, and on a page where the default city stands (a static stage, SKIP TUTORIAL) the default LOGISTICS cell's
+  const colonyPads = Object.fromEntries(COLONY_CELLS.filter((c) => plan.islands.some((i) => i.id === domeId(c.id))).map((c) => [c.id, padOf(domeId(c.id), c.col ? [-Math.sign(c.col) * COLONY_PAD.foot, 0] : [0, -Math.sign(c.row) * COLONY_PAD.foot])]));
+  const logisticsPad = () => { const at = Object.entries(COLONY_DEFAULT).find(([, k]) => k === 'logistics')?.[0], p = at && colonyPads[at], i = at && plan.islands.find((x) => x.id === domeId(at)); return p && i && !i.pending ? { ...p, standing: true } : null; };
   const print = createBasePrint({ base, plan, placer }), kidou = plan.structures.some((s) => s.id === 'stalheart' && s.rig === 'kidou');
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
     arrayPad: padOf(SHIELD_ARRAY.island),
     paintPad: padOf(BASE_PERKS.paint.island, BASE_PERKS.paint.pad),   // PIMP MY RIDE: the purple pad beside the bays (src/fx/paint-pad.js)
-    armoryPad: padOf(BASE_PERKS.armory.island, BASE_PERKS.armory.pad),   // the armory's reload pad by the assembly line (src/fx/armory-pad.js), live once the armory is printed
+    armoryPad: padOf(BASE_PERKS.armory.island, BASE_PERKS.armory.pad) ?? logisticsPad(),   // the armory's reload pad by the assembly line (src/fx/armory-pad.js), live once the armory is printed; on the grid the LOGISTICS dome's (below)
+    // THE LOGISTICS DOME'S PAD (2026-11-12 night, the colony on the grid): at each cell's foot toward the plaza, `foot` m from the dome's centre; the
+    // programme host makes the cell's pad the armory pad when a dome bought as LOGISTICS stands (src/fx/programme-host.js printed)
+    colonyPads,
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
     bossStart: !!bossStart,   // ?boss=1: a run opened past the door's earliest opens ON THE BOSS (src/fx/sector-run.js, 2026-10-16)
