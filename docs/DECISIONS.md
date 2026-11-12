@@ -156,6 +156,12 @@ Calls these raise (none blocks the flow of stages):
 6. **The recorded take `sentry_overload_01` still says "ten sentries"**; the cap is now 6 to 10.
 7. **Not run:** the WRECK and CLEAN openings (computed only: a WRECK reaches the first orders with about 1,733 kg).
 
+### The gunship's friendly fire, measured (2026-11-12)
+
+No friendly unit takes damage from the automated gunship: its rounds damage enemies only. Before the fix, 6 of 38 Bofors shells burst on a rover out alone (no damage, but it looks like friendly fire). The automatic guns and the automatic nuke now keep the tank's distance from the rover (while it is beyond the walls), the companions and the mechs: 0 of 39 after. The player's own seat is not restricted. Probe: `--gunship-ff`.
+
+Calls: the gunship now leaves enemies right on a lone rover alone (one 100 kg bite got through); the automatic nuke can still destroy a sentry standing off a socket or wall cell; SOL's beam is the one automated weapon that damages the tank, and is not measured.
+
 ## O. Landing and opening
 
 - **O1 How forgiving the flown landing is.** Entry 300-400 m, sink 30-40 m/s, fuel 18-22 s; CLEAN needs sink under 2.5 m/s, drift under 1.5, tilt under 4 degrees. About half the seeds drift toward the mouth.
