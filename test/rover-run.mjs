@@ -69,3 +69,23 @@ function world({ capacity = 1000, room = 1e9, wall = null } = {}) {
   assert.deepEqual(out, { cargo: 0, field: 0, kept: 0 }, 'nothing flagged, nothing banked: not automatic'); assert.equal(w.field.total(), 400); assert.equal(w.run.trips, 0); }
 assert.equal(roverWord(createRoverRun(ROVER, 0)), 'HOME');
 console.log('Rover run: a full trip, the hold full and back, the queue, STORAGE FULL and no road hold.');
+
+// TOO MANY ENEMIES (owner, 2026-11-10): six bodies round the rover send it home with what it has; a standing flare's order waits until its ground is clear
+{ const w = world(); let bodies = 0; w.host.threat = () => bodies; w.run.tune = { ...w.run.tune, retreat: { bodies: 6, cells: 4, clear: 2 } };
+  w.field.drop(20, 900, 0); w.live.add('f1'); dispatch(w.run, { id: 'f1', cell: 20 });
+  w.step(Math.PI + 20.3); assert.equal(w.run.mode, 'harvest'); w.step(2); assert.ok(w.run.cargo > 100 && w.run.cargo < 300, `raking: ${w.run.cargo}`);
+  bodies = 5; w.step(0.5); assert.equal(w.run.mode, 'harvest', 'five is not too many');
+  bodies = 6; const had = w.run.cargo; w.step(0.1); assert.equal(w.run.mode, 'home', 'six: it turns for home'); assert.equal(roverWord(w.run), 'RETREATING'); assert.ok(Math.abs(w.run.cargo - had) < 11, 'with what it has');
+  w.step(Math.PI + 20.3 + 2); assert.equal(w.run.mode, 'idle', 'home and unloaded'); assert.ok(w.pearls.list()[0].stored > 100, 'the hold banked');
+  w.step(1); assert.equal(w.run.mode, 'idle', 'the flare stands over the rest, but its ground is not clear'); assert.equal(roverWord(w.run), 'HOLDING · ENEMIES');
+  bodies = 3; w.step(1); assert.equal(w.run.mode, 'idle', 'three is above the clear bar of two');
+  bodies = 2; w.step(0.1); assert.equal(w.run.mode, 'out', 'clear: back out for the rest'); assert.equal(roverWord(w.run), 'OUT');
+  // on the road out, half way: it turns round from where it is, not from the road's first cell
+  w.step(Math.PI + 10); bodies = 9; w.step(0.05); assert.equal(w.run.mode, 'home'); assert.ok(w.run.cell >= 8 && w.run.cell <= 12, `turned round mid-road at cell ${w.run.cell}`);
+  // a queued order is held too, and goes once clear
+  const q = world(); let n = 9; q.host.threat = () => n; q.run.tune = { ...q.run.tune, retreat: { bodies: 6, cells: 4, clear: 2 } };
+  q.field.drop(5, 100, 0); q.live.add('f2'); dispatch(q.run, { id: 'f2', cell: 5 }); q.step(1); assert.equal(q.run.mode, 'idle'); assert.equal(q.run.queued?.id, 'f2', 'the order kept');
+  n = 0; q.step(0.1); assert.equal(q.run.mode, 'out');
+  // no host.threat: the rover of round 8
+  const o = world(); o.run.tune = { ...o.run.tune, retreat: { bodies: 6, cells: 4, clear: 2 } }; o.field.drop(5, 100, 0); o.live.add('f3'); dispatch(o.run, { id: 'f3', cell: 5 }); o.step(0.1); assert.equal(o.run.mode, 'out');
+}

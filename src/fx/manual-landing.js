@@ -54,7 +54,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   // the first frame); `bellUp` the engines' centre up the hull in flight metres (SH02_WELL.bell in the model's metres times the holder's scale)
   let introT = null, bellUp = 0;
   const shotEye = new THREE.Vector3(), shotLook = new THREE.Vector3();
-  let pred = null, s = null, phase = 'idle', acc = 0, input = { legs: false }, harnessThrottle = null, held = { left: false, right: false, burn: false }, rate = { tilt: 0 }, touchTilt = 0, thrust = null, pingAt = 0, contact = null, legsHeard = false;
+  let pred = null, s = null, phase = 'idle', acc = 0, input = { legs: false }, harnessThrottle = null, held = { left: false, right: false, burn: false }, rate = { tilt: 0 }, touchTilt = 0, thrust = null, contact = null, legsHeard = false;
   // the reticle: three fixed rings and the altitude ring, a line loop each, and the hard square, laid on the ground under the predicted point
   const ring = (color) => { const g = new THREE.BufferGeometry().setFromPoints(Array.from({ length: game.reticle.segments + 1 }, (_, i) => { const t = i / game.reticle.segments * Math.PI * 2; return new THREE.Vector3(Math.cos(t), 0, Math.sin(t)); })); return new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85, depthTest: false })); };
   const reticle = new THREE.Group(); reticle.name = 'LandingReticle'; reticle.renderOrder = 999;
@@ -127,8 +127,6 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   function sounds(dt) {
     if (s.throttle > game.hud.audibleThrottle) { thrust ??= sfx?.loop('rocket_thrust', { dist: 0, gain: 0 }); thrust?.set(0.4 + 0.6 * s.throttle, 0.96 + 0.06 * s.throttle); }
     else if (thrust) { thrust.stop(0.08); thrust = null; }
-    const p = pred, gap = p.reached ? game.hud.ping.far + (game.hud.ping.near - game.hud.ping.far) * Math.max(0, Math.min(1, 1 - (s.y - game.hud.ping.nearAt) / game.hud.ping.nearOver)) : game.hud.ping.far;
-    pingAt += dt; if (pingAt >= gap) { pingAt = 0; sfx?.play('laser_click', { dist: 0, gain: 0.5 }); }
   }
   function plumesAt() {   // each engine on its own cadence, its sheet turned to the chase eye about the hull's axis
     const h = rocket.holder; h.updateMatrixWorld(true); a.copy(camera?.position ?? eye); h.worldToLocal(a);

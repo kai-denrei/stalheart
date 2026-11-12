@@ -11,7 +11,7 @@
 //   so a far swap would stop the wheels mid-trip. One rover; the cost is one model.
 // Unit-sphere host coordinates (the floor at radius 1); `metres` scene units a metre.
 //   createRoverScene(scene, { metres, url, tune, hose, wire }) -> { tick(dt, now, target), state(), socket(name), ready(), dispose() }
-//     target: { point: [x,y,z] unit-sphere floor point, heading: [x,y,z] tangent or null, lift: metres, harvesting, unloading, fill, hoseTo: [x,y,z] | null }
+//     target: { point: [x,y,z] unit-sphere floor point, heading: [x,y,z] tangent or null, lift: metres, harvesting, unloading, fill, gauge (the fill bar shown), hoseTo: [x,y,z] | null }
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture, setWireframe } from './model-fixture.js';
 import { createRoverController } from '../../assets/models/yushi-rover/runtime.js';
@@ -31,6 +31,21 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
   const hoseMat = new THREE.MeshStandardMaterial({ color: hose.colour, roughness: 0.6 }), hoseMesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true), hoseMat);
   hoseMesh.visible = false; hoseMesh.name = 'rover hose'; scene.add(hoseMesh);
   const Y = new THREE.Vector3(0, 1, 0);
+  // THE FILL GAUGE (owner, 2026-11-10: "we need gauges for how full it is"): a bar over the rover facing the eye, redrawn when the fill moves 1 %
+  const G = tune.gauge ?? null; let gauge = null, gaugeAt = -1;
+  if (G && typeof document !== 'undefined') {
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 16;
+    const tex = new THREE.CanvasTexture(cv), mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, fog: false });
+    gauge = { cv, tex, mat, sprite: new THREE.Sprite(mat) }; gauge.sprite.name = 'rover gauge'; gauge.sprite.visible = false; gauge.sprite.renderOrder = 20; scene.add(gauge.sprite);
+  }
+  function drawGauge(fill) {
+    const pct = Math.round(Math.max(0, Math.min(1, fill)) * 100); if (pct === gaugeAt) return; gaugeAt = pct;
+    const g = gauge.cv.getContext('2d'); g.clearRect(0, 0, 128, 16);
+    g.fillStyle = G.track; g.fillRect(0, 0, 128, 16);
+    g.fillStyle = pct >= G.warn * 100 ? G.warnColour : G.colour; g.fillRect(2, 2, Math.round(124 * pct / 100), 12);
+    g.strokeStyle = G.edge; g.lineWidth = 1; g.strokeRect(0.5, 0.5, 127, 15);
+    gauge.tex.needsUpdate = true;
+  }
   function place(lift) {
     const up = at.clone().normalize(), f = tangent(up, fwd).normalize(), right = new THREE.Vector3().crossVectors(up, f).normalize(), f2 = new THREE.Vector3().crossVectors(right, up);
     holder.matrix.makeBasis(right, up, f2).scale(new THREE.Vector3(metres, metres, metres)).setPosition(up.clone().multiplyScalar(1 + lift * metres));
@@ -38,7 +53,7 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
   }
   return {
     tick(dt, now, target) {
-      if (!target?.point) { holder.visible = false; hoseMesh.visible = false; return; }
+      if (!target?.point) { holder.visible = false; hoseMesh.visible = false; if (gauge) gauge.sprite.visible = false; return; }
       holder.visible = true;
       const goal = v3(target.point).normalize();
       if (!at) { at = goal.clone(); fwd = target.heading ? v3(target.heading) : tangent(at, new THREE.Vector3(0, 0, -1)); }
@@ -69,11 +84,12 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
         const a = model.getObjectByName('SOCKET_OFFLOAD')?.getWorldPosition(new THREE.Vector3()), b = v3(target.hoseTo);
         if (a) { const mid = a.clone().add(b).multiplyScalar(0.5), d = b.clone().sub(a); hoseMesh.position.copy(mid); hoseMesh.quaternion.setFromUnitVectors(Y, d.clone().normalize()); hoseMesh.scale.set(hose.radius * metres, d.length(), hose.radius * metres); hoseMesh.visible = true; }
       } else hoseMesh.visible = false;
-      last = { gap: +gap.toFixed(2), spinning, moved: +move.toFixed(3) };
+      if (gauge) { gauge.sprite.visible = !!target.gauge; if (target.gauge) { drawGauge(target.fill ?? 0); gauge.sprite.position.copy(at).normalize().multiplyScalar(1 + ((target.lift ?? 0) + G.up) * metres); gauge.sprite.scale.set(G.metres * metres, G.tall * metres, 1); } }
+      last = { gap: +gap.toFixed(2), spinning, moved: +move.toFixed(3), gauge: gauge ? { shown: gauge.sprite.visible, pct: gaugeAt } : null };
     },
     state: () => ({ ready: !!ctl, error, visible: holder.visible, distance: +distance.toFixed(1), belt: +belt.toFixed(1), hose: hoseMesh.visible, point: at?.toArray() ?? null, ...(last ?? {}) }),
     point: () => at?.toArray() ?? null,
     ready: () => !!ctl,
-    dispose() { scene.remove(holder); scene.remove(hoseMesh); hoseMesh.geometry.dispose(); hoseMat.dispose(); },
+    dispose() { if (gauge) { scene.remove(gauge.sprite); gauge.mat.dispose(); gauge.tex.dispose(); } scene.remove(holder); scene.remove(hoseMesh); hoseMesh.geometry.dispose(); hoseMat.dispose(); },
   };
 }

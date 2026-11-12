@@ -1573,13 +1573,16 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);
  const tw0=Date.now();
  {const r=await R();console.log(`  F at cell ${r.hull} (richest ${rich.cell}, ${rich.kg} kg within reach): flares ${JSON.stringify(r.flares.map(f=>[f.id,f.cell]))}`);
-  assert.equal(r.flares.length,1,'one flare standing');assert.equal(r.flares[0].cell,r.hull,'the flare under the hull');}
+  assert.equal(r.flares.length,1,'one flare standing');assert.equal(r.flares[0].cell,r.hull,'the flare under the hull');
+  assert.equal(r.stock,3,`the flare came out of the stock of four (${r.stock})`);assert.equal(typeof r.threat,'number','the bodies round the rover are counted');}
  await until(`${T}.rover.state().mode!=='idle'`,2000).catch(async()=>assert.fail(`the rover leaves home within 2 s (${JSON.stringify(await R())})`));
  console.log(`  left home in ${Date.now()-tw0} ms wall`);
  await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover reaches the flare (${JSON.stringify(await R())})`));
  const h0=await R();await delay(2500);const h1=await R();current='rover-harvest';await finish();
  console.log(`  harvest: cargo ${h0.cargo} -> ${h1.cargo} kg, field ${h0.field} -> ${h1.field} kg, belt ${h1.scene.belt} m`);
  assert.ok(h1.cargo>h0.cargo||h1.mode!=='harvest','its cargo rises');assert.ok(h1.field<h0.field,'the field falls');
+ {const con=await evaluate(`document.querySelector('.hc-rover')?.textContent`);console.log(`  gauge ${JSON.stringify(h1.scene.gauge)}, console "${con}"`);
+  assert.ok(h1.scene.gauge?.shown&&h1.scene.gauge.pct>0,`the fill gauge stands over the rover (${JSON.stringify(h1.scene.gauge)})`);assert.match(con,/ \/ 6,000 KG · FLARES 3\/4/,'the console reads the hold against its capacity and the flares left');}
  await until(`['unload','full','idle'].includes(${T}.rover.state().mode) && ${T}.rover.state().events.some(e=>e.ev==='dock')`,240000).catch(async()=>assert.fail(`the rover drives home (${JSON.stringify(await R())})`));
  const u0=await R();await delay(600);const u1=await R();current='rover-unload';await finish();
  assert.ok(u1.mode==='idle'||u1.scene.hose,'the hose runs while it unloads');
@@ -1599,6 +1602,15 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.equal(f1.mode,'full','it holds');assert.equal(f1.bank,f1.cap,'the bank at its cap');assert.ok(f1.cargo>0&&f1.cargo===f0.cargo,'the load kept aboard');
  await evaluate(`${T}.rover.spend(${PEARLS.capacity})`);
  await until(`${T}.rover.state().mode!=='full'`,20000).catch(async()=>assert.fail(`a spend lets it unload (${JSON.stringify(await R())})`));
+ // THE FLARES RUN OUT (owner, 2026-11-10): three more F empty the stock, a fifth drops nothing; whole again on the repair spot
+ for(let k=0;k<3;k++){await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);await delay(250);}
+ const e0=await R();assert.equal(e0.stock,0,`the stock is spent (${e0.stock})`);const ids0=e0.flares.map(f=>f.id).join();
+ await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);await delay(300);
+ const e1=await R();assert.equal(e1.stock,0);assert.equal(e1.flares.map(f=>f.id).join(),ids0,'F with none left drops nothing');
+ assert.match(await evaluate(`document.body.innerText`),/NO FLARES/,'the toast says so');
+ const pk=await evaluate(`${T}.parkHull('stalheart')`);assert.ok(pk>=0,`the hull parks under the gantry (${pk})`);
+ await until(`${T}.rover.state().stock===4`,8000).catch(async()=>assert.fail(`the stock is whole again on the repair spot (${JSON.stringify((await R()).stock)})`));
+ console.log(`  flares: spent ${e0.stock}/4 after four F, a fifth dropped nothing, restocked under the gantry`);
  current='rover-after';await finish();
  } else if(args.includes('--settling')) {
  // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to

@@ -12,6 +12,10 @@
 // flare decides the risk; it may lead the rover out of the clearing, where nothing shoots at it this round). Pure: the host hands it
 //   path(from, to) -> [cells] | null, length(cells) -> metres, bearing(a, b) -> radians, near(cell, reach) -> [{ cell, kg }] nearest first,
 //   take(cell, kg) -> kg taken, deposit(kg) -> kg that fitted, live(order) -> the order's flare still stands
+// TOO MANY ENEMIES (owner, 2026-11-10: "it must go back to base if too full, or if they are too many enemies"): host.threat(cell | null) counts
+// the live bodies within tune.retreat.cells of a cell, or of the rover itself for null. On its way out or at the rake with tune.retreat.bodies or
+// more round it, it turns for home with what it has (RETREATING); at home it holds a standing order (HOLDING · ENEMIES) until the flare's ground is
+// down to tune.retreat.clear bodies. No host.threat or no tune.retreat: no such rule (the rover of round 8).
 export const ROVER_MODES = Object.freeze(['idle', 'out', 'harvest', 'home', 'unload', 'full']);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -46,6 +50,17 @@ function roll(run, dt, host) {
   run.cell = run.path.at(-1); run.path = null;
   return true;
 }
+// the lattice cell it stands on along its road (run.cell is the road's first cell until it arrives)
+function here(run) {
+  if (!run.path || run.path.length < 2 || !(run.length > 0)) return run.cell;
+  return run.path[Math.min(run.path.length - 1, Math.round((run.s / run.length) * (run.path.length - 1)))];
+}
+const HOLD = 'HOLDING · ENEMIES', RETREAT = 'RETREATING';
+const hot = (run, host, cell, n) => !!run.tune.retreat && typeof host.threat === 'function' && host.threat(cell) >= n;
+function retreat(run, now, host) {
+  run.cell = here(run); run.path = null; goHome(run, now, host, 'enemies');
+  if (run.mode === 'home' && run.path) run.note = RETREAT;
+}
 function goHome(run, now, host, why) {
   const path = run.cell === run.home ? [run.home] : host.path(run.cell, run.home);
   run.mode = 'home'; run.pile = null;
@@ -61,13 +76,19 @@ export function stepRover(run, dt, now, host) {
     if (run.queued && host.live(run.queued)) order = run.queued;
     else if (run.order && host.live(run.order) && host.near(run.order.cell, T.reach).some((p) => !run.skip.has(p.cell))) order = run.order;   // a standing flare over piles it can reach: back for the rest
     run.queued = null;
-    if (!order) { run.order = null; return run; }
+    if (!order) { run.order = null; if (run.note === HOLD) run.note = ''; return run; }
+    if (hot(run, host, order.cell, (T.retreat?.clear ?? 0) + 1)) {   // the flare's ground is not clear yet: the order stands, the rover waits
+      if (order !== run.order) run.queued = order;
+      if (run.note !== HOLD) { run.note = HOLD; note(run, now, 'hold', { flare: order.id }); }
+      return run;
+    }
     const path = run.cell === order.cell ? [run.cell] : host.path(run.cell, order.cell);
     if (!path) { run.note = 'NO ROAD'; run.order = null; note(run, now, 'no-road', { flare: order.id }); return run; }
     if (order !== run.order) run.skip.clear();   // the piles it could not reach are remembered per order
     run.order = order; run.note = ''; run.mode = 'out'; setOff(run, path, host); note(run, now, 'out', { flare: order.id, cell: order.cell });
     return run;
   }
+  if ((run.mode === 'out' || run.mode === 'harvest') && hot(run, host, null, T.retreat?.bodies)) { retreat(run, now, host); return run; }
   if (run.mode === 'out') {
     if (roll(run, dt, host)) { run.mode = 'harvest'; run.pile = null; note(run, now, 'arrive', { cell: run.cell }); }
     return run;
@@ -95,7 +116,7 @@ export function stepRover(run, dt, now, host) {
   }
   if (run.mode === 'home') {
     if (!run.path && run.cell !== run.home) { goHome(run, now, host, 'retry'); return run; }
-    if (roll(run, dt, host)) { run.mode = run.cargo > 0 ? 'unload' : 'idle'; note(run, now, run.cargo > 0 ? 'dock' : 'parked'); }
+    if (roll(run, dt, host)) { run.mode = run.cargo > 0 ? 'unload' : 'idle'; if (run.note === RETREAT) run.note = ''; note(run, now, run.cargo > 0 ? 'dock' : 'parked'); }
     return run;
   }
   if (run.mode === 'unload' || run.mode === 'full') {

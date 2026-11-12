@@ -92,9 +92,8 @@ export const LANDING_GAME = Object.freeze({
     square: 10,           // m: under this height the hard square shows (the last call before contact)
     squareSize: 4,        // m, its half-width: about the legs' stance, the footprint a CLEAN contact lands in
   }),
-  // the altitude ping's gap (src/fx/manual-landing.js sounds): `far` s at `nearAt + nearOver` m and above, ramping to `near` s at `nearAt` m.
-  // nearOver 300 (2026-11-07, out of the logic at the final review): the ramp spans the entry's 300-400 m, so the ping quickens over the whole flight
-  hud: Object.freeze({ audibleThrottle: 0.05, ping: Object.freeze({ far: 1.2, near: 0.15, nearAt: 10, nearOver: 300 }), predictorSeconds: 35, predictorDt: 0.15 }),
+  // NO ALTITUDE PING (owner, 2026-11-10: "an incessant clicking sound during the descent"): the laser_click every 1.2 -> 0.15 s is gone; the thrust bed, the fault's alarm and the legs speak
+  hud: Object.freeze({ audibleThrottle: 0.05, predictorSeconds: 35, predictorDt: 0.15 }),
   // Space held is the burn (spec 13); A / D (and the arrows) the tilt and L the legs are the host's own keys (spec 14 B: three variables)
   input: Object.freeze({ skipKey: 'Escape', burnKey: ' ' }),
   // the contact (2026-11-07, review of Task 7): the rail that resumes at the touchdown, the shock clip, the shake and a wreck's marks

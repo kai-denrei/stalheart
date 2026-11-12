@@ -21,7 +21,7 @@ import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus, routineDue
 import { createOrbitalRing } from './orbital-ring.js';
 import { createScoreboard } from './scoreboard.js';
 import { createSiteBeacons } from './site-beacons.js';
-import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
+import { STORY_EXPEDITIONS, SITE_BEACONS } from '../content/story-defaults.js';
 import { GUNSHIP_AUTO } from '../content/gunship.js';
 import { LIVERY_IDS, DYE_SHOP } from '../content/dyes.js';
 import { makeDyeBook } from '../domain/dyes.js';
@@ -107,7 +107,7 @@ export function createColonyTick(c) {
         s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], ci, point: c.graph().centers[ci], model: () => c.storyBase()?.structure(ids[i])?.holder, start: stops[i] != null ? Math.max(0, stops[i] - 0.5) : undefined })).filter((x) => x.id), { metres: c.cellSide() / 10, onPulse: (id) => { if ((s.pinged ??= new Set()).has(id)) return; s.pinged.add(id); c.sfx?.play?.('beacon_ping', { dist: 0 }); } });   // each beacon pings once, its first pulse
         if (!c.pilotMode() && !c.briefQ()) showBrief('sites_seen');
       }
-      if (s.beacons) { s.beacons.tick(dt); for (const x of s.expeditions?.sites ?? []) if (x.state !== 'hidden' && x.state !== 'guarded') s.beacons.drop(x.id); }
+      if (s.beacons) { s.beacons.tick(dt); if (c.playerHP() > 0) s.beacons.quiet?.(c.playerPos?.(), SITE_BEACONS.quietCells * c.cellSide()); for (const x of s.expeditions?.sites ?? []) if (x.state !== 'hidden' && x.state !== 'guarded') s.beacons.drop(x.id); }
     },
     works: (f) => {
       const s = c.story(), { pg, sector } = f;
