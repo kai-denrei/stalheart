@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-11-12-the-owner-s-review-of-the-design-agent-s-calls-10x-the-dome-city-grid",
+  "date": "2026-11-12",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The owner's review of the design agent's calls: the economy approved at 10x, the flow of stages first, the colony on the dome-city's 3 x 3 grid with four courts",
+  "context": "The owner, 2026-11-12 evening, reviewing entry 2026-11-12-the-design-agent-s-calls-economy-escort-colony: \"dome city would be like this https://jelaludo.github.io/SentryTowers_A6/dome-city/ or https://jelaludo.github.io/SentryTowers_A6/elevator-city-diorama/ this. sounds good about the economy. let's raise prices 10x not 20x, we will tune the difficulty later, first we want the flow of stages.\" He supplied two screenshots: the dome city (nine domes on a 3 x 3, 22 POWER in the centre, skybridges along rows and columns, four named courts with machinery) and the elevator-city diorama (eight domes round a central plaza, the space elevator on its own pad at a corner).",
+  "outcome": "ACCEPTED: the economy's direction (kill pay unchanged, the rover's trips as the income, seepage, the half break, the rover hunted and bitten, the escort, the cap 6+2+2, upgrades 0.8x/1.5x, refund 60 %, no start bank, the first orders' four cards) with every re-based price at 10x instead of 20x: sentries 450-2,600 kg, salvage 960/1,800/2,400 by grade, barrel and foundry pay-back 600, held pay 400-600, the BIOSPHERE dome's 400 kg a sector, a skipped opening 2,000, survey 150 a point, the first orders pad 600 / foundry 400 / array 1,200 / second Rotor 450, the bank at the card ~1,710/2,550/3,150. Difficulty is tuned later; the flow of stages first: docs/superpowers/specs/2026-11-12-economy-and-escort-design.md now opens with the run's nineteen stages (exists or new each) and builds the stages' hand-offs before the tuning. OVERTURNED: the six slots in today's dome positions. The colony design is redone on the dome-city's 3 x 3 grid with four courts (docs/superpowers/specs/2026-11-12-colony-layout-design.md, revised): grid 70.2 m, seven dome cells (NW, NE, W, E, SW, S, SE), the centre an open plaza where the KIDOU lives (the elevator-city's centre, because the 42 m gantry fills a 51 m court and never passes under a bridge), the front-middle cell the way in (landing, corridor, sightline; the space elevator there at the run's end), courts LAUNCH (launcher), CARGO (depot, rover, pearls, flares), SOLAR SERVICES (array), FABRICATION (garage), six bridges in a U, the player choosing kind and cell, W after NW and SW and E after NE and SE, a default city (NW RESEARCH, NE LOGISTICS, W BIOSPHERE, E FABRICATION, SW HABITAT, S POWER, SE HABITAT), the first dome proposed NE LOGISTICS.",
+  "alternatives": [
+    "Prices x20 (the design agent's first call): overturned by the owner, 10x.",
+    "Six dome slots in today's two columns (the design agent's first colony call): overturned by the owner, the dome-city's 3 x 3 grid with four courts.",
+    "A POWER dome in the centre exactly as the dome city: not taken by the revision, the gantry could not live or move there; offered to the owner."
+  ],
+  "evidence": [
+    "The owner's message of 2026-11-12 evening, quoted in the context.",
+    "The dome city's assets/dome-city/layout.json (nine domes at 80 m, twelve bridge_long links, four 80 m courts and their props), its README and validation report; the dome-colony README (one envelope for all six kinds: ±14.6 m, 35.85 m with the mast cradle, a 28 m shell).",
+    "A scratch plan check on the revised colony table (4 m between islands, inside 142 m, nothing under a bridge, the sightline free, the KIDOU's 46 m roads and 28 m turning circles clear): ALL CLEAR."
+  ],
+  "supersedes": [
+    "2026-11-12-the-design-agent-s-calls-economy-escort-colony"
+  ]
+}
