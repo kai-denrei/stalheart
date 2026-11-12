@@ -63,11 +63,11 @@ const SEEN_LOG=`(()=>{if(window.__seen)return;const L=window.__seen={briefs:[],c
  if(b){read();new MutationObserver(read).observe(b,{subtree:true,childList:true,characterData:true,attributes:true});}
  if(c){for(const n of c.children)L.callouts.push(n.textContent);new MutationObserver((ms)=>{for(const m of ms)for(const n of m.addedNodes)L.callouts.push(n.textContent);}).observe(c,{childList:true});}})()`;
 // ONE MOVE, NO CUT (owner, 2026-11-12 evening: "isao landing, the camera focus jumps too many time; focus on the rocket, no cuts, it opens, isao comes
-// out"): the camera every frame in the page (window.__cam: [ms, eye, line of sight, fov, shot, the arrival's phase, the held shot begun]); camCuts(L)
+// out"): the camera every frame in the page (window.__camLog: [ms, eye, line of sight, fov, shot, the arrival's phase, the held shot begun]); camCuts(L)
 // finds the cuts in a stretch of it: a frame whose eye or look point (60 m down the line of sight) or line of sight steps both further and faster
 // (per wall second) than 4x its two neighbours' steps, over 3 m or 8 degrees (an ease ramps, a stalled frame is long but not fast, a cut is a
 // lone spike), or over 25 m or 30 degrees at all; metres are 1/753 of the story planet's radius (STORY_SANITY cellSide / 10)
-const CAM_LOG=`(()=>{if(window.__cam)return;const T=window.__stalheartTest,L=window.__cam=[];(function f(){try{const s=T.seatState(),a=T.state().arrival,[x,y,z,w]=s.quat;
+const CAM_LOG=`(()=>{if(window.__camLog)return;const T=window.__stalheartTest,L=window.__camLog=[];(function f(){try{const s=T.seatState(),a=T.state().arrival,[x,y,z,w]=s.quat;
  L.push([performance.now(),s.pos,[-2*(x*z+w*y),-2*(y*z-w*x),-(1-2*(x*x+y*y))],s.fov,s.shot||'',a?.phase||'',!!a?.hold]);}catch(e){}if(!window.__camStop)requestAnimationFrame(f);})();})()`;
 function camCuts(L,metre=1/753){
  const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])/metre,look=(r)=>r[1].map((v,i)=>v+r[2][i]*60*metre),ang=(a,b)=>Math.acos(Math.max(-1,Math.min(1,(a[0]*b[0]+a[1]*b[1]+a[2]*b[2])/Math.hypot(...a)/Math.hypot(...b))))*180/Math.PI;
@@ -1019,7 +1019,7 @@ try{
   /* all three over the held shot (the owner's second playtest: "Isao saying he'll cannibalize the rocket to get started with terraforming") */
   const onFace=[...new Set(talk.map(r=>r[6]).filter(Boolean))];
   assert.deepEqual(onFace,['Rough landing!','So much to build!',"I'll cannibalize the rocket to get the terraforming started."],`his three lines over the held shot (${onFace})`);
-  {const C=await evaluate('window.__cam'),from=C.findIndex(r=>r[6]),to=C.findIndex((r,i)=>i>from&&r[5]==='done'),c=camCuts(C.slice(from,to+20));
+  {const C=await evaluate('window.__camLog'),from=C.findIndex(r=>r[6]),to=C.findIndex((r,i)=>i>from&&r[5]==='done'),c=camCuts(C.slice(from,to+20));
    console.log(`  grow: the camera from the touchdown: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
    assert.deepEqual(c.cuts,[],'no cut from the touchdown to the arrival\'s end');await evaluate('window.__camStop=true');}
   assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.ok([null,'arrivalHold'].includes(s.shot),`no shot or the closing hold (2026-11-12 evening; the landers' tour was 2026-10-03's) (${s.shot})`);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
@@ -1709,7 +1709,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.equal(await evaluate(`document.querySelectorAll('.dog-scout-hud > div').length`),NP+2,'a marker a point, the home marker and the line');
  // ONE MOVE (note 1): from the touchdown's held shot to the chase settled behind the dog, no frame cuts
  await delay((DOG_SCOUT.camera.easeIn+1)*1000);
- {const L=await evaluate('window.__cam'),from=L.findIndex(r=>r[6]),to=L.length,c=camCuts(L.slice(from,to));
+ {const L=await evaluate('window.__camLog'),from=L.findIndex(r=>r[6]),to=L.length,c=camCuts(L.slice(from,to));
   console.log(`  dog: the camera from the touchdown to the seat: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
   assert.ok(from>=0,'the held shot began');assert.deepEqual(c.cuts,[],'no cut from the touchdown to the dog\'s seat');
   assert.ok(!c.shots.includes('sitesTour'),'no landers\' tour');for(const id of ['arrivalTalk','petPrint','dogScout'])assert.ok(c.shots.includes(id),`${id} on the way`);await evaluate('window.__camStop=true');}
@@ -2004,7 +2004,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.ok(s.arrival.fov>60,`${name}: no long lens on his face (${s.arrival.fov})`);
   if(cam){await until(`${A}.talkT>=1.2`,10000).catch(()=>{});current=`${name}-talk`;await finish();current=name;}
   await until(`${A}.phase==='done'`,30000).catch(()=>why(`${name}: the talk ends`));const e=await st();assert.deepEqual(errors,[],`${name}: browser errors`);
-  if(cam){await delay(1500);const C=await evaluate('window.__cam'),a=C.findIndex(r=>r[6]),c=camCuts(C.slice(a));await evaluate('window.__camStop=true');
+  if(cam){await delay(1500);const C=await evaluate('window.__camLog'),a=C.findIndex(r=>r[6]),c=camCuts(C.slice(a));await evaluate('window.__camStop=true');
    console.log(`  ${name}: the camera from the flown touchdown: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
    assert.ok(a>=0,`${name}: the held shot began`);assert.deepEqual(c.cuts,[],`${name}: no cut from the touchdown to the arrival's end`);}
   assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,`${name}: the panel removed at the end`);return {s:e,said:await briefs()};};
@@ -3607,7 +3607,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.seatState().seatKey==="rotor"`,300000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);   // 300 s: the seat behind the wall's and the Rotor's prints
  const L=await evaluate('window.__cam'),d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
  const from=L.findIndex(r=>r[2]==='arrivalTalk');assert(from>=0,'his lines on the held shot');assert(!L.some(r=>r[2]==='sitesTour'),'no landers\' tour on the dog\'s opening');assert(L.some(r=>r[2]==='arrivalHold'),'the closing hold');
- {const W=await evaluate(`(()=>{const C=window.__cam||[],a=C.findIndex(r=>r[6]),b=C.findLastIndex(r=>r[4]==='arrivalHold');window.__camStop=true;return {n:C.length,a,b,S:a>=0?C.slice(a,b+1):[]};})()`),c=camCuts(W.S);
+ {const W=await evaluate(`(()=>{const C=window.__camLog||[],a=C.findIndex(r=>r[6]),b=C.findLastIndex(r=>r[4]==='arrivalHold');window.__camStop=true;return {n:C.length,a,b,S:a>=0?C.slice(a,b+1):[]};})()`),c=camCuts(W.S);
   console.log(`  cuts: the camera log ${W.n} frames, the hold from ${W.a} to ${W.b}`);assert.ok(c.frames>20,`the held shot logged (${W.n} frames, from ${W.a} to ${W.b})`);
   console.log(`  cuts: the held shot ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
   if(!args.includes('--probe'))assert.deepEqual(c.cuts,[],'no cut from the touchdown to the end of the closing hold');}
