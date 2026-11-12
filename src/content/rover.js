@@ -26,8 +26,11 @@
 //                      and `tall` high, `up` metres over the ground, the slurry's colour on a dark track, amber from `warn` of the hold, shown
 //                      whenever it is away from its pad or carries anything
 //   ROVER.price        the catalog's price of a second rover: no board card this round ("buildable, but not used for now")
-//   FIELD.seep         SEEPAGE (owner, 2026-11-12; the economy design 2.6): a pile loses max(floor, kg x share) kg a second (src/domain/biomass-field.js);
-//                      it replaced the 240 s rot. maxPiles the instanced mesh's cap
+//   FIELD.seep         SEEPAGE (owner, 2026-11-12; the economy design 2.6): it replaced the 240 s rot (src/domain/biomass-field.js). BONDED PILES HOLD
+//                      (2026-11-12 night; owner: biomass "bonds together well, otherwise it seeps into the ground"): nothing seeps for `grace` s after
+//                      a pile's last body; then it loses max(floor, kg x share) / min(bodies, bond) kg a second (a lone kill at the floor, a chain
+//                      of `bond` kills on one cell at a `bond`-th); a sector's seepage stops at `cap` of the kg laid in it (the term closes at
+//                      the break). maxPiles the instanced mesh's cap (a full field loses its smallest pile)
 //   ROVER.breakShare   the share of the flagged piles the sector's end banks (the economy design 2.6: half; the rest stays on the ground)
 //   ROVER.recheck      s between looks at the road ahead (a wall, a building or a sinkhole across it sends it round; src/domain/rover-run.js)
 //   ROVER.road         THE TANK'S GROUND (owner, 2026-11-12: "yushi-rover must have the same collision logic as the tank; walls, rocks, etc."):
@@ -60,7 +63,7 @@ export const ROVER = Object.freeze({
   // the scene: the hose drawn while it unloads (the author's viewer supplies a flexible hose; ours is one olive tube), the slurry's colour
   hose: Object.freeze({ colour: 0x71863c, radius: 0.12 }),
 });
-export const FIELD = Object.freeze({ seep: Object.freeze({ floor: 0.5, share: 1 / 400 }), maxPiles: 400 });
+export const FIELD = Object.freeze({ seep: Object.freeze({ grace: 20, floor: 0.5, share: 1 / 400, bond: 3, cap: 0.25 }), maxPiles: 400 });
 export const PEARLS = Object.freeze({ count: 3, capacity: 12000, ids: Object.freeze(['pearl-a', 'pearl-b', 'pearl-c', 'pearl-d']) });
 // THE PILES (src/fx/biomass-piles.js): an olive blob (the author's slurry colour, yushi045 runtime.js yushiOlive) on the ground where the body fell,
 // its radius `metres` x the cube root of its kg (a 100 kg pile 1.5 m across, 2,000 kg 4 m), at most `maxMetres`, squashed to `flat` of its width

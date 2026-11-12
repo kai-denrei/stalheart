@@ -3833,7 +3833,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   if(b.phase==='lost'||b.phase==='lost-shown'){rows.push({n:b.n,lost:true});console.log(`LEDGER sector ${b.n} LOST`);break;}
   if(b.debrief&&b.n!==lastN){lastN=b.n;const L=b.ledger,d=(o,p)=>Object.fromEntries(Object.entries(o??{}).map(([k,v])=>[k,Math.round(v-(p?.[k]??0))]).filter(([,v])=>v));
    const rv=await evaluate(`${T}.rover?.state?.()??null`);
-   const row={n:b.n,clock:Math.round(b.clock),bank:b.bank,field:rv?.built?{ground:rv.field,rotted:rv.rotted,home:Math.round(b.ledger.harvested??0),trips:rv.trips,cap:rv.cap,break:rv.lastBreak}:null,earned:b.report?.biomass?.earned,spent:b.report?.biomass?.spent,kills:b.report?.kills?.bySource,bySource:d(L.bySource,prev?.bySource),byCategory:d(L.byCategory,prev?.byCategory),spentBy:d(L.spentBy,prev?.spentBy),afford:samples[b.n]?+(samples[b.n].afford/samples[b.n].n).toFixed(2):null,towers:b.towers,printed:b.printed.slice()};
+   const row={n:b.n,clock:Math.round(b.clock),bank:b.bank,field:rv?.built?{ground:rv.field,rotted:rv.rotted,seeped:rv.seeped,laid:Math.round(b.ledger.field??0),home:Math.round(b.ledger.harvested??0),trips:rv.trips,disables:rv.disables,bitten:rv.bitten,cap:rv.cap,break:rv.lastBreak,window:rv.seepWindow}:null,earned:b.report?.biomass?.earned,spent:b.report?.biomass?.spent,kills:b.report?.kills?.bySource,bySource:d(L.bySource,prev?.bySource),byCategory:d(L.byCategory,prev?.byCategory),spentBy:d(L.spentBy,prev?.spentBy),afford:samples[b.n]?+(samples[b.n].afford/samples[b.n].n).toFixed(2):null,towers:b.towers,printed:b.printed.slice()};
    rows.push(row);prev=L;console.log(`LEDGER ${JSON.stringify(row)}`);
    if(b.n>=to)break;
    if(board==='pick'){await evaluate(`${T}.sectorContinue('continue')`);await until(`!!${T}.state().board?.open`,15000).catch(()=>console.log('LEDGER no board opened'));
@@ -3843,6 +3843,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await delay(2000);}
  writeFileSync(join(output,`ledger${process.env.TAG?'-'+process.env.TAG:''}.json`),JSON.stringify({from,to,pay,board,rover,flagKg,wallSeconds:Math.round((Date.now()-t0)/1000),rows,picks},null,1));
  console.log(`LEDGER BANK ${rows.map(r=>`S${r.n} ${r.bank}`).join(' · ')} (${Math.round((Date.now()-t0)/1000)} s wall)`);
+ // THE FIELD BY SECTOR (2026-11-12 night, bonded piles hold): laid (kill pay on the ground), brought home (the rover's deliveries and the break), seeped
+ // and rotted (seeped plus the full field's evictions), each the sector's own (the cumulative numbers' differences), and the bank at the debrief
+ {let p={laid:0,home:0,seeped:0,rotted:0};for(const r of rows.filter(r=>r.field)){const f=r.field,d={laid:f.laid-p.laid,home:f.home-p.home,seeped:f.seeped-p.seeped,rotted:f.rotted-p.rotted};p=f;
+  console.log(`LEDGER FIELD S${r.n} laid ${d.laid} · home ${d.home} · seeped ${d.seeped} (${d.laid?Math.round(100*d.seeped/d.laid):0} %) · rotted ${d.rotted} · bank ${r.bank} · rover disabled ${f.disables} (bitten ${f.bitten} kg, all sectors) · window ${JSON.stringify(f.window)}`);}}
  current='ledger';await finish();
  } else if(args.includes('--board')) {
  // THE BUILD BOARD (owner, 2026-11-05, round 6 note 2; src/fx/build-board.js): sector 1 of a skipped opening held, the debrief's real CONTINUE

@@ -12,7 +12,8 @@
 //   dropFlare()                  F: a flare under the hull, the rover's order (the newest while it is idle; one dropped while it works waits)
 //   tick(dt)                     once per unfrozen story frame (src/td-tab.js's build hook): the rot, the flares, the trip, the scene, the readouts
 //   lay(cell, kg)                THE FIRST HARVEST (2026-11-12): kg laid on a cell's ground (its fallback when the first wave left nothing)
-//   breakHome()                  the sector's end (src/fx/sector-run.js finish, before the report): THE ROVER FINISHES ITS RUN DURING THE BREAK,
+//   breakHome()                  the sector's end (src/fx/sector-run.js finish, before the report): the seepage's term closed (its cap counts a
+//                                sector at a time, src/domain/biomass-field.js); THE ROVER FINISHES ITS RUN DURING THE BREAK,
 //                                the hold and the flagged ground banked under the cap (src/domain/rover-run.js settleBreak), the flares gone
 //   hud()                        the HUD's FIELD number beside the bank; ground() the kg on the ground (the debrief's ON THE GROUND)
 //   prey()                       THE ROVER HUNTED (the economy design 2.6, 2026-11-12): { pos, cur } while it is away from home on a cell beyond the
@@ -245,6 +246,7 @@ export function createRoverGlue(h) {
       hudNumbers(now); readouts(now);
     },
     breakHome() {
+      if (fielded()) S.lastWindow = S.field.term();   // THE GROUND TAKES ONLY SO MUCH: the seepage's cap counts a sector at a time (FIELD.seep.cap)
       if (!live() || !S?.built || S.story !== h.story()) return null;
       const eco = h.eco(), out = settleBreak(S.run, h.t(), { ...host, flares: S.flares.live(), room: () => Math.max(0, eco.cap - eco.biomass) });
       S.flares.clear(); S.pearls.settle(eco.biomass); S.dockAt = null; S.lastBreak = out;
@@ -279,7 +281,7 @@ export function createRoverGlue(h) {
         return { live: live(), built: true, mode: r.mode, word: roverWord(r), cargo: +r.cargo.toFixed(1), cell: r.cell, home: r.home, trips: r.trips, delivered: Math.round(r.delivered), harvested: Math.round(r.harvested),
           disabled: !!r.disabled, jabs: r.jabs, disables: r.disables, restart: restartShare(r), here: roverCell(r), escortSaid: !!S.escortSaid, ring: S.rover.state().ring ?? null, order: r.order?.id ?? null, queued: r.queued?.id ?? null, path: r.path ? [...r.path] : null, k: r.k, stand: r.stand, stuck: r.stuck, wait: r.wait, note: r.note, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
           field: Math.round(S.field.total()), piles: S.field.size(), rotted: Math.round(S.field.rotted()), seeped: Math.round(S.field.seeped()), bitten: Math.round(r.bitten ?? 0), prey: !!prey(), drawn: S.piles.count(), pearls: S.pearls.list().map((v) => Math.round(v.stored)), cap: S.pearls.capacity(), bank: h.eco().biomass,
-          flares: S.flares.live(), stock: S.stock, threat: host.threat(null), fled: r.fled, lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
+          flares: S.flares.live(), stock: S.stock, seepWindow: S.lastWindow ?? null, threat: host.threat(null), fled: r.fled, lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
       },
       // a flare at a lattice cell, as F drops one under the hull (the suite's and the ledger's flagging hand)
       flareAt: (cell) => { if (!S?.built) return null; const f = S.flares.drop(centers()[cell], cell, h.t()); dispatch(S.run, { id: f.id, cell }); return f; },
