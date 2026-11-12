@@ -1253,6 +1253,14 @@ html, body {
 /* THE DESCENT'S CROSS-FADES (2026-11-05, note 10; src/fx/descent-host.js): the last frame before each cut over the next, fading out */
 .descent-fade { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 201; pointer-events: none; opacity: 1; transition: opacity 0.6s linear; object-fit: cover; }
 
+/* THE LANDING LOST (owner, 2026-11-12; src/fx/landing-lost.js): the full-screen end card over the wreck when the flown landing is a CRASH; above the HUD panel */
+.landing-lost { position: fixed; inset: 0; z-index: 130; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; background: rgba(12, 2, 2, 0.72); color: #ffd9d2; font: 500 14px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; text-align: center; }
+.landing-lost .ll-title { font-size: clamp(28px, 7vw, 56px); font-weight: 700; letter-spacing: 0.24em; color: #ff6a5a; text-shadow: 0 0 18px rgba(255, 106, 90, 0.5); }
+.landing-lost .ll-line { max-width: 34em; line-height: 1.5; }
+.landing-lost .ll-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+.landing-lost .ll-btn { min-height: 46px; padding: 0 20px; font: inherit; letter-spacing: 0.12em; color: #ffd9d2; background: rgba(255, 106, 90, 0.08); border: 1px solid #ff6a5a; border-radius: 0; cursor: pointer; touch-action: manipulation; }
+.landing-lost .ll-btn:hover, .landing-lost .ll-btn:focus-visible { color: #fff; background: rgba(255, 106, 90, 0.24); outline: none; }
+
 /* THE CHOICE CARD (owner, 2026-10-15, THE BOSS; src/fx/choice-card.js): Isao's line and two buttons over the paused game, the debrief's look */
 .choice-card { position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 120; width: min(560px, calc(100vw - 32px)); padding: 18px 20px; background: rgba(4, 12, 10, 0.92); border: 1px solid rgba(53, 255, 208, 0.45); box-shadow: 0 0 24px rgba(53, 255, 208, 0.18); color: #c9ffe9; font: 500 14px ui-monospace, Menlo, monospace; letter-spacing: 0.04em; }
 .choice-card .choice-who { font-size: 10px; letter-spacing: 0.18em; color: #4fae63; margin-bottom: 8px; }
@@ -4762,6 +4770,7 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 #landing-hud .lh-verdict.clean { color: #b8ffca; }
 #landing-hud .lh-verdict.hard { color: #ffcb85; }
 #landing-hud .lh-verdict.wreck { color: #ff6a5a; }
+#landing-hud .lh-verdict.crash { color: #ff6a5a; }
 #landing-hud .lh-touch[hidden] { display: none; }
 #landing-hud .lh-touch { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; justify-content: space-between; padding: 12px; pointer-events: auto; }
 #landing-hud .lh-btn { font: inherit; color: #b8ffca; background: rgba(4, 12, 8, 0.7); border: 1px solid #4fae63; padding: 14px 12px; min-width: 56px; }   /* five on a 360 px phone: 5 x 56 + gaps */

@@ -54,7 +54,11 @@ assert.equal(LANDING_GAME.verdict.hard.sink, 6, 'the hot lines are the verdict\'
 // FUEL reads red when it cannot pay for a full stop, sink / (thrust - g) s of full burn (2026-11-07, the final review; 30 m/s / 8.8 = 3.4 s)
 { const need = 30 / (LANDING_GAME.vehicle.thrust - LANDING_GAME.sim.gravity);
   hud.set({ altitude: 200, sink: 30, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 51, fuel: need - 0.1, legs: 0, phase: 'manual' }); assert.ok(root.querySelector('#lh-fuel').classList.contains('hot'), 'too little fuel for the stop reads hot');
-  hud.set({ altitude: 200, sink: 30, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 51, fuel: need + 0.1, legs: 0, phase: 'manual' }); assert.ok(!root.querySelector('#lh-fuel').classList.contains('hot'), 'enough for the stop is not'); }
+  hud.set({ altitude: 200, sink: 30, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 51, fuel: LANDING_GAME.fuel.lowSeconds + 0.1, legs: 0, phase: 'manual' }); assert.ok(!root.querySelector('#lh-fuel').classList.contains('hot'), 'enough for the stop, and over the low line, is not');
+  // LOW FUEL (owner, 2026-11-12: a generous limit, plainly called): red at the low line whatever the stop needs, EMPTY at zero
+  hud.set({ altitude: 200, sink: 1, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 0, fuel: LANDING_GAME.fuel.lowSeconds, legs: 0, phase: 'manual' }); assert.ok(root.querySelector('#lh-fuel').classList.contains('hot'), 'at the low line reads hot');
+  hud.set({ altitude: 200, sink: 1, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 0, fuel: 0, legs: 0, phase: 'manual' }); assert.equal(root.querySelector('#lh-fuel').textContent, 'EMPTY'); assert.ok(root.querySelector('#lh-fuel').classList.contains('hot'));
+  hud.verdict({ grade: 'CRASH', reason: 'sink', sink: 33.3, drift: 0, tilt: 0 }); assert.equal(root.querySelector('#lh-verdict').textContent, 'LANDING · CRASH · SINK 33.3'); assert.equal(root.querySelector('#lh-verdict').className, 'lh-verdict crash'); }
 // the live regions are the annunciator and the verdict, not the whole panel (its numbers change every frame)
 assert.equal(root.querySelector('#landing-hud').attrs['aria-live'], undefined); assert.equal(root.querySelector('#lh-ann').attrs['aria-live'], 'polite'); assert.equal(root.querySelector('#lh-verdict').attrs['aria-live'], 'polite');
 

@@ -1745,11 +1745,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const T='window.__stalheartTest',A=`${T}.state().arrival`,L=`${A}.landing`,st=()=>evaluate(`${T}.state()`),briefs=()=>evaluate('window.__seen?.briefs??[]');
  const FLY='index.html?sw=0&acceptance=1&cine=0&world=story&landing=1#td',OFFER='index.html?sw=0&acceptance=1&cine=0&world=story&gate=1&landing=offer#td';
  const why=async(what)=>assert.fail(`${what} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,cut:a.cut,gate:a.gate,manual:a.manual,offer:a.offer,offered:a.offered,landing:a.landing})(${A})`))})`);
- const PILOT=`(()=>{const T=window.__stalheartTest;(function f(){const L=T.state().arrival?.landing;if(!L||L.phase==='done'||L.phase==='touched')return;
+ const pilotAt=(margin)=>`(()=>{const T=window.__stalheartTest;(function f(){const L=T.state().arrival?.landing;if(!L||L.phase==='done'||L.phase==='touched')return;
   if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.along*0.3)),e=want-L.vx;
    const tiltWant=Math.max(-0.35,Math.min(0.35,e*0.08)),tr=Math.max(-1,Math.min(1,(tiltWant-L.tilt)*6));
-   T.landing('input',{throttle:stop+30>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}
-  requestAnimationFrame(f);})();})()`;   // 12 = LANDING_GAME.vehicle.thrust, 3.2 = sim.gravity: the stopping distance at full burn
+   T.landing('input',{throttle:stop+${margin}>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}
+  requestAnimationFrame(f);})();})()`,PILOT=pilotAt(30),LATE_PILOT=pilotAt(-6);   // 12 = LANDING_GAME.vehicle.thrust, 3.2 = sim.gravity: the stopping distance at full burn; the margin the burn starts early by (the late pilot starts it 6 m after it should: a WRECK, ~10 m/s, under the crash line)
  // REAL KEYS through CDP (2026-11-07, the final review: the harness's skip stood in for Esc): a press is keyDown + keyUp; Space carries its text
  const KEY={w:{key:'w',code:'KeyW'},d:{key:'d',code:'KeyD'},a:{key:'a',code:'KeyA'},esc:{key:'Escape',code:'Escape'},space:{key:' ',code:'Space',text:' '}};
  const keyDown=(k)=>send('Input.dispatchKeyEvent',{type:'keyDown',...KEY[k]}),keyUp=(k)=>send('Input.dispatchKeyEvent',{type:'keyUp',...KEY[k]});
@@ -1840,6 +1840,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   return atManual;
  };
  const toContact=async(what)=>{await until(`(L=>!L||L.phase==='done')(${L})||${A}.phase!=='landing'`,60000).catch(()=>why(what));await delay(400);return evaluate(A);};
+ // a CRASH is the end of the flight and of the story: the contact (phase 'touched', never 'done') with the end card up
+ const toCrash=async(what)=>{await until(`${L}?.phase==='touched'&&${A}.lost===true`,60000).catch(()=>why(what));await delay(400);return evaluate(A);};
  const toEnd=async(name)=>{await until(`${A}.phase==='talk'`,30000).catch(()=>why(`${name}: the talk`));const s=await st();
   assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],`${name}: on the cut the rocket is the salvage and the AFR-01 (${JSON.stringify(s.arrival)})`);
   await until(`${A}.phase==='done'`,30000).catch(()=>why(`${name}: the talk ends`));const e=await st();assert.deepEqual(errors,[],`${name}: browser errors`);
@@ -1871,12 +1873,53 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    const x=await evaluate(`({landing:${L},fov:${A}.fov,view:${A}.view,signature:${A}.signature})`);current='landing-engine-shot';await finish();current='landing-wreck';
    console.log(`  landing-wreck: the engine shot: ${JSON.stringify(x)}`);
    assert.equal(x.signature,false,'no canvas over it');assert.ok(Math.abs(x.fov-LG.camera.intro.fov)<0.05&&x.landing.intro<LG.camera.intro.hold/BLEND,`the engine shot held (fov ${x.fov}, intro ${x.landing.intro})`);});   // no input at all
-  const a=await toContact('no input to the contact'),g=a.landing;console.log(`  wreck: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
-  assert.equal(g.grade,'WRECK',`no burn is a WRECK (${JSON.stringify(g)})`);assert.ok(['sink','off-pad','slope'].includes(g.reason),`a no-burn wreck names a wreck reason (sink, off-pad or slope; ${JSON.stringify(g)})`);
-  console.log(`  wreck: ${g.reason}, landed ${g.landed?Math.hypot(g.landed[0],g.landed[2]).toFixed(1)+' m from the pad '+JSON.stringify(g.landed.map(v=>+v.toFixed(2))):'(no landed point)'}`);
+  // NO INPUT IS NOW A CRASH (owner, 2026-11-12: "a total CRASH is an option. Game over right away."): the rocket never braked (~33 m/s, over
+  // crash.sink), the end card stands over the wreck and the story does not proceed
+  const a=await toCrash('no input to the contact'),g=a.landing;console.log(`  crash: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
+  assert.equal(g.grade,'CRASH',`no burn is a CRASH (${JSON.stringify(g)})`);assert.equal(g.reason,'sink',`named for the sink (${JSON.stringify(g)})`);assert.ok(g.sink>LG.crash.sink,`faster than crash.sink (${g.sink})`);
+  assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/CRASH/,'the panel\'s verdict');
+  assert.match(await evaluate(`document.querySelector('#landing-lost')?.innerText??''`),/SH02 LOST/,'the end card: SH02 LOST');
+  assert.deepEqual(await evaluate(`[...document.querySelectorAll('#landing-lost button')].map(b=>b.dataset.pick)`),['again','over'],'FLY IT AGAIN and START OVER');
+  assert.equal(await evaluate(`getComputedStyle(document.querySelector('#landing-lost')).position+':'+document.querySelector('#landing-lost').getBoundingClientRect().width`),'fixed:1440','full screen');
+  current='landing-crash';await finish();current='landing-wreck';
+  // the card holds: Esc (the flight's skip) and a real Space are eaten, three seconds on nothing proceeded: no salvage, no talk, no deploy, the rocket still the intact wreck
+  await tap('esc');await tap('space');await delay(3000);
+  {const s=await st(),said=await briefs();console.log(`  crash: three seconds on, arrival ${JSON.stringify({phase:s.arrival.phase,lost:s.arrival.lost,rocket:s.arrival.rocket,salvage:s.arrival.salvage,foundry:s.arrival.foundry,talkBrief:s.arrival.talkBrief})}, shot ${s.shot}`);
+   assert.deepEqual([s.arrival.phase,s.arrival.lost,s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],['landing',true,true,false,false],'the story did not proceed: still landing, the rocket the wreck, no salvage, no foundry');
+   assert.equal(s.shot,'arrivalLost','the crash shot holds the camera');assert.equal(await evaluate(`!!document.querySelector('#landing-lost')`),true,'Esc and Space leave the card up');
+   assert.ok(!said.some(b=>/Textbook landing!|Less to cannibalize|Rough landing|cannibalize the rocket/.test(b)),`no Isao talk after the crash (${JSON.stringify(said.slice(-4))})`);
+}
+  // FLY IT AGAIN: the same problem from its entry, the card gone, Esc skips a flight again; then the engines run dry: LOW FUEL, NO FUEL, ENGINES OUT, and
+  // the fall is a CRASH again; START OVER reloads the story's start
+  await click('#landing-lost [data-pick="again"]');
+  await until(`${L}?.phase==='override'&&!${A}.lost`,10000).catch(()=>why('FLY IT AGAIN restarts the flight'));
+  {const s=await st();assert.equal(await evaluate(`!!document.querySelector('#landing-lost')`),false,'the card gone');assert.equal(s.shot,'arrivalFlight','the flight shot back');
+   assert.ok(s.arrival.landing.altitude>250&&s.arrival.landing.altitude<=400&&s.arrival.landing.grade==null,`from its entry again (${JSON.stringify(s.arrival.landing)})`);
+   assert.equal(s.arrival.landing.sink<=40,true);console.log(`  crash: FLY IT AGAIN: ${JSON.stringify(s.arrival.landing)}`);}
+  // a held full burn spends the whole tank: the seed's fuel at a second a second, so LOW FUEL first (the panel's FUEL red), NO FUEL at zero
+  await evaluate(`${T}.landing('input',{throttle:1,tiltRate:0,legs:true})`);
+  const fuel0=(await evaluate(L)).fuel;console.log(`  fuel: the seeded tank ${fuel0} s (the entry's range ${LG.entry.fuelSeconds})`);assert.ok(fuel0>=LG.entry.fuelSeconds[0]-1&&fuel0<=LG.entry.fuelSeconds[1],'the seeded fuel');
+  await until(`/LOW FUEL/.test(document.querySelector('#lh-ann')?.textContent??'')`,40000).catch(async()=>assert.fail(`LOW FUEL called (${await evaluate(`document.querySelector('#lh-ann')?.textContent`)} ${JSON.stringify(await evaluate(L))})`));
+  {const l=await evaluate(L);console.log(`  fuel: LOW FUEL at ${l.fuel} s left`);assert.ok(l.fuel<=LG.fuel.lowSeconds+0.3&&l.fuel>0,`at the low line (${l.fuel})`);assert.equal(await evaluate(`document.querySelector('#lh-fuel').classList.contains('hot')`),true,'FUEL red');}
+  await until(`/NO FUEL/.test(document.querySelector('#lh-ann')?.textContent??'')`,30000).catch(async()=>assert.fail(`NO FUEL called (${JSON.stringify(await evaluate(L))})`));
+  await delay(600);{const l=await evaluate(L);console.log(`  fuel: ${await evaluate(`document.querySelector('#lh-ann').textContent`)}: ${JSON.stringify(l)}`);
+   assert.equal(l.fuel,0,'empty');assert.equal(l.throttle,0,'the engines cut: the throttle reads zero though the harness holds it at 1');assert.equal(await evaluate(`document.querySelector('#lh-fuel').textContent`),'EMPTY','the panel reads EMPTY');}
+  current='landing-no-fuel';await finish();current='landing-wreck';
+  await until(`${L}?.phase==='touched'&&${A}.lost===true`,90000).catch(()=>why('the dry rocket falls to a crash'));
+  {const l=await evaluate(L);console.log(`  fuel: dry, it fell: ${JSON.stringify(l)}`);assert.equal(l.grade,'CRASH','out of fuel and falling is a CRASH');}
+  await delay(1200);await evaluate('window.__marker=1');await click('#landing-lost [data-pick="over"]');
+  await until(`window.__marker===undefined&&!!window.__stalheartTest&&${A}?.phase==='landing'`,120000).catch(()=>why('START OVER reloads the story start'));
+  assert.equal(await evaluate(`!!document.querySelector('#landing-lost')`),false,'a fresh page: no card');
+  assert.deepEqual(errors,[],'no browser errors on the crash page');console.log(`  crash page: ${((Date.now()-t0)/1000).toFixed(0)} s`);}
+ // THE WRECK, still the lesser grade (owner, 2026-11-12: "the other options should be more limited start resources because less is salvageable"): a pilot whose burn
+ // starts 6 m late touches at ~10 m/s, over the WRECK line (6) and under the crash line (15): the game goes on with two sections and the fourth caption
+ {const t0=Date.now();await toManual('landing-late');await evaluate(LATE_PILOT);
+  const a=await toContact('the late burn to the contact'),g=a.landing;console.log(`  wreck: ${JSON.stringify(g)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
+  assert.equal(g.grade,'WRECK',`a late burn is a WRECK, not a crash (${JSON.stringify(g)})`);assert.ok(g.sink>LG.verdict.hard.sink&&g.sink<=LG.crash.sink,`between the hard line and the crash line (${g.sink})`);
+  assert.equal(await evaluate(`!!document.querySelector('#landing-lost')`),false,'a wreck is no end card');
   assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/WRECK/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_wreck');
-  await finish();
-  const {s,said}=await toEnd('landing-wreck');console.log(`  wreck: foundry ${JSON.stringify(s.story.foundry)}`);
+  current='landing-wreck-late';await finish();
+  const {s,said}=await toEnd('landing-late');console.log(`  wreck: foundry ${JSON.stringify(s.story.foundry)}`);
   assert.equal(s.story.foundry.sections,2,'the tank section is gone');assert.ok(said.some(b=>/Less to cannibalize/.test(b)),`the wreck's fourth caption (${JSON.stringify(said.slice(-4))})`);}
  // the skip page's signature: a real Space is eaten under it, then the harness skips it; at MANUAL a real Space held is the burn
  {await toManual('landing-skip',async()=>{await eatenUnder('space');assert.equal(await evaluate(`${T}.landing('skip')`),'signature','the harness skips the signature (as Esc)');await flightNext('the harness skip','landing-skip');});
