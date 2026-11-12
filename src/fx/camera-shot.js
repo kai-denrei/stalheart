@@ -28,11 +28,15 @@ export const skipsOn = (ev) => !(ev && (ev.metaKey || ev.ctrlKey || ev.altKey ||
 export const skipsShot = (shot, ev, key) => !(key && ev?.repeat) && (shot.age >= (shot.lockFor ?? 0)) && (shot.skipKey == null || (key && ev?.key === shot.skipKey));
 // THE KEYS PASS (owner, 2026-11-05, round 5 note 9: "driving the tank must not skip the party; only Esc skips"): a shot with `passKeys` and a
 // `skipKey` lets every other key through to the game (the tank drives under a live cut) instead of eating it; taps are still eaten
+// NO CUT INTO A SHOT (owner, 2026-11-12 evening: "isao landing, the camera focus jumps too many time; focus on the rocket, no cuts"): `from` (a pose,
+// { pos, quat }: where the camera is as the shot starts) and `easeIn` seconds blend the shot's own pose out of it on a smoothstep, so a shot that
+// starts where another ended opens without a cut. A HOLD THAT YIELDS: a shot with `yields` keeps the camera where it is between two shots of one
+// continuous move; busy() is false while it runs, so a beat or a print that waits for "no shot" goes on and its own shot replaces it
 
 // `target`: the element whose taps skip; `snap()`: put the camera on the shot's first pose now; `pass(shot, ev)`: true lets a
 // gesture through without skipping (a card's own button)
 export function createCameraShots({ target, snap, pass = () => false }) {
-  let shot = null, fires = 0, last = '';   // shot: { id, dur, left, poseAt, onEnd, skippable, unlock, age, lockFor, skipKey, passKeys }
+  let shot = null, fires = 0, last = '';   // shot: { id, dur, left, poseAt, onEnd, skippable, unlock, age, lockFor, skipKey, passKeys, from, easeIn, yields }
   const skip = (ev, key) => {
     if (!shot || !shot.skippable) return;
     if (key && !skipsOn(ev)) return;   // a screenshot's chord (Cmd+Shift+4), a lone modifier: the shot runs on
@@ -48,9 +52,9 @@ export function createCameraShots({ target, snap, pass = () => false }) {
     end();
   };
   const onKey = (ev) => skip(ev, true), onTap = (ev) => skip(ev, false);
-  function start({ id, dur, poseAt, onEnd = null, skippable = true, unlock = false, lockFor = 0, skipKey = null, passKeys = false }) {
+  function start({ id, dur, poseAt, onEnd = null, skippable = true, unlock = false, lockFor = 0, skipKey = null, passKeys = false, from = null, easeIn = 0, yields = false }) {
     end();   // one at a time, and the outgoing one always tears down
-    shot = { id, dur: Math.max(1e-3, dur), left: Math.max(1e-3, dur), poseAt, onEnd, skippable, unlock, age: 0, lockFor, skipKey, passKeys };
+    shot = { id, dur: Math.max(1e-3, dur), left: Math.max(1e-3, dur), poseAt, onEnd, skippable, unlock, age: 0, lockFor, skipKey, passKeys, from: from && easeIn > 0 ? { pos: from.pos.clone(), quat: from.quat.clone() } : null, easeIn, yields };
     if (skippable) { addEventListener('keydown', onKey, true); target.addEventListener('pointerdown', onTap, true); }
     snap();   // no glide in: the shot owns frame one
   }
@@ -73,10 +77,16 @@ export function createCameraShots({ target, snap, pass = () => false }) {
     }
   }
   // the shot's pose at its progress into `out`; false without one
-  const pose = (out) => { if (!shot) return false; shot.poseAt(Math.min(1, Math.max(0, 1 - shot.left / shot.dur)), out); return true; };
+  const pose = (out) => {
+    if (!shot) return false;
+    shot.poseAt(Math.min(1, Math.max(0, 1 - shot.left / shot.dur)), out);
+    const f = shot.from;
+    if (f && shot.age < shot.easeIn) { const x = shot.age / shot.easeIn, e = x * x * (3 - 2 * x), q = out.quat.clone(); out.pos.lerpVectors(f.pos, out.pos, e); out.quat.copy(f.quat).slerp(q, e); }
+    return true;
+  };
   return {
     start, end, step, hung, pose,
-    get shot() { return shot; }, active: () => shot !== null, id: () => (shot ? shot.id : null),
+    get shot() { return shot; }, active: () => shot !== null, busy: () => shot !== null && !shot.yields, id: () => (shot ? shot.id : null),
     drop() { if (shot) { removeEventListener('keydown', onKey, true); target.removeEventListener('pointerdown', onTap, true); } shot = null; },   // a test reset: no onEnd
     watch: () => (fires ? `${fires}x ${last}` : 'none'),
   };

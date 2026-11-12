@@ -17,12 +17,19 @@
 //   'arrival'      the SH02 comes down along its own up on src/domain/arrival-shot.js's clock (the lab's timeline, cut short), its
 //                  legs, shock and door clips scrubbed, the lab's plumes, scorch and dust under it; Isao climbs out of the well
 //                  (smaller than his game size: the six metre drone would not fit it) and flies clear toward the pole
-//   'arrivalTalk'  the CUT to his face (src/domain/story-shots.js isaoFace) through a long lens, the rocket BEHIND the camera. On
+//   'arrivalTalk'  (until 2026-11-12 evening: the CUT to his face through a long lens, the rocket behind the camera; now the held framing, below). On
 //                  that cut the beats deploy the AFR-01 (story-beats deploy): the intact rocket is swapped for its salvage and the
 //                  foundry where no camera looks. His lines run on the panel (src/isaobriefs.js arrival_talk) and on the drone's
 //                  face; the camera holds the first two and the start of the third, then is back on the base (the lens restored,
 //                  the chase view snapped) while he finishes it
-// A key or a tap ends either shot, as every shot, on the same end state: before the cut the swap happens with it, on the cut to the
+// ONE SHOT FROM THE TOUCHDOWN (owner, 2026-11-12 evening: "isao landing, the camera focus jumps too many time; focus on the rocket, no cuts, it
+// opens, isao comes out"): from the touchdown, flown or automatic, the camera eases out of wherever it is (the rail's last pose, or the flight's
+// side view) into a held framing of the rocket (STORY_ARRIVAL.hold: its look point, a slow push in, the game's own lens), and stays on it while
+// the door opens, Isao climbs out and flies clear, and he says his lines ('arrivalTalk' is the same pose, no face cut). The swap to the salvage
+// waits until the rocket is out of the frame or small in it (swapHeld(); src/fx/foundry-fx.js holds the AFR-01's events meanwhile). `hand`: the
+// recon dog's opening (no landers' tour after it): the arrival ends on a hold that yields ('arrivalHold'), the K9's print eases out of it
+// (src/fx/pet-print.js), or after `hold.hand` s the game's camera glides in; without `hand` the landers' tour follows, as before.
+// A key or a tap ends either shot, as every shot, on the same end state: before the touchdown the swap happens with it, on the cut to the
 // chase view. Until the shot the rocket is kept out of sight as it loads and Isao hidden, so nothing stands before it lands; if the
 // rocket, its salvage, the foundry or Isao never come (`wait` seconds, or a load error) the beats are released and the lines said
 // without a shot.
@@ -39,7 +46,6 @@ import { createLaunchPlume } from './launch-plume.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
 import { PLUME_CLUSTER, SH02_WELL, STORY_ARRIVAL, STORY_ARRIVAL_MANUAL } from '../content/story-defaults.js';
 import { makeArrivalShot } from '../domain/arrival-shot.js';
-import { isaoFace } from '../domain/story-shots.js';
 import { BRIEFS, lineDwell } from '../isaobriefs.js';
 import { createStartGate } from './start-gate.js';
 import { LANDING_GAME } from '../content/landing-game.js';
@@ -61,7 +67,7 @@ const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 // unless a tune is passed), `offer` the start gate offers it (FLY THE LANDING beside START, 2026-11-07: taking it makes the start a
 // manual one, start() choosing the tune), `seed` the override's entry (src/domain/manual-landing.js seedEntry, per planet). The parameters stay in this closure for the flown landing
 // `startSignature`: the exhaust signature's factory (startExhaustSignature; a node test hands in a fake, with no DOM to draw on)
-export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet', startSignature = null } = {}) {
+export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune, manual = false, offer = false, seed = 'planet', startSignature = null, hand = false } = {}) {
   const given = tune;
   tune ??= manual ? STORY_ARRIVAL_MANUAL : STORY_ARRIVAL;
   let phase = on && base && beats && site ? 'waiting' : past && base ? 'done' : 'off';
@@ -94,6 +100,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // from the contact to the cut the arrival's island-metre points all move by `landed`: the holder (`placedLanded`, its placement with the
   // offset baked in), the rail's eye and aim, Isao's rise and arc, the scorch and dust; settle() and deploy() stay on the plan's spots
   let placedLanded = null;
+  // THE HELD SHOT (2026-11-12 evening): `hold0` the camera at the touchdown (island metres: eye, look, fov), `holdT` seconds since; `swapped` the
+  // salvage shown (deploy's swap let through), `swapT` seconds the swap has waited; `handT` seconds of the closing hold ('arrivalHold')
+  let hold0 = null, holdT = 0, swapped = false, swapT = 0, handT = 0, inView = null;
+  const frustum = new THREE.Frustum(), projM = new THREE.Matrix4(), sphere = new THREE.Sphere();
   const atLanded = (p) => (landed ? [p[0] + landed[0], p[1] + landed[1], p[2] + landed[2]] : p);
   // THE GROUND OFF THE PAD (2026-11-07, review of Task 7; spec 4): the bare ground follows the planet, R its radius in island metres
   // (`metres` is world units a metre on the unit sphere). At (x, z) it lies (x² + z²) / 2R below the pad's tangent plane (the host's y = 0;
@@ -153,7 +163,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     const i = shot.isaoAt(time, to), o = drone.obj;
     o.visible = i.visible;
     if (!i.visible) return;
-    o.scale.setScalar(size * tune.isao.scale); toWorld(atLanded(i.pos), o.position);   // out of the rocket where it stands, then his arc to his point moved with it (`to` + `landed`)
+    o.scale.setScalar(size * (tune.isao.scale + (1 - tune.isao.scale) * (hold0 ? i.out : 0))); toWorld(atLanded(i.pos), o.position);   // the held shot sees him grow to his game size over his arc   // out of the rocket where it stands, then his arc to his point moved with it (`to` + `landed`)
     // he faces the camera as he comes out, angry at the landing: the first line's face, before the line
     b.copy(o.position).normalize(); c.copy(eye).sub(o.position); c.addScaledVector(b, -c.dot(b)).add(o.position);
     m4.lookAt(c, o.position, b); o.quaternion.setFromRotationMatrix(m4); drone.faceLock = 'angry';
@@ -172,8 +182,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   function deploy() {
     if (deployed) return; deployed = true;
     if (drone) {
-      const o = drone.obj; o.scale.setScalar(size); o.visible = true; toWorld(to, o.position);
-      b.copy(o.position).normalize(); toWorld([0, to[1], 0], c);
+      const o = drone.obj; o.scale.setScalar(size); o.visible = true; toWorld(hold0 ? atLanded(to) : to, o.position);
+      b.copy(o.position).normalize(); if (hold0) { c.copy(camera.position).sub(o.position); c.addScaledVector(b, -c.dot(b)).add(o.position); } else toWorld([0, to[1], 0], c);   // the held shot: he talks to the camera
       m4.lookAt(c, o.position, b); o.quaternion.setFromRotationMatrix(m4); o.updateMatrixWorld();
       drone.dir = b.toArray(); drone.faceLock = null;
     }
@@ -182,7 +192,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   }
   // THE LANDING HANDS OVER TO THE TOUR of the landers, and the tour dives straight into the Rotor (owner, 2026-10-05: "no more 'look
   // around' the map after the beacon"; it was a free orbit camera since 2026-09-30); without a tour, the orbit camera on the base
-  const look = () => (api.freeLook ? api.freeLook() : api.snapCamera());
+  const look = (tour = true) => (api.freeLook ? api.freeLook(tour) : api.snapCamera());   // tour false: the orbit camera glides in, no tour
   function start() {
     // the flown landing is chosen here, not at creation: a first start (`manual`), or the gate's FLY THE LANDING on a later one (`offer`)
     if (offer && (offered || gate?.choice === 'fly')) { offered = true; manual = true; }
@@ -227,35 +237,67 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // the flight shot (see start()); also the retry's, after a CRASH
   const flightShot = () => api.startShot({ id: 'arrivalFlight', dur: 1e6, poseAt: (u, out) => flying?.chase(out), skippable: true, skipKey: LANDING_GAME.input.skipKey, passKeys: false, onEnd: () => { if (cutting || phase !== 'landing' || !flying) return; if (flying.pose()) { flying.skip(); touchdown(); } else finish(true); } });
   function railPose(u, out) {
-    const p = shot.camera(Math.min(t, shot.cut));
+    const p = hold0 ? holdAt(holdT) : shot.camera(Math.min(t, shot.cut));
     if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); }
-    pose(out, toWorld(atLanded(p.pos), a), toWorld(atLanded(p.look), b), up);   // the rail moves with the rocket where it touched
+    pose(out, toWorld(hold0 ? p.pos : atLanded(p.pos), a), toWorld(hold0 ? p.look : atLanded(p.look), b), up);   // the rail moves with the rocket where it touched; the hold is placed already
     if (jolt > 0 && !still) out.pos.addScaledVector(up, Math.sin(jolt * LANDING_GAME.touchdown.shakeHz) * jolt * LANDING_GAME.camera.jolt * metres);   // the shake on a hard contact (spec 4)
   }
-  function talkPose(u, out) {
-    const o = drone.obj, f = isaoFace(o.position.toArray(), drone.dir, o.getWorldDirection(a).toArray(), o.scale.x, u);
-    pose(out, a.fromArray(f.eye), b.fromArray(f.look), c.fromArray(f.up));
+  // THE HELD FRAMING (STORY_ARRIVAL.hold, island metres): from the touchdown's camera (`hold0`) into `look` beside the rocket where it stands, the eye
+  // `dist` metres out on the touchdown's own side (its bearing kept within `side` degrees of the rocket's x axis, so Isao's way out toward +z crosses
+  // the frame) and `up` metres high, pushing in from the first to the second over `push` s; eye, look and lens eased in over `ease` s (no jump)
+  function holdAt(T) {
+    const H = tune.hold, e = smooth01(T / H.ease), k = smooth01(T / H.push), o = atLanded([0, 0, 0]), look = atLanded(H.look);
+    let az = Math.atan2(hold0.eye[0] - o[0], hold0.eye[2] - o[2]); const lo = (90 - H.side) * Math.PI / 180, hi = (90 + H.side) * Math.PI / 180, s = az < 0 ? -1 : 1;
+    az = s * Math.min(hi, Math.max(lo, Math.abs(az)));
+    const d = H.dist[0] + (H.dist[1] - H.dist[0]) * k, y = H.up[0] + (H.up[1] - H.up[0]) * k, eye = [look[0] + Math.sin(az) * d, o[1] + y, look[2] + Math.cos(az) * d];
+    const mix = (p, q) => p.map((v, i) => v + (q[i] - v) * e);
+    return { pos: mix(hold0.eye, eye), look: mix(hold0.look, look), fov: hold0.fov + (fov - hold0.fov) * e };
   }
-  // THE CUT: everything that would show the swap is behind the camera, and the swap happens in this call
+  const smooth01 = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+  // the camera as it stands now, in island metres (the flown touchdown: the flight's side view); its look point on the line of sight at the rocket's distance
+  function holdFrom(rail) {
+    if (rail) { const p = shot.camera(shot.seq.touchdown); hold0 = { eye: atLanded(p.pos), look: atLanded(p.look), fov: p.fov }; }
+    else {
+      camera.updateMatrixWorld(); const eye = camera.position.clone().applyMatrix4(inv).divideScalar(metres), dir = camera.getWorldDirection(a).transformDirection(inv);
+      const dist = Math.max(10, eye.distanceTo(c.fromArray(atLanded([0, 0, 0]))));
+      hold0 = { eye: eye.toArray(), look: eye.clone().addScaledVector(dir, dist).toArray(), fov: camera.fov };
+    }
+    holdT = 0;
+  }
+  // THE SWAP OFF SCREEN (2026-11-12 evening): the intact rocket stands until its body is out of the frustum or under `swap.screen` of the frame's
+  // height; then the base's end pose (settle) and the salvage (the held foundry events go through). `swap.maxS` s at most
+  function swapCheck(dt) {
+    if (swapped || !deployed || !rocket) return;
+    swapT += dt;
+    const S = tune.hold.swap, mid = atLanded([0, S.mid, 0]);
+    camera.updateMatrixWorld(); projM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); frustum.setFromProjectionMatrix(projM);
+    toWorld(mid, sphere.center); sphere.radius = S.radius * metres;
+    const dist = Math.max(1e-9, sphere.center.distanceTo(camera.position)), share = (2 * sphere.radius) / (2 * dist * Math.tan(camera.fov * Math.PI / 360));
+    inView = frustum.intersectsSphere(sphere) && share >= S.screen;
+    if (!inView || swapT >= S.maxS) { settle(); swapped = true; }
+  }
+  // NO CUT TO HIS FACE: his lines over the held framing ('arrivalTalk', the same pose); the swap waits for the frame (swapCheck)
   function toTalk() {
-    settle(); deploy();
+    deploy();
     phase = 'talk'; talkT = 0; talkSeconds = holdOf(talkBrief());
-    camera.fov = tune.talk.fov; camera.updateProjectionMatrix();
-    cutting = true; api.startShot({ id: 'arrivalTalk', dur: talkSeconds, poseAt: talkPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => finish(false) }); cutting = false;
+    cutting = true; api.startShot({ id: 'arrivalTalk', dur: talkSeconds, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => finish(false) }); cutting = false;
   }
   function finish(skip) {
     if (phase !== 'landing' && phase !== 'talk') return;
     skipped = skip && phase === 'landing';
-    settle(); deploy();   // a skip before the cut: the swap happens with it, on the cut to the base
+    if (skip && !swapped) { settle(); swapped = true; }   // a skip is a cut to the base: the swap goes with it
+    deploy();
     camera.fov = fov; camera.updateProjectionMatrix();
     if (drone) { drone.loiter = toWorld([0, 0, 0], a).normalize().toArray(); drone.obj.visible = true; }   // he drifts back to the foundry he is about to work
     hud(false); endFlight(true);
     phase = 'done';
-    look();
+    // THE RECON DOG'S OPENING (hand): no landers' tour; a hold that yields keeps the camera where the talk left it until the K9's print eases out of it
+    if (hand && hold0 && !skip) { handT = 0; cutting = true; api.startShot({ id: 'arrivalHold', dur: 1e6, poseAt: railPose, yields: true, onEnd: () => look(false) }); cutting = false; }
+    else look();
   }
   // no landing to show (a model never came): the beats are released and the lines said; whatever loads later lands in the end state
   function release() {
-    phase = 'done'; late = new Set(IDS.filter((id) => !base.structure(id))); endFlight(true);
+    swapped = true; phase = 'done'; late = new Set(IDS.filter((id) => !base.structure(id))); endFlight(true);
     const d = api.drone(); if (d) d.obj.visible = true;
     deploy(); look();
   }
@@ -299,6 +341,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     }
     jolt = LANDING_GAME.touchdown.jolt[grade.grade] ?? 0;
     t = shot.seq.touchdown; if (heard) heard.legs = true;   // the legs are down: no second pneumatics cue
+    if (tune.hold) holdFrom(false);   // the held shot eases out of the flight's side view where it stands (no cut)
     // the grade is for a flown landing (the owner's call 1; 2026-11-07, the final review): a skip is graded CLEAN for the record but
     // pays nothing, or taking the offer and pressing Esc would beat a flown HARD landing by the CLEAN bonus barrel; the foundry as today
     if (grade.reason !== 'skipped') beats.salvage?.(LANDING_GAME.salvage[grade.grade]);
@@ -354,6 +397,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       if (flying.tick(dt) === 'touched') touchdown(); else { t -= dt; return; }
     }
     jolt = Math.max(0, jolt - dt);
+    if (hold0) holdT += dt; else if (tune.hold && t >= shot.seq.touchdown) holdFrom(true);   // the automatic rail's touchdown: the hold from its pose
     if (t >= shot.cut) toTalk(); else apply(t, dt);
   }
   // THE DISK IN FRAME (spec 14 A, the harness): the sky-hole's direction projected through the camera as a far point, NDC [x, y]; null
@@ -372,6 +416,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       api = host;
       if (phase === 'done') {   // a landmark that came after a release is put in the end state as it appears, once
         if (late) for (const id of late) if (base.structure(id)) { late.delete(id); if (id === 'sh02') base.conceal(id); else base.reveal(id); }
+        swapCheck(dt);
+        if (api.shotId?.() === 'arrivalHold') { holdT += dt; handT += dt; if (handT >= tune.hold.hand) api.endShot?.(); }   // nobody took the hold: the game's camera glides in
         return;
       }
       if (phase === 'waiting') {
@@ -385,10 +431,12 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         return;
       }
       if (phase === 'landing') landingTick(dt);
-      else talkT += dt;
+      else { talkT += dt; holdT += dt; }
+      swapCheck(dt);
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
+    swapHeld: () => deployed && !swapped,   // the AFR-01's deploy and its events wait while the intact rocket is in the frame (src/fx/foundry-fx.js)
     // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip' (the
     // signature while it plays: 'signature', as Esc; else the flight), 'override' (takes the gate's offer before START)
     landing(cmd, arg) {
@@ -404,6 +452,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
+        hold: hold0 ? { t: +holdT.toFixed(2), inView, swapped, swapT: +swapT.toFixed(2), hand: +handT.toFixed(2) } : null,
         manual, offer, offered, lost: crashed, signature: !!signature, aimWait: aimWait == null ? null : +aimWait.toFixed(2), flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
         view: flying?.view() ?? null, azimuth: azimuth == null ? null : +azimuth.toFixed(3), disk: disk(), diskAimed: api?.scene?.getObjectByName('sky-hole')?.userData.aimedFor === base, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
     },

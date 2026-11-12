@@ -39,11 +39,13 @@ for (let t = A.riseEnd; t <= A.cut; t += 0.02) top = Math.max(top, A.isaoAt(t, t
 assert.ok(top > I.rim && top < I.rim + I.arc, `an arc over the nose on the way out (${top.toFixed(1)} m)`);
 assert.ok(dist(A.isaoAt(A.cut, to).pos, to) < 1e-9, 'he is where the host asked on the cut: the close-up frames him there');
 assert.equal(A.isaoAt(A.cut, to).out, 1);
-// the camera moves until the cut
-assert.ok(Math.abs(STORY_ARRIVAL.rail[STORY_ARRIVAL.rail.length - 1].t - A.cut) < 1e-6, 'the rail ends on the cut');
+// the rail is the descent; from the touchdown the held shot (STORY_ARRIVAL.hold, src/fx/arrival.js holdAt) frames the rocket, no cut (2026-11-12 evening)
+assert.ok(Math.abs(STORY_ARRIVAL.rail[STORY_ARRIVAL.rail.length - 1].t - seq.touchdown) < 1e-6, 'the rail ends on the touchdown');
+assert.ok(STORY_ARRIVAL.hold.ease < A.cut - seq.touchdown, 'the hold has eased in before Isao is clear');
+assert.ok(seq.doorAt - seq.touchdown >= 0.5 && A.riseEnd - seq.isaoAt >= 1.2, 'the door and his climb slow enough to watch on the held shot');
 assert.deepEqual(A.camera(0).pos, STORY_ARRIVAL.rail[0].pos);
-// QUICK (owner): the landing, then the close-up over all three of his lines, about ten seconds in all
+// QUICK (owner): the landing, then all three of his lines over the held shot
 const b = BRIEFS[STORY_ARRIVAL.talk.brief], talk = b.lines.reduce((sum, _, i) => sum + lineDwell(b, i), 0);
 assert.ok(b.lines.length === 3 && /cannibalize the rocket/.test(b.lines[2]), 'the close-up ends on the rocket cannibalized for the terraforming (owner, second playtest)');
 assert.ok(talk < 6, `the close-up is quick: ${talk.toFixed(1)} s for all three lines`);
-console.log(`Arrival shot: ${A.cut.toFixed(1)} s landing (touchdown ${seq.touchdown}, door ${seq.doorAt.toFixed(1)}, Isao ${seq.isaoAt.toFixed(1)}-${A.riseEnd.toFixed(1)}), then ${talk.toFixed(1)} s on his face: ${(A.cut + talk).toFixed(1)} s.`);
+console.log(`Arrival shot: ${A.cut.toFixed(1)} s landing (touchdown ${seq.touchdown}, door ${seq.doorAt.toFixed(1)}, Isao ${seq.isaoAt.toFixed(1)}-${A.riseEnd.toFixed(1)}), then ${talk.toFixed(1)} s of his lines on the same shot: ${(A.cut + talk).toFixed(1)} s.`);

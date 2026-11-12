@@ -1332,7 +1332,7 @@ export function initTdTab(root) {
   // SECTOR REVEAL: a short full-planet beat after each clear — the camera
   // pulls out to frame the whole world, aimed at the freshly-unsealed
   // band, whose floors burn hot until the beat ends (then build mode).
-  const shots = createCameraShots({ target: root, snap: () => { closeShop(); snapCamera(); }, pass: (_, ev) => !!ev.target.closest?.('#skip-tutorial') }), { start: startShot, end: endShot, step: stepShot, active: shotActive, id: shotId } = shots;   /* src/fx/camera-shot.js */
+  const shots = createCameraShots({ target: root, snap: () => { closeShop(); snapCamera(); }, pass: (_, ev) => !!ev.target.closest?.('#skip-tutorial') }), { start: startShot, end: endShot, step: stepShot, active: shotActive, busy: shotBusy, id: shotId } = shots;   /* src/fx/camera-shot.js */
 
   const REVEAL_LEN = 3.2;
   let revealDir = null;
@@ -2398,7 +2398,7 @@ export function initTdTab(root) {
     companions?.dispose(); companions = story && flags.pets !== '0' ? createCompanions({ scene, party: () => discoParty?.floor() ?? null, metres: () => metresToArc(1, cellSide), graph: () => graph, dungeon: () => dungeon, inside: (ci) => !!story.inside?.(ci), solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false, floorAt: (p) => storyBase?.floorAt(p) ?? 1,
       hull: () => (playerHP > 0 ? player.pos : null), hullDir: () => (playerHP > 0 ? player.smoothDir : null), eye: () => camera.position, wire: () => (wire ? wireOpts : null), seed: params.seed, born: flags.pets === 'born' }) : null;   // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions (src/fx/companions.js), printed by Isao since 2026-10-30 (?pets=born: on the clearing from the first frame); ?pets=0 leaves them out
     petPrint?.restore(); petPrint = companions ? createPetPrint({ scene, camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, showBrief, companions: () => companions, isao: () => isao, phase: () => story?.beats?.phase?.() ?? null, perk: (id) => programme.hasPerk(id), day: () => daylight?.day?.() ?? 0, sectorRun: () => sectorRun,   /* ISAO PRINTS THE COMPANIONS (owner, 2026-10-30; src/fx/pet-print.js) */
-      shotActive: () => shotActive() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() || !!controlsCard?.state().shown, isaoBusy: () => !!briefs.queue(), alive: () => playerHP > 0, won: () => !!player.won, slabAt: (p, pad) => storyBase?.slabAt(p, pad) ?? null }) : null;
+      shotActive: () => shotBusy() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() || !!controlsCard?.state().shown, isaoBusy: () => !!briefs.queue(), alive: () => playerHP > 0, won: () => !!player.won, slabAt: (p, pad) => storyBase?.slabAt(p, pad) ?? null }) : null;
     antennaPrint?.restore(); antennaPrint = story ? createAntennaPrint({ camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, want: (id) => briefs.want(id), print: () => story?.print ?? null, shotActive: () => shotActive() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship }) : null;   /* THE ANTENNA ON SCREEN (round 4, 2026-11-02; src/fx/antenna-print.js) */
     dogScout?.dispose(); dogScout = companions ? createDogScout({ scene, camera, metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false, companions: () => companions, petPrint: () => petPrint,   /* THE RECON DOG (2026-11-12; src/fx/dog-scout.js) */
       startShot, endShot, shotActive, shotId, enemies: () => enemies, eco: () => eco, showToast, showBrief, held: () => ({ fwd: keys.fast || cruise, back: keys.slow, left: keys.left, right: keys.right, sprint: keys.laser }), unheld: () => { cruise = false; }, auto: flags.acceptance === '1' && !storyQuery.dog }) : null;
@@ -4217,7 +4217,7 @@ export function initTdTab(root) {
     briefs.stepClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|arrivalFlight|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint|dogScout)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|arrivalFlight|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint|dogScout|arrivalHold|printHold|playGlide)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
@@ -4502,7 +4502,7 @@ export function initTdTab(root) {
   const storyApi = {
     // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
     // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels
-    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
+    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10, held: () => !!story?.arrival.swapHeld?.() })).event(ev, d); if (ev === 'deploy') { const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
     order: (key, ci) => orderTower(key, ci, { quiet: true }), pending: (ci) => orderByCell.has(ci),   /* an order on that cell (the beats' emergency Rotor, 2026-11-08) */
     grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); },
     built: (ci) => towerByCell.has(ci),
@@ -4756,9 +4756,10 @@ export function initTdTab(root) {
     // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
-    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); briefs.want('gunship_overhead'); }, camera, scene, startShot, snapCamera, sfx, drone: () => isao, shot: shotActive,   /* a camera shot plays: the settled tremor waits (2026-11-08) */
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); briefs.want('gunship_overhead'); }, camera, scene, startShot, snapCamera, sfx, drone: () => isao, shot: shotBusy, shotId, endShot,   /* a camera shot plays: the settled tremor waits (2026-11-08) */
     mission: () => (isaoSay(sfx, 'mission'), showMission(root, STORY_MISSION)), touring: () => !story?.arrival.done() || shotId() === 'sitesTour',
-    freeLook: () => { const done = (glide) => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; if (!glide) snapCamera(); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
+    freeLook: (tour = true) => { const done = (glide) => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; if (!glide) snapCamera(); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
+      if (!tour) { done(true); startShot({ id: 'playGlide', dur: 2.5, from: { pos: camera.position, quat: camera.quaternion }, easeIn: 2.5, poseAt: (u, out) => gameplayCameraPose(out) }); return; }   // no tour (the dog's opening, 2026-11-12 evening): eased into the orbit camera, no cut
       if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = tourSeconds(pts.length);
       startShot({ id: 'sitesTour', dur, poseAt: (u, out) => { poseCamera(tourFrame(u, graph.centers[dungeon.heart], pts), out); const k = Math.min(1, u * dur / 1.6), e = k * k * (3 - 2 * k); out.pos.lerpVectors(from.pos, out.pos, e); out.quat.slerpQuaternions(from.quat, out.quat.clone(), e); }, onEnd: () => done(1) }); },   // out of the close-up without a cut (2026-10-03)   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
   },

@@ -12,7 +12,10 @@
 //   host: scene, camera, metres(), startShot, endShot, snapCamera, showBrief, companions(), isao() (the drone's record or null), phase() (the story beat),
 //         perk(id), day(), sectorRun(), shotActive(), seated(), card(), isaoBusy(), alive(), won(), slabAt(p, padM) (the raised island's top under a
 //         unit point, metres, or null: src/fx/story-base.js)
-//   createPetPrint(host) -> { tick(dt), force(i) (unit i printed now: false when born or printing), printNow(id, then), printing(), state(), restore() }
+//   createPetPrint(host) -> { tick(dt), force(i, how) (unit i printed now: false when born or printing), printNow(id, then), printing(), state(), restore() }
+// NO CUT IN OR OUT (2026-11-12 evening, the recon dog's opening: one camera move from the landing to the dog's seat): force(i, { easeIn, hand })
+// eases the close-up out of wherever the camera stands over `easeIn` s, and ends it on a hold that yields for `hand` s (src/fx/print-closeup.js),
+// which the dog's chase replaces; RECKON K9's own print (COMPANIONS.units k9 print) is one wide angle at the game's lens, so nothing cuts inside it
 // THE MECH'S PRINT IS A BEAT OF THE ARENA'S SECURE (round 7, owner, 2026-11-05, note 8: "before BELOW, Isao prints something but we have no time to
 // see it"): src/fx/sector-run.js asks printNow('mech', then) after the arena's securePause; the print runs forced (a running shot still holds it, at
 // most COMPANIONS.print.nowWait game seconds before `then` goes without it), its close-up and Isao's line as ever, and `then` (the debrief) runs when
@@ -33,7 +36,7 @@ const unitIndex = (id) => UNITS.findIndex((u) => u.id === id);
 
 export function createPetPrint(h) {
   const bornDay = new Map();   // id -> the day it was born (the next trigger's `days`)
-  let held = 0, forced = -1, run = null, why = 'idle', prints = 0, skips = 0, bedLeft = null, last = null, nowThen = null, nowWait = 0, nowLog = null;
+  let forcedHow = null, held = 0, forced = -1, run = null, why = 'idle', prints = 0, skips = 0, bedLeft = null, last = null, nowThen = null, nowWait = 0, nowLog = null;
   const cu = createPrintCloseup({ camera: h.camera, startShot: h.startShot, endShot: h.endShot, snapCamera: h.snapCamera }, { ...K.shot, hintId: 'pet-skip-hint' });
   const v = new THREE.Vector3(), w = new THREE.Vector3(), q = new THREE.Quaternion(), tmp = new THREE.Object3D();
   const day = () => h.day?.() ?? 0;
@@ -85,7 +88,7 @@ export function createPetPrint(h) {
     if (!c.print(i, ci)) return false;
     const pos = new THREE.Vector3(), quat = new THREE.Quaternion();
     c.frameOf(i, pos, quat);
-    const r = { K: KP, TL: KP.timeline, END: printEnd(KP.timeline), i, k, id: def.id, t: 0, cell: ci, done: false, cut: false, cutDone: false, woke: false, said: false, skipped: false, m: h.metres(), origin: pos.clone(), up: pos.clone().normalize(), quat,
+    const r = { how: forced === i ? forcedHow : null, K: KP, TL: KP.timeline, END: printEnd(KP.timeline), i, k, id: def.id, t: 0, cell: ci, done: false, cut: false, cutDone: false, woke: false, said: false, skipped: false, m: h.metres(), origin: pos.clone(), up: pos.clone().normalize(), quat,
       x: new THREE.Vector3(1, 0, 0).applyQuaternion(quat), z: new THREE.Vector3(0, 0, 1).applyQuaternion(quat), ghostPlane: new THREE.Plane(), skinPlane: new THREE.Plane(), skin: [], ghost: null, ghostMixer: null, isao: null, angle: -1 };
     // the body's measure at its first frame, metres (the slice's height, the sheet's size and the camera's scale)
     const root = c.roots()[i], b = new THREE.Box3();
@@ -118,7 +121,7 @@ export function createPetPrint(h) {
   }
   function shot(r) {
     r.cut = true;
-    cu.begin({ origin: r.origin, x: r.x, up: r.up, z: r.z, m: r.m, angles: r.K.angles, size: r.size, dur: r.END + 1, clock: () => r.t, done: () => r.done,
+    cu.begin({ origin: r.origin, x: r.x, up: r.up, z: r.z, m: r.m, angles: r.K.angles, size: r.size, dur: r.END + 1, clock: () => r.t, done: () => r.done, easeIn: r.how?.easeIn ?? 0, hand: r.how?.hand ?? 0,
       onEnd: () => { r.cut = false; r.cutDone = true; if (!r.done) { r.skipped = true; skips++; finish(r); } } });
   }
   function poseIsao(r, s) {
@@ -165,7 +168,7 @@ export function createPetPrint(h) {
     bedLeft = { g: r.bed, t: 1.5 };
     if (r.cut) h.endShot();   // the print's own end ends its cut (onEnd: the lens back, the game's camera)
     last = { id: r.id, t: +r.t.toFixed(2), skipped: r.skipped, cell: r.cell, angle: r.angle };
-    run = null; forced = -1; held = 0; why = 'born';
+    run = null; forced = -1; forcedHow = null; held = 0; why = 'born';
     if (r.then) { const then = r.then; r.then = null; then(); }   // the debrief after the print (printNow)
   }
   function fadeBed(dt) {
@@ -197,9 +200,9 @@ export function createPetPrint(h) {
       if (!c.loaded(i)) { why = 'loading'; return; }
       why = begin(i, k) ? 'printing' : 'no spot';
     },
-    force(i) {
+    force(i, how = null) {
       const c = h.companions(); if (!c || !UNITS[i] || c.life(i) !== 'unborn' || run || nowThen) return false;
-      forced = i; return true;
+      forced = i; forcedHow = how; return true;
     },
     printNow(id, then) {
       const c = h.companions(), i = unitIndex(id);

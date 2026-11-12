@@ -32,23 +32,27 @@ function world() {
   const obj = new THREE.Object3D(); obj.scale.setScalar(0.0153); obj.position.set(0.02, 1, 0.01).setLength(HOVER);   /* placed as the game places him: on his hover radius */ obj.userData = { getFace: () => 'neutral' };
   const drone = { obj, dir: obj.position.clone().normalize().toArray(), loiter: null, faceLock: null };
   const camera = new THREE.PerspectiveCamera(68, 1.6, 0.004, 50);
-  let shot = null, snaps = 0;
+  let shot = null, snaps = 0, pending = false;
+  // the controller's foundry hand on the deploy: the swap (src/fx/foundry-fx.js), held while the arrival keeps the intact rocket in its frame
+  const swap = () => { base.conceal('sh02'); base.reveal('sh02-salvage'); base.reveal('foundry'); pending = false; };
   const goal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
   const api = {
     camera, drone: () => (world.isao ? drone : null),
     startShot(s) { const was = shot; shot = null; was?.onEnd?.(); shot = { ...s, left: s.dur }; log.push(['shot', s.id]); api.snapCamera(); },
     snapCamera() { snaps++; if (shot) shot.poseAt(Math.min(1, 1 - shot.left / shot.dur), goal); camera.position.copy(goal.pos); camera.quaternion.copy(goal.quat); },
-    brief: (id) => log.push(['brief', id]), briefing: () => false,
-    // the controller's foundry hand on the deploy: the swap (src/fx/foundry-fx.js)
-    foundry: (ev) => { log.push(['foundry', ev]); if (ev === 'deploy') { base.conceal('sh02'); base.reveal('sh02-salvage'); base.reveal('foundry'); } },
+    brief: (id) => log.push(['brief', id]), briefing: () => false, shotId: () => shot?.id ?? null, endShot: () => skip(),
+    foundry: (ev) => { log.push(['foundry', ev]); if (ev === 'deploy') { pending = true; if (!world.cur?.swapHeld()) swap(); } },
   };
   // the controller's frame: the shot's clock (stepShot), then the arrival's tick; a skip is the shot ending early
-  const frame = (dt, arrival) => { if (shot) { shot.left -= dt; if (shot.left <= 0) { const s = shot; shot = null; s.onEnd?.(); } } arrival.tick(dt, api); };
+  const frame = (dt, arrival) => { if (shot) { shot.left -= dt; if (shot.left <= 0) { const s = shot; shot = null; s.onEnd?.(); } } arrival.tick(dt, api); if (pending && !arrival.swapHeld()) swap(); };
   const skip = () => { const s = shot; shot = null; s?.onEnd?.(); };
   const world = { base, beats, drone, camera, api, log, frame, skip, isao: false, shot: () => shot?.id ?? null, snaps: () => snaps, goal };
   return world;
 }
-const make = (w, on = true) => createArrival({ on, base: w.base, beats: w.beats, site, metres: METRES });
+const make = (w, on = true, hand = false) => (w.cur = createArrival({ on, base: w.base, beats: w.beats, site, metres: METRES, hand }));
+// the point p (island metres) in the camera's frame: NDC x, y and in front of it
+const ndc = (w, p) => { w.camera.updateMatrixWorld(); const v = new THREE.Vector3(p[0] * METRES, 1 + p[1] * METRES, p[2] * METRES), front = v.clone().sub(w.camera.position).dot(w.camera.getWorldDirection(new THREE.Vector3())) > 0; v.project(w.camera); return { x: v.x, y: v.y, front }; };
+const inFrame = (w, p) => { const n = ndc(w, p); return n.front && Math.abs(n.x) < 0.95 && Math.abs(n.y) < 0.95; };
 const run = (w, a, seconds, dt = 1 / 60) => { for (let t = 0; t < seconds - 1e-9; t += dt) w.frame(dt, a); };
 const vis = (w, id) => w.base.structure(id)?.holder.visible ?? null;
 const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + lineDwell(BRIEFS[STORY_ARRIVAL.talk.brief], i), 0);   // the close-up holds every line
@@ -85,35 +89,64 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
   assert.equal(holder.children.filter((c) => c.name === 'Launch plume').length, 6, 'six plumes under the skirt');
   run(w, a, 2.7); assert.ok(up() / METRES < 1e-6, 'down'); assert.equal(acts.Legs_Deploy.enabled, false, 'the shock owns the legs after touchdown'); assert.equal(acts.Landing_Shock.enabled, true);
   assert.equal(w.drone.obj.visible, false, 'he waits in the hull until the door opens');
-  run(w, a, 0.7); assert.ok(acts.Top_Door_Open.time > 0, 'the door opening'); assert.equal(w.drone.obj.visible, true, 'he is climbing out'); assert.equal(w.drone.faceLock, 'angry');
+  run(w, a, 1.0); assert.ok(acts.Top_Door_Open.time > 0, 'the door opening'); assert.equal(w.drone.obj.visible, true, 'he is climbing out'); assert.equal(w.drone.faceLock, 'angry');
   assert.ok(Math.abs(w.drone.obj.scale.x - 0.0153 * STORY_ARRIVAL.isao.scale) < 1e-9, 'smaller than his game size in the well');
   assert.deepEqual(w.log.filter((l) => l[0] !== 'shot'), [], 'nothing deployed, nothing said while it lands');
-  // THE CUT
-  run(w, a, STORY_ARRIVAL.rail[STORY_ARRIVAL.rail.length - 1].t - 3.4 - 1 / 60 + 0.05);
+  // ONE SHOT FROM THE TOUCHDOWN (2026-11-12 evening): no cut to his face; every frame from the touchdown the rocket in the frame, the eye and the look
+  // point moving smoothly (no frame moves the look point more than 2 m), the lens eased to the game's own; the door, Isao out and clear, his lines
+  const H = STORY_ARRIVAL.hold;
+  let lastLook = null, maxLook = 0, maxEye = 0, lastEye = null;
+  for (let k = 0; a.state().phase === 'landing' && k < 2000; k++) {
+    w.frame(1 / 60, a);
+    const e = w.camera.position.clone().sub(new THREE.Vector3(0, 1, 0)).divideScalar(METRES), l = e.clone().addScaledVector(w.camera.getWorldDirection(new THREE.Vector3()), 60);
+    if (lastLook) { maxLook = Math.max(maxLook, l.distanceTo(lastLook)); maxEye = Math.max(maxEye, e.distanceTo(lastEye)); }
+    lastLook = l; lastEye = e;
+    if (a.state().phase === 'landing') assert.ok(inFrame(w, [0, H.swap.mid, 0]), `the rocket in the frame at ${a.state().t} s`);
+  }
+  assert.ok(maxLook < 2 && maxEye < 2, `no jump of the eye or the look (largest steps ${maxEye.toFixed(2)} m, ${maxLook.toFixed(2)} m a frame)`);
   assert.equal(a.state().phase, 'talk'); assert.equal(w.shot(), 'arrivalTalk');
-  assert.deepEqual(w.log, [['shot', 'arrival'], ['foundry', 'deploy'], ['brief', 'arrival_talk'], ['shot', 'arrivalTalk']], 'on the cut, in one tick: the swap, his lines, the close-up');
+  assert.deepEqual(w.log, [['shot', 'arrival'], ['foundry', 'deploy'], ['brief', 'arrival_talk'], ['shot', 'arrivalTalk']], 'at Isao clear, in one tick: the deploy, his lines, the same framing as the talk');
   assert.equal(w.beats.deploys(), 1);
-  assert.equal(vis(w, 'sh02'), false); assert.equal(vis(w, 'sh02-salvage'), true); assert.equal(vis(w, 'foundry'), true);
-  assert.ok(new THREE.Vector3().setFromMatrixPosition(holder.matrix).distanceTo(new THREE.Vector3().setFromMatrixPosition(holder.userData.placed)) < 1e-12, 'the rocket back on its plot');
-  assert.ok(Object.values(acts).every((x) => x.enabled && x.time === CLIPS[Object.keys(acts).find((k) => acts[k] === x)]), 'every clip at its end: the base\'s own pose');
-  assert.equal(holder.children.filter((c) => c.name === 'Launch plume').length, 0, 'the plumes gone');
-  assert.equal(w.drone.obj.scale.x, 0.0153, 'Isao at his game size');
+  assert.equal(a.swapHeld(), true, 'the swap waits: the rocket is in the frame'); assert.equal(vis(w, 'sh02'), true, 'the intact rocket still stands on screen'); assert.equal(vis(w, 'sh02-salvage'), false);
+  assert.equal(w.drone.obj.scale.x, 0.0153, 'Isao at his game size (grown over his arc)');
   assert.ok(Math.abs(w.drone.obj.position.length() - HOVER) < 1e-9, 'at his hover height: the game takes him back without a jump');
   const at = w.drone.obj.position.clone().sub(new THREE.Vector3(0, 1, 0)).divideScalar(METRES);
   assert.ok(Math.abs(at.z - STORY_ARRIVAL.isao.clear) < 1 && Math.abs(at.x) < 1e-6, `clear of the rocket toward the pole (${at.toArray().map((v) => v.toFixed(1))})`);
-  const eye = w.goal.pos.clone().sub(new THREE.Vector3(0, 1, 0)).divideScalar(METRES);
-  assert.ok(eye.z > 3 && eye.z < at.z, `the camera stands between him and the rocket (${eye.z.toFixed(1)} m of ${at.z.toFixed(1)})`);
-  const look = new THREE.Vector3(0, 0, -1).applyQuaternion(w.goal.quat);
-  assert.ok(look.z > 0.8, 'looking at him, away from the rocket: the swap is behind the camera');
-  const fw = w.drone.obj.getWorldDirection(new THREE.Vector3()); assert.ok(fw.z < -0.9, 'he faces the camera (and the rocket beyond it)');
-  assert.equal(w.camera.fov, STORY_ARRIVAL.talk.fov);
-  // the close-up runs its lines' length and hands back
-  run(w, a, talk - 0.1); assert.equal(a.state().phase, 'talk');
+  assert.ok(inFrame(w, at.toArray()), `Isao in the frame as he talks (${JSON.stringify(ndc(w, at.toArray()))})`);
+  const fw = w.drone.obj.getWorldDirection(new THREE.Vector3()), toCam = w.camera.position.clone().sub(w.drone.obj.position).normalize(); assert.ok(fw.dot(toCam) > 0.5, 'he talks to the camera');
+  assert.equal(w.camera.fov, 68, 'the game\'s lens by then (no zoom when the game takes over)');
+  // his lines on the same pose, then the hand back (no `hand`: the snap, as the landers' tour's opening did)
+  run(w, a, talk - 0.1); assert.equal(a.state().phase, 'talk'); assert.ok(inFrame(w, [0, H.swap.mid, 0]), 'the rocket still framed');
   const snaps = w.snaps(); run(w, a, 0.2); assert.equal(a.state().phase, 'done'); assert.equal(w.shot(), null); assert.ok(w.snaps() > snaps, 'the chase view snapped');
   assert.equal(w.camera.fov, 68, 'the lens is the game\'s again'); assert.equal(w.drone.obj.visible, true);
   assert.ok(new THREE.Vector3().fromArray(w.drone.loiter).distanceTo(new THREE.Vector3(0, 1, 0)) < 1e-9, 'he drifts back to the foundry');
   assert.equal(w.beats.deploys(), 1, 'deployed once'); assert.equal(w.log.filter((l) => l[0] === 'brief').length, 1, 'said once');
-  run(w, a, 5); assert.equal(w.log.length, 4, 'nothing more');
+  run(w, a, 5); assert.equal(w.log.length, 4, 'nothing more'); assert.equal(vis(w, 'sh02'), true, 'the fake camera never left it: still held');
+  // THE SWAP OFF SCREEN: the camera turned away, the next frame swaps (the base's pose, the plumes gone)
+  w.camera.lookAt(new THREE.Vector3(0, 1, 0).multiplyScalar(-5)); w.camera.updateMatrixWorld(); w.frame(1 / 60, a);
+  assert.equal(a.swapHeld(), false); assert.equal(vis(w, 'sh02'), false); assert.equal(vis(w, 'sh02-salvage'), true); assert.equal(vis(w, 'foundry'), true);
+  assert.ok(new THREE.Vector3().setFromMatrixPosition(holder.matrix).distanceTo(new THREE.Vector3().setFromMatrixPosition(holder.userData.placed)) < 1e-12, 'the rocket back on its plot');
+  assert.ok(Object.values(acts).every((x) => x.enabled && x.time === CLIPS[Object.keys(acts).find((k) => acts[k] === x)]), 'every clip at its end: the base\'s own pose');
+  assert.equal(holder.children.filter((c) => c.name === 'Launch plume').length, 0, 'the plumes gone');
+}
+// THE SWAP'S BOUND: a camera that never leaves the rocket swaps after hold.swap.maxS
+{
+  const w = world(), a = make(w); w.isao = true; for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
+  run(w, a, a.state().cut + 0.2); assert.equal(a.swapHeld(), true);
+  run(w, a, STORY_ARRIVAL.hold.swap.maxS - 1); assert.equal(vis(w, 'sh02'), true, 'held');
+  run(w, a, 1.5); assert.equal(vis(w, 'sh02'), false, `swapped after ${STORY_ARRIVAL.hold.swap.maxS} s`);
+}
+// THE RECON DOG'S OPENING (hand): the talk ends on a hold that yields ('arrivalHold', the same pose), the next shot replaces it without a cut; nobody
+// taking it, the game's camera glides in after hold.hand s (endShot, then freeLook(false): no tour)
+{
+  const w = world(), a = make(w, true, true); w.isao = true; for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
+  let looked = null; w.api.freeLook = (tour) => { looked = tour; };
+  run(w, a, a.state().cut + talk + 0.2); assert.equal(a.state().phase, 'done'); assert.equal(w.shot(), 'arrivalHold', 'the closing hold');
+  const p = w.camera.position.clone(); run(w, a, 0.5); assert.ok(w.camera.position.distanceTo(p) < 1e-3, 'it holds where the talk left it (the push goes on, slowly)');
+  run(w, a, STORY_ARRIVAL.hold.hand); assert.equal(w.shot(), null, 'nobody took it: ended'); assert.equal(looked, false, 'the orbit camera, no tour');
+  const w2 = world(), a2 = make(w2, true, true); w2.isao = true; for (const id of ['sh02', 'sh02-salvage', 'foundry']) w2.base.load(id);
+  run(w2, a2, a2.state().cut + talk + 0.2); assert.equal(w2.shot(), 'arrivalHold');
+  w2.api.startShot({ id: 'petPrint', dur: 8, poseAt: () => {} }); assert.equal(w2.shot(), 'petPrint', 'the print takes the camera');
 }
 // A SKIP IN THE LANDING: the same end state at once, the swap with the cut to the base
 {
@@ -129,7 +162,7 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
 // A SKIP ON HIS FACE, and another shot taking the camera: both end it on the end state
 {
   const w = world(), a = make(w); w.isao = true; for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
-  run(w, a, STORY_ARRIVAL.rail[STORY_ARRIVAL.rail.length - 1].t + 0.5); assert.equal(a.state().phase, 'talk');
+  run(w, a, a.state().cut + 0.5); assert.equal(a.state().phase, 'talk');
   w.skip(); assert.equal(a.state().phase, 'done'); assert.equal(w.camera.fov, 68); assert.equal(w.beats.deploys(), 1);
   const w2 = world(), a2 = make(w2); w2.isao = true; for (const id of ['sh02', 'sh02-salvage', 'foundry']) w2.base.load(id);
   run(w2, a2, 1); w2.api.startShot({ id: 'other', dur: 3, poseAt: () => {} });
@@ -298,4 +331,4 @@ console.log('arrival: crash ok');
   { const { w, a } = flown({ signature: false }); w.frame(dt, a); assert.equal(a.state().signature, false); assert.equal(a.state().landing?.phase, 'override', 'the flight at once');
     assert.equal(a.state().landing.intro, 1, 'no intro'); assert.equal(w.camera.fov, LANDING_GAME.camera.fov, 'the side view\'s lens from the first frame'); }
 }
-console.log(`Arrival: waits for the rocket, its salvage, the foundry and Isao; lands; swaps on the cut to his face; ${talk.toFixed(1)} s of lines; skips and give-ups land on the same end state.`);
+console.log(`Arrival: waits for the rocket, its salvage, the foundry and Isao; lands; one held shot from the touchdown, the swap off screen; ${talk.toFixed(1)} s of lines; skips and give-ups land on the same end state.`);
