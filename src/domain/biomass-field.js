@@ -39,12 +39,15 @@ export function createField({ seep = { floor: 0.5, share: 1 / 400 }, maxPiles = 
       for (const p of byCell.values()) { const d = dist(cell, p.cell); if (d <= reach) out.push({ cell: p.cell, kg: p.kg, at: p.at, d }); }
       return out.sort((a, b) => a.d - b.d || a.cell - b.cell);
     },
+    // WHOLE KILOS OFF A SEEPING PILE (2026-11-12): a pile's kg turn fractional as it seeps, so the take is whole kilos (an integer ask stays an
+    // integer: the bank is an integer the HUD prints) and a remainder under 1 kg is left to the ground (seeped)
     take(cell, kg, now) {
       const p = byCell.get(cell);
       if (!p || !(kg > 0)) return 0;
-      const n = Math.min(kg, p.kg);
+      const n = Math.min(kg, Number.isInteger(kg) ? Math.floor(p.kg + 1e-9) : p.kg);
       p.kg -= n; total -= n; p.at = now; version++;
-      if (p.kg <= 1e-6) { total -= p.kg; byCell.delete(cell); }
+      if (p.kg < 1 - 1e-9 && Number.isInteger(kg)) { rotted += p.kg; seeped += p.kg; total -= p.kg; byCell.delete(cell); }
+      else if (p.kg <= 1e-6) { total -= p.kg; byCell.delete(cell); }
       return n;
     },
     richest(reach, dist) {

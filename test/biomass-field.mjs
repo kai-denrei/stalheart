@@ -28,6 +28,10 @@ const dist = (a, b) => Math.abs(a - b);   // a line of cells: the caller's metri
   f.tick(12); assert.ok(!f.piles().some((p) => p.cell === 1), 'a lone 6 kg kill gone in 12 s'); assert.ok(Math.abs(f.seeped() - (6 + 6 + 100 + 19.5)) < 1e-6, `seeped ${f.seeped()}`);
   assert.equal(f.rotted(), f.seeped(), 'rotted counts the seepage'); assert.ok(Math.abs(f.total() + f.seeped() - 4056) < 1e-6, 'laid = on the ground + seeped');
   const v = f.version(); f.tick(12.1); assert.equal(f.version(), v, 'the shrinking redraws at most every half second'); f.tick(12.7); assert.ok(f.version() > v); }
+// whole kilos off a seeping pile: an integer ask takes whole kg, a remainder under 1 kg goes to the ground
+{ const f = createField({ seep: { floor: 0.5, share: 0 }, maxPiles: 4 }); f.drop(1, 10, 0); f.tick(0); f.tick(1.3);   // 9.35 kg left
+  assert.equal(f.take(1, 5, 2), 5); assert.equal(f.take(1, 50, 2), 4, 'the whole kilos left'); assert.equal(f.size(), 0, 'the 0.35 kg remainder seeped');
+  assert.ok(Math.abs(f.seeped() - 1) < 1e-9, `seeped ${f.seeped()}`); assert.ok(Math.abs(f.total()) < 1e-9); }
 // the cap: at maxPiles a new cell rots the oldest pile first, so the newest body always lies where it fell
 { const f = createField({ maxPiles: 2 });
   f.drop(1, 10, 0); f.drop(2, 20, 1); const v = f.version(); f.drop(3, 30, 2);
