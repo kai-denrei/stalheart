@@ -7,17 +7,22 @@
 //   the author's 0.8) when the way on is more than half a radian off its nose and steering as it rolls otherwise.
 //   THE ADAPTER'S FRAME: its suspension solve is in the model's own metres with +Y up (terrain(x, z) heights, a 0.76 m wheel), so the model
 //   is lifted off its holder for the update and solved flat (terrain 0: the holder already stands on the ground or the slab), then put back.
+//   ON THE ROAD (2026-11-12, the tank's ground: src/fx/rover-glue.js): a target with `road` is a point ON the drawn road (pulled and rounded
+//   round the rock, the walls and the buildings), so the rover stands on it, not chasing it across a corner; it turns toward the road's
+//   direction at `turn` rad/s while the run turns on the spot (`spin`), at ROAD_YAW rad/s as it rolls. A road point more than ROAD_SNAP m off
+//   (a road begun away from where it stands) is driven to as before.
 //   ONE TIER: the LOD1 (12,912 triangles, 15 meshes) at every distance; the author keeps active units on LOD1 and its LOD2 is a frozen pose,
 //   so a far swap would stop the wheels mid-trip. One rover; the cost is one model.
 // Unit-sphere host coordinates (the floor at radius 1); `metres` scene units a metre.
 //   createRoverScene(scene, { metres, url, tune, hose, wire }) -> { tick(dt, now, target), state(), socket(name), ready(), dispose() }
-//     target: { point: [x,y,z] unit-sphere floor point, heading: [x,y,z] tangent or null, lift: metres, harvesting, unloading, fill, gauge (the fill bar shown), hoseTo: [x,y,z] | null }
+//     target: { point: [x,y,z] unit-sphere floor point, heading: [x,y,z] tangent or null, road (on the drawn road), spin (turning on the spot), lift: metres, harvesting, unloading, fill, gauge (the fill bar shown), hoseTo: [x,y,z] | null }
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture, setWireframe } from './model-fixture.js';
 import { createRoverController } from '../../assets/models/yushi-rover/runtime.js';
 
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const tangent = (up, d) => d.clone().addScaledVector(up, -d.dot(up));
+const ROAD_YAW = 3, ROAD_SNAP = 3;
 
 export function createRoverScene(scene, { metres, url, tune, hose, wire = null }) {
   const holder = new THREE.Group(); holder.name = 'yushi rover'; holder.matrixAutoUpdate = false; holder.visible = false; scene.add(holder);
@@ -61,7 +66,11 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
       fwd = tangent(up, fwd).normalize();
       let move = 0, yaw = 0;
       const turnTo = (want, rate) => { const a = Math.atan2(new THREE.Vector3().crossVectors(fwd, want).dot(up), fwd.dot(want)), k = Math.max(-rate * dt, Math.min(rate * dt, a)); fwd.applyAxisAngle(up, k); return { a, k }; };
-      if (gap > 0.4) {
+      if (target.road && gap <= ROAD_SNAP) {   // on the road: stand on its point, face along it
+        move = gap; at.copy(goal); spinning = !!target.spin;
+        const u2 = at.clone().normalize(); fwd = tangent(u2, fwd).normalize();
+        if (target.heading) { const want = tangent(u2, v3(target.heading)); if (want.lengthSq() > 1e-18) { const { k } = turnTo(want.normalize(), spinning ? tune.turn : ROAD_YAW); yaw = k / Math.max(dt, 1e-6); } }
+      } else if (gap > 0.4) {
         const want = toward.clone().normalize(), { a, k } = turnTo(want, Math.abs(Math.atan2(new THREE.Vector3().crossVectors(fwd, want).dot(up), fwd.dot(want))) > 0.5 ? tune.turn : 2.5);
         spinning = Math.abs(a) > 0.5; yaw = k / Math.max(dt, 1e-6);
         if (!spinning) { move = Math.min(gap, tune.speed * 1.3 * dt); at.addScaledVector(fwd, move * metres).normalize(); }
@@ -89,6 +98,7 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
     },
     state: () => ({ ready: !!ctl, error, visible: holder.visible, distance: +distance.toFixed(1), belt: +belt.toFixed(1), hose: hoseMesh.visible, point: at?.toArray() ?? null, ...(last ?? {}) }),
     point: () => at?.toArray() ?? null,
+    forward: () => fwd?.toArray() ?? null,
     ready: () => !!ctl,
     dispose() { if (gauge) { scene.remove(gauge.sprite); gauge.mat.dispose(); gauge.tex.dispose(); } scene.remove(holder); scene.remove(hoseMesh); hoseMesh.geometry.dispose(); hoseMat.dispose(); },
   };

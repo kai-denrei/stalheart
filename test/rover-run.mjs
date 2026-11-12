@@ -102,3 +102,51 @@ console.log('Rover run: a full trip, the hold full and back, the queue, STORAGE 
   // no host.threat: the rover of round 8
   const o = world(); o.run.tune = { ...o.run.tune, retreat: { bodies: 6, cells: 4, clear: 2 } }; o.field.drop(5, 100, 0); o.live.add('f3'); dispatch(o.run, { id: 'f3', cell: 5 }); o.step(0.1); assert.equal(o.run.mode, 'out');
 }
+
+// THE TANK'S GROUND (owner, 2026-11-12: "yushi-rover must have the same collision logic as the tank; walls, rocks, etc."): on a 12 x 8 grid of 10 m cells
+// with a wall, the road ahead is looked at every recheck s; a wall built across it sends the rover round (REROUTE), no way round holds it where it
+// stands (NO ROAD, no jump) until the way opens; a pile on a blocked cell is raked from the open cell beside it; a door still opening holds it in place
+{ const { bfsPath } = await import('../src/dungeon.js');
+  const W = 12, H = 8, id = (x, y) => y * W + x, xy = (c) => [c % W, Math.floor(c / W)];
+  const adj = Array.from({ length: W * H }, (_, c) => { const [x, y] = xy(c); return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [x + a, y + b]).filter(([a, b]) => a >= 0 && b >= 0 && a < W && b < H).map(([a, b]) => id(a, b)); });
+  const grid = () => {
+    const shut = new Set(), field = createField({ seep: null, maxPiles: 100 }), pearls = createPearls({ count: 1, capacity: 1e9 }), live = new Set(); let now = 0, waiting = false;
+    const open = (c) => !shut.has(c);
+    const host = {
+      path: (a, b, within = 1) => bfsPath(adj, a, open(b) ? (c) => c === b : (c) => { const [ax, ay] = xy(c), [bx, by] = xy(b); return c !== b && open(c) && Math.hypot(ax - bx, ay - by) <= within; }, { has: (c) => !open(c) }),
+      length: (cells) => (cells.length - 1) * 10, bearing: (a, b) => { const [ax, ay] = xy(a), [bx, by] = xy(b); return Math.atan2(bx - ax, by - ay); },
+      near: (cell, reach) => field.near(cell, reach, (p, q) => { const [ax, ay] = xy(p), [bx, by] = xy(q); return Math.hypot(ax - bx, ay - by); }),
+      take: (cell, kg) => field.take(cell, kg, now), deposit: (kg) => pearls.fill(kg), live: (o) => live.has(o.id), open, wait: () => waiting,
+    };
+    const run = createRoverRun({ ...ROVER, capacity: 1000, speed: 10, turn: 100, reach: 1, harvestRate: 1000, unloadRate: 1000, recheck: 0.5 }, id(0, 4), Math.PI / 2);
+    const step = (secs, dt = 0.05) => { for (let k = 0; k < Math.round(secs / dt); k++) { now += dt; stepRover(run, dt, now, host); } };
+    return { shut, field, live, run, step, host, setWait: (v) => { waiting = v; } };
+  };
+  // a wall built across the road mid-trip: round it, never through it
+  { const g = grid(); g.field.drop(id(11, 4), 300, 0); g.live.add('f'); dispatch(g.run, { id: 'f', cell: id(11, 4) });
+    g.step(0.1); assert.equal(g.run.mode, 'out'); assert.equal(g.run.path.length, 12, 'straight along row 4');
+    g.step(3); const was = g.run.path; for (let y = 2; y <= 6; y++) g.shut.add(id(7, y));   // a wall at x 7, rows 2-6, ahead of it
+    g.step(0.6); assert.notEqual(g.run.path, was, 'a new road'); assert.ok(g.run.events.some((e) => e.ev === 'reroute'), 'REROUTE noted');
+    assert.ok(g.run.path.every((c) => !g.shut.has(c)), 'the new road never crosses the wall'); assert.equal(g.run.path.at(-1), id(11, 4), 'to the same flare');
+    const seen = new Set(); for (let k = 0; k < 400 && g.run.mode === 'out'; k++) { g.step(0.05); seen.add(g.run.path ? g.run.path[g.run.k] : g.run.cell); }
+    assert.equal(g.run.mode, "harvest", `it got there ${JSON.stringify(g.run.events)}`); assert.ok([...seen].every((c) => !g.shut.has(c)), 'every cell it stood on open'); }
+  // no way round: it holds where it stands with NO ROAD, never jumps; the wall gone, it goes on
+  { const g = grid(); g.live.add('f'); g.field.drop(id(11, 4), 300, 0); dispatch(g.run, { id: 'f', cell: id(11, 4) }); g.step(0.1); g.step(3);
+    for (let y = 0; y < H; y++) g.shut.add(id(7, y));
+    g.step(0.6); const at = g.run.cell; assert.equal(g.run.stuck, true); assert.equal(roverWord(g.run), 'NO ROAD'); assert.equal(g.run.path, null);
+    assert.ok(xy(at)[0] >= 2 && xy(at)[0] <= 4, `held where it stood (cell x ${xy(at)[0]})`); g.step(5); assert.equal(g.run.cell, at, 'no jump'); assert.equal(g.run.mode, 'out');
+    assert.equal(g.run.events.filter((e) => e.ev === 'stuck').length, 1, 'noted once');
+    for (let y = 0; y < H; y++) g.shut.delete(id(7, y)); g.step(0.6); assert.equal(g.run.stuck, false); assert.equal(roverWord(g.run), 'OUT'); assert.ok(g.run.events.some((e) => e.ev === 'road'));
+    g.step(10); assert.ok(g.run.events.some((e) => e.ev === 'arrive'), 'it got there'); }
+  // no road home: NO ROAD HOME, held, asked again every recheck
+  { const g = grid(); g.run.cell = id(10, 4); g.run.mode = 'harvest'; g.run.order = null; for (let y = 0; y < H; y++) g.shut.add(id(5, y));
+    g.step(0.1); assert.equal(g.run.mode, 'home'); assert.equal(roverWord(g.run), 'NO ROAD HOME'); g.step(3); assert.equal(g.run.cell, id(10, 4), 'held');
+    g.shut.clear(); g.step(0.6); assert.equal(g.run.stuck, false); g.step(12); assert.equal(g.run.mode, 'idle', 'home'); }
+  // a pile on a blocked cell: raked from the open cell beside it
+  { const g = grid(); g.shut.add(id(6, 4)); g.field.drop(id(6, 4), 300, 0); g.live.add('f'); dispatch(g.run, { id: 'f', cell: id(5, 4) });
+    g.step(0.1); g.step(7); assert.equal(g.run.events.find((e) => e.ev === 'arrive')?.cell, id(5, 4)); assert.ok(g.run.harvested >= 299, `raked from beside: ${g.run.harvested}`); assert.ok(!g.run.skip.has(id(6, 4)), 'not skipped'); }
+  // a door still opening ahead: it holds its place on the road
+  { const g = grid(); g.live.add('f'); g.field.drop(id(11, 4), 300, 0); dispatch(g.run, { id: 'f', cell: id(11, 4) }); g.step(0.1); g.step(2); const s = g.run.s;
+    g.setWait(true); g.step(2); assert.equal(g.run.s, s, 'held'); assert.equal(g.run.wait, true); g.setWait(false); g.step(1); assert.ok(g.run.s > s + 9, 'on again'); }
+  console.log('Rover run on the tank\'s ground: round a new wall, held without a road (no jump), raked from beside a blocked pile, held at a door.');
+}
