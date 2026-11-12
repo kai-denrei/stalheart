@@ -39,4 +39,9 @@ assert(UNIT_ENTRIES.find((e) => e.id === 'mork')?.model?.url, 'the MÖRK has a m
 const board = readFileSync(new URL('../src/fx/build-board.js', import.meta.url), 'utf8'), game = readFileSync(new URL('../src/td-tab.js', import.meta.url), 'utf8');
 assert.match(board, /div\('bb-thumb', null, 'img'\)/);
 assert.match(game, /spriteShot, towerLook: \(\) => params\.towerLook \}\);/);
+// THE COLONY'S CARDS (2026-11-12 night): a dome kind draws its own module's one-draw LOD2, one sprite a kind
+{ const { COLONY } = await import('../src/content/colony.js');
+  for (const kind of Object.keys(COLONY.kinds)) { const src = thumbSource({ kind: 'dome', dome: kind }), m = thumbModel(src);
+    assert.deepEqual(src, { draw: 'kind', kind }); assert.equal(thumbKey(src), `bb-kind-${kind}`);
+    assert(m?.url && /_d0_lod2\.glb$/.test(m.url) && existsSync(new URL(`../${m.url}`, import.meta.url)), `${kind}: its card draws its dome (${m?.url})`); } }
 console.log('Board thumbs: the fit on the largest side, a picture per card kind, every board structure drawn from the bestiary.');

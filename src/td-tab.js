@@ -3241,7 +3241,7 @@ export function initTdTab(root) {
       return story ? STORY_SENTRIES.rock : 'towers need HIGH GROUND';
     }
     if (towerByCell.has(ci)) return 'occupied';
-    if (story) { const cap = sentryCap(story.programme?.done, STORY_SENTRIES); if (sentryBookFull({ towers: towers.length, orders, ci, cap })) return STORY_SENTRIES.fullAt(cap); }   // 6, +2 +2 with the colony (2026-11-12)
+    if (story) { const cap = sentryCap(story.programme, STORY_SENTRIES); if (sentryBookFull({ towers: towers.length, orders, ci, cap })) return STORY_SENTRIES.fullAt(cap); }   // 6, +2 +2 with the colony (2026-11-12)
     if (story && STORY_SENTRIES.buildCells != null && chord(graph.centers[ci], graph.centers[dungeon.heart]) > STORY_SENTRIES.buildCells * cellSide) return STORY_SENTRIES.far;
     if (!graph.adj[ci].some((nb) => dungeon.tags[nb] !== BLOCKED)) {
       return story ? STORY_SENTRIES.deep : 'beyond the frontier';
@@ -4564,7 +4564,7 @@ export function initTdTab(root) {
   // THE ROVER AND THE BIO-PEARLS (round 8 note 7, src/fx/rover-glue.js): kills lie on the ground, F's flare sends the rover, the pearls are the bank
   const roverGlue = createRoverGlue({
     scene, hullConsole, player, showBrief, showToast, updateHud, wire: () => (wire ? wireOpts : null), metres: () => metresToArc(1, cellSide), briefQ: () => briefs.queue(),
-    story: () => story, storyBase: () => storyBase, graph: () => graph, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, enemies: () => enemies, atBase: () => hullRepair.state().under,
+    story: () => story, storyBase: () => storyBase, graph: () => graph, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, enemies: () => enemies, atBase: () => hullRepair.state().under || !!(story?.armoryPad?.ring?.state().standing && story.armoryPad.ring.state().near),   /* the shells' pad restocks the flares too (2026-11-12 night) */
     ground: hullGround, cellIndex: (p) => cellIndex(p),   // the tank's ground and the lattice lookup: the rover's road (2026-11-12)
   });
   // THE COLONY'S TICK (src/fx/colony-tick.js): the reel, the lapse, the perks, the pads, the boards, the beacons, the works

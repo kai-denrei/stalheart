@@ -2,7 +2,7 @@
 // metres around the pole; -Z points at the clearing's open mouth. Plots are
 // the kit's reserved footprints (4 m cells), islands carry one scalable slab.
 import { STORY_SCALE } from './story-defaults.js';
-import { DOME_ISLANDS, DOME_STRUCTURES, DOME_PLACEMENT, DOME_SOLIDS } from './dome-city.js';
+import { DOME_ISLANDS, DOME_STRUCTURES, DOME_PLACEMENT, DOME_SOLIDS, DOME_DROPPED } from './dome-city.js';
 
 export const STAGES = Object.freeze([
   { n: 0, name: 'Empty pole' },
@@ -177,11 +177,15 @@ export const BASE_LAYOUT_MODES = ['classic', 'dome'];
 // THE DOME CITY IS THE DEFAULT (round 8 stream C, 2026-11-06: the suite chain green on ?base=dome but --gunship, red the same way on classic;
 // entry 2026-11-06-round-8-stream-c-the-dome-city-a-second-layout-of-the-base-default-dome). ?base=classic always stays
 export const BASE_LAYOUT_DEFAULT = 'dome';
-export function withBaseLayout(islands, structures, mode = 'classic', { domes = DOME_ISLANDS, buildings = DOME_STRUCTURES, placement = DOME_PLACEMENT } = {}) {
+// THE COLONY ON THE GRID (2026-11-12 night, src/content/dome-city.js): `dropped` islands leave the layout with every structure standing on them
+// (the radar, the armory, the farm, the chip plant and the assembly line: their roles are dome kinds), and a placement's `w`/`d` give a turned
+// island its plot (the depot, a quarter turned in the cargo court)
+export function withBaseLayout(islands, structures, mode = 'classic', { domes = DOME_ISLANDS, buildings = DOME_STRUCTURES, placement = DOME_PLACEMENT, dropped = DOME_DROPPED } = {}) {
   if (mode !== 'dome') return { islands, structures };
+  const gone = new Set(dropped);
   // an id the table names but this tree has not got is skipped, not invented (stream D's `depot` arrives by merge)
-  const moved = islands.map((i) => (placement[i.id] ? { ...i, x: placement[i.id].x, z: placement[i.id].z } : i));
-  const turned = structures.map((s) => (s.island && placement[s.island]?.heading ? { ...s, heading: placement[s.island].heading } : s));
+  const moved = islands.filter((i) => !gone.has(i.id)).map((i) => { const p = placement[i.id]; return p ? { ...i, x: p.x, z: p.z, ...(p.w ? { w: p.w, d: p.d } : {}) } : i; });
+  const turned = structures.filter((s) => !gone.has(s.island)).map((s) => (s.island && placement[s.island]?.heading ? { ...s, heading: placement[s.island].heading } : s));
   return { islands: [...moved, ...domes], structures: [...turned, ...buildings] };
 }
 // ONE PARSER FOR THE SWITCH, beside landmarkTierMode: ?base=classic is the base as it stood, anything else (or nothing) the default, the dome

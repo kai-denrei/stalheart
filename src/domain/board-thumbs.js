@@ -14,6 +14,7 @@ export function thumbSource(offer) {
     case 'pet': return { draw: 'pet', index: offer.index };
     case 'repair': case 'spare': return { draw: 'hull' };
     case 'shield': return { draw: 'dome' };
+    case 'dome': return { draw: 'kind', kind: offer.dome };   // a colony card: its kind's dome (2026-11-12 night)
     default: return null;
   }
 }
@@ -22,6 +23,7 @@ export function thumbKey(src) {
   if (src.draw === 'structure') return `bb-structure-${src.step}`;
   if (src.draw === 'tower') return `bb-tower-${src.look}-${src.key}-${src.tier}`;
   if (src.draw === 'pet') return `bb-pet-${src.index}`;
+  if (src.draw === 'kind') return `bb-kind-${src.kind}`;
   return `bb-${src.draw}`;
 }
 

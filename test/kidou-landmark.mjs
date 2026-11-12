@@ -1,6 +1,7 @@
 // THE WHEELED STÅLHEART, A LOOK BEHIND A FLAG (the owner's note of 2026-11-07, call C; docs/superpowers/specs/2026-11-07-base-from-scratch-design.md
 // section 2.C): ?gantry=kidou swaps the `stalheart` landmark's two tiers for the KIDOU moving gantry's pinned files (scale 1, no clips: the
-// author's adapter poses it, src/fx/kidou-rig.js), and anything else is the rail terraformer exactly as it shipped.
+// author's adapter poses it, src/fx/kidou-rig.js), and anything else is the rail terraformer exactly as it shipped; since 2026-11-12 night the KIDOU
+// is the dome base's own with no flag.
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { gantryMode, GANTRY_MODES } from '../src/platform/game-flags.js';
@@ -11,6 +12,10 @@ assert.deepEqual(GANTRY_MODES, ['rail', 'kidou']);
 assert.equal(gantryMode('?gantry=kidou'), 'kidou');
 assert.equal(gantryMode('?sw=0&skip=defence&gantry=kidou&base=dome'), 'kidou');
 for (const q of ['', null, undefined, '?gantry=rail', '?gantry=KIDOU', '?gantry=', '?gantry=wheels', '?base=classic', '?kidou=1']) assert.equal(gantryMode(q), 'rail', `${JSON.stringify(q)} reads rail`);
+// THE KIDOU IS THE DOME BASE'S (2026-11-12 night, the colony on the grid): with no ?gantry= the dome base (the story's default) stands the KIDOU and
+// the classic base the rail; a named mode wins on either
+for (const q of ['', null, '?gantry=KIDOU', '?gantry=wheels', '?base=dome']) assert.equal(gantryMode(q, 'dome'), 'kidou', `${JSON.stringify(q)} on the dome base reads kidou`);
+assert.equal(gantryMode('?gantry=rail', 'dome'), 'rail', 'the rail on the dome base by name'); assert.equal(gantryMode('?gantry=kidou', 'classic'), 'kidou'); assert.equal(gantryMode('', 'classic'), 'rail');
 
 // the KIDOU's entry: the two pinned tiers (docs/a6-kidou-sai93-assets.lock.json), both on disk, no clips, not batched (its wheels, dampers
 // and hoses are posed by name), scale 1 (metres), the rig named; still the Stålheart's id, island and stage

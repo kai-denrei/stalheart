@@ -4,7 +4,8 @@
 //   offers / picks      cards on the board, cards the player may take
 //   structuresMax       at most this many of the six cards are structures, so a board always carries a sentry, an upgrade or the hull
 //   sentryKinds         sentry cards (the cheapest unlocked kind and the dearest the bank can buy); their price is the radial's (src/towers.js)
-//   structures          the programme steps that left the automatic programme (the six domes since 2026-11-07) (`board: true` in src/content/base-programme.js): price, effect
+//   structures          the programme steps that left the automatic programme (`board: true` in src/content/base-programme.js): price, effect. The colony's
+//                       cells are not among them: THE COLONY's row deals the dome kinds and the player picks the cell (2026-11-12 night, src/content/colony.js)
 //   repair / spare / shield   the hull's dents mended now / one more hull / the rack full
 //   pet                 a companion card when its unit carries an `offer` (stream A); price, the first sector it may be offered
 //   index               the board's own cards cost their price times the coming sector's index (the board before sector 2 is index[0]; the last
@@ -26,14 +27,6 @@ export const BUILD_BOARD = Object.freeze({
     chips: Object.freeze({ price: 2800, effect: 'SOL\'s passes come a fifth sooner' }),
     launcher: Object.freeze({ price: 4000, effect: 'SOL-88 goes up: SOL fires on its own' }),
     pearl: Object.freeze({ price: 2000, effect: '+12,000 kg of storage: a fourth Bio-Pearl' }),   // round 8 note 7: the bank is the pearls' sum
-    // THE DOMES (the owner's note of 2026-11-07, the base from scratch; spec 2026-11-07 section 2.A): no mechanical effect yet, so each is priced below
-    // the farm (3,200 kg and +40 kg a sector) and its effect line says what it is; the price is the module's, the line names the dome
-    'dome-nw': Object.freeze({ price: 2400, effect: 'a habitat dome of the colony' }),
-    'dome-w': Object.freeze({ price: 3000, effect: 'the colony\'s biosphere dome' }),
-    'dome-sw': Object.freeze({ price: 2400, effect: 'a habitat dome of the colony' }),
-    'dome-ne': Object.freeze({ price: 2400, effect: 'a logistics dome of the colony' }),
-    'dome-e': Object.freeze({ price: 2800, effect: 'the colony\'s fabrication dome' }),
-    'dome-se': Object.freeze({ price: 2400, effect: 'a logistics dome of the colony' }),
   }),
   repair: Object.freeze({ price: 1200, label: 'HULL REPAIR', effect: 'the hull\'s dents mended now' }),
   spare: Object.freeze({ price: 4800, label: 'SPARE HULL', effect: 'one more hull in the bays' }),

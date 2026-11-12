@@ -390,7 +390,7 @@ const withDocument = (on) => { if (on) globalThis.document = { body: { name: 'bo
   const empty = host({ story: null, members: { laserStation: undefined } }).tick.colony();
   assert.deepEqual(empty, {
     paintPad: null, shop: false, beacons: null, beaconPulse: null, beaconPings: [], gusts: 0, gunship: { auto: false, manned: 0, fly: null, swell: 1, budget: null },
-    board: null, isaoKills: 0, strike: null, dyes: null, painted: 0, boardCell: -1, launch: null, works: null, sol88: false, pad: null, cell: -1, calibrated: false, manned: 0,
+    board: null, isaoKills: 0, strike: null, dyes: null, painted: 0, boardCell: -1, launch: null, works: null, sol88: false, pad: null, cell: -1, calibrated: false, manned: 0, gantry: null,
   }, 'no story: every field at its rest value');
   const { GUNSHIP_AUTO } = await import('../src/content/gunship.js');
   const s = {
@@ -403,7 +403,7 @@ const withDocument = (on) => { if (on) globalThis.document = { body: { name: 'bo
   assert.deepEqual(got, {
     paintPad: { lit: 1, cell: 4 }, shop: true, beacons: ['a'], beaconPulse: 'p', beaconPings: ['a'], gusts: 2,
     gunship: { auto: true, manned: 2, fly: 'flying', swell: GUNSHIP_AUTO.swell, budget: GUNSHIP_AUTO.aliveBudget },
-    board: ['b0', 'b1'], isaoKills: 3, strike: 'live', dyes: { d: 1 }, painted: 6, boardCell: 9, launch: 'going', works: { collectors: 2, ring: 'rs' }, sol88: true, pad: 'armed', cell: 8, calibrated: true, manned: 2,
+    board: ['b0', 'b1'], isaoKills: 3, strike: 'live', dyes: { d: 1 }, painted: 6, boardCell: 9, launch: 'going', works: { collectors: 2, ring: 'rs' }, sol88: true, pad: 'armed', cell: 8, calibrated: true, manned: 2, gantry: null,
   }, 'the pads, shop, beacons, gunship, boards, strike, dyes, launch, works, calibration and manned count');
   assert.equal(host({ story: { strikeDone: true } }).tick.colony().strike, 'done', 'a finished strike reads done');
   assert.equal(host({ story: { works: { collectors: 0 } } }).tick.colony().works.ring, null, 'works without a ring: ring null');

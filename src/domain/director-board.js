@@ -119,15 +119,18 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   // that may offer one (the break before sector 2 at the earliest) to the end
   // THE FIRST ORDERS (2026-11-08, THE SETTLING): the three `first` steps are bought once at the landing, not on a sector board, and print from the deploy: they sit with the prints, their price (BUILD_BOARD.first) in the line
   const firstPrice = (s) => t.buildBoard?.first?.structures?.[s.id]?.price;
+  // a step written as a literal row is found by its id; the colony's cells and bridges are generated from the grid's one table (2026-11-12 night,
+  // src/content/dome-city.js), so theirs is the generating line
+  const stepFind = (s) => (s.cell ? '...COLONY_CELLS.map((c) => { const kind' : s.frame && s.id.startsWith('bridge-') ? '...COLONY_BRIDGES.map((p) => ({ id: bridgeId(p)' : `{ id: '${s.id}',`);
   const prints = t.programme.filter((s) => !s.board || s.first).map((s) => ({ id: `print-${s.id}`, col: stepCol(s), label: s.label.toUpperCase(), sub: `${s.seconds} s print${s.perk ? ` · perk ${s.perk}` : ''}${s.first ? ` · bought at the first orders, ${firstPrice(s) ?? '?'} kg` : ''}`, rule: whenText(s.when), when: s.when,
     tags: [s.when.idle && 'at the lull', s.first && 'bought at the first orders', s.passable && 'passable', s.closeup && 'close-up', s.hull && 'first hull', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
-    src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }] }));
+    src: [{ file: PROGRAMME_FILE, find: stepFind(s) }] }));
   if (t.strike) prints.push({ id: 'isao-strike', col: `s:${t.strike.minSector}`, to: endCol, label: 'ISAO\'S MISSILE', sub: `once a run, from sector ${t.strike.minSector}`, rule: `a door under ${t.strike.gateShare} of its hp, ${t.strike.alive}+ bodies, the hull on screen`, when: { minSector: t.strike.minSector, gateShare: t.strike.gateShare, alive: t.strike.alive }, tags: ['once'], src: [{ file: PROGRAMME_FILE, find: 'export const ISAO_STRIKE' }] });
 
   const boardFrom = (s) => Math.max(2, s.when.sector ?? 2), price = (s) => t.buildBoard?.structures?.[s.id]?.price ?? null;
-  const offers = t.programme.filter((s) => s.board && !s.first).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: `${price(s)} kg · offered from sector ${boardFrom(s)}`,
+  const offers = t.programme.filter((s) => s.board && !s.first).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: s.cell ? `cell ${s.cell.toUpperCase()}, priced by the kind chosen for it (default ${s.kind}) · offered from sector ${boardFrom(s)}` : `${price(s)} kg · offered from sector ${boardFrom(s)}`,
     rule: `on THE BUILD BOARD before sector ${boardFrom(s)} (the debrief's CONTINUE); once bought Isao prints it ${whenText(s.when)}`, when: s.when, tags: ['bought on the board', s.passable && 'passable', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
-    src: [{ file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }, { file: 'src/content/build-board.js', find: `${/^\w+$/.test(s.id) ? s.id : `'${s.id}'`}: Object.freeze({ price` }] }));   // a dome's key is quoted (2026-11-07)
+    src: [{ file: PROGRAMME_FILE, find: stepFind(s) }, (s.cell ? { file: 'src/content/colony.js', find: 'kinds: Object.freeze({' } : { file: 'src/content/build-board.js', find: `${/^\w+$/.test(s.id) ? s.id : `'${s.id}'`}: Object.freeze({ price` })] }));   // a dome's key is quoted (2026-11-07); a cell is priced by the kind it is bought as (THE COLONY's row, 2026-11-12 night)
 
   // DROPS & COMPANIONS: the day-gated moments, the day rule written on them
   const dayS = t.storyDay?.seconds ?? 30;
@@ -151,7 +154,7 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   const briefSrc = (id) => ({ file: BRIEFS_FILE, find: /^sector_\d+$/.test(id) ? '[`sector_${s.n}`' : `\n  ${id}: {` });
   for (const c of columns.filter((x) => x.kind === 'sector')) put(sectorBriefId(c.n, len, doorAt), { col: c.id }, 'data', { file: 'src/domain/sectors.js', find: 'export const sectorBriefId' }, 'the sector\'s brief card');
   put(sectorBriefId(last + 1, len, doorAt), { col: endCol }, 'data', { file: 'src/domain/sectors.js', find: 'export const sectorBriefId' }, 'each generated sector\'s brief card');
-  for (const s of t.programme) if (s.brief) put(s.brief, { col: stepCol(s) }, 'data', { file: PROGRAMME_FILE, find: `{ id: '${s.id}',` }, `as Isao starts the ${s.label}`);
+  for (const s of t.programme) if (s.brief) put(s.brief, { col: stepCol(s) }, 'data', { file: PROGRAMME_FILE, find: stepFind(s) }, `as Isao starts the ${s.label}`);
   const garage = perkStep('garage'); if (garage && t.perks?.paint?.brief) put(t.perks.paint.brief, { col: stepCol(garage) }, 'data', { file: PROGRAMME_FILE, find: "brief: 'paint_pad'" }, 'the hull on the paint pad, once the garage stands');
   if (t.strike) for (const id of [t.strike.go, t.strike.hit]) put(id, { col: `s:${t.strike.minSector}`, to: endCol }, 'data', { file: PROGRAMME_FILE, find: 'export const ISAO_STRIKE' }, 'Isao\'s missile, once a run');
   put(t.arrival.talk.brief, { col: `ch:${t.chapters[0].id}` }, 'data', { file: 'src/content/story-defaults.js', find: 'talk: Object.freeze' }, 'the arrival\'s close-up');

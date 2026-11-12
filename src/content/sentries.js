@@ -92,9 +92,9 @@ export const QUIVER_SPLASH = Object.freeze({ cells: 1.2, share: 0.5 });
 // harder, and with `buildCells` set an order farther than that many cells from the Stålheart is refused (null: no limit, the owner is
 // still weighing it); dmgMul 1.4 -> 1.15 (2026-10-03: "it feels a bit too easy"). `full` and `far` are the refusals the build menu shows; `rock` and `deep` say the terrain rules in the story's words.
 // THE CAP GROWS WITH THE COLONY (the economy design 2.4, 2026-11-12; the owner approved the economy at 10x): `cap` 6 at the start, `plus` +2 for each
-// group with a step standing (FABRICATION: the fabrication dome or, on ?base=classic, the assembly line; LOGISTICS: a logistics dome or the armory), at
+// group whose perk stands (FABRICATION, 'rebuild': the fabrication dome or, on ?base=classic, the assembly line; LOGISTICS, 'armory': the logistics dome or the armory), at
 // most `max` (src/domain/sentry-cap.js sentryCap); `fullAt(n)` the refusal at the live cap
 export const STORY_SENTRIES = Object.freeze({ cap: 6, max: 10, dmgMul: 1.15, buildCells: null,
-  plus: Object.freeze([Object.freeze({ steps: Object.freeze(['dome-e', 'assembly']), add: 2 }), Object.freeze({ steps: Object.freeze(['dome-ne', 'dome-se', 'armory']), add: 2 })]),
+  plus: Object.freeze([Object.freeze({ perks: Object.freeze(['rebuild']), add: 2 }), Object.freeze({ perks: Object.freeze(['armory']), add: 2 })]),   // by perk since the grid (2026-11-12 night): the kind the player chose pays it
   fullAt: (n) => `Isao keeps ${n} sentries running: sell one to build another`, far: 'too far from the Stålheart',
   rock: 'sentries stand on ROCK: pick a rock cell beside the open ground', deep: 'too deep in the rock: a sentry needs open ground beside it' });

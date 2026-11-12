@@ -12,7 +12,8 @@ import { TOWER_BY_KEY } from '../towers.js';
 import { UNIT_ENTRIES } from '../content/bestiary.js';
 import { COMPANIONS } from '../content/companions.js';
 import { BUILD_BOARD } from '../content/build-board.js';
-import { DOME_STRUCTURES } from '../content/dome-city.js';
+import { DOME_STRUCTURES, domeFiles } from '../content/dome-city.js';
+import { COLONY } from '../content/colony.js';
 import { thumbSource, thumbKey, fitScale } from '../domain/board-thumbs.js';
 
 const T = BUILD_BOARD.thumb;
@@ -22,6 +23,7 @@ const entry = (pred) => UNIT_ENTRIES.find((e) => pred(e) && e.model?.url)?.model
 const domeOf = (step) => DOME_STRUCTURES.find((s) => s.id === step && !s.anchor && s.far) ?? null;
 //   thumbModel(src) -> { url, hide? } the GLB a card's picture is drawn from, or null (the node test checks every board structure has one)
 export const thumbModel = (src) => (src.draw === 'structure' ? entry((e) => (e.board ?? e.needs?.perk) === src.step) ?? (domeOf(src.step) ? { url: domeOf(src.step).far } : null)   // `board`: an entry that draws a card whose step has no perk of its own (the fourth Bio-Pearl, round 8)
+  : src.draw === 'kind' && COLONY.kinds[src.kind] ? { url: domeFiles(COLONY.kinds[src.kind].module).far }   // a colony card: its kind's one-draw LOD2 (2026-11-12 night)
   : src.draw === 'hull' ? entry((e) => e.id === 'mork')
   : src.draw === 'pet' && COMPANIONS.units?.[src.index]?.model ? { url: COMPANIONS.units[src.index].model } : null);
 

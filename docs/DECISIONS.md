@@ -265,6 +265,77 @@ stands there), the second none; no hull lost. Calls this raises (none blocks the
 4. **The seat's footer** still describes the MK-9 as paint-then-release (it is shared with every other seat); THE KING card says mark.
 5. **Not measured**: a human player's fight; a lost hull during the fight (the next hull deploys at the base, far from the arena).
 
+## The colony build (2026-11-12 night), for the owner's review
+
+Built on branch `colony-grid` (unpushed) from the design `docs/superpowers/specs/2026-11-12-colony-layout-design.md`, in three stages, each
+committed separately. Every call below is mine, made while you slept; overturn any with one line under it. Measurements are from the engine and the
+browser suites named in `docs/STATE.md` (the section "THE COLONY ON THE GRID").
+
+**Stage 1, the grid in play.**
+
+- **The grid replaces the round-8 dome city as the `dome` layout** (no third layout): seven cells round the plaza and the entry, six bridges in a U,
+  the four courts, HUGIN, the bays and the scoreboard on the outer belt, as the design's table. The radar, the armory, the farm, the chip plant and the
+  assembly line leave the dome base. `?base=classic` is untouched. *Or:* keep the round-8 city selectable.
+- **One table**: `COLONY_CELLS` in `src/content/dome-city.js`; the islands, the domes, the bridges and their port caps, the programme's steps and the
+  gantry's roads are derived from it. A ninth dome is a row there (plus its step's place in the default city).
+- **The KIDOU is the dome base's Stålheart by default**; `?gantry=rail` keeps the rail terraformer on it, `?base=classic` keeps the rail.
+- **The launcher sits 6 m further toward the rim than the design**: (-36, -52), not -46. Its 46 m rail runs 13 m past its 30 m island toward the plaza
+  and its breech met the gantry's middle road (the placement test sweeps the gantry's frame along every road). *Or:* shorten the court's piece.
+- **The clearance, measured in the engine** (the KIDOU's LOD1 posed by the author's adapter): the frame's underside stands 28.8 m up and its legs' inner
+  faces 13.98 m either side; a dome at 0.65 is 9.49 m round and 23.3 m to its cradle. **4.5 m clear a side, 5.5 m overhead**; the design's "0.9 m" was
+  measured against an assumed 25 m working height.
+- **The tool does not reach the cradle.** Its tip stands 3.2-3.6 m up printing and 11.26 m at the lift's travel height, the highest the author's adapter
+  poses it. So the gantry prints the island and the dome to 10.5 m (the whole shell and the mast's foot: 61 % of the step's time) and **Isao prints
+  the mast** from there (the design's fallback), while the gantry drives home with its tool 0.8 m over what it printed. *Or:* raise the lift past the
+  author's range (the mast would come out of the gantry's roof), or a mast-less print.
+- **Parked, the tool is up** (the author's travel pose, standing still): the author's park drops the tip to 3.2 m, into a hull parked under the gantry
+  for its repair and through DAY 42's ball (it hangs 6.2 m under the tip). DAY 42's ball now hangs about 5 m up.
+- **The roads**: middle road (z 0) to W and E, the back road to S, a corner through its column's middle; 4 m/s, a quarter turn in about 4 s, the road
+  out arrives facing the cell (the first run arrived at NW backwards, its tool 5.2 m short of the centre). A middle cell is about 22 s out, a corner
+  about 44 s; the dome's print 30 s in all.
+- **The corner rule is "stand", not "bought"**: W waits until NW and SW *stand* (on the board's map and on the programme), E for NE and SE. Stricter than
+  the design's "printed after"; it is what keeps the gantry from ever driving across a dome.
+- **The bridges wait for the gantry to be home** (`when.home`), so Isao's beam never meets it on a road.
+- **Not built**: the KIDOU solid to the hull (it drives through the hull's space like a ghost; the hull drives under its gantry as before); a print
+  beam from the gantry's tool (the arm's fabrication cycle and the rising wire are the picture); road markings; the space elevator.
+
+**Stage 2, the player chooses.**
+
+- **The picker lives on the build board, not over the scene**: a second row, THE COLONY (keys Q-Y), one card a kind still buildable, and beside it the
+  3 x 3 grid from above (the mouth at the top): the free cells to click (or Tab), the taken ones, the locked ones with the corner rule's reason, the
+  plaza and the entry. A kind's card proposes a cell (Isao's suggestion on one card, following the default city: NE LOGISTICS first). *Or:* the design's
+  top-down picker over the base itself.
+- **One dome a board**, and it is one of the board's two picks (a second dome card takes the first one's place).
+- **Prices**: the design's base prices times the board's index [1, 2, 4, 4.5, 5]: LOGISTICS 3,200, RESEARCH 3,000, FABRICATION 2,800, BIOSPHERE 3,200,
+  POWER 2,800, HABITAT 2,400 (the catapult stays its own card, 4,000 x index from sector 4). On the suites' ideal defender the bank at the board before
+  sector 2 is about 13,500 kg: the prices do not bind there (the economy's known state; difficulty is tuned later).
+- **Each kind once, HABITAT twice**; five kinds and two habitats fill the seven cells. A cell's module is swapped to its kind's before the print.
+- **The default city** (what a static page stands and Isao proposes, in order): NE LOGISTICS, NW RESEARCH, SW HABITAT, W BIOSPHERE, SE HABITAT,
+  E FABRICATION, S POWER. A player who never buys a dome has none.
+
+**Stage 3, the three domes that do something** (each absent until its structure stands, a caption when it does):
+
+- **Shells**: what exists is the hull's shell rack (9), refilled by the classic armory's pad. A dome bought as **LOGISTICS** makes the pad at its foot
+  (18 m toward the plaza) the shells' pad: two a second, and the flares restock on it. Caption LOGISTICS ONLINE · SHELLS ON THE PAD. *Or:* the
+  gunship's MK-9 stock (it has no stock today).
+- **The cavalry**: the **RESEARCH** dome's uplink books the Ridgebacks' drop 8 days on (the radar's rule, re-hung). Without it the arena does not bring
+  them either (the drop needs a booked day). Caption RADAR ONLINE · CAVALRY ON CALL.
+- **The automated SOL**: the ARC-01 in the LAUNCH court, as before its own card after two manned passes, is still the only way SOL automates. Caption
+  CATAPULT ONLINE · SOL FLIES ON ITS OWN.
+- **The other kinds keep the perks of the buildings the grid took away** (FABRICATION the rebuilt hull, BIOSPHERE the farm's 400 kg, POWER SOL's closer
+  passes), nothing new; without the kind the function is gone, as the design says. No caption for them. *Or:* make them cosmetic (the dome base would
+  then have no farm, no rebuild and no closer passes at all).
+- **The sentry cap's +2 groups pay by perk** (rebuild, armory), so the kind pays it on whatever cell it stands.
+- **Not built**: the antenna close-up after a RESEARCH dome's print (it is the radar step's; the grid has no radar step); the mech cavalry's arrival
+  point is unchanged.
+
+**Consequences found by the suites**: on a finished base (SKIP TUTORIAL, a stage link) the default city's BIOSPHERE dome pays the farm perk from
+the first frame, so K0-TECH is born there (it was not on the round-8 city, where the farm was a later card); `--reinforcements` now counts the
+companions beside the four Ridgebacks on the radar. A briefing card left open holds the story's clock, and with it the gantry's drive.
+
+**Noticed, not this build's**: the HUD's bank shows unrounded kilos on these pages (13533.2764...kg); `--story-world` is red on the base a8839146
+at "spent cases fell from the Rotor in sentry control", as on this branch.
+
 ## O. Landing and opening
 
 - **O1 How forgiving the flown landing is.** Entry 300-400 m, sink 30-40 m/s, fuel 18-22 s; CLEAN needs sink under 2.5 m/s, drift under 1.5, tilt under 4 degrees. About half the seeds drift toward the mouth.

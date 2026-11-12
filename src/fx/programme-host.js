@@ -19,7 +19,8 @@
 // enemies, t, storyViews) and the lets the members write as setters (setBerths).
 import { BLOCKED } from '../dungeon.js';
 import { BASE_REPAIR } from '../content/base-programme.js';
-import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks } from '../domain/build-programme.js';
+import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, kindOf } from '../domain/build-programme.js';
+import { COLONY } from '../content/colony.js';
 import { createArcLaunch } from './arc-launch.js';
 const LAUNCH_SHOT = 22;   // seconds of the first launch's cinematic: the charge, the release, the petals unfolding
 import { isaoSpeak } from './isao-voice.js';
@@ -30,7 +31,7 @@ export function createProgrammeHost(c) {
   const { orders, breachQueue, breachedCells, gunshipRig, showBrief, spawnIsao, updateHud, rebuildAfterBreach, recomputePortalDist, adoptBays } = c;
   // a point (the placer's world) stands on lattice cell ci: ci is its nearest of ci and ci's neighbours, within one cell (patchLine's owns)
   const ownCell = (ci, p) => { const g = c.graph(), u = p.clone().normalize(), d = (k) => u.distanceTo(new THREE.Vector3(...g.centers[k])); return d(ci) < c.cellSide() && g.adj[ci].every((nb) => d(nb) >= d(ci)); };
-  return {
+  const api = {
     // ISAO KEEPS BUILDING (src/content/base-programme.js, src/domain/build-programme.js): perks() and hasPerk(name) are what the
     // orbital laser, the shield station and the gunship meter consult
     perks: () => (c.story()?.programme ? programmePerks(c.story().programme) : new Set()),
@@ -40,10 +41,13 @@ export function createProgrammeHost(c) {
     tankReady: () => { const s = c.story(); return !!s?.hull?.early(s.hullHost ??= c.hullHost(), s.nukeBerth?.(s.nukes.at(-1) ?? -1)); },
     build: (f) => {
       const s = c.story(), { pg, sector, manned } = f;
+      // THE MOBILE STÅLHEART DRIVES (2026-11-12 night, src/fx/gantry-drive.js): out to a cell, its print, home; on the story's clock, whatever Isao does
+      const gantry = s.gantry, now = c.t();
+      if (gantry) { gantry.tick(Math.max(0, Math.min(0.25, now - (s.gantryAt ?? now)))); s.gantryAt = now; }
       if (orders.some((o) => !o.worker)) return;
       // THE BACK GATE IS NEVER PRE-BUILT (owner, 2026-09-18): a static base prints nothing, except this one door, which only exists
       // once the player has held the surprise
-      const backAt = c.story().backOpen ? (c.sectorRun()?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: c.story().beats.phase(), sector, waveActive: c.waveActive(), back: backAt, manned, standing: c.story().stands };   // standing: a bridge's domes (2026-11-07, src/platform/story-world.js stands)
+      const backAt = c.story().backOpen ? (c.sectorRun()?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: c.story().beats.phase(), sector, waveActive: c.waveActive(), back: backAt, manned, standing: c.story().stands, home: gantry ? gantry.home() : true };   // standing: a bridge's domes (2026-11-07, src/platform/story-world.js stands); home: the KIDOU parked (2026-11-12)
       // A WALL THAT WAS NEVER PRINTED IS NOT A HOLE (owner, 2026-09-16: "he builds ROCKS instead of WALLS ... before building the
       // gate"): story.wallCells are every wall cell (open floor on a grown base until the gate step stands), so a grown base read all of them
       // as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice
@@ -75,6 +79,12 @@ export function createProgrammeHost(c) {
       const step = programmeDue(pg, ctx), ci = step ? c.story().print.cellOf(step) : -1;
       if (ci < 0) return;
       programmeBegin(pg, step);
+      // A DOME IS THE GANTRY'S (2026-11-12 night): it drives out and prints to its tool's reach; Isao's beam takes the mast from there (an order begun
+      // where the gantry stopped, `head`), or the step stands when the tool reached the top
+      if (step.gantry && gantry?.start(step, { progress: (st, k) => c.story().print.progress(st, k), hand: (st, k) => {
+        if (k >= 1) { api.printed(st); return; }
+        orders.push({ kind: 'structure', ci, cost: 0, seconds: st.seconds, head: k, step: st, bed: c.story().print.bed(st) }); spawnIsao(); updateHud();
+      } })) { if (!c.pilotMode() && !c.briefQ()) showBrief(step.brief); updateHud(); return; }
       orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, head: c.story().chapter?.head[step.id] ?? 0, step, bed: c.story().print.bed(step) });   // head: a tutorial chapter's start finds this print under way
       spawnIsao();
       if (!step.closeup && !c.pilotMode() && !c.briefQ()) showBrief(step.brief);   // his line as he starts, never over a manned seat or another line; a close-up step's over its cut (src/fx/antenna-print.js, round 4)
@@ -94,7 +104,7 @@ export function createProgrammeHost(c) {
     printed: (step, { replay = false } = {}) => {   // replay: a chapter's start standing its earlier prints (src/fx/story-entry.js), which grants nothing (2026-11-08)
       c.story().print.finish(step);
       c.story().lapse?.shoot(String(step.label ?? step.id).toUpperCase());
-      programmeFinish(c.story().programme, step);
+      const perk = programmeFinish(c.story().programme, step) ?? (step.cell ? null : step.perk);   // a colony cell's perk is its kind's (2026-11-12 night)
       if (step.pays > 0 && !replay) c.grant?.(step.pays);   // THE RECYCLER'S WORK PAYS (2026-11-08, the first orders): one more barrel's worth; a chapter's replay is not new work
       // THE BACK GATE STANDS: it seals its mouth through story.sealed, and its mounts beside the back lane become sockets a sentry
       // can be ordered on
@@ -105,13 +115,19 @@ export function createProgrammeHost(c) {
       // above came out empty. The flank is his: a kit wall on each shoulder, out to the rock
       if (step.gate === 'back') { for (const sk of c.story().backSockets ?? []) c.story().socketToward[sk.cell] = sk.toward; const m = c.story().backMouth; if (m) c.story().backHoles = m.flank.filter((ci) => !m.cells.includes(ci)); recomputePortalDist(); }
       c.sectorRun()?.note({ type: 'print', id: step.id });   // the sector books Isao's base prints too, not only tower orders
-      if (step.perk === 'uplink') c.reinforce()?.called();   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the radar's uplink up, Isao calls the colony (src/fx/reinforcements-host.js)
+      // THE DOMES THAT DO SOMETHING (2026-11-12 night; the owner: "replenishment shells, or the radar calling in the Mech cavalry, or the catapult
+      // launching an automated SOL"): the kind's caption when its dome stands (src/content/colony.js), the catapult's when it does; a LOGISTICS dome's
+      // pad at its foot becomes the shells' pad (src/fx/colony-tick.js stands its ring on the 'armory' perk)
+      const kind = step.cell ? kindOf(c.story().programme, step).kind : null, caption = kind ? COLONY.kinds[kind]?.caption : perk === 'launcher' ? COLONY.launcher.caption : null;
+      if (caption && !replay) c.callout?.(caption, 'co-victory');
+      if (perk === 'armory' && step.cell && c.story().colonyPads?.[step.cell]) { c.story().armoryPad?.ring?.dispose?.(); c.story().armoryPad = { ...c.story().colonyPads[step.cell], standing: true }; }
+      if (perk === 'uplink') c.reinforce()?.called();   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the radar's uplink up, Isao calls the colony (src/fx/reinforcements-host.js)
       // the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it
       if (step.walls) { for (const ci of c.story().wallCells) { c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }
-      if (step.perk === 'station' && c.story().arrayPad) c.story().arrayPad.standing = true;   // the solar array's pad charges once the complex stands
-      if (step.perk === 'hulls' && c.story().bayBerths) { c.setBerths(c.story().berths = c.story().bayBerths); adoptBays(c.storyBase()); }   // the bays become the berths
+      if (perk === 'station' && c.story().arrayPad) c.story().arrayPad.standing = true;   // the solar array's pad charges once the complex stands
+      if (perk === 'hulls' && c.story().bayBerths) { c.setBerths(c.story().berths = c.story().bayBerths); adoptBays(c.storyBase()); }   // the bays become the berths
       // THE ARC-01 STANDS: SOL-88 goes up on its sled (src/fx/arc-launch.js), and when the insertion stage is lit SOL fires on its own
-      if (step.perk === 'launcher') {
+      if (perk === 'launcher') {
         const root = c.storyBase()?.structure?.(step.structures[0])?.root ?? null;
         // THE FIRST LAUNCH IS A CINEMATIC (owner, 2026-10-02: "launching the automated SOL is a key moment, let's have a small cinematic of
         // the first satellite launch, with Isao explaining"): a camera beside the rail follows the sled and the payload up for LAUNCH_SHOT
@@ -134,4 +150,5 @@ export function createProgrammeHost(c) {
       }
     },
   };
+  return api;
 }
