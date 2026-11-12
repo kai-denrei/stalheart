@@ -4220,7 +4220,7 @@ export function initTdTab(root) {
     briefs.stepClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|arrivalFlight|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint|dogScout|arrivalHold|printHold|playGlide)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|arrivalFlight|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint|dogScout|arrivalHold|printHold|playGlide|roverWatch)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
