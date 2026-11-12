@@ -53,7 +53,24 @@ console.log('\npostfx sizing invariants hold');
   // THE PARITY: the composer swaps its two buffers after every pass that asks, and the final pass is the only one left in the
   // chain; a swap there alternates the scene pass between the multisampled target with the depth buffer and the depthless one,
   // so every other frame the scene draws with no depth test (the floor lattice through the rock, 2026-11-06's 'sheet').
-  const { AddOutputPass } = await import('../src/postfx.js');
-  check('the one-pass tail never swaps the composer\'s buffers', new AddOutputPass().needsSwap === false);
+  // THE HAND-OVER (2026-11-12, the owner: the gunship's thermal "feels different than before"): a pass after the tail (the FLIR) reads
+  // the composer's read buffer, so the tail must swap to hand it the display picture; the parity is put back after the frame instead
+  // (settleSceneTarget). The vendored EffectComposer's own render loop, with stub passes recording what each read and wrote.
+  const { AddOutputPass, settleSceneTarget } = await import('../src/postfx.js');
+  const { EffectComposer } = await import('../vendor/EffectComposer.js');
+  const { Vector2 } = await import('../vendor/three.module.js');
+  const renderer = { getSize: (v = new Vector2()) => v.set(8, 8), getPixelRatio: () => 1, getRenderTarget: () => null, setRenderTarget() {} };
+  const composer = new EffectComposer(renderer), log = [];
+  const stub = (name, needsSwap, enabled = true) => ({ name, needsSwap, enabled, setSize() {}, render(r, write, read) { log.push({ name, write, read, screen: this.renderToScreen }); } });
+  const tail = stub('tail', new AddOutputPass().needsSwap), flir = stub('flir', false, false);
+  for (const p of [stub('scene', false), tail, flir]) composer.addPass(p);
+  for (const flirOn of [false, true, true, false, true]) {
+    flir.enabled = flirOn; log.length = 0;
+    composer.render(0); settleSceneTarget(composer);
+    const scene = log.find((e) => e.name === 'scene'), t = log.find((e) => e.name === 'tail'), f = log.find((e) => e.name === 'flir');
+    check(`the scene pass draws into renderTarget2 every frame (FLIR ${flirOn ? 'on' : 'off'})`, scene.read === composer.renderTarget2);
+    if (flirOn) check('the FLIR reads the tail\'s picture, not the raw scene', f.read === t.write && f.read !== scene.read && f.screen && !t.screen);
+    else check('without a final pass the tail draws to the screen', t.screen);
+  }
   if (failures > 0) { console.error(`\n${failures} failure(s)`); process.exit(1); }
 }

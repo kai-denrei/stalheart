@@ -46,9 +46,10 @@ export function createFlir(postfx) {
   const pass = new ShaderPass(FlirShader);
   pass.enabled = false;
   // NO SWAP (owner, 2026-10-04: the seat "broken with misaligned layers ... heavy flickering"): postfx's renderTarget1 has no depth
-  // buffer, and the scene's RenderPass draws into whichever target the last frame's swaps left as the read buffer. The add and the
-  // OutputPass swap twice, an even count; a third swap here put every other frame's scene in the depth-less target, its hidden
-  // lattice drawn over the front. The last pass draws to the screen, so it has nothing to swap.
+  // buffer, and the scene's RenderPass draws into whichever target the last frame's swaps left as the read buffer; a swap here put
+  // every other frame's scene in the depth-less target, its hidden lattice drawn over the front. The last pass draws to the screen,
+  // so it has nothing to swap. It reads what the one-pass tail (src/postfx.js AddOutputPass) swapped to it: the display picture,
+  // bloom and transfer included, as the SVG filter saw it (postfx's settleSceneTarget restores the scene's target after each frame)
   pass.needsSwap = false;
   postfx.addFinalPass(pass);
   // LINKED NOW, NOT IN THE SEAT: its program would otherwise compile on the frame the gunship is first taken (the seat's hitch guard,
