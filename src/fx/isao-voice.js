@@ -5,7 +5,7 @@
 // player's picks (the Workshop's voice tab) honoured on every call. Lines are lazy sounds: the chosen one is decoded as it is wanted
 // and dropped if it arrives more than `late` seconds after its moment. A page whose audio has no voice lines stays silent.
 import { ISAO_TRIGGERS } from '../content/isao-voice.js';
-import { VOICE_HOOKS, VOICE_TUNE, VOICE_STORE, VOICE_LINE_MOMENTS, VOICE_FLAVOR, VOICE_RARE, VOICE_SEQUENCE, voiceKey } from '../content/voice-hooks.js';
+import { VOICE_HOOKS, VOICE_TUNE, VOICE_STORE, VOICE_LINE_MOMENTS, VOICE_FLAVOR, VOICE_RARE, VOICE_SEQUENCE, VOICE_RETIRED, voiceKey } from '../content/voice-hooks.js';
 import { normText } from '../domain/voice-match.js';
 import { createVoiceIndex, eligible, pickLine, readPicks, prunePicks, dbGain } from '../domain/voice-match.js';
 import { storage } from '../storage.js';
@@ -16,7 +16,7 @@ const KNOWN_IDS = new Set(Object.values(ISAO_TRIGGERS).flatMap((t) => t.lines.ma
 // tune.lightGap seconds of the end of the last light line, and pick their short lines more often (tune.short); every other trigger as
 // before. `rare`: a moment's rare alternative (the owner's trio), said instead of the moment's own line on its chance when its trigger
 // has rested. `sequence`: a line another follows after a beat (the Dylan Thomas pair), the second never picked on its own
-export function createIsaoVoice({ flavor = VOICE_FLAVOR, rare = VOICE_RARE, sequence = VOICE_SEQUENCE, moments = VOICE_LINE_MOMENTS, triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS, tune = VOICE_TUNE,
+export function createIsaoVoice({ flavor = VOICE_FLAVOR, rare = VOICE_RARE, sequence = VOICE_SEQUENCE, moments = VOICE_LINE_MOMENTS, triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS, tune = VOICE_TUNE, retired = VOICE_RETIRED,
   picks = () => prunePicks(readPicks(storage.getItem(VOICE_STORE)), KNOWN_IDS, KNOWN_KEYS),
   now = () => performance.now() / 1000, rand = Math.random, later = (fn, s) => setTimeout(fn, s * 1000) } = {}) {
   const index = createVoiceIndex(triggers, hooks), last = new Map(), lastAt = new Map(), log = [];
@@ -58,7 +58,8 @@ export function createIsaoVoice({ flavor = VOICE_FLAVOR, rare = VOICE_RARE, sequ
   // `force` (the MK-9's release, 2026-10-05: "every single instance ... a corresponding voice announcement"): said now, over whatever he
   // is saying, past every rest
   function say(sfx, id, { qualifier = null, text = null, onStart = null, force = false } = {}) {
-    const p = picks(), t = now(), exact = text ? index.spoken(text) : null, seq = String(id).includes('#');   // seq: a brief's later line, in its order
+    const p0 = picks(), p = { ...p0, off: new Set([...(p0.off ?? []), ...retired]) }, t = now();   // a retired take is off for everyone (VOICE_RETIRED)
+    const exact = text ? index.spoken(text) : null, seq = String(id).includes('#');   // seq: a brief's later line, in its order
     if (p.muted) return null;
     if (force && t < busyUntil) { if (current) sfx?.stop?.(current, 0.06); busyUntil = t; chain++; }
     // A LINE ON SCREEN WAITS ITS TURN (2026-10-04: the close-up's "So much to build!" came while "Rough landing!" was still being said):
