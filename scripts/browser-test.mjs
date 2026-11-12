@@ -1088,11 +1088,14 @@ try{
  await until('window.__stalheartTest.state().programme.printed.includes("hugin")',240000);await mark('HUGIN stands');assert((await evaluate('window.__stalheartTest.state().programme.perks')).includes('gunship'));
  await shotBase('grow-hugin');
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
+ // THE GRID (2026-11-12 night): no radar and no assembly line on the dome base; the rebuild is a FABRICATION dome's, bought here on S (no corner rule)
+ // and printed by the KIDOU (src/fx/gantry-drive.js)
+ assert.equal(await evaluate(`window.__stalheartTest.board.dome('s','fabrication')`),true,'S bought as FABRICATION');
  await evaluate('window.__stalheartTest.setSector(2)');
- await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','depot','stalheart','bays','hugin','radar','assembly'],'every step, in order (the pad, the recycler\'s work and the array are the first orders\', not bought here: 2026-11-08; the depot after HUGIN since round 8, 2026-11-05: this list was never reached since)');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,[],`nothing is owed: the colony is the build board's now (round 6), the passable back gate and launcher never were (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['depot','gate','gunship','hulls','rebuild','stalheart','uplink'],'no array station: the array is a first order (2026-11-08); the depot\'s perk since round 8');assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ await until('window.__stalheartTest.state().programme.printed.includes("dome-s")',600000);await mark('the FABRICATION dome stands, printed by the gantry');
+ {const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.perks.includes('rebuild'),'its perk');assert.deepEqual(s.programme.printed,['gate','depot','stalheart','bays','hugin','dome-s'],'every step, in order (the pad, the recycler\'s work and the array are the first orders\', not bought here: 2026-11-08; the depot after HUGIN since round 8, 2026-11-05: this list was never reached since)');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,[],`nothing is owed: the colony is the build board's now (round 6), the passable back gate and launcher never were (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['depot','gate','gunship','hulls','rebuild','stalheart'],'no array station: the array is a first order (2026-11-08); the depot\'s perk since round 8');assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
- assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
+ assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the FABRICATION dome rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
  // ISAO'S GATE REPAIR IS ANIMATED (a V1 known gap). Take the door down while the lane is still quiet: he flies out and BEAMS it,
  // his print bed laid over the door's own footprint the way the foundry beat's `over:` bed is, and GATE % climbs under the beam
@@ -3772,7 +3775,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // its gate (the sector kept quiet so its idle gate holds). KEEP HOLDING-style continues (the harness's own) pass the board by. SHOTS=<dir>
  // keeps the board's frame too (board-open.png is always written to artifacts/browser).
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
- await go('board',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=1#td`);
+ await go('board',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=1&base=classic#td`);   // the classic base's structure cards (the armory); the grid's COLONY row is --colony-grid's and --dome-print's (2026-11-12 night)
  await until(`!!${T} && ${T}.state().sector?.n===1`,120000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
  {const p=(await st()).programme;assert.deepEqual(p.bought.slice().sort(),['board','garage'],`a jump to sector 1 stands in for the boards before it: the board and the garage bought (${JSON.stringify(p.bought)})`);}
@@ -6961,7 +6964,7 @@ const killReal=(Date.now()-t0)/1000;
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,
  // or a candidate that failed to load, fails here rather than passing on something that merely looks right. The near
  // tier is fetched by camera distance, so its loading is not required; its file on the record is.
- await go('story-world-candidate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&landmarks=candidate#td');
+ await go('story-world-candidate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&landmarks=candidate&gantry=rail#td');   // the rail terraformer's review tiers (the dome base's own Stålheart is the KIDOU since 2026-11-12 night: --dome-print checks its files)
  await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);
  {const c=await evaluate('window.__stalheartTest.state()'),st=c.storyLod.find(l=>l.id==='stalheart');
   assert.equal(st.files.far,'assets/models/astro/terraformer_3000_d0_lod2.glb','game: the candidate distance tier stands first');
@@ -6972,7 +6975,7 @@ const killReal=(Date.now()-t0)/1000;
  // locked 60 by six seconds — on both the candidate and the shipped tiers. Reading it at once failed a base that was fine.
  await until('(window.__stalheartTest.state().performance?.fps||0)>20',30000);
  await finish();
- await go('story-world','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6#td');
+ await go('story-world','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&gantry=rail#td');
  await until('!!window.__stalheartTest',90000);await delay(3000);
  await until('(window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);
  const w=await evaluate('window.__stalheartTest.state()');
