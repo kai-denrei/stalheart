@@ -294,6 +294,8 @@ export const BRIEFS = {
     id: 'rover_flare', face: 'curious', title: 'COMMS · ISAO', once: true,
     lines: ['Drop a flare where the bodies lie, F. The rover comes.', 'It brings the biomass home to the pearls. Nothing else does now.'],
   },
+  // THE ROVER HUNTED (the economy design 2.6, 2026-11-12; captions only, unrecorded): the first jab at the rover's hold beyond the walls (src/fx/rover-glue.js bite)
+  rover_bitten: { id: 'rover_bitten', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['They are on the rover! Every bite is harvest lost.', 'Take the tank out to it: they go for you first.'] },
   rover_break: {
     id: 'rover_break', face: 'glee', title: 'COMMS · ISAO', once: true,
     lines: ['The rover brought its load home during the break.', 'Half of what you flagged made the pearls. The rest still lies out there.'],   // half since 2026-11-12 (ROVER.breakShare)

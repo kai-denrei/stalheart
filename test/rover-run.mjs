@@ -1,6 +1,6 @@
 // THE ROVER'S RUN (round 8 note 7, src/domain/rover-run.js): out to the flare, the piles nearest first, home, into the pearls; a full pearl holds it.
 import assert from 'node:assert/strict';
-import { createRoverRun, dispatch, stepRover, roverWord, settleBreak } from '../src/domain/rover-run.js';
+import { createRoverRun, dispatch, stepRover, roverWord, settleBreak, bite, roverCell } from '../src/domain/rover-run.js';
 import { createField } from '../src/domain/biomass-field.js';
 import { createPearls } from '../src/domain/bio-pearls.js';
 import { ROVER } from '../src/content/rover.js';
@@ -74,6 +74,10 @@ assert.equal(ROVER.breakShare, 0.5, 'the break banks half the flagged ground');
 { const w = world(); w.field.drop(5, 400, 0); const out = settleBreak(w.run, 0, { ...w.host, flares: [], room: () => w.pearls.room() });
   assert.deepEqual(out, { cargo: 0, field: 0, kept: 0 }, 'nothing flagged, nothing banked: not automatic'); assert.equal(w.field.total(), 400); assert.equal(w.run.trips, 0); }
 assert.equal(roverWord(createRoverRun(ROVER, 0)), 'HOME');
+// THE ROVER BITTEN (the economy design 2.6, 2026-11-12): a jab takes up to ROVER.threat.bite off the hold, lost; never below empty; no hit points
+{ const r = createRoverRun(ROVER, 7); assert.equal(ROVER.threat.bite, 100); assert.equal(bite(r, 100), 0, 'an empty hold loses nothing'); r.cargo = 250;
+  assert.equal(bite(r, ROVER.threat.bite, 3), 100); assert.equal(bite(r, 100), 100); assert.equal(bite(r, 100), 50, 'what is left'); assert.equal(r.cargo, 0); assert.equal(r.bitten, 250);
+  assert.equal(r.events.filter((e) => e.ev === 'bitten').length, 3); assert.equal(roverCell(r), 7, 'at home its cell is home'); }
 console.log('Rover run: a full trip, the hold full and back, the queue, STORAGE FULL and no road hold.');
 
 // TOO MANY ENEMIES (owner, 2026-11-10): six bodies round the rover send it home with what it has; a standing flare's order waits until its ground is clear

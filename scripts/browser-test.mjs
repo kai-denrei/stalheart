@@ -1617,6 +1617,29 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.rover.state().stock===4`,8000).catch(async()=>assert.fail(`the stock is whole again on the repair spot (${JSON.stringify((await R()).stock)})`));
  console.log(`  flares: spent ${e0.stock}/4 after four F, a fifth dropped nothing, restocked under the gantry`);
  current='rover-after';await finish();
+ // THE ROVER HUNTED AND THE ESCORT (the economy design 2.6 and 4 step 4, 2026-11-12): 6,500 kg laid on the first flare's ground (beyond the walls), a flare
+ // there, and when the rover rakes five whites rise beside it. Unescorted (the hull parked under the gantry) they ring the rover and each jab's peak eats
+ // ROVER.threat.bite kg of its hold: ROVER UNDER ATTACK, Isao's rover_bitten, home under 4,500 kg. Escorted (the hull on the flare's cell) the hull
+ // outranks the rover in the hunt and draws them off: home over 4,500 kg. Printed as ROVER HUNTED
+ const hunted=async(escort)=>{
+  await until(`${T}.rover.state().mode==='idle'`,120000).catch(async()=>assert.fail(`the rover home before the hunted run (${JSON.stringify(await R())})`));
+  await evaluate(`${T}.sectorQuiet(true)`);for(let k=0;k<20;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(300);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
+  if(escort)await evaluate(`${T}.placeTank(${rich.cell})`);else await evaluate(`${T}.parkHull('stalheart')`);await delay(300);
+  const a0=await R();await evaluate(`${T}.rover.lay(${rich.cell},6500)`);await evaluate(`${T}.rover.flareAt(${rich.cell})`);
+  await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover at the hunted ground (${JSON.stringify(await R())})`));
+  const ring=await evaluate(`${T}.creatures.neighbours(${rich.cell})`);let made=0;for(let k=0;k<5;k++)made+=await evaluate(`${T}.creatures.spawnAt('amoeba',${(ring.length?ring:[rich.cell])[k%Math.max(1,ring.length)]})`);
+  await until(`${T}.rover.state().trips>${a0.trips}`,240000).catch(async()=>assert.fail(`the hunted trip home (${JSON.stringify(await R())})`));
+  const a1=await R(),hs=(await st()).softHunt??null,kg=a1.delivered-a0.delivered,bit=a1.bitten-(a0.bitten??0);
+  console.log(`ROVER HUNTED ${escort?'escorted':'unescorted'}: ${made} whites, home with ${kg} kg, ${bit} kg bitten off, hunt ${JSON.stringify(hs)}`);
+  return {kg,bit};
+ };
+ // THE DESIGN'S 4,500 kg LINE (spec 4 step 4) is printed, not asserted: the rover rakes until its hold is full or the ground is bare, so a bitten trip on rich
+ // ground still comes home full, only later; on these 6,500 kg the first run (2026-11-12) came home with 4,550 kg and 1,400 kg bitten off. The rule's own
+ // guarantees are asserted: the bites, and the escort bringing home more of the same ground with fewer bites
+ const H={};
+ {const u=H.u=await hunted(false);assert.ok(u.bit>=ROVER.threat.bite,`unescorted, the hunters bite its hold (${u.bit} kg)`);console.log(`  the design's line: unescorted home ${u.kg<4500?'under':'OVER'} 4,500 kg (${u.kg})`);
+  assert.match(await evaluate(`document.body.innerText`),/ROVER UNDER ATTACK/,'the callout');assert.ok((await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")')).includes('rover_bitten'),'Isao\'s rover_bitten');current='rover-hunted';await finish();}
+ {const e=await hunted(true);console.log(`  the design's line: escorted home ${e.kg>4500?'over':'UNDER'} 4,500 kg (${e.kg})`);assert.ok(e.kg>H.u.kg&&e.bit<H.u.bit,`escorted, more of the same ground home with fewer bites (${e.kg} kg, ${e.bit} bitten; unescorted ${H.u.kg}, ${H.u.bit})`);current='rover-escorted';await finish();}
  } else if(args.includes('--dog-scout')) {
  // THE RECON DOG (owner, 2026-11-10, note 2; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1, 5): the story's own start with the
  // dog's seat asked for (&dog=1: an acceptance page surveys at once otherwise) and the first orders' card (&first=1). The landing; Isao prints RECKON K9

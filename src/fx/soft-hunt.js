@@ -14,7 +14,11 @@
 //   host: { hull() -> the tank ({ pos, cur }) or null (down, dead, not issued), field() -> walking cells from the hull's cell (-1 unreachable) |
 //     null, gateDist(ci) -> walking cells from ci to the gate (the heart without a story gate) | -1, graph() -> { adj, centers }, cellSide(),
 //     open(ci) a record may stand there, tune() -> the panel's overrides ({ pace x, ring }) | null, tap(e) the hull's light jolt }
-//   createSoftHunt(host) -> { soft(e), pace(e, tNow, scared), ringed(e), place(e, pace, dt, tNow), wants(e), state() }
+// THE ROVER HUNTED (the economy design 2.6, 2026-11-12): host.rover() -> the rover ({ pos, cur }) while it is out beyond the walls, else null, and
+// host.roverField() its walking cells; the goal is then the hull, the rover or the gate (src/domain/soft-hunt.js huntGoal, the hull keeping its
+// bias: the tank near the rover draws them off), a body ringed on the rover rings and jabs as round the hull, and each jab's peak is host.bite(e)
+// (the rover's hold, src/fx/rover-glue.js) instead of the hull's tap. A body ringed on one goal is let go when it chooses the other.
+//   createSoftHunt(host) -> { soft(e), pace(e, tNow, scared), ringed(e), place(e, pace, dt, tNow), wants(e), field(e), state() }
 import { SOFT_HUNT } from '../content/soft-hunt.js';
 import { PEARL_OF } from '../content/pearl-enemies.js';
 import { isSoftHunter, huntGoal, huntPace, firstDecision, huntDue, ringBearing, ringLayer, findRingSpot, ringPoint, jabAt, jabPeaked, stepRound } from '../domain/soft-hunt.js';
@@ -25,33 +29,35 @@ const PHI = 0.6180339887498949;
 const HOLD_OFF = 8;   // s a body let go for being blocked stays off the ring
 const BLOCKED_MAX = 3;   // blocked decisions in a row (SOFT_HUNT.every s apart) before a ringed body is released
 export function createSoftHunt(host) {
-  let T = SOFT_HUNT, from = null, taps = 0;
+  let T = SOFT_HUNT, from = null, taps = 0, bites = 0;
   const knobs = () => {
     const o = host.tune?.() ?? null;
     if (o !== from) { from = o; T = o ? { ...SOFT_HUNT, ring: o.ring ?? SOFT_HUNT.ring, pace: Object.fromEntries(Object.entries(SOFT_HUNT.pace).map(([k, v]) => [k, v * (o.pace ?? 1)])) } : SOFT_HUNT; }
     return T;
   };
-  // the ring's frame at the hull, carried along with it
-  let fu = null;
-  function frame(h) {
-    const n = norm3(h.pos);
+  // the ring's frame at its goal (the hull, the rover), carried along with it
+  const fus = { hull: null, rover: null };
+  function frame(h, which = 'hull') {
+    const n = norm3(h.pos); let fu = fus[which];
     if (!fu || Math.abs(dot3(fu, n)) > 0.9) fu = tangentBasis(n)[0];
     else fu = norm3(sub3(fu, scale3(n, dot3(fu, n))));
+    fus[which] = fu;
     return [fu, cross3(n, fu)];
   }
+  const goalOf = (which) => (which === 'rover' ? host.rover?.() ?? null : which === 'hull' ? host.hull() : null);
   const toWorld = (h, u, v, xy, cs) => norm3(add3(h.pos, add3(scale3(u, xy[0] * cs), scale3(v, xy[1] * cs))));
   const openAt = (h, u, v, xy, cs) => { const g = host.graph(); return host.open(nearestCellFrom(g.adj, g.centers, h.cur, toWorld(h, u, v, xy, cs))); };
 
   const soft = (e) => !e.guard && !e.hunter && isSoftHunter(PEARL_OF[e.type], knobs());
 
   function aim(e, h) {
-    const t = knobs(), cs = host.cellSide(), [u, v] = frame(h), hs = e.hunt;
+    const t = knobs(), cs = host.cellSide(), hs = e.hunt, [u, v] = frame(h, hs.on ?? 'hull');
     const spot = findRingSpot({ bearing: hs.bearing, radius: ringLayer(e.id, t.slots, t), open: (xy) => openAt(h, u, v, xy, cs), tune: t });
     hs.radius = spot ? spot.radius : null; if (spot) hs.bearing = spot.bearing;
   }
   function release(e) {
     const hs = e.hunt; if (!hs.ringed) return;
-    hs.ringed = false; hs.onRing = false; hs.stuck = null;
+    hs.ringed = false; hs.onRing = false; hs.stuck = null; hs.on = null;
     const c = host.graph().centers[e.cur];
     // back to the lanes from where it stands: its cell's walk picks the next exit at once (prog 1), the gap to the cell's centre eased out
     e.next = e.cur; e.prog = 1; hs.off = sub3(hs.p, c); hs.offLeft = knobs().settle;
@@ -60,23 +66,26 @@ export function createSoftHunt(host) {
   // the goal, decided each `every` s, and the walk's multiplier; enters or leaves the ring
   function pace(e, tNow, scared = false) {
     if (!soft(e)) return 1;
-    const t = knobs(), h = host.hull(), field = h ? host.field() : null;
-    const hs = (e.hunt ??= { goal: 'gate', bearing: ringBearing(e.id, t.slots), radius: null, at: firstDecision(e.id, tNow, t.every), ringed: false, p: null, dir: 1, phase: (e.id * PHI * 7) % 1, onRing: false, off: null, offLeft: 0, t0: tNow });
-    const hd = field && e.cur >= 0 ? field[e.cur] : -1;
+    const t = knobs(), h = host.hull(), field = h ? host.field() : null, r = host.rover?.() ?? null, rf = r ? host.roverField?.() ?? null : null;
+    const hs = (e.hunt ??= { goal: 'gate', bearing: ringBearing(e.id, t.slots), radius: null, at: firstDecision(e.id, tNow, t.every), ringed: false, on: null, p: null, dir: 1, phase: (e.id * PHI * 7) % 1, onRing: false, off: null, offLeft: 0, t0: tNow });
+    const hd = field && e.cur >= 0 ? field[e.cur] : -1, rd = rf && e.cur >= 0 ? rf[e.cur] : -1;
     if (huntDue(hs, tNow)) {
       hs.at = tNow + t.every;
-      hs.goal = huntGoal({ hullDist: hd, gateDist: host.gateDist(e.cur) }, t);
-      if (hs.ringed && h) {
+      hs.goal = huntGoal({ hullDist: hd, gateDist: host.gateDist(e.cur), roverDist: rd }, t);
+      if (hs.ringed && hs.on !== hs.goal) release(e);   // ringed on the other goal: back to the lanes, then the new one
+      const g = goalOf(hs.on);
+      if (hs.ringed && g) {
         // a body blocked on its way since the last decision (rock or a shut gate between it and its spot) re-aims here, from the bearing it was
         // stopped at, not every frame; after BLOCKED_MAX blocked decisions in a row it is let go (the lane takes it back) and kept off the ring for HOLD_OFF s
         if (hs.stuck != null) { hs.blocked = (hs.blocked ?? 0) + 1; hs.bearing = hs.stuck; hs.stuck = null; } else hs.blocked = 0;
-        if (hs.blocked >= BLOCKED_MAX) { hs.blocked = 0; hs.holdUntil = tNow + HOLD_OFF; release(e); } else aim(e, h);   // (the hull's own motion is re-aimed here as before)
+        if (hs.blocked >= BLOCKED_MAX) { hs.blocked = 0; hs.holdUntil = tNow + HOLD_OFF; release(e); } else aim(e, g);   // (the goal's own motion is re-aimed here as before)
       }
     }
-    if (!h || scared || hs.goal !== 'hull') release(e);
+    const tg = hs.goal === 'rover' ? r : hs.goal === 'hull' ? h : null, td = hs.goal === 'rover' ? rd : hd;
+    if (!tg || scared) release(e);
     else if (!hs.ringed) {
-      if (!e.emergeOff && !(tNow < (hs.holdUntil ?? 0)) && hd >= 0 && hd <= t.enter && dist3(e.pos, h.pos) <= (t.enter + t.ring) * host.cellSide()) { hs.ringed = true; hs.p = e.pos.slice(); hs.off = null; hs.t0 = tNow; aim(e, h); }
-    } else if (hd < 0 || hd > t.leave || dist3(hs.p, h.pos) > (t.leave + t.ring) * host.cellSide()) release(e);
+      if (!e.emergeOff && !(tNow < (hs.holdUntil ?? 0)) && td >= 0 && td <= t.enter && dist3(e.pos, tg.pos) <= (t.enter + t.ring) * host.cellSide()) { hs.ringed = true; hs.on = hs.goal; hs.p = e.pos.slice(); hs.off = null; hs.t0 = tNow; aim(e, tg); }
+    } else if (td < 0 || td > t.leave || dist3(hs.p, tg.pos) > (t.leave + t.ring) * host.cellSide()) release(e);
     return huntPace(PEARL_OF[e.type], t, hs.goal);
   }
 
@@ -88,8 +97,8 @@ export function createSoftHunt(host) {
       if (hs.off) { hs.offLeft -= dt; if (hs.offLeft <= 0) hs.off = null; else e.pos = norm3(add3(e.pos, scale3(hs.off, hs.offLeft / knobs().settle))); }
       return false;
     }
-    const h = host.hull(); if (!h) { release(e); return false; }
-    const t = knobs(), cs = host.cellSide(), [u, v] = frame(h), g = host.graph();
+    const which = hs.on ?? 'hull', h = goalOf(which); if (!h) { release(e); return false; }
+    const t = knobs(), cs = host.cellSide(), [u, v] = frame(h, which), g = host.graph();
     const d = sub3(hs.p, h.pos), at = [dot3(d, u) / cs, dot3(d, v) / cs];
     let to = at, max = walk * dt;
     if (hs.radius != null) {
@@ -101,7 +110,7 @@ export function createSoftHunt(host) {
         const j = jabAt(tNow, hs.phase, hs.radius, t.jab);
         to = ringPoint(hs.bearing, j.radius);
         max = Math.max(max, ((Math.PI * Math.max(0, hs.radius - t.jab.depth)) / t.jab.seconds) * 1.15 * dt);
-        if (walk > 0 && jabPeaked(hs.t0, tNow, hs.phase, t.jab)) { taps++; host.tap?.(e); }
+        if (walk > 0 && jabPeaked(hs.t0, tNow, hs.phase, t.jab)) { if (which === 'rover') { bites++; host.bite?.(e); } else { taps++; host.tap?.(e); } }
       } else to = spot;
     }
     hs.t0 = tNow;
@@ -120,13 +129,15 @@ export function createSoftHunt(host) {
   }
 
   function state() {
-    let hunting = 0, atHull = 0, ringed = 0, atGate = 0;
+    let hunting = 0, atHull = 0, ringed = 0, atGate = 0, rover = 0, atRover = 0;
     for (const e of host.enemies?.() ?? []) {
       if (!e.alive || !e.hunt || !soft(e)) continue;
-      if (e.hunt.goal === 'hull') hunting++; else atGate++;
-      if (e.hunt.ringed) { ringed++; if (e.hunt.onRing) atHull++; }
+      if (e.hunt.goal === 'hull') hunting++; else if (e.hunt.goal === 'rover') rover++; else atGate++;
+      if (e.hunt.ringed) { ringed++; if (e.hunt.onRing) { if (e.hunt.on === 'rover') atRover++; else atHull++; } }
     }
-    return { hunting, atHull, ringed, atGate, taps };
+    return { hunting, atHull, ringed, atGate, taps, rover, atRover, bites };
   }
-  return { soft, pace, ringed: (e) => !!e.hunt?.ringed, place, wants: (e) => e.hunt?.goal === 'hull', state };
+  // the walking field a soft record follows to its goal (src/fx/enemy-step.js: huntExits), null for the gate
+  const fieldOf = (e) => (e.hunt?.goal === 'rover' ? host.roverField?.() ?? null : e.hunt?.goal === 'hull' ? host.field() : null);
+  return { soft, pace, ringed: (e) => !!e.hunt?.ringed, place, wants: (e) => e.hunt?.goal === 'hull' || e.hunt?.goal === 'rover', field: fieldOf, state };
 }

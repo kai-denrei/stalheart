@@ -23,6 +23,15 @@ const T = SOFT_HUNT, close = (a, b, eps, what) => assert(Math.abs(a - b) <= eps,
   assert.equal(huntGoal({ hullDist: 30, gateDist: -1 }, T), 'hull', 'no gate to walk to, the hull');
   assert.equal(huntPace('white', T, 'hull'), 1.6);   /* 1.35 until 2026-11-02 (round 4, note 1) */ assert.equal(huntPace('yellow', T, 'hull'), 1.25);
   assert.equal(huntPace('white', T, 'gate'), 1, 'the gate walk is the walk as it was');
+  // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the rover is a goal too; the hull keeps its bias over both
+  assert.equal(huntGoal({ hullDist: 20, gateDist: 9, roverDist: 4 }, T), 'rover', 'the nearer rover');
+  assert.equal(huntGoal({ hullDist: 4 + T.bias, gateDist: 9, roverDist: 4 }, T), 'hull', 'the hull within the bias of the rover: the escort draws them off');
+  assert.equal(huntGoal({ hullDist: 4 + T.bias + 1, gateDist: 9, roverDist: 4 }, T), 'rover', 'past the bias, the rover');
+  assert.equal(huntGoal({ hullDist: -1, gateDist: 3, roverDist: 4 }, T), 'gate', 'the nearer gate over the rover');
+  assert.equal(huntGoal({ hullDist: -1, gateDist: 4, roverDist: 4 }, T), 'rover', 'a tie with the gate: the rover');
+  assert.equal(huntGoal({ hullDist: -1, gateDist: -1, roverDist: 30 }, T), 'rover', 'nothing else to walk to');
+  assert.equal(huntGoal({ hullDist: 5, gateDist: 9, roverDist: -1 }, T), 'hull', 'no rover out: the rule as it was');
+  assert.equal(huntPace('white', T, 'rover'), 1.6, 'the hunt\'s walk at the rover too');
 }
 console.log('PASS the goal by walking distance (the hull within the bias, else the gate), the faster walk only at the hull');
 
@@ -142,6 +151,36 @@ const angle = (w, hull, e) => { const d = [e.pos[0] - hull.pos[0], e.pos[1] - hu
   assert(s3.hunting === 0 && s3.atGate === 8, `no hull: the gate (${JSON.stringify(s3)})`);
 }
 console.log('PASS the walk: eight whites from one side surround the hull on the ring, circle and jab short of the ram (a tap each), re-aim when it moves, go back to the lanes when it drives off, to the gate without it');
+// THE ROVER HUNTED (the economy design 2.6, 2026-11-12): the rover out (host.rover), the hull far off: six whites ring the rover and each jab's peak is a
+// bite (host.bite), not a tap; the hull driven up beside the rover draws them off (its bias); the rover gone home (null): the gate
+{
+  const w = world(), rover = { cur: w.idx(0, 0), pos: w.centers[w.idx(0, 0)].slice() }, hull = { cur: w.idx(18, 18), pos: w.centers[w.idx(18, 18)].slice() };
+  let roverOut = true, bites = 0;
+  const recs = Array.from({ length: 6 }, (_, k) => rec(w, 100 + k, 3, k - 3));
+  const fields = { hull: null, rover: null }, at = { hull: -2, rover: -2 };
+  const host = { hull: () => hull, field: () => fields.hull, rover: () => (roverOut ? rover : null), roverField: () => (roverOut ? fields.rover : null), graph: () => ({ adj: w.adj, centers: w.centers }), cellSide: () => w.cs,
+    open: (ci) => w.tags[ci] !== 0, tune: () => null, gateDist: () => 30, enemies: () => recs, tap: (e) => { e.taps = (e.taps ?? 0) + 1; }, bite: () => { bites++; } };
+  const sh = createSoftHunt(host);
+  let t = CLOCK.t;
+  const go = (secs) => { for (let f = 0; f < secs * 60; f++) { const dt = 1 / 60; t += dt;
+    for (const k of ['hull', 'rover']) { const g = k === 'hull' ? hull : rover; if (g.cur !== at[k]) { fields[k] = bfsDist(w.adj, [g.cur], (i) => w.tags[i] !== 0); at[k] = g.cur; } }
+    for (const e of recs) {
+      let pace = 0.5 * sh.pace(e, t); const ringPace = pace; if (sh.ringed(e)) pace = 0; e.prog += pace * dt;
+      while (e.prog >= 1) { e.prog -= 1; e.cur = e.next; const fl = sh.field(e); const ex = w.adj[e.cur].filter((c) => w.tags[c] !== 0 && fl && sh.wants(e) && fl[c] >= 0 && fl[c] < fl[e.cur]); e.next = ex.length ? ex[e.id % ex.length] : e.cur; }
+      const a = w.centers[e.cur], b = w.centers[e.next], f = Math.min(1, e.prog), q = [0, 1, 2].map((k) => a[k] + (b[k] - a[k]) * f), l = Math.hypot(...q); e.pos = q.map((v) => v / l);
+      sh.place(e, ringPace, dt, t);
+    } } CLOCK.t = t; };
+  go(20);
+  let st = sh.state();
+  assert.equal(st.rover, 6, `all six hunt the rover (${JSON.stringify(st)})`); assert(st.atRover >= 4, `on its ring (${JSON.stringify(st)})`);
+  assert(bites > 0 && st.bites === bites && !recs.some((e) => e.taps), `the jabs bite the rover, no hull taps (${bites})`);
+  hull.cur = w.idx(1, 0); hull.pos = w.centers[hull.cur].slice();   // the escort: the hull beside the rover outranks it
+  go(4); st = sh.state();
+  assert.equal(st.hunting, 6, `the hull beside it draws them off (${JSON.stringify(st)})`); assert.equal(st.rover, 0);
+  hull.cur = w.idx(18, 18); hull.pos = w.centers[hull.cur].slice(); roverOut = false; go(1); st = sh.state();
+  assert(st.atGate === 6 && st.ringed === 0, `the rover home, the hull far: the gate (${JSON.stringify(st)})`);
+}
+console.log('PASS the rover hunted beyond the walls: ringed and bitten, the hull beside it draws the hunters off, home it is no goal');
 {
   // a corridor two cells wide along x: the ring's spots across it are rock; they stand only on open cells, at both ends
   const w = world((i, j) => Math.abs(j) > 1), hull = { cur: w.idx(0, 0), pos: w.centers[w.idx(0, 0)].slice() };

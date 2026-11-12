@@ -3,9 +3,12 @@
 // src/content/soft-hunt.js, the walk src/fx/soft-hunt.js). Pure: which goal a soft body takes, where its spot on the ring round the hull is, when it
 // decides again, the jab's reach and the step toward a moving spot. Ring geometry is in the hull's tangent plane, in cells ([x, y] from its centre).
 //   isSoftHunter(tier, tune)                     a tier that hunts (tune.tiers)
-//   huntGoal({ hullDist, gateDist }, tune)       'hull' while the hull's walking distance is at most the gate's + tune.bias, else 'gate'; 'gate'
-//                                                when the hull cannot be reached (hullDist < 0 or not a number); a gate unknown (< 0) leaves the hull
-//   huntPace(tier, tune, goal)                   the walk's multiplier: tune.pace[tier] toward the hull, 1 toward the gate
+//   huntGoal({ hullDist, gateDist, roverDist }, tune)  the nearest goal by walking distance, the hull's counted tune.bias cells shorter: 'hull' while
+//                                                its distance is at most the gate's and the rover's + tune.bias, else 'rover' while the rover's is at
+//                                                most the gate's, else 'gate'; an unreachable goal (< 0 or not a number) is none; nothing reachable
+//                                                but the gate unknown: the hull, then the rover. THE ROVER HUNTED (the economy design 2.6, 2026-11-12):
+//                                                roverDist only while the rover is out beyond the walls (the host's call); without it, the rule of 2026-10-18
+//   huntPace(tier, tune, goal)                   the walk's multiplier: tune.pace[tier] toward the hull or the rover, 1 toward the gate
 //   firstDecision(id, now, every)                a new body's first decision, staggered over one `every` by its id (the golden ratio's spread)
 //   huntDue(hunt, now)                           its decision is due
 //   ringBearing(id, slots)                       its own bearing: its slot of the circle (id mod slots), and each later round of ids (id / slots)
@@ -23,13 +26,14 @@
 //                                                the hull to it, a flank, never through the hull's centre
 export const isSoftHunter = (tier, tune) => !!tier && !!tune?.tiers?.includes(tier);
 
-export function huntGoal({ hullDist, gateDist }, tune) {
-  if (!(hullDist >= 0)) return 'gate';
-  if (!(gateDist >= 0)) return 'hull';
-  return hullDist <= gateDist + (tune?.bias ?? 0) ? 'hull' : 'gate';
+export function huntGoal({ hullDist, gateDist, roverDist }, tune) {
+  const hull = hullDist >= 0 ? hullDist - (tune?.bias ?? 0) : Infinity, gate = gateDist >= 0 ? gateDist : Infinity, rover = roverDist >= 0 ? roverDist : Infinity;
+  if (hull === Infinity && rover === Infinity) return 'gate';
+  if (hull <= gate && hull <= rover) return 'hull';
+  return rover <= gate ? 'rover' : 'gate';
 }
 
-export const huntPace = (tier, tune, goal) => (goal === 'hull' ? tune?.pace?.[tier] ?? 1 : 1);
+export const huntPace = (tier, tune, goal) => (goal === 'hull' || goal === 'rover' ? tune?.pace?.[tier] ?? 1 : 1);
 
 const PHI = 0.6180339887498949;
 export const firstDecision = (id, now, every) => now + (((id * PHI) % 1) + 1) % 1 * every;

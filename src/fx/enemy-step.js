@@ -294,6 +294,15 @@ export function createEnemyStep(host) {
     if (hunt && huntCur === cur && tNow - huntAt < 1) return;
     hunt = bfsDist(host.graph().adj, [cur], (i) => host.dungeon().tags[i] !== BLOCKED); huntAt = tNow; huntCur = cur;
   }
+  // THE ROVER'S FIELD (the economy design 2.6, 2026-11-12): the same walk from the rover's cell while it is out beyond the walls (host.rover(), src/fx/rover-glue.js
+  // prey) and a soft body lives; refreshed as the hull's is
+  let roverHunt = null, roverAt = -9, roverCur = -1;
+  function roverField(tNow) {
+    const r = host.rover?.() ?? null;
+    if (!r || !(r.cur >= 0) || !host.enemies.some((e) => e.alive && softHunt.soft(e))) { roverHunt = null; return; }
+    if (roverHunt && roverCur === r.cur && tNow - roverAt < 1) return;
+    roverHunt = bfsDist(host.graph().adj, [r.cur], (i) => host.dungeon().tags[i] !== BLOCKED); roverAt = tNow; roverCur = r.cur;
+  }
   // THE NEST'S WAY ROUND THE LANDER (round 7, note 1; src/domain/guard-aggro.js hullField): the walking hops from the hull's cell over the floor a guard
   // may stand on (no rock, nothing solid of the base), out to the farthest nest's aggro reach; made when a guard first asks after the hull changes cell
   let nestField = null, nestFieldCur = -1, nestFieldHops = 0;
@@ -309,6 +318,7 @@ export function createEnemyStep(host) {
   // the Tank, they flank and surround and try to attack it although they cannot, or b) the gates, whichever is closer"; src/fx/soft-hunt.js, SOFT_HUNT). It
   // replaces PEARL_HUNT (2026-10-16: within 10 cells by the crow's flight, at the tank's cell): the goal by walking distance, the faster walk at the hull, the ring
   const softHunt = createSoftHunt({ hull: () => (host.player?.cur >= 0 && !host.playerDown() && host.playerHP() > 0 && !host.story()?.hull?.held?.() ? host.player : null), field: () => hunt, graph: () => host.graph(), cellSide: () => host.cellSide(), enemies: () => host.enemies, tune: () => host.params.tune?.hunt ?? null, tap: (e) => host.creatures?.()?.tap?.(e),
+    rover: () => host.rover?.() ?? null, roverField: () => roverHunt, bite: (e) => host.bite?.(e),   // the rover hunted beyond the walls (the economy design 2.6, 2026-11-12)
     open: (ci) => host.dungeon().tags[ci] !== BLOCKED && !host.story()?.sealed(ci),
     // the gate's walking distance as `distToHeart[ci] - distToHeart[gate cell]`: exact only while the story gate lies on the shortest path from the cell to the
     // heart; with the back door open a cell can reach the heart another way, and the difference undercounts (it is then at most the true distance to the gate)
@@ -340,7 +350,7 @@ export function createEnemyStep(host) {
   function updateEnemies(dt, tNow) {
     floorsNow = host.gameBreaches.floors?.() ?? [];
     const holes = (host.gameBreaches.craters?.() ?? []).map((k) => { const l = Math.hypot(k.p[0], k.p[1], k.p[2]); return { c: [k.p[0] / l, k.p[1] / l, k.p[2] / l], R: (k.r + CRATER_DODGE.pad) * host.cellSide() }; });   // the open holes, once a frame (round 4, note 6)
-    huntField(tNow); unpackSquads(tNow);
+    huntField(tNow); roverField(tNow); unpackSquads(tNow);
     releaseSpawns(dt);
     for (const e of host.enemies) {
       if (!e.alive) continue;
@@ -446,7 +456,8 @@ export function createEnemyStep(host) {
         // wobble left so the streams braid but visibly converge
         const exits = host.openNeighbors(e.cur).filter((c) => !host.story()?.sealed(c));   // a closed story gate is a wall to them
         let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, host.graph().centers, e.cur, e.scareFrom); if (away.length) pool = away; }
-        if (!pool && hunt && (e.hunter || softHunt.wants(e))) { const h = huntExits(exits, hunt, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js); a soft one too, when the hull is its goal (SOFT_HUNT)
+        const hf = e.hunter ? hunt : softHunt.field(e);   // the hull's walk, or a soft body's goal's (the hull or the rover)
+        if (!pool && hf && (e.hunter || softHunt.wants(e))) { const h = huntExits(exits, hf, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js); a soft one too, when the hull is its goal (SOFT_HUNT)
         if (!pool) pool = seekExits(exits, host.dungeon().distToHeart, e.cur, host.whim()(), WALK_BIAS);   // the walk leans on the heart (WALK_BIAS; owner, 2026-10-15: "a much stronger bias to head towards the base")
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (e.guard) { const hull = host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, near = hull && Math.hypot(hull[0] - e.guard.c[0], hull[1] - e.guard.c[1], hull[2] - e.guard.c[2]) < e.guard.r * STORY_EXPEDITIONS.aggro; pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull, aggro: STORY_EXPEDITIONS.aggro, field: near ? guardField(e.guard) : null }); } else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }

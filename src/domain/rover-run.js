@@ -21,7 +21,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createRoverRun(tune, home, heading = 0) {
   return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null, fled: null,
-    skip: new Set(), trips: 0, delivered: 0, harvested: 0, note: '', events: [], rake: 0, pour: 0 };
+    skip: new Set(), trips: 0, delivered: 0, harvested: 0, bitten: 0, note: '', events: [], rake: 0, pour: 0 };
 }
 
 const note = (run, now, ev, extra = {}) => { run.events.push({ t: +now.toFixed(2), ev, mode: run.mode, cargo: Math.round(run.cargo), ...extra }); if (run.events.length > 64) run.events.shift(); };
@@ -162,6 +162,16 @@ export function settleBreak(run, now, host) {
   return out;
 }
 
+// THE ROVER BITTEN (the economy design 2.6, 2026-11-12: "each jab's peak eats 100 kg from its hold (lost) ... No hit points; it cannot be destroyed"):
+// up to `kg` off the cargo, returned; run.bitten counts what was lost
+export function bite(run, kg, now = 0) {
+  const n = Math.max(0, Math.min(run.cargo, kg));
+  if (!(n > 0)) return 0;
+  run.cargo -= n; run.bitten = (run.bitten ?? 0) + n; note(run, now, 'bitten', { kg: Math.round(n) });
+  return n;
+}
+// the lattice cell it stands on, on its road or at a pile (the hunters' goal cell)
+export const roverCell = (run) => here(run);
 // what the readouts say: the mode's word and the kg aboard (the hull console's ROVER line)
 export function roverWord(run) {
   if (run.mode === 'full') return 'STORAGE FULL';

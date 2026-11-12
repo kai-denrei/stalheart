@@ -15,6 +15,10 @@
 //   breakHome()                  the sector's end (src/fx/sector-run.js finish, before the report): THE ROVER FINISHES ITS RUN DURING THE BREAK,
 //                                the hold and the flagged ground banked under the cap (src/domain/rover-run.js settleBreak), the flares gone
 //   hud()                        the HUD's FIELD number beside the bank; ground() the kg on the ground (the debrief's ON THE GROUND)
+//   prey()                       THE ROVER HUNTED (the economy design 2.6, 2026-11-12): { pos, cur } while it is away from home on a cell beyond the
+//                                walls (the soft hunt's goal, src/fx/soft-hunt.js through src/fx/enemy-step.js), else null
+//   bite(e)                      a hunter's jab at its peak: ROVER.threat.bite kg off the hold (lost), ROVER UNDER ATTACK at most every threat.every s,
+//                                Isao's rover_bitten the first time
 //   test                         the acceptance harness's hands (window.__stalheartTest.rover): state(), flareAt(cell), collect(), fillPearls(), spend(kg)
 // THE SLAB UNDER THE ROVER: stream A of round 8 adds the story base's floorAt for things on slabs; until it lands, the depot island's own tangent
 // plane lifts the rover where it stands on that slab (liftAt below). The integrator may swap it for floorAt. Elsewhere it rides the sphere.
@@ -22,7 +26,7 @@
 //        playerHP(), pilotMode(), briefQ(), wire(), enemies() (the live records: { alive, pos }), atBase() (the hull on a repair spot)
 import * as THREE from '../../vendor/three.module.js';
 import { createField } from '../domain/biomass-field.js';
-import { createRoverRun, dispatch, stepRover, roverWord, settleBreak } from '../domain/rover-run.js';
+import { createRoverRun, dispatch, stepRover, roverWord, settleBreak, bite, roverCell } from '../domain/rover-run.js';
 import { createPearls } from '../domain/bio-pearls.js';
 import { hasPerk } from '../domain/build-programme.js';
 import { ROVER, FIELD, PEARLS, PILE_LOOK, FLARE, ROVER_WORDS } from '../content/rover.js';
@@ -139,6 +143,13 @@ export function createRoverGlue(h) {
     if (!S.hinted && S.field.total() >= ROVER_WORDS.hintKg && quiet) { S.hinted = true; h.showBrief?.(ROVER_WORDS.hint); }
     if (!S.fullSaid && r.mode === 'full' && quiet) { S.fullSaid = true; h.showBrief?.(ROVER_WORDS.fullBrief); }
   }
+  // THE ROVER HUNTED: the soft hunt's goal while it is away on a cell beyond the walls
+  function prey() {
+    if (!live() || !S?.built || S.story !== h.story() || S.run.mode === 'idle' || S.run.mode === 'unload' || S.run.mode === 'full') return null;
+    const cur = roverCell(S.run), p = S.rover?.point(); if (!(cur >= 0) || !p || h.story().inside?.(cur)) return null;
+    const l = Math.hypot(p[0], p[1], p[2]) || 1;
+    return { pos: [p[0] / l, p[1] / l, p[2] / l], cur };
+  }
   return {
     payKill(bounty, opts, cell) {
       const on = fielded();
@@ -185,6 +196,15 @@ export function createRoverGlue(h) {
     },
     // THE FIRST HARVEST (2026-11-12, src/fx/first-harvest.js): kg laid on a cell's ground as a kill's pay would lie there (the first wave fell before the depot stood)
     lay(cell, kg) { if (!fielded() || !(kg > 0)) return false; S.field.drop(cell, kg, h.t()); return true; },
+    prey,
+    bite() {
+      if (!live() || !S?.built) return 0;
+      const n = bite(S.run, ROVER.threat.bite, h.t()); if (!(n > 0)) return 0;
+      const now = h.t();
+      if (now - (S.attackedAt ?? -1e9) >= ROVER.threat.every) { S.attackedAt = now; h.showToast?.(`<div class="wave-num">${ROVER_WORDS.attacked}</div>`, 1800); }
+      if (!S.bittenSaid) { S.bittenSaid = true; h.showBrief?.(ROVER_WORDS.bitten); }
+      return n;
+    },
     hud: () => (fielded() && (S.built || S.field.total() > 0) ? ` <span class="hud-field">${ROVER_WORDS.field} ${kgText(S.field.total())} kg</span>` : ''),
     ground: () => (fielded() ? Math.round(S.field.total()) : 0),
     test: {
@@ -193,12 +213,13 @@ export function createRoverGlue(h) {
         const r = S.run;
         return { live: live(), built: true, mode: r.mode, word: roverWord(r), cargo: +r.cargo.toFixed(1), cell: r.cell, home: r.home, trips: r.trips, delivered: Math.round(r.delivered), harvested: Math.round(r.harvested),
           order: r.order?.id ?? null, queued: r.queued?.id ?? null, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
-          field: Math.round(S.field.total()), piles: S.field.size(), rotted: Math.round(S.field.rotted()), seeped: Math.round(S.field.seeped()), drawn: S.piles.count(), pearls: S.pearls.list().map((v) => Math.round(v.stored)), cap: S.pearls.capacity(), bank: h.eco().biomass,
+          field: Math.round(S.field.total()), piles: S.field.size(), rotted: Math.round(S.field.rotted()), seeped: Math.round(S.field.seeped()), bitten: Math.round(r.bitten ?? 0), prey: !!prey(), drawn: S.piles.count(), pearls: S.pearls.list().map((v) => Math.round(v.stored)), cap: S.pearls.capacity(), bank: h.eco().biomass,
           flares: S.flares.live(), stock: S.stock, threat: host.threat(null), fled: r.fled, lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
       },
       // a flare at a lattice cell, as F drops one under the hull (the suite's and the ledger's flagging hand)
       flareAt: (cell) => { if (!S?.built) return null; const f = S.flares.drop(centers()[cell], cell, h.t()); dispatch(S.run, { id: f.id, cell }); return f; },
       richest: () => (fielded() ? S.field.richest(ROVER.reach, cellsApart) : null),
+      lay: (cell, kg) => (fielded() && kg > 0 ? !!S.field.drop(cell, kg, h.t()) : false),   // kg laid on a cell's ground (the --rover suite's hunted pages)
       // THE IDEAL HARVEST (the --board and --ledger stand-in, as sectorCull stands in for the fighting): every pile into the pearls at once
       collect: () => { if (!fielded()) return 0; let n = 0; for (const p of S.field.piles()) { const got = h.eco().deposit(p.kg); S.field.take(p.cell, got, h.t()); n += got; } S.pearls?.settle(h.eco().biomass); return n; },
       fillPearls: () => { const room = h.eco().cap - h.eco().biomass; if (Number.isFinite(room) && room > 0) h.eco().addBiomass(room, { category: 'grant' }); return h.eco().biomass; },

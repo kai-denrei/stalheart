@@ -2613,6 +2613,7 @@ export function initTdTab(root) {
     rubble: (o) => emergeBlobs.rubble(o),   // the boss breaks the surface: the drop's rock chunks from the lip, no blob (2026-10-23)
     hullKmh: () => hullConsole.kmh(),   // a Reed is rammable by a hull fast enough (2026-10-16)
     payKill: (b, o, ci) => roverGlue.payKill(b, o, ci),   // a ram's pay on the ground for the rover (round 8 note 7)
+    rover: () => roverGlue.prey(), bite: (e) => roverGlue.bite(e),   // the rover hunted beyond the walls, each jab off its hold (2026-11-12)
     disposeObj,
     gameBreaches,
     spawnQueue,
