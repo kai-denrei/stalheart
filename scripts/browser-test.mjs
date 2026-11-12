@@ -1013,8 +1013,8 @@ try{
   assert(talk.every(r=>r[2]===true&&r[3]===false),'every frame of the talk still the intact rocket: the swap waits for the frame');
   assert(L.slice(L.findIndex(r=>r[0]==='arrival'),end).every(r=>r[0]==='arrival'||r[0]==='arrivalTalk'),'nothing between the two shots');
   await until('window.__arrivalSwapped===true',250000).catch(()=>{});
-  {const L2=await evaluate('window.__arrival'),k=L2.findIndex(r=>r[3]===true);console.log(`  grow: the swap ${k<0?'not yet':`at frame ${k} of ${L2.length} (shot ${L2[k][0]||'-'}, the frame before it in view: ${L2[k-1]?.[10]})`}`);
-   assert.ok(k>0,'the salvage shown in the end');assert.equal(L2[k-1][10],false,'the frame before the swap had the rocket out of the frame (or small in it)');}
+  {const L2=await evaluate('window.__arrival'),k=L2.findIndex(r=>r[3]===true);console.log(`  grow: the swap ${k<0?'not yet':`at frame ${k} of ${L2.length} (shot ${L2[k][0]||'-'}, the rocket in view on the frame before ${L2[k-1]?.[10]}, on the swap's own ${L2[k][10]})`}`);
+   assert.ok(k>0,'the salvage shown in the end');assert.equal(L2[k][10],false,'the swap\'s frame had the rocket out of the frame (or small in it)');}
   const lines=[...new Set(L.map(r=>r[6]).filter(Boolean))];
   /* all three over the held shot (the owner's second playtest: "Isao saying he'll cannibalize the rocket to get started with terraforming") */
   const onFace=[...new Set(talk.map(r=>r[6]).filter(Boolean))];
