@@ -1568,6 +1568,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.equal(s1.biomass-b0,cat(s1.ledger)-cat(L0),`the bank moved only by credits that are not kills (${b0} -> ${s1.biomass})`);assert.equal(r1.drawn,r1.piles,'every pile drawn');
  {const hud=await evaluate(`document.querySelector('.hud-field')?.textContent??''`);assert.match(hud,/^FIELD [\d,]+ kg$/,`the HUD's field number (${hud})`);}
  await evaluate(`${T}.sectorQuiet(true)`);
+ await evaluate(`${T}.sectorCull(999,'tank')`);await delay(400);   // the ground clear: with more than two bodies round the flare the rover holds at home (ROVER.retreat, 2026-11-10)
  // the flare: the hull on the richest ground, F
  const rich=await evaluate(`${T}.rover.richest()`);await evaluate(`${T}.placeTank(${rich.cell})`);await delay(300);
  await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);
