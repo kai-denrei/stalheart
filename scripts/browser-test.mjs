@@ -1739,22 +1739,39 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),dog=()=>evaluate(`${T}.dog.state()`),{DOG_SCOUT}=await import('../src/content/dog-scout.js');
  const {makeLandingSequence}=await import('../src/domain/landing-sequence.js'),{STORY_ARRIVAL}=await import('../src/content/story-defaults.js'),STORY_ARRIVAL_T={isao:makeLandingSequence(STORY_ARRIVAL.landing).isaoAt};
  // THE BUDGET (the economy design 2.7, 2026-11-12): no start bank; the automatic landing's salvage (HARD's three barrels); the bank at each beat as DOG BUDGET
- const {LANDING_GAME}=await import('../src/content/landing-game.js'),SALV=LANDING_GAME.salvage.HARD,SALVAGE=SALV.sections*SALV.feedstockPerBarrel+SALV.bonus*SALV.feedstockPerBarrel,budget=[];
+ // OPENING GRADES (2026-11-13): GRADE=CLEAN|HARD|WRECK (HARD is the automatic landing, the default) plays the same opening from a landing of that grade (CLEAN and WRECK
+ // are flown by a scripted pilot, the --landing suite's two) and stops at THE FIRST ORDERS' card: the bank there, the cards, every pair the board lets be picked; prints OPENING GRADES
+ const GRADE=process.env.GRADE||null,FLOWN=!!GRADE&&GRADE!=='HARD';assert.ok(!GRADE||['CLEAN','HARD','WRECK'].includes(GRADE),`GRADE is CLEAN, HARD or WRECK (${GRADE})`);
+ const {LANDING_GAME}=await import('../src/content/landing-game.js'),SALV=LANDING_GAME.salvage[GRADE||'HARD'],SALVAGE=SALV.sections*SALV.feedstockPerBarrel+SALV.bonus*SALV.feedstockPerBarrel,budget=[];
  const PH=`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`;
  const KEYS={w:['w','KeyW',87],a:['a','KeyA',65],d:['d','KeyD',68],shift:['Shift','ShiftLeft',16]},held={};
  const hold=async(k,on)=>{if(!!held[k]===on)return;held[k]=on;const [key,code,vk]=KEYS[k];await send('Input.dispatchKeyEvent',{type:on?'keyDown':'keyUp',key,code,windowsVirtualKeyCode:vk,...(on&&key.length===1?{text:key}:{})});};
  const letGo=async()=>{for(const k of Object.keys(KEYS))await hold(k,false);};
  const marks=[],mark=async(what)=>{const s=await st();marks.push([what,s.story.clock]);console.log(`  dog: ${what} at story clock ${s.story.clock}`);};
- await go('dog-scout','index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1#td');
+ await go('dog-scout',`index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1${FLOWN?'&landing=1':''}#td`);
  await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);await evaluate(CAM_LOG);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
  const b0=(await st()).biomass;assert.equal(b0,0,`no start bank (${b0})`);budget.push(['landing',b0]);
+ // THE FLOWN LANDING (GRADE=CLEAN or WRECK): `?landing=1`, the signature skipped by the harness (as Esc), the --landing suite's scripted pilot (CLEAN: the burn 30 m early; WRECK: 6 m late)
+ // to the contact; the grade it earned must be the one asked for. Everything after the deploy is the same page as the automatic landing's.
+ if(FLOWN){
+  const A=`${T}.state().arrival`,LD=`${A}.landing`,why=async(w)=>assert.fail(`${w} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,manual:a.manual,signature:a.signature,landing:a.landing})(${A})`))})`);
+  const pilotAt=(margin)=>`(()=>{const T=window.__stalheartTest;(function f(){const L=T.state().arrival?.landing;if(!L||L.phase==='done'||L.phase==='touched')return;if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.along*0.3)),e=want-L.vx,tiltWant=Math.max(-0.35,Math.min(0.35,e*0.08)),tr=Math.max(-1,Math.min(1,(tiltWant-L.tilt)*6));T.landing('input',{throttle:stop+${margin}>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}requestAnimationFrame(f);})();})()`;
+  await until(`${A}?.phase==='landing'&&${A}.signature===true`,120000).catch(()=>why('the flown landing begins under its signature'));
+  assert.equal(await evaluate(`${T}.landing('skip')`),'signature','the harness skips the signature');
+  await until(`${LD}?.phase==='manual'`,45000).catch(()=>why('MANUAL'));
+  await evaluate(pilotAt(GRADE==='CLEAN'?30:-6));
+  await until(`(L=>!L||L.phase==='done')(${LD})||${A}.phase!=='landing'`,90000).catch(()=>why('the pilot to the contact'));await delay(400);
+  const g=(await evaluate(A)).landing;console.log(`  grades: the flown landing: ${JSON.stringify(g)}`);
+  assert.equal(g?.grade,GRADE,`the pilot lands ${GRADE} (${JSON.stringify(g)})`);
+ } else {
  // THE HELD SHOT (note 1): the door open and Isao climbing out, then his lines on the same framing (stills); the swap waits off screen
  await until(`(a=>a.phase==='landing'&&a.t>=${STORY_ARRIVAL_T.isao}+${STORY_ARRIVAL.landing.isao})(${T}.state().arrival)`,120000).catch(async()=>assert.fail(`the held shot on the rocket (${JSON.stringify((await st()).arrival)})`));
  {const a=(await st()).arrival;assert.ok(a.hold&&a.rocket===true&&a.isao?.visible,`the rocket held, Isao out of it (${JSON.stringify({hold:a.hold,rocket:a.rocket,isao:a.isao,t:a.t})})`);current='dog-landing-door';await finish();}
  await until(`(a=>a.phase!=='landing'&&(a.phase!=='talk'||a.talkT>=1.2))(${T}.state().arrival)`,60000);
  {const s=await st(),a=s.arrival;console.log(`  dog: the talk on the held shot: ${JSON.stringify({shot:s.shot,phase:a.phase,hold:a.hold,rocket:a.rocket,salvage:a.salvage,fov:a.fov})}`);
   if(a.phase==='talk'){assert.equal(s.shot,'arrivalTalk');assert.ok(a.fov>60,`no long lens on his face (${a.fov})`);assert.equal(a.rocket,true,'the intact rocket still on screen: the swap waits');current='dog-landing-talk';await finish();}}
+}
  await until(`${T}.state().story.phase==='dog-print'`,120000).catch(async()=>assert.fail(`the deploy into the dog's print (${JSON.stringify((await st()).story)})`));await mark('deploy: the dog\'s print asked');
  {const s=await st();assert.notEqual(s.shot,'sitesTour','no landers\' tour on the dog\'s opening');}
  {const s=await st();assert.equal(s.towers,0,'no Rotor at the deploy');assert.equal(s.biomass,b0+SALVAGE,`the whole salvage at the deploy (${b0} -> ${s.biomass})`);budget.push(['salvage',s.biomass]);assert.equal(s.programme.printed.length,0,'nothing printed: no gate, no Stålheart');}
@@ -1767,7 +1784,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.equal(await evaluate(`document.querySelectorAll('.dog-scout-hud > div').length`),NP+2,'a marker a point, the home marker and the line');
  // ONE MOVE (note 1): from the touchdown's held shot to the chase settled behind the dog, no frame cuts
  await delay((DOG_SCOUT.camera.easeIn+1)*1000);
- {const L=await evaluate('window.__camLog'),from=L.findIndex(r=>r[6]),to=L.length,c=camCuts(L.slice(from,to));
+ if(!FLOWN){const L=await evaluate('window.__camLog'),from=L.findIndex(r=>r[6]),to=L.length,c=camCuts(L.slice(from,to));
   console.log(`  dog: the camera from the touchdown to the seat: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
   assert.ok(from>=0,'the held shot began');assert.deepEqual(c.cuts,[],'no cut from the touchdown to the dog\'s seat');
   assert.ok(!c.shots.includes('sitesTour'),'no landers\' tour');for(const id of ['arrivalTalk','petPrint','dogScout'])assert.ok(c.shots.includes(id),`${id} on the way`);await evaluate('window.__camStop=true');}
@@ -1815,9 +1832,17 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const r=await evaluate(`${T}.rover.state()`);await mark(`the rover home (${r.trips} trip, ${r.delivered} kg)`);budget.push(['first harvest poured',r.delivered]);}
  await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,30000).catch(async()=>assert.fail(`THE FIRST ORDERS (${JSON.stringify((await st()).board)})`));await mark('THE FIRST ORDERS');
  {const s=await st(),bd=s.board;console.log(`  dog: the card: bank ${bd.bank}; ${bd.offers.map(o=>`${o.id} ${o.price}`).join(' · ')}`);
-  budget.push(['card',bd.bank]);assert.equal(s.paused,true);assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'four cards at x10: the Rotor stands, so the SECOND ROTOR');
+  budget.push(['card',bd.bank]);assert.equal(s.paused,true);if(!GRADE||GRADE==='HARD')assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'four cards at x10: the Rotor stands, so the SECOND ROTOR');
   assert(!s.programme.printed.includes('stalheart')&&s.programme.active!=='stalheart','the Stålheart waits for the card');}
  current='dog-first-orders';await finish();
+ if(GRADE){
+  // OPENING GRADES: what the card lets be picked with this bank, asked of the board itself: every single card and every pair (the board refuses a pick it cannot pay, and a third)
+  const bd=(await st()).board,ids=bd.offers.map(o=>o.id),picks=async(list)=>{for(const id of list)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);const p=(await st()).board.picked.slice();for(const id of p)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);return p;};
+  const singles=[],pairs=[];for(const a of ids)if((await picks([a])).length===1)singles.push(a);
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++)if((await picks([ids[i],ids[j]])).length===2)pairs.push([ids[i],ids[j]]);
+  const prices=Object.fromEntries(bd.offers.map(o=>[o.id,o.price])),laid=Math.round((await st()).ledger.field);
+  console.log(`OPENING GRADES ${JSON.stringify({grade:GRADE,flown:FLOWN,salvage:SALVAGE,bank:bd.bank,prices,affordable:singles,pairs:pairs.map(p=>p.join(' + ')),pairsOf:`${pairs.length}/${ids.length*(ids.length-1)/2}`,laidAtCard:laid,budget})}`);
+ } else {
  for(const id of ['sentry:rotor','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
  await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
  {const s=await st();budget.push(['after the card',s.biomass]);assert.deepEqual(s.board.last.took,['sentry:rotor','build:foundry'],'both placed: the second Rotor on the wall');assert.equal(s.biomass,budget.at(-2)[1]-850,`the second Rotor and the foundry's work paid (450 + 400): ${s.biomass}`);}
@@ -1830,7 +1855,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await delay(1000);current='dog-sector-0';await finish();
  // THE SECOND ROTOR stands on the wall beside the first (measured 2026-11-12: 14 s after the card, during sector 0; the wait allows for it queuing behind the Stålheart's print)
  await until(`${T}.state().towers>=3`,300000).catch(async()=>assert.fail(`the second Rotor printed after the Stålheart (${JSON.stringify((await st()).programme)}, ${(await st()).towers} sentries)`));await mark('the second Rotor stands');
- console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);
+ }
+ if(!GRADE)console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);
  {const d=marks[0][1],seat=marks.find(m=>/Rotor\'s seat/.test(m[0]));console.log(`DOG FROM THE DEPLOY ${JSON.stringify(marks.map(([w,c])=>[w,+(c-d).toFixed(1)]))}`);if(seat)console.log(`  dog: the Rotor's seat ${(seat[1]-d).toFixed(1)} s of story clock after the deploy`);}console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
  } else if(args.includes('--flow')) {
  // THE FLOW OF STAGES (owner, 2026-11-12: "first we want the flow of stages"; the audit docs/FLOW.md): one story page played end to end by harness
