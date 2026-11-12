@@ -70,7 +70,7 @@ export function createBuildBoard(c) {
   const div = (cls, text, tag = 'div') => { const el = document.createElement(tag); el.className = cls; if (text != null) el.textContent = text; return el; };
   function render() {
     if (!card) return;
-    const b = bank(), paid = totalOf(offers, picked);
+    const b = bank(), paid = totalOf(all(), picked);
     card.querySelector('.bb-bank').textContent = `${b - paid} kg left of ${b} kg`;
     card.querySelectorAll('.bb-tile').forEach((el, i) => {
       const o = all()[i], on = picked.includes(o.id), base = o.kind === 'dome' ? picked.filter((p) => !p.startsWith('dome:')) : picked, can = on || togglePick(all(), base, o.id, b, BUILD_BOARD.picks) !== base;

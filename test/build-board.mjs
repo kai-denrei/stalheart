@@ -201,6 +201,8 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
     key('w'); assert.deepEqual(bb3.state().picked, ['dome:research'], 'a second kind takes the first one\'s place: one dome a board');
     key('q'); bb3.test.cell('se'); key('1');
     assert.deepEqual(bb3.state().picked, ['dome:logistics', 'build:board'], 'a dome and a card');
+    { const card3 = root.children.at(-1), paid = 3200 + BUILD_BOARD.structures.board.price;   // the first --colony-grid run showed "-Infinity kg left": the total read the first row alone
+      assert.equal(card3.querySelector('.bb-bank').textContent, `${20000 - paid} kg left of 20000 kg`); assert.equal(card3.querySelector('.bb-go').textContent, `${BUILD_BOARD.words.go} · ${paid} kg`); }
     key('Enter');
     assert.equal(went3, 1); assert.ok(pg3.bought.has('dome-se'), 'the cell is bought'); assert.deepEqual(kindOf(pg3, pg3.steps.find((x) => x.id === 'dome-se')), { kind: 'logistics', perk: 'armory' }, 'as LOGISTICS, its perk with it');
     assert.deepEqual(assigned, [['se', 'logistics']], 'its module assigned');
