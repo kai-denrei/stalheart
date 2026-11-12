@@ -55,7 +55,7 @@ import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroun
 import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js'; import { createHudDim } from './fx/hud-dim.js';
 import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js'; import { REINFORCEMENTS } from './content/reinforcements.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
 import { createCompanions } from './fx/companions.js'; import { createPetPrint } from './fx/pet-print.js'; import { createAntennaPrint } from './fx/antenna-print.js';   // C-07 AND RECKON K9, THE BASE COMPANIONS (owner, 2026-10-27)
-import { createDogScout } from './fx/dog-scout.js';   // THE RECON DOG'S SEAT (2026-11-12)
+import { createDogScout } from './fx/dog-scout.js'; import { createFirstHarvest } from './fx/first-harvest.js';   // THE RECON DOG'S SEAT AND THE FIRST HARVEST (2026-11-12)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { setWireframe, wireCount } from './fx/model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the sentries, the hull and the Ridgebacks drawn as the briefings' wireframe; the gunship and SOL as they are
 import { createSyntheticModal } from './fx/synthetic-modal.js';
@@ -4671,6 +4671,7 @@ export function initTdTab(root) {
     hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
     shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base), spriteShot, towerLook: () => params.towerLook });
   const firstOrders = createFirstOrders({ board: buildBoard, story: () => story, touring: () => storyApi.touring(), pause: (v) => { paused = !!v; }, brief: (id) => briefs.want(id), acceptance: flags.acceptance === '1', wanted: storyQuery.first });   // THE FIRST ORDERS (2026-11-08, THE SETTLING; src/fx/first-orders.js); want: the scouting line waits for a busy panel (--settling saw showBrief's one-deep slot drop it behind the Stålheart's lines)
+  const firstHarvest = createFirstHarvest({ rover: () => roverGlue.test.state(), lay: (ci, kg) => roverGlue.lay(ci, kg), flareAt: (ci) => roverGlue.test.flareAt(ci), story: () => story, graph: () => graph, dungeon: () => dungeon });   // THE FIRST HARVEST on the dog's opening (2026-11-12; src/fx/first-harvest.js)
   // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
   const endingHost = createEndingHost({
     storyBase: () => storyBase,
@@ -4791,7 +4792,7 @@ export function initTdTab(root) {
     bossBegin: bossRun.begin, bossEnd: bossRun.end, arenaDue: () => bossRun.arenaDue(), bossTalking: () => bossRun.talking(),   // THE ARENA sector (src/fx/boss-run.js): its breach opens once the hull is at the beacon
     descent: (then) => descentHost.begin(then),   // THE DESCENT before the ending (src/fx/descent-host.js)
     printNow: (id, then) => !!petPrint?.printNow(id, then),
-    dog: () => dogScout,   // THE RECON DOG's seat for the beats (src/domain/story-beats.js scout; src/fx/dog-scout.js)
+    dog: () => dogScout, harvest: () => firstHarvest, orders: () => firstOrders,   // THE RECON DOG's seat, the first harvest and the first orders for the beats (src/domain/story-beats.js scout)
     breakSide: canyonRun.breakSide,
     repaired: programme.repaired,
     printed: programme.printed,

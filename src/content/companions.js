@@ -99,8 +99,7 @@ export const COMPANIONS = freeze({
   // ISAO PRINTS THEM (owner, 2026-10-30: "the robot cat should not already be on the planet when we land, let's spawn it after; include a skippable
   // scene where Isao whimsically prints the cat because he wants a companion. Close up on the creation, showing various angles." / "same with the
   // Cheetah later."). Neither stands on the clearing at landing; each is born by Isao's print (src/fx/pet-print.js, the rules src/domain/pet-print.js).
-  //   prints.order     the units' ids in the order Isao prints them: SWAP THE TWO IDS to print the dog first (the triggers stay in place: the first
-  //                    trigger is always the first print's)
+  //   prints.order     the units' ids in the order Isao prints them (the triggers stay in place: the first trigger is always the first print's)
   //   prints.triggers  one per print, in order: `phase` the story beat reached (src/domain/automation.js STORY_PHASES: 'expedition' is the handover
   //                    done, the Stålheart up, the hull the player's and the sites shown), `perk` a programme perk held ('uplink': the radar printed,
   //                    sector 2's step), `days` in-game days since the print before it; then `delay` game seconds with every gate held, then the
@@ -120,10 +119,13 @@ export const COMPANIONS = freeze({
   //                    print asked for now may wait on a running shot before the debrief goes without it: past the FEIDS-26 drop's 28 s cut, which
   //                    takes the camera as the arena's seat is left when the four were held by it (measured on ?boss=1)
   prints: {
-    order: ['c07', 'k9', 'k0', 'mech'],
+    // THE RECON DOG FIRST (2026-11-12, spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 2.E): RECKON K9 is printed by the beats at
+    // `dog-print` on the story's own start (src/fx/dog-scout.js print, forced) and stands born on a chapter, SKIP TUTORIAL and a static stage; its
+    // trigger here is the fallback of an opening without the dog (?settle=N). C-07 keeps the first quiet moment of the expedition, a day after the dog
+    order: ['k9', 'c07', 'k0', 'mech'],
     triggers: [
-      { phase: 'expedition', delay: 20, patience: 150, brief: 'pet_print_first' },   // the colony up, the first wave dealt with, the hull the player's: the first quiet moment after
-      { phase: 'expedition', perk: 'uplink', days: 3, delay: 10, patience: 150, brief: 'pet_print_second' },   // "later": three days on and the radar up
+      { phase: 'expedition', delay: 20, patience: 150, brief: 'dog_print' },   // the dog: the beats' own print at `dog-print`; this only where the opening had no dog
+      { phase: 'expedition', days: 1, delay: 20, patience: 150, brief: 'pet_print_first' },   // C-07: the colony up, the first wave dealt with, the hull the player's: the first quiet moment after
       { phase: 'expedition', perk: 'farm', days: 2, delay: 10, patience: 150, brief: 'pet_print_third' },   // K0-TECH (round 6): the greenhouse up (sector 3) and two days on
       { boss: true, delay: 10, patience: 150, brief: 'pet_print_mech' },   // THE MECH (round 6): THE ARENA's Nih-Dairia dead, then the first quiet moment; since round 7 printed at THE ARENA's SECURE before its debrief (src/fx/sector-run.js printNow), this the fallback
     ],

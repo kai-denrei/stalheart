@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { BASE_PROGRAMME, BASE_PERKS, BASE_BUILDER } from '../src/content/base-programme.js';
-import { makeBuildProgramme, due, whenHolds, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost, buy } from '../src/domain/build-programme.js';
+import { makeBuildProgramme, due, whenHolds, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost, buy, openingSteps } from '../src/domain/build-programme.js';
+import { OPENING_PROGRAMME } from '../src/content/base-programme.js';
 import { STORY_PHASES } from '../src/domain/automation.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
@@ -174,4 +175,18 @@ console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a 
     assert.equal(snapshot(st).next, 'c', 'the unbought board step is passed over'); buy(st, 'b'); assert.equal(snapshot(st).next, 'b', 'bought, it is next');
   }
   console.log('build-programme: ok');
+}
+// THE RECON DOG'S OPENING (2026-11-12): the gate, the depot and the Stålheart lead on the dog's beats; the rest keeps its order; BASE_PROGRAMME untouched
+{
+  const steps = openingSteps(BASE_PROGRAMME, OPENING_PROGRAMME), ids = steps.map((s) => s.id);
+  assert.deepEqual(ids.slice(0, 3), ['gate', 'depot', 'stalheart']); assert.equal(steps.length, BASE_PROGRAMME.length);
+  assert.deepEqual(ids.filter((id) => !['gate', 'depot', 'stalheart'].includes(id)), BASE_PROGRAMME.map((s) => s.id).filter((id) => !['gate', 'depot', 'stalheart'].includes(id)), 'the rest in order');
+  assert.deepEqual(steps.slice(0, 3).map((s) => s.when), [{ phase: 'walled' }, { phase: 'harvest' }, { phase: 'quiver-piloting' }]);
+  assert.deepEqual(BASE_PROGRAMME.find((s) => s.id === 'gate').when, { phase: 'foundry' }, 'the base programme as it stood');
+  const st = makeBuildProgramme(steps);
+  assert.equal(due(st, { phase: 'scouting' }), null, 'nothing while the dog scouts'); assert.equal(due(st, { phase: 'walled' }).id, 'gate');
+  finish(st, steps[0]); assert.equal(due(st, { phase: 'piloting' }), null, 'the depot waits for the clear'); assert.equal(due(st, { phase: 'harvest' }).id, 'depot');
+  finish(st, steps[1]); assert.equal(due(st, { phase: 'orders' }), null, 'the Stålheart waits for the card to close'); assert.equal(due(st, { phase: 'quiver-piloting' }).id, 'stalheart');
+  assert.deepEqual(openingSteps(BASE_PROGRAMME.filter((s) => s.id !== 'depot'), OPENING_PROGRAMME).slice(0, 2).map((s) => s.id), ['gate', 'stalheart'], 'a plan without the depot');
+  console.log('build-programme: the recon dog\'s opening');
 }

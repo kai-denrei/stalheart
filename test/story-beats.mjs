@@ -514,3 +514,82 @@ console.log('story-beats: a tutorial chapter starts where its beats do');
   }
 }
 console.log('story-beats: the settling');
+
+// THE RECON DOG (owner, 2026-11-10; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1, 2.C, 5): on an arrival from `landed` with
+// `scout` the order is the dog's print (after the tour, no shot), its seat, three surveys, the contact (the tremor and the pack beyond the gate), the
+// dog home (the wall), the gate standing, Isao's Rotor, the gated opening, the clear, the harvest (once the depot is live), THE FIRST ORDERS, then the
+// Quiver's beat and sector 0 under the Stålheart's print; the whole salvage at the deploy; chapters unchanged
+{
+  const CONTACT = { bodies: [{ type: 'amoeba', count: 2 }, { type: 'ghost', count: 1 }], spread: 0.8, stagger: 0.25, pace: 1, recall: 30 };
+  const QUIVER = { key: 'quiver', delay: 0.3, hardcore: 'barbed', secondDelay: 1, studyDelay: 2 };
+  const mk = (over = {}) => makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 0, tremorDelay: 0.5, breachDelay: 1, overrideDelay: 0.5, spawnDelay: 0.2, fodderEvery: 1, fodderAlive: 10, fodderTotal: 2, faceDelays: [0, 0], earlyBreach: 0, arrival: true, scout: { contact: CONTACT, harvestMax: 40 }, laneCell: (hops) => 9000 + hops, fodderEmerge: { headStart: { hops: 4, depth: 2 } }, quiverSocket: 4244, quiver: QUIVER, construction: { first: 1, every: 5, waves: [[{ type: 'amoeba', count: 2 }]] }, ...over });
+  const fakeDog = () => { const d = { printed: 0, born: false, begun: 0, released: 0, st: { done: false, home: true, contact: 7777 } }; d.api = { print: () => { d.printed++; return true; }, born: () => d.born, begin: () => { d.begun++; d.st.home = true; return true; }, state: () => d.st, release: () => { d.released++; return true; } }; return d; };
+  {
+    let touring = true, shot = false, gate = false, depot = false, trips = 0, closed = false, stands = false;
+    const beats = mk({ gateReady: () => gate }); const g = fakeGame({ printSeconds: 2, walk: 0.5 }), D = fakeDog(), H = { flares: 0 }, phases = [];
+    Object.assign(g.api, { touring: () => touring, shot: () => shot, dog: () => D.api, stalheartStands: () => stands, gunshipArrive: () => { g.log.push(['gunshipArrive']); },
+      harvest: () => ({ ready: () => depot, flare: () => { H.flares++; return true; }, done: () => trips > 0 }), orders: () => ({ done: () => closed }) });
+    const go = (s) => { run(beats, g, s); const p = beats.phase(); if (phases.at(-1) !== p) phases.push(p); };
+    beats.deploy(g.api); go(0.2);
+    assert.equal(beats.phase(), 'dog-print', 'past foundry into the dog\'s print'); assert.deepEqual(kinds(g, 'order'), [], 'no Rotor ordered at the deploy');
+    assert.deepEqual(kinds(g, 'breach'), [], 'no quiet breach'); assert.equal(D.printed, 0, 'the print waits for the tour'); assert.deepEqual(beats.state().scout, { pack: 0, flared: false, ordersDone: false });
+    touring = false; shot = true; go(1); assert.equal(D.printed, 0, 'and for a playing shot'); shot = false; go(0.2); assert.equal(D.printed, 1, 'printed once the camera is free'); go(2); assert.equal(D.printed, 1, 'once');
+    assert.equal(beats.phase(), 'dog-print', 'the print takes its time'); D.born = true; go(0.2);
+    assert.equal(beats.phase(), 'scouting'); assert.equal(D.begun, 1, 'the seat taken'); assert.ok(beats.state().said.includes('dog_print') && beats.state().said.includes('dog_scout'));
+    go(20); assert.equal(beats.phase(), 'scouting', 'the player sets the pace, not a clock'); assert.deepEqual(kinds(g, 'spawn'), []); assert.deepEqual(kinds(g, 'tremor'), []);
+    D.st = { done: true, home: false, contact: 7777 }; go(0.2);
+    assert.equal(beats.phase(), 'contact'); assert.deepEqual(kinds(g, 'tremor'), [['tremor', 7777]], 'the contact on the radar at the pack\'s cell'); assert.equal(kinds(g, 'brief').at(-1)[1], 'dog_contact');
+    assert.deepEqual(kinds(g, 'spawn').map((l) => [l[1], l[2], l[3].here, l[3].harmless, l[3].pace]), [['amoeba', 7777, true, true, 1], ['amoeba', 7777, true, true, 1], ['ghost', 7777, true, true, 1]], 'the pack: the contact\'s bodies risen at its cell');
+    assert.equal(beats.state().scout.pack, 3);
+    go(5); assert.equal(beats.phase(), 'contact', 'until the dog is home'); assert.equal(D.released, 0);
+    D.st = { ...D.st, home: true }; go(0.2);
+    assert.equal(beats.phase(), 'walled'); assert.equal(D.released, 1, 'the seat let go'); assert.equal(kinds(g, 'brief').at(-1)[1], 'dog_wall'); assert.deepEqual(kinds(g, 'tremor').at(-1), ['tremor', -1]);
+    go(3); assert.deepEqual(kinds(g, 'order'), [], 'the Rotor waits for the gate (the wall first)');
+    gate = true; go(0.2);
+    assert.equal(beats.phase(), 'printing'); assert.deepEqual(kinds(g, 'order'), [['order', 'rotor', 4242]], 'Isao\'s Rotor'); assert.equal(kinds(g, 'brief').at(-1)[1], 'dog_rotor');
+    assert.deepEqual(kinds(g, 'grant'), [['grant', 45]], 'its cost granted: the Rotor is Isao\'s');
+    go(2.2); assert.equal(beats.phase(), 'rotor-ready'); go(0.2); assert.ok(kinds(g, 'order').some((l) => l[1] === 'quiver'), 'the Quiver on the book once the gate stands');
+    shot = true; go(2); assert.equal(beats.phase(), 'rotor-ready', 'the tremor waits for a playing shot'); shot = false;
+    go(0.6); assert.equal(beats.phase(), 'tremor'); assert.equal(kinds(g, 'brief').at(-1)[1], 'tremor');
+    go(1.6); assert.equal(kinds(g, 'spawn').filter((l) => l[2] !== 7777)[0][3].cell, 9004, 'the breach rises with the head start');
+    go(3); assert.equal(beats.phase(), 'piloting'); assert.deepEqual(kinds(g, 'pilot'), [['pilot', 4242, 4243]], 'the Rotor\'s seat');
+    g.kill(4); go(1); assert.equal(beats.phase(), 'piloting', 'the pack is part of the wave: one still standing'); g.kill(1); go(0.3);
+    assert.equal(beats.phase(), 'harvest', 'the clear: the first harvest'); assert.equal(H.flares, 0, 'the flare waits for the depot');
+    go(3); depot = true; go(0.2); assert.equal(H.flares, 1); assert.equal(kinds(g, 'brief').at(-1)[1], 'first_harvest'); go(2); assert.equal(H.flares, 1, 'one flare');
+    assert.equal(beats.phase(), 'harvest', 'until the rover is home'); trips = 1; go(0.2);
+    assert.equal(beats.phase(), 'orders'); go(5); assert.equal(beats.phase(), 'orders', 'the Quiver waits for the card'); assert.equal(kinds(g, 'pilot').length, 1);
+    closed = true; go(0.6);
+    assert.equal(beats.phase(), 'quiver-piloting', 'the card closed: the Quiver\'s hard cores'); assert.deepEqual(kinds(g, 'pilot').at(-1), ['pilot', 4244, 4243]);
+    g.kill(1); go(1.5); g.kill(1); go(0.5); assert.equal(beats.phase(), 'construction', 'the Stålheart still printing: sector 0'); assert.deepEqual(kinds(g, 'gunshipArrive'), [['gunshipArrive']]);
+    assert.deepEqual(phases, ['dog-print', 'scouting', 'contact', 'walled', 'printing', 'rotor-ready', 'tremor', 'breach', 'approach', 'override', 'piloting', 'harvest', 'orders', 'quiver-piloting', 'construction'].filter((p) => phases.includes(p)), 'the order');
+    for (const p of ['dog-print', 'scouting', 'contact', 'walled', 'printing', 'tremor', 'piloting', 'harvest', 'orders', 'quiver-piloting', 'construction']) assert.ok(phases.includes(p), `${p} played`);
+  }
+  // the dog never home: the wall comes `recall` s after the contact; no harvest hand: the card at once; no depot: harvestMax
+  {
+    const beats = mk({ gateReady: () => true }), g = fakeGame({ printSeconds: 1 }), D = fakeDog(); D.born = true;
+    Object.assign(g.api, { touring: () => false, shot: () => false, dog: () => D.api });
+    beats.deploy(g.api); run(beats, g, 0.5); D.st = { done: true, home: false, contact: 7777 }; run(beats, g, 0.2); assert.equal(beats.phase(), 'contact');
+    run(beats, g, 29); assert.equal(beats.phase(), 'contact'); run(beats, g, 1.2); assert.equal(beats.phase(), 'printing', 'recalled: the wall, the Rotor at once (the gate stands)'); assert.equal(D.released, 1);
+  }
+  {
+    const beats = mk({ gateReady: () => true, startPhase: 'landed' }), g = fakeGame({ printSeconds: 0.2, walk: 0 });
+    Object.assign(g.api, { touring: () => false, shot: () => false, harvest: () => ({ ready: () => false, flare: () => true, done: () => false }) });
+    beats.deploy(g.api); run(beats, g, 5); assert.equal(beats.phase(), 'piloting', `no dog hand: straight through (${beats.phase()})`);
+    g.kill(5); run(beats, g, 0.3); assert.equal(beats.phase(), 'harvest'); run(beats, g, 41); assert.equal(beats.phase(), 'quiver-piloting', 'harvestMax, then no orders hand: the Quiver');
+  }
+  // the whole salvage at the deploy, the barrels granting nothing (as the settling)
+  {
+    const tune = { deployDelay: 1, firstCycle: 4, cycleSeconds: 6, feedstockPerBarrel: 60, sections: ['A', 'B', 'C'], targets: ['tA', 'tB', 'tC'], events: { arcOn: 0.5, arcOff: 1, scrap: 2, barrel: 3 } };
+    const beats = mk({ foundry: tune }), g = fakeGame(); Object.assign(g.api, { touring: () => true, foundry: () => {} });
+    beats.deploy(g.api); assert.deepEqual(kinds(g, 'grant'), [['grant', 180]], 'the rocket\'s worth at the deploy'); run(beats, g, 30); assert.deepEqual(kinds(g, 'grant'), [['grant', 180]], 'nothing per barrel');
+  }
+  // ?settle=N wins (the settling's clock kept for comparison); a chapter's late start never scouts
+  {
+    const beats = mk({ settle: 5 }), g = fakeGame(); g.api.pending = () => false; beats.deploy(g.api); run(beats, g, 0.2);
+    assert.equal(beats.phase(), 'printing', 'settle: the settling\'s opening'); assert.equal(beats.state().scout, null);
+    const tune = { deployDelay: 1, firstCycle: 4, cycleSeconds: 6, feedstockPerBarrel: 60, sections: ['A', 'B', 'C'], targets: ['tA', 'tB', 'tC'], events: { arcOn: 0.5, arcOff: 1, scrap: 2, barrel: 3 } };
+    const late = mk({ startPhase: 'foundry', foundry: tune, foundryCut: 0, arrival: false }), g2 = fakeGame({ printSeconds: 1 });
+    run(late, g2, 0.3); assert.deepEqual(kinds(g2, 'order'), [['order', 'rotor', 4242]], 'a chapter orders the Rotor at foundry as before'); assert.equal(late.state().scout, null);
+  }
+}
+console.log('story-beats: the recon dog');

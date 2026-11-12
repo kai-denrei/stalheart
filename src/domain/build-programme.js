@@ -12,6 +12,16 @@ export function makeBuildProgramme(steps, { standing = () => false } = {}) {
   return st;
 }
 
+// THE RECON DOG'S OPENING (2026-11-12; src/content/base-programme.js OPENING_PROGRAMME): the steps `opening.order` names lead in that order, where the
+// first of them stood, each with its `opening.when`; the rest keep their order. A step the plan does not hold is left out as before
+export function openingSteps(steps, opening) {
+  const lead = opening.order.map((id) => steps.find((s) => s.id === id)).filter(Boolean).map((s) => Object.freeze({ ...s, when: opening.when[s.id] ?? s.when }));
+  const at = steps.findIndex((s) => opening.order.includes(s.id));
+  if (at < 0) return steps.slice();
+  const rest = steps.filter((s) => !opening.order.includes(s.id));
+  return [...rest.slice(0, at), ...lead, ...rest.slice(at)];
+}
+
 // does a step's `when` hold in this context? (the build board asks it of the coming sector)
 export function whenHolds(w, { phase, sector, waveActive, back, manned, standing }) {
   const at = STORY_PHASES.indexOf(phase);

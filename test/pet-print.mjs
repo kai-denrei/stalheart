@@ -13,8 +13,9 @@ import { readFileSync } from 'node:fs';
 const P = COMPANIONS.prints, K = COMPANIONS.print, TL = K.timeline, END = printEnd(TL);
 // 1. the content: the order names every unit once, one trigger per print, the first C-07; the second waits on the radar's perk and some days
 assert.deepEqual([...P.order].sort(), COMPANIONS.units.map((u) => u.id).sort(), 'the order names each unit once');
-assert.equal(P.order[0], 'c07', 'C-07 is printed first'); assert.equal(P.triggers.length, P.order.length, 'a trigger per print');
-assert.equal(P.triggers[1].perk, 'uplink', 'the second after the radar'); assert(P.triggers[1].days >= 1, 'the second some days after the first');
+// THE RECON DOG (2026-11-12): RECKON K9 first (the beats print it at the dog's opening; its trigger the fallback), C-07 a day after it at the expedition
+assert.equal(P.order[0], 'k9', 'RECKON K9 is printed first'); assert.equal(P.order[1], 'c07', 'C-07 second'); assert.equal(P.triggers.length, P.order.length, 'a trigger per print');
+assert.equal(P.triggers[0].brief, 'dog_print', 'the dog\'s print says dog_print'); assert.equal(P.triggers[1].phase, 'expedition', 'C-07 at the expedition'); assert(P.triggers[1].days >= 1, 'the second some days after the first');
 assert(STORY_PHASES.includes(P.triggers[0].phase), 'the first trigger names a story beat');
 assert.equal(P.order[2], 'k0', 'K0-TECH third (round 6)'); assert.equal(P.triggers[2].perk, 'farm', 'the third after the greenhouse'); assert.equal(P.triggers[2].days, 2, 'two days after the second');
 for (const tr of P.triggers) assert(brief(tr.brief)?.lines.length >= 1, `${tr.brief} is a line of Isao's`);
@@ -37,12 +38,12 @@ assert.equal(printGates(P.triggers[0], w({ phase: null })), false, 'no beats (no
 const second = P.triggers[1], up = () => true, D = second.days;
 assert.equal(printGates(second, w({ perk: up, prevDay: null })), false, 'the first not born: no second');
 assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D + 1 })), false, `${D - 1} days after the first: not yet`);
-assert.equal(printGates(second, w({ perk: () => false, prevDay: 0 })), false, 'no radar: not yet');
-assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D })), true, `${D} days after the first and the radar up`);
+assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D, phase: 'construction' })), false, 'not before the expedition');
+assert.equal(printGates(second, w({ perk: up, prevDay: 5 - D })), true, `${D} days after the first, at the expedition`);
 { const third = P.triggers[2], farm = (p) => p === 'farm';
   assert.equal(printGates(third, w({ perk: (p) => p === 'uplink', prevDay: 0 })), false, 'the radar alone: no cat');
-  assert.equal(printGates(third, w({ perk: farm, prevDay: 4 })), false, 'one day after the dog: not yet');
-  assert.equal(printGates(third, w({ perk: farm, prevDay: 3 })), true, 'the greenhouse up and two days after the dog'); }
+  assert.equal(printGates(third, w({ perk: farm, prevDay: 4 })), false, 'one day after C-07: not yet');
+  assert.equal(printGates(third, w({ perk: farm, prevDay: 3 })), true, 'the greenhouse up and two days after C-07'); }
 
 // 4. printReady
 const base = { gates: true, held: 30, delay: 20, patience: 150, alive: true, won: false, arena: false, shot: false, seated: false, card: false, isaoBusy: false, fighting: false, breathing: false };
@@ -94,7 +95,7 @@ console.log(`Pet print: order ${P.order.join(' -> ')}, triggers ${P.triggers.map
 // order over its longer scene, scaled to a 7.6 m body (the eye 8-40 m off its look), the cheetah's print untouched; the lines exist
 {
   const mech = COMPANIONS.units.find((u) => u.id === 'mech'), k = P.order.indexOf('mech'), tr = P.triggers[k];
-  assert.deepEqual(P.order, ['c07', 'k9', 'k0', 'mech'], 'the order of four'); assert.equal(P.triggers.length, 4, 'a trigger each');
+  assert.deepEqual(P.order, ['k9', 'c07', 'k0', 'mech'], 'the order of four (the dog first since 2026-11-12)'); assert.equal(P.triggers.length, 4, 'a trigger each');
   assert.equal(tr.boss, true, 'the mech after the kill'); assert(!tr.phase && !tr.perk && tr.days == null, 'nothing else asked of it');
   assert.equal(printGates(tr, w({ phase: null, boss: false })), false, 'the mother alive: no mech'); assert.equal(printGates(tr, w({ phase: null, boss: true })), true, 'her dead: the mech may come');
   assert.equal(nextPrint(P.order, ['c07', 'k9']), 'k0', 'the cat before the mech even after the kill');

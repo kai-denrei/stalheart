@@ -287,12 +287,13 @@ export const STORY_SKIP = Object.freeze({ stage: 8, phase: 'expedition', sector:
 // AFR-01 has already cut (absent: all of them). The numbers are the opening's own timeline (--pacing, 2026-09-25: the Rotor stands at
 // 30 s, the gate at 44.7, the Stålheart's 75 s print starts at 52.8, so it is a third done at the first wave's clear, 77.7, and half
 // done when sector 0 starts, 91.8; the landing pad follows it). LANDING is the page itself, whose NEXT is the landing's own skip.
+// THE RECON DOG (2026-11-12): the dog's beats are ROTOR's (the Rotor follows them), the first harvest and the first orders QUIVER's.
 // STORY_CHAPTER_END is where NEXT goes from the last chapter: sector 1, on the base the tutorial grew. SKIP ALL is STORY_SKIP.
 export const STORY_CHAPTERS = Object.freeze([
   { id: 'landing', label: 'LANDING', phases: ['landed'], from: null },
-  { id: 'rotor', label: 'ROTOR', phases: ['foundry', 'printing', 'rotor-ready'], from: 'foundry', foundry: 0 },
+  { id: 'rotor', label: 'ROTOR', phases: ['foundry', 'dog-print', 'scouting', 'contact', 'walled', 'printing', 'rotor-ready'], from: 'foundry', foundry: 0 },
   { id: 'wave', label: 'FIRST WAVE', phases: ['tremor', 'breach', 'approach', 'override', 'piloting'], from: 'rotor-ready', printed: ['foundry', 'gate'], towers: ['rotor'], foundry: 2 },
-  { id: 'quiver', label: 'QUIVER', phases: ['cleared', 'quiver-piloting'], from: 'cleared', printed: ['foundry', 'gate'], towers: ['rotor', 'quiver'], head: { stalheart: 0.33 } },
+  { id: 'quiver', label: 'QUIVER', phases: ['cleared', 'harvest', 'orders', 'quiver-piloting'], from: 'cleared', printed: ['foundry', 'gate'], towers: ['rotor', 'quiver'], head: { stalheart: 0.33 } },
   { id: 'stalheart', label: 'STÅLHEART', phases: ['construction'], from: 'construction', printed: ['foundry', 'gate'], towers: ['rotor', 'quiver'], head: { stalheart: 0.5 } },
   { id: 'expedition', label: 'EXPEDITION', phases: ['settled', 'study-talk', 'study', 'expedition'], from: 'settled', printed: ['foundry', 'gate', 'stalheart', 'landing'], towers: ['rotor', 'quiver'] },
 ].map((c) => Object.freeze({ printed: [], towers: [], head: {}, ...c })));
