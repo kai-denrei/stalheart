@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
+import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, secureDone, standDown, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
 import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, BOSS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING, SECTOR_CANYON_AGAIN, SECTOR_STAMPEDE } from '../src/content/sectors.js';
 import { ENEMY_SPEC, CREATURE_TINTS, SAFE_HUES, ALARM_HUES, computeWavePlan } from '../src/enemyspec.js';
 import { waveClearBonus } from '../src/domain/economy.js';
@@ -207,4 +207,21 @@ console.log('Sectors: authored and generated defs, the programme released, close
     if (doorAt - 2 > SECTORS.length) assert.equal(before.canyon, false, `door at ${doorAt}: sector ${doorAt - 2} is a plain held sector`);
     assert.equal(def(doorAt - 1, null).canyon, false, 'undecided door: no canyon');
   }
+}
+
+// SECURE IS THE END (flow fixes, 2026-11-13, docs/FLOW.md 2): the field stood down, the debrief within securePause + hold, a boss's lines waited for
+{
+  const bodies = [{ alive: true }, { alive: true, guard: { site: 'a' } }, { alive: true, harmless: true }, { alive: false }, { alive: true, members: 4 }], queue = [{ type: 'amoeba' }, { guard: {} }, { squad: 3 }];
+  assert.equal(standDown(bodies, queue), 1 + 4 + 1 + 3, 'every hostile body and queued entry, a squad by its members');
+  assert.deepEqual(bodies.map((e) => !!e.harmless), [true, false, true, false, true], 'not the nest guard, nor the dead');
+  assert.deepEqual(queue.map((q) => !!q.harmless), [true, false, true]);
+  assert.equal(standDown(bodies, queue), 0, 'once');
+  const t = { hold: 5, maxHold: 120 };
+  assert.equal(secureDone({ ...t, left: 1 }), false, 'the callout first');
+  assert.equal(secureDone({ ...t, left: 0 }), true, 'then the debrief');
+  assert.equal(secureDone({ ...t, left: -1, engaged: true }), false, 'a calm wait');
+  assert.equal(secureDone({ ...t, left: -5, engaged: true }), true, 'of `hold` seconds at most, never STORY_CALM.maxHold');
+  assert.equal(secureDone({ ...t, left: -60, boss: true, talking: true }), false, 'a boss sector waits for Isao over the King');
+  assert.equal(secureDone({ ...t, left: -120, boss: true, talking: true }), true, 'up to maxHold');
+  assert.equal(secureDone({ ...t, left: 0, boss: true, engaged: true }), true, 'a fight round the hull does not hold the boss\'s end');
 }

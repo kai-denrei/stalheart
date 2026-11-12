@@ -126,6 +126,18 @@ export function spendBreach(st, id, t) {
 
 // no breach open and none of the sector's enemies alive (guards at expedition sites are the caller's to leave out)
 export const isSecure = (st, aliveSectorEnemies, stragglers = 0) => st.breaches.every((b) => b.state !== 'open') && aliveSectorEnemies <= stragglers;   // stragglers: a few left alive do not hold a sector open (owner, 2026-10-16)
+// SECURE ENDS THE SECTOR (flow fixes, 2026-11-13, docs/FLOW.md 2: sector 6 held SECURE 123 s while the stragglers pushed the gate in, sector 7 was
+// LOST 102 s after it): at SECURE the run stands the field down (src/fx/sector-run.js standDown: what lives is harmless), so the debrief follows once
+// securePause has run and the player is calm, and `hold` seconds after that at most; a boss sector waits for Isao's lines over the King, up to maxHold
+export const secureDone = ({ left, engaged = false, boss = false, talking = false, hold = 0, maxHold = Infinity }) =>
+  (left <= 0 && !(boss ? talking : engaged)) || left <= -(boss ? maxHold : hold);
+// the bodies a SECURE stands down: every live one that is not a lander's nest guard, and the queue's entries likewise (they rise harmless)
+export function standDown(bodies, queue = []) {
+  let n = 0;
+  for (const e of bodies) if (e.alive && !e.guard && !e.harmless) { e.harmless = true; e.stoodDown = true; n += e.members || 1; }
+  for (const q of queue) if (!q.guard && !q.harmless) { q.harmless = true; n += q.squad || 1; }
+  return n;
+}
 
 export function summary(st) {
   const sum = (f) => st.breaches.reduce((s, b) => s + f(b), 0);

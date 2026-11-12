@@ -315,7 +315,7 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // firstGrace: the first sector's wait after the story is ready for it, unless a part comes home first (src/domain/sectors.js
 // firstSectorDue): the expedition Isao has just sent the tank on
 // `stall`: seconds a fighting sector may go without a kill, a wave or a breach opening before it moves itself on (2026-10-05)
-export const SECTOR_TIMING = freeze({ stragglers: 20, stall: 20, briefSeconds: 6,   /* stragglers: a sector is SECURE with up to this many bodies still alive (owner, 2026-10-16: "a sector could be closed while a few stragglers remain") */ staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90 });   // aliveBudget: the campaign board's clock guard (pulseFits); the story's sectors are sized by their shape (2026-10-15)
+export const SECTOR_TIMING = freeze({ stragglers: 20, stall: 20, briefSeconds: 6,   /* stragglers: a sector is SECURE with up to this many bodies still alive (owner, 2026-10-16: "a sector could be closed while a few stragglers remain") */ staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, secureHold: 5,   /* secureHold (flow fixes, 2026-11-13): at most this many seconds after securePause the debrief comes, calm or not (the field is stood down at SECURE) */ lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90 });   // aliveBudget: the campaign board's clock guard (pulseFits); the story's sectors are sized by their shape (2026-10-15)
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

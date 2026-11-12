@@ -12,7 +12,7 @@ import { ARENA, SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
-import { firstSectorDue, sectorDef, backDoorNext, openingDoorAt, sectorBriefId, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
+import { firstSectorDue, sectorDef, backDoorNext, openingDoorAt, sectorBriefId, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, secureDone, standDown, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
@@ -421,7 +421,7 @@ export function createSectorRun(h) {
     }
     if (cardLeft > 0) { cardLeft -= dt; if (cardLeft <= 0) card([]); }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
-    if (phase === 'secure') { left -= dt; if ((left <= 0 && (def.boss ? !api.bossTalking?.() : !api.engaged?.())) || left <= -STORY_CALM.maxHold) finish('secure'); return; }   // the debrief waits out a fight (STORY_CALM); not the boss's (2026-10-18, note 10: a pup left round the hull would hold the mother's end up to STORY_CALM.maxHold)
+    if (phase === 'secure') { left -= dt; if (secureDone({ left, boss: !!def.boss, talking: !!api.bossTalking?.(), engaged: !def.boss && !!api.engaged?.(), hold: SECTOR_TIMING.secureHold ?? 0, maxHold: STORY_CALM.maxHold })) finish('secure'); return; }   // the debrief waits out a fight (STORY_CALM); not the boss's (2026-10-18, note 10: a pup left round the hull would hold the mother's end up to STORY_CALM.maxHold)
     // ...but it waits for Isao's lines over the mother (owner, 2026-10-19, note 9: "message between end of Nih Dairia and going in"; src/fx/boss-run.js talking): the debrief pauses the game and the panel's clock with it, and boss_dead alone outlasts securePause
     if (phase !== 'fighting') return;
     for (const id of pending.slice()) {
@@ -458,6 +458,7 @@ export function createSectorRun(h) {
     const count = def.boss ? bossLeft(h.enemies(), h.queue(), def.boss.boss?.tier) : stalled() ? 0 : aliveSectorEnemies();
     if (!pending.length && !h.hold?.() && isSecure(sector, count, def.boss ? 0 : SECTOR_TIMING.stragglers ?? 0)) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
       phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t; if (def.boss) bossDownAt ??= t;
+      sector.stoodDown = standDown(h.enemies(), h.queue());   // SECURE IS THE END (2026-11-13): what still lives can no longer hurt the base, and the debrief does not wait on it
       h.callout('SECTOR SECURE', 'co-victory'); h.sfx?.('tank_pickup'); h.hud();
     }
   }
@@ -535,7 +536,7 @@ export function createSectorRun(h) {
     state: () => ({
       nest: nest ? { cell: nest.ci, open: !!nest.alive } : null,   // the arena's hole, kept open after its sector (the cave's door)
       bossDown: bossDownAt == null ? null : +bossDownAt.toFixed(1),   // THE ARENA's mother dead, on the sector clock (round 6: the mech's print)
-      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'print', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'print', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length, stoodDown: sector?.stoodDown ?? null, securedAt: sector?.securedAt ?? null,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, hole: !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
