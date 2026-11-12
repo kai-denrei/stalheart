@@ -132,6 +132,30 @@ Colony (item 6; E9, E10):
   The domes fit under it: one envelope for all six kinds (the dome-colony's data), at 0.65 the shell 18.2 m, the mast cradle 23.3 m, under its
   25 m working height by 0.9 m; check in the engine.
 
+## Measured on 2026-11-12 after the economy build, for the owner's assessment
+
+The economy at 10x is built and merged locally (branch `economy-10x`). These are measurements, and the calls they raise.
+
+| Measured | Value |
+| --- | --- |
+| Bank at THE FIRST ORDERS, automatic landing (HARD) | 2,573 kg (salvage 1,800, surveys 450, first harvest 323) |
+| What that buys | any pair of the four cards (pairs cost 850 to 1,800) |
+| Bank at the debrief, sectors 1 / 2 / 3 | 4,594 / 17,000 / 29,712 kg |
+| Share of the fighting time the bank affords a Rotor, sectors 1-3 | 100 % (the design's target was 40-60 %) |
+| Seeped into the ground, sectors 1 / 2 / 3 | 390 / 2,735 / 42,768 kg (61 % of sector 3) |
+| Unescorted rover trip | 6-15 bites, 600-1,500 kg lost |
+| Escorted rover trip | 0 bites |
+
+Calls these raise (none blocks the flow of stages):
+
+1. **The 10x prices do not bind after sector 1.** The owner's call stands: difficulty is tuned later. When it is tuned, the levers are the prices, the rover's pour, and the sentry cap (6 + 2 + 2, which does bind on count).
+2. **Seepage is harsh in sector 3.** A flat 0.5 kg/s on each of hundreds of small piles loses more than the rover carries. Options: seep by share of the pile, or only after a grace time.
+3. **A bitten rover still comes home nearly full on rich ground.** Bites cost time, not the load, so the escort is not yet worth the tank's trip. Options: bites end the trip, or the rover can be disabled until the tank reaches it.
+4. **The second Rotor** stands on the free wall cell nearest the first, since the gate's other socket is the Quiver's.
+5. **Isao's three biomass lines** all play at the first harvest.
+6. **The recorded take `sentry_overload_01` still says "ten sentries"**; the cap is now 6 to 10.
+7. **Not run:** the WRECK and CLEAN openings (computed only: a WRECK reaches the first orders with about 1,733 kg).
+
 ## O. Landing and opening
 
 - **O1 How forgiving the flown landing is.** Entry 300-400 m, sink 30-40 m/s, fuel 18-22 s; CLEAN needs sink under 2.5 m/s, drift under 1.5, tilt under 4 degrees. About half the seeds drift toward the mouth.
