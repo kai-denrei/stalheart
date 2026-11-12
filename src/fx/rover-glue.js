@@ -9,6 +9,7 @@
 //                                score, the ledger by source, the gunship's feed take the same number) and, live, the kg lie on the kill's cell
 //   dropFlare()                  F: a flare under the hull, the rover's order (the newest while it is idle; one dropped while it works waits)
 //   tick(dt)                     once per unfrozen story frame (src/td-tab.js's build hook): the rot, the flares, the trip, the scene, the readouts
+//   lay(cell, kg)                THE FIRST HARVEST (2026-11-12): the first wave's bodies laid on the ground once the depot stands
 //   breakHome()                  the sector's end (src/fx/sector-run.js finish, before the report): THE ROVER FINISHES ITS RUN DURING THE BREAK,
 //                                the hold and the flagged ground banked under the cap (src/domain/rover-run.js settleBreak), the flares gone
 //   hud()                        the HUD's FIELD number beside the bank; ground() the kg on the ground (the debrief's ON THE GROUND)
@@ -172,6 +173,8 @@ export function createRoverGlue(h) {
       if (out.cargo + out.field > 0) { h.showBrief?.(ROVER_WORDS.breakBrief); h.updateHud?.(); }
       return out;
     },
+    // THE FIRST HARVEST (2026-11-12, src/fx/first-harvest.js): kg laid on a cell's ground as a kill's pay would lie there (the first wave fell before the depot stood)
+    lay(cell, kg) { if (!live() || !S?.built || !(kg > 0)) return false; S.field.drop(cell, kg, h.t()); return true; },
     hud: () => (live() && S?.built ? ` <span class="hud-field">${ROVER_WORDS.field} ${kgText(S.field.total())} kg</span>` : ''),
     ground: () => (S?.built ? Math.round(S.field.total()) : 0),
     test: {

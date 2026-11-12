@@ -6,7 +6,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
 import { voiceSounds } from '../content/voice-hooks.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK, STORY_CALM, STORY_SETTLE } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK, STORY_CALM } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -26,8 +26,9 @@ import { STORY_PHASES } from '../domain/automation.js';
 import { makeExpeditions } from '../domain/expeditions.js';
 import { createStoryHud } from '../fx/story-hud.js';
 import { planetBake } from './planet-bake.js';
-import { BASE_PROGRAMME } from '../content/base-programme.js';
-import { makeBuildProgramme } from '../domain/build-programme.js';
+import { BASE_PROGRAMME, OPENING_PROGRAMME } from '../content/base-programme.js';
+import { DOG_SCOUT } from '../content/dog-scout.js';
+import { makeBuildProgramme, openingSteps } from '../domain/build-programme.js';
 import { BASE_PERKS } from '../content/base-programme.js';
 import { createBasePrint } from '../fx/base-print.js';
 import { createHullIssue, doorBerth, nearestCell } from '../fx/hull-issue.js';
@@ -93,9 +94,10 @@ export function readStoryQuery(search) {
     // uses to open at the back door (src/fx/sector-run.js: a first sector at or past SECTOR_DOOR.earliest is the door)
     firstSector: skip ? Math.max(1, parseInt(q.get('sector') ?? '', 10) || STORY_SKIP.sector) : 1,
     grow: !!chapter || (!skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && (!q.has('story') || fromStart)))),
-    // THE SETTLING (2026-11-08): ?settle=N the seconds before the first contact on the story's own start (null: STORY_SETTLE's); ?first=1 the first orders' card on an acceptance page (a headless page would wait on it)
+    // THE SETTLING (2026-11-08): ?settle=N the seconds before the first contact on the story's own start (since THE RECON DOG, 2026-11-12, only when asked: null is the dog's opening); ?first=1 the first orders' card on an acceptance page (a headless page would wait on it)
     settle: Number.isFinite(parseFloat(q.get('settle') ?? '')) ? Math.max(0, parseFloat(q.get('settle'))) : null,
     first: q.get('first') === '1',
+    dog: q.get('dog') === '1',   // THE RECON DOG (2026-11-12): the dog's seat on an acceptance page (one that does not ask surveys at once)
   };
 }
 
@@ -181,11 +183,11 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // what this plan must hold for a step to be in the programme at all: the pieces it prints, plus the standing machine an `over` beat
   // works (Isao on the AFR-01 prints nothing, so a pieces-only filter dropped the beat out of the programme entirely)
   const needs = (s) => [...pieces(s), ...(s.over ? [plan.structures.find((x) => x.id === s.over)] : [])];
-  const steps = BASE_PROGRAMME.filter((s) => needs(s).length > 0 && needs(s).every(Boolean));
+  const steps0 = BASE_PROGRAMME.filter((s) => needs(s).length > 0 && needs(s).every(Boolean));
   // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): a growing page that starts in the opening has no hull until
   // the step carrying `hull` stands, and then the first MÖRK rolls out of that building's door (src/fx/hull-issue.js); the beats
   // defend its construction meanwhile. A static stage, SKIP TUTORIAL and a start past the handover have the hull from the first frame.
-  const hullStep = grow ? steps.find((s) => s.hull && pieces(s).some((p) => p.pending)) : null;
+  const hullStep = grow ? steps0.find((s) => s.hull && pieces(s).some((p) => p.pending)) : null;
   const hullHeld = !!hullStep && (phase == null || STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('settled'));
   // a tutorial chapter past the handover (EXPEDITION, the end) has the Stålheart printed at boot: its door is the hull's berth
   const hullDoor = hullHeld || !!(hullStep && chapter?.printed.includes(hullStep.id));
@@ -196,13 +198,16 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // to: a bare page, the burger's Story, ?grow=1. SKIP TUTORIAL, stage=N and story=N links (static) and phase jumps do not
   const sh02 = plan.structures.find((s) => s.id === 'sh02');
   const arrives = grow && stage === 1 && phase == null && !!sh02 && ['sh02-salvage', 'foundry'].every((id) => plan.structures.some((s) => s.id === id));
+  // THE RECON DOG (2026-11-12): the story's own start is the dog's opening unless ?settle=N asks for THE SETTLING's clock (kept for comparison); its
+  // programme leads with the gate, the depot and the Stålheart on the dog's beats (OPENING_PROGRAMME)
+  const scouts = arrives && settle == null, steps = scouts ? openingSteps(steps0, OPENING_PROGRAMME) : steps0;
   const pastLanding = stage === 1 && phase != null && phase !== 'landed';   // a chapter or a jump past it: the rocket is already salvage
   const q = new URLSearchParams(typeof location === 'object' ? location.search : '');   // the page's own query, for the landing's switch (decideLanding)
   // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell, seen from the Quiver; a held one only
   // wanders within it. The Quiver's two rise beyond it (STORY_QUIVER.rise), on the horizon as its optic opens, and walk in (owner, 2026-10-05)
   const perch = plan.sockets[1]?.pos ?? null, ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, perch), far = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.rise, perch);
   const rise = riseCells(far.size >= 2 ? far : ring, planet.graph.centers, plan.cells.forward);
-  const beats = stage >= 1 ? makeStoryBeats({ fodderType: STORY_FODDER.type ?? 'amoeba', fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null, settle: arrives ? (settle ?? STORY_SETTLE.seconds) : null }) : null;   // THE SETTLING (2026-11-08): ?settle=N or STORY_SETTLE's 120 s, only on the story's own arrival
+  const beats = stage >= 1 ? makeStoryBeats({ fodderType: STORY_FODDER.type ?? 'amoeba', fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null, settle: arrives ? settle : null, scout: scouts ? { contact: DOG_SCOUT.contact, harvestMax: DOG_SCOUT.harvest.maxS } : null }) : null;   // THE SETTLING (2026-11-08): ?settle=N or STORY_SETTLE's 120 s, only on the story's own arrival
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`

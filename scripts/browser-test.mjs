@@ -947,11 +947,10 @@ try{
   if(summary.sectors[2]?.arrivals)assert(summary.sectors[2].firstContact<=40,`sector 2's first body reaches a door within 40 s of its card (${summary.sectors[2].firstContact})`);}
  } else if(args.includes('--grow')) {
  // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover.
- // THE SETTLED ORDER (2026-11-08, THE SETTLING; measured by Task 4): the gate from the deploy, the Stålheart straight after it with no sentry
- // up, no Rotor bought (an acceptance page skips the first orders), so at the settle's end (&settle=10) Isao orders his emergency Rotor and it
- // queues behind the Stålheart's 75 s print; once it stands (the Stålheart standing too), the Quiver, then the tremor path: the tremor, the
- // breach, the fodder, the override, the first wave cleared, no construction (the hull already out), the handover with GS01 on station, then
- // the rest as the phases and sectors come (the pad, the recycler's work and the array not bought, so never printed on this page).
+ // THE RECON DOG'S ORDER (2026-11-12): the landing, the K9 born and its surveys counted (an acceptance page; --dog-scout drives it), the pack beyond the
+ // gate, the wall (the gate's print), Isao's Rotor, the Quiver, the tremor path: the tremor, the breach, the fodder, the override, the first wave cleared,
+ // the depot and the rover's first run, the first orders passed by, the Stålheart's print, the Quiver's cores and sector 0 under it (construction, the
+ // gunship), the hull out, the handover, then the rest as the phases and sectors come (the pad, the recycler's work and the array not bought).
  const hiddenNear='(window.__stalheartTest.state().storyLod||[]).filter(l=>!l.visible&&l.nearLoaded).map(l=>l.id)';
  const shotBase=async(name)=>{await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);assert.deepEqual(await evaluate(hiddenNear),[],`${name}: no hidden landmark fetched its near tier`);current=name;await finish();};
  // ?story=0 IS THE STORY FROM ITS START (owner, 2026-09-25): the growing base, the landing, the full threat, as a bare page
@@ -963,7 +962,7 @@ try{
  {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'gate','the gate is his first print (2026-10-03: the recycler beat waits for the Stålheart)');assert.equal(b.programme.gate.built,false);
   assert.equal(b.hull?.state,'held','SECTOR 0: a bare page has no hull until the Stålheart stands');}
  await finish();
- await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1&settle=10#td');await until('!!window.__stalheartTest',90000);   // &settle=10: the settle's 120 s is two minutes of a headless clock (THE SETTLING, 2026-11-08)
+ await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);   // no &settle (THE RECON DOG, 2026-11-12: the dog's opening, surveyed at once on an acceptance page; was &settle=10: THE SETTLING, 2026-11-08)
  const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);   /* every mark from the page being ready (before the arrival, from after its first checks) */
  // THE ARRIVAL (owner, 2026-09-25: "bring back the landing, short and sweet but showing the landing. Isao comes out, close up on his
  // face; he's the narrator ... The state change from rocket intact to dismantled should happen off camera"). Every frame is logged in the
@@ -981,7 +980,7 @@ try{
  {const s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;assert.equal(s.shot,'arrivalTalk');assert.equal(a.phase,'talk');
   assert(a.eye[2]>0&&a.eye[2]<a.to[2],`the camera stands between Isao and the rocket, the rocket behind it (camera ${a.eye}, Isao ${a.to}, the rocket at 0)`);
   assert(a.rocket===false&&a.salvage===true&&a.foundry===true,`the rocket is the salvage and the foundry now (${JSON.stringify(a)})`);assert(a.fov<30,`a long lens on his face (${a.fov})`);
-  assert.ok(['foundry','printing'].includes(s.story.phase),`the AFR-01 deployed on the cut (${s.story.phase}: the Rotor is ordered with it since 2026-10-03)`);}
+  assert.ok(['foundry','dog-print'].includes(s.story.phase),`the AFR-01 deployed on the cut (${s.story.phase}: the dog's print next since 2026-11-12)`);}
  current='grow-arrival-talk';await finish();
  await until('window.__arrivalDone===true',20000);await mark('the arrival ends: back on the base');
  {const L=await evaluate('window.__arrival'),s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;
@@ -1008,30 +1007,25 @@ try{
  assert.equal(g0.hull.state,'held','no hull at the landing');assert.equal(g0.hull.visible,false,'the hull is not drawn');assert(g0.hull.door>=0,`the Stålheart has a door to roll the hull out of (${JSON.stringify(g0.hull)})`);
  assert.deepEqual(await evaluate(hiddenNear),[]);current='grow-landing';await finish();
  await mark('landed (the base, the rocket recycling)');
- // THE SETTLED ORDER (owner, 2026-11-08, THE SETTLING: "first we leave time to settle"; spec docs/superpowers/specs/2026-11-08-the-settling-design.md
- // 2.A-2.D): the gate and the Stålheart print from the deploy, the Rotor is the first orders' (not shown here: no &first=1), so with &settle=10 Isao
- // prints it himself at the settle's end (rotor_emergency), at the back of his book: behind the Stålheart's 75 s; then the tremor, the quiet breach
- // up the lane, the override. Each wait below waits for its own fact, not for an order between them.
+ // THE RECON DOG'S ORDER (2026-11-12; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1): an acceptance page that does not ask for
+ // the dog (&dog=1, --dog-scout drives it) has the K9 born at once and its surveys counted: the pack rises beyond the gate, the dog is home, so the wall:
+ // the gate prints at `walled`, then Isao's Rotor (dog_rotor), the Quiver on the book, the tremor path; the Stålheart after the first wave, the depot's
+ // harvest and the first orders (passed by on an acceptance page), with sector 0 under its print. Each wait below waits for its own fact.
  const T='window.__stalheartTest',tremored=`(window.__ph||[]).some(r=>r[0]==='tremor')`;   // the phase alone: td.briefs persists across the run's pages
  await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`);   // the beats' phases (the tremor is not booked in story.said)
- await until(`${T}.state().programme.active==="gate"||${T}.state().programme.printed.includes("gate")`,60000);await mark('gate print begins');
+ await until(`${T}.state().programme.active==="gate"||${T}.state().programme.printed.includes("gate")`,120000);await mark('gate print begins (the dog home: the wall)');
+ {const s=await evaluate(`${T}.state()`);assert(['walled','printing','rotor-ready'].includes(s.story.phase),`the gate at the wall (${s.story.phase})`);assert(s.story.said.includes('dog_wall'),'Isao: we need a wall');assert.equal(s.story.scout.pack,12,'the last survey\'s pack');
+  console.log(`  grow: the dog's beats ${JSON.stringify(await evaluate('window.__ph'))}`);}
  await until(`${T}.state().programme.print?.step==="gate"&&${T}.state().programme.print.k>0||${T}.state().programme.printed.includes("gate")`,30000);
- {const s=await evaluate(`${T}.state()`);if(!s.programme.printed.includes('gate')){assert.equal(s.story.phase,'printing','the gate prints from the deploy; the Rotor is the first orders\' (2026-11-08)');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
+ {const s=await evaluate(`${T}.state()`);if(!s.programme.printed.includes('gate')){assert.equal(s.story.phase,'walled','the Rotor waits for the wall (2026-11-12)');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
   else console.log('  grow: the gate already stood at the first look (no still of its print)');}
  current='grow-gate-printing';await finish();
  await until(`${T}.state().programme.printed.includes("gate")`,90000);await mark('gate stands');
  {const s=await evaluate(`${T}.state()`);assert.equal(s.programme.gate.built,true);if(!gate0)assert(s.wallCount>walls0&&s.wallCount<=walls0+12,`the walls are rock once printed (${walls0} -> ${s.wallCount})`);}
- // THE STÅLHEART FROM THE DEPLOY (spec 2.C): Isao's own step straight after the gate, with no Rotor standing yet
- await until(`(()=>{const p=${T}.state().programme;return p.isao?.state==="build"&&p.isao.order==="structure"&&p.print.step==="stalheart";})()`,90000);await mark('Stålheart print begins');
- {const s=await evaluate(`${T}.state()`);assert.equal(s.programme.active,'stalheart');assert(!s.programme.printed.includes('landing'),'the pad is a first order, not bought on this page');assert.equal(s.hull.state,'held');console.log(`  grow: the Stålheart begins with ${s.towers} sentry up (phase ${s.story.phase}, settle left ${s.story.settleLeft})`);}
- await delay(8000);assert.deepEqual(await evaluate(hiddenNear),[]);
- assert(/STÅLHEART \d+%/.test(await evaluate('document.querySelector("#td-stats").textContent')),`the HUD reads the Stålheart's progress (${await evaluate('document.querySelector("#td-stats").textContent')})`);
- current='grow-stalheart-rising';await finish();
- await until(`${T}.state().story.emergency===true`,90000).catch(async()=>assert.fail(`no first orders on an acceptance page: Isao's emergency at the settle's end (${JSON.stringify((await evaluate(`${T}.state()`)).story)})`));await mark('the settle ends: Isao orders the Rotor himself');
- await until(`${T}.state().towers===1`,240000);await mark('Rotor printed (Isao\'s emergency: no first orders on an acceptance page)');
- {const s=await evaluate(`${T}.state()`);assert.equal(s.story.emergency,true);assert(s.story.said.includes('rotor_emergency'),'his line');
+ await until(`${T}.state().towers===1`,240000);await mark('Rotor printed (Isao\'s, after the wall)');
+ {const s=await evaluate(`${T}.state()`);assert(s.story.said.includes('dog_rotor'),'his line');assert.equal(s.story.emergency,false,'not the settling\'s emergency');
   assert(['rotor-ready','tremor','breach','approach','override','piloting'].includes(s.story.phase),`the Rotor stands: rotor-ready or past it (${s.story.phase})`);
-  assert(s.towerCells.some(([k,ci])=>k==='rotor'&&ci===s.story.socket),'on the plan\'s socket');console.log(`  grow: the Rotor stands with the Stålheart ${s.programme.printed.includes('stalheart')?'standing':'printing'}`);}
+  assert(s.towerCells.some(([k,ci])=>k==='rotor'&&ci===s.story.socket),'on the plan\'s socket');assert(!s.programme.printed.includes('stalheart')&&s.programme.active!=='stalheart','the Stålheart waits for the first orders');}
  await until(`${T}.state().story.gateAt!==null`,30000);   // set in rotor-ready, the tick the gate is found standing
  await until(`${T}.state().towerCells.some(([k])=>k==="quiver")`,90000);await mark('Quiver stands');   // ordered by the beats as the gate is found standing at rotor-ready
  await until(tremored,90000).catch(async()=>assert.fail(`the tremor (${JSON.stringify((await evaluate(`${T}.state()`)).story)} ${JSON.stringify(await evaluate('window.__ph'))})`));await mark('the tremor (the settled opening: a tremor, not the quiet breach at the deploy)');
@@ -1047,6 +1041,10 @@ try{
  {const s=await evaluate('window.__stalheartTest.state()');const up=s.programme.printed.includes('stalheart');   // the hull is the Stålheart's: none while it prints, and no TANK on the strip
   assert.equal(s.hull.state==='held',!up,`no hull while the Stålheart prints, a hull once it stands (${JSON.stringify(s.hull)}, printed ${s.programme.printed})`);
   if(!up){assert.equal(s.hull.tankButton,false,'the strip offers no TANK before the hull is out');assert.equal(s.hull.visible,false);}}
+ await until(`${T}.state().programme.printed.includes('depot')`,240000);await mark('the depot stands (the first harvest)');
+ await until(`${T}.state().programme.active==='stalheart'||${T}.state().programme.printed.includes('stalheart')`,300000).catch(async()=>assert.fail(`the Stålheart after the harvest and the first orders (${JSON.stringify((await evaluate(`${T}.state()`)).story)} rover ${JSON.stringify(await evaluate(`${T}.rover.state()`))})`));await mark('Stålheart print begins');
+ {const s=await evaluate(`${T}.state()`);assert(['orders','quiver-piloting','construction'].includes(s.story.phase),`after the first orders (${s.story.phase})`);assert.equal(s.hull.state,'held');
+  if(s.programme.active==='stalheart'){await until(`/STÅLHEART \\d+%/.test(document.querySelector("#td-stats").textContent)`,40000).catch(async()=>assert.fail(`the HUD reads the Stålheart's progress once Isao is over the plot (${await evaluate('document.querySelector("#td-stats").textContent')})`));current='grow-stalheart-rising';await finish();}}
  await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',150000);await delay(600);await mark('Quiver optic');
  await evaluate('window.__stalheartPilotTest.hold(true)');
  // the player's hands in sector 0: re-aim every half second, and hop to the other mount when this one has had nothing in reach for 3 s
@@ -1092,7 +1090,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','bays','hugin','depot','radar','assembly'],'every step, in order (the pad, the recycler\'s work and the array are the first orders\', not bought here: 2026-11-08; the depot after HUGIN since round 8, 2026-11-05: this list was never reached since)');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,[],`nothing is owed: the colony is the build board's now (round 6), the passable back gate and launcher never were (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['depot','gate','gunship','hulls','rebuild','stalheart','uplink'],'no array station: the array is a first order (2026-11-08); the depot\'s perk since round 8');assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','depot','stalheart','bays','hugin','radar','assembly'],'every step, in order (the pad, the recycler\'s work and the array are the first orders\', not bought here: 2026-11-08; the depot after HUGIN since round 8, 2026-11-05: this list was never reached since)');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,[],`nothing is owed: the colony is the build board's now (round 6), the passable back gate and launcher never were (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['depot','gate','gunship','hulls','rebuild','stalheart','uplink'],'no array station: the array is a first order (2026-11-08); the depot\'s perk since round 8');assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
@@ -1208,7 +1206,7 @@ try{
  await until(`${T}.state().arrival.phase==="done"`,5000);await delay(600);
  {const s=await st();assert.equal(await evaluate('location.href'),landingHref,'the landing\'s NEXT is in the page: no reload');
   assert.equal(s.arrival.skipped,true,'NEXT skipped the landing');assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],'the swap came with it');
-  assert.ok(['foundry','printing'].includes(s.story.phase),`the beats are at ROTOR's start, not past it: the press ended the landing once (${s.story.phase}; the Rotor is ordered at once since 2026-10-03)`);
+  assert.ok(['foundry','dog-print','scouting','contact','walled','printing'].includes(s.story.phase),`the beats are at ROTOR's start, not past it: the press ended the landing once (${s.story.phase}; the dog's beats are ROTOR's since 2026-11-12)`);
   assert.equal(await evaluate('!!document.activeElement?.matches?.("#skip-tutorial [data-next]")'),false,'NEXT lets go of the focus: a Space later must not press it again');
   const c=await card();assert.match(c.where,/^TUTORIAL 2\/6\s*ROTOR/,`2/6 (${c.where})`);assert.match(c.next,/^NEXT ›\s*FIRST WAVE$/);}
  current='chapters-rotor';await finish();
@@ -1278,7 +1276,7 @@ try{
  await until(`!!${T}`,90000);await delay(2500);
  {const s=await st();assert.equal(s.skip.on,false,'a page that does not ask to skip does not skip');assert.equal(s.automated,false,'the opening still plays the tutorial');
   assert.equal(s.arrival.on,true,'the opening lands the SH02 first (src/fx/arrival.js); the offer stands over the landing too');
-  assert(['landed','foundry','printing','rotor-ready'].includes(s.story.phase),`the run is in the opening beats (${s.story.phase})`);
+  assert(['landed','foundry','dog-print','scouting','contact','walled','printing','rotor-ready'].includes(s.story.phase),`the run is in the opening beats (${s.story.phase}; the dog's since 2026-11-12)`);
   assert.equal(s.skip.offer.shown,true,'the offer stands');
   assert.equal(await evaluate('document.querySelector("#skip-tutorial [data-skip]").textContent'),'SKIP ALL','the button says what it does');
   assert.match(await evaluate('document.querySelector("#skip-tutorial .tut-where").textContent'),/^TUTORIAL [12]\/6/,'and the card says where the run is');
@@ -1619,6 +1617,88 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.rover.state().stock===4`,8000).catch(async()=>assert.fail(`the stock is whole again on the repair spot (${JSON.stringify((await R()).stock)})`));
  console.log(`  flares: spent ${e0.stock}/4 after four F, a fifth dropped nothing, restocked under the gantry`);
  current='rover-after';await finish();
+ } else if(args.includes('--dog-scout')) {
+ // THE RECON DOG (owner, 2026-11-10, note 2; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1, 5): the story's own start with the
+ // dog's seat asked for (&dog=1: an acceptance page surveys at once otherwise) and the first orders' card (&first=1). The landing; Isao prints RECKON K9
+ // (the close-up); REAL KEYS (W, A, D, Shift) drive it to the three survey points (the steering read off the harness's bearing to the next waypoint)
+ // and their pay; the last survey's pack beyond the gate; the dog home; the wall (the gate's print), Isao's Rotor, the tremor, the Rotor's seat; the
+ // first wave cleared by the pilot's hands; the depot, Isao's flare and the rover's first trip home; THE FIRST ORDERS (no Rotor card); the Stålheart's
+ // print begins after it; the Quiver's hard cores and sector 0 under its print. Every beat's story clock prints as DOG TIMELINE.
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),dog=()=>evaluate(`${T}.dog.state()`),{DOG_SCOUT}=await import('../src/content/dog-scout.js');
+ const PH=`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`;
+ const KEYS={w:['w','KeyW',87],a:['a','KeyA',65],d:['d','KeyD',68],shift:['Shift','ShiftLeft',16]},held={};
+ const hold=async(k,on)=>{if(!!held[k]===on)return;held[k]=on;const [key,code,vk]=KEYS[k];await send('Input.dispatchKeyEvent',{type:on?'keyDown':'keyUp',key,code,windowsVirtualKeyCode:vk,...(on&&key.length===1?{text:key}:{})});};
+ const letGo=async()=>{for(const k of Object.keys(KEYS))await hold(k,false);};
+ const marks=[],mark=async(what)=>{const s=await st();marks.push([what,s.story.clock]);console.log(`  dog: ${what} at story clock ${s.story.clock}`);};
+ await go('dog-scout','index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1#td');
+ await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
+ const b0=(await st()).biomass;
+ await until(`${T}.state().story.phase==='dog-print'`,120000).catch(async()=>assert.fail(`the deploy into the dog's print (${JSON.stringify((await st()).story)})`));await mark('deploy: the dog\'s print asked');
+ {const s=await st();assert.equal(s.towers,0,'no Rotor at the deploy');assert.equal(s.biomass,b0+180,`the whole salvage at the deploy (${b0} -> ${s.biomass})`);assert.equal(s.programme.printed.length,0,'nothing printed: no gate, no Stålheart');}
+ await until(`!!${T}.state().companions?.print?.printing&&${T}.state().companions.print.printing.id==='k9'`,90000).catch(async()=>assert.fail(`Isao prints the K9 (${JSON.stringify((await st()).companions?.print)})`));await mark('the K9\'s print (close-up)');
+ {const s=await st();assert.equal(s.shot,'petPrint','the print\'s close-up');}
+ await delay(1500);current='dog-print';await finish();
+ await until(`${T}.state().story.phase==='scouting'`,120000).catch(async()=>assert.fail(`the K9 born, the scouting (${JSON.stringify((await st()).companions?.print)})`));await mark('scouting: the seat taken');
+ const d0=await dog();console.log(`  dog: points ${JSON.stringify(d0.points)}, contact ${d0.contact}, life ${d0.life}`);
+ assert.equal(d0.active,true,'the seat is the player\'s');assert.equal(d0.points.length,3,'three survey points');assert.equal((await st()).shot,'dogScout','the chase camera\'s shot');
+ assert.equal(await evaluate(`document.querySelectorAll('.dog-scout-hud > div').length`),5,'three markers, the home marker and the line');
+ await delay(1200);current='dog-seat';await finish();
+ // THE DRIVE: hold W (and Shift once facing the way), steer on the waypoint's bearing, stop in the ring until it is surveyed
+ const drive=async(want,budget,label)=>{
+  const t0=Date.now();let best=1e9,bestAt=Date.now();
+  for(;;){const d=await dog();if(await want(d))break;
+   if(Date.now()-t0>budget){await letGo();assert.fail(`${label}: the drive took longer than ${budget/1000} s of wall (${JSON.stringify(d)})`);}
+   const home=d.target==='home',pt=home?null:d.points.find((p,i)=>i===d.target),dist=home?d.homeM:pt?.m??0,stop=!home&&dist<=DOG_SCOUT.survey.ringM-2;
+   if(dist<best-1){best=dist;bestAt=Date.now();}
+   const s=d.steer??0;await hold('a',!stop&&s>0.12);await hold('d',!stop&&s<-0.12);await hold('w',!stop&&Math.abs(s)<1.3);await hold('shift',!stop&&Math.abs(s)<0.5&&dist>12);
+   await delay(50);}
+  await letGo();};
+ const tDrive=Date.now();
+ for(let n=1;n<=3;n++){
+  await drive(async(d)=>d.surveyed.length>=n,360000,`survey ${n}`);
+  const d=await dog();await mark(`survey ${n} (${d.points[d.surveyed.at(-1)].kind})`);
+ }
+ const sv=await st();assert.equal(sv.biomass,b0+180+3*DOG_SCOUT.survey.pay,`the three surveys paid ${DOG_SCOUT.survey.pay} kg each (bank ${sv.biomass})`);
+ assert.match(await evaluate('document.body.innerText'),/SURVEYED \+30 KG/,'the survey\'s toast');
+ await until(`${T}.state().story.phase==='contact'`,10000).catch(async()=>assert.fail(`the last survey: the contact (${JSON.stringify((await st()).story)})`));
+ {const s=await st();assert.equal(s.story.scout.pack,12,'the pack: twelve bodies');assert(s.story.said.includes('dog_contact'));}
+ await delay(500);current='dog-contact';await finish();
+ await drive(async(d)=>d.home||!d.active,240000,'the run home');
+ console.log(`  dog: the drive took ${((Date.now()-tDrive)/1000).toFixed(0)} s of wall; knocks ${(await dog()).knocks}`);
+ await until(`${T}.state().story.phase!=='contact'`,10000);await mark('home: the wall');
+ {const s=await st(),d=await dog();assert.ok(['walled','printing','rotor-ready'].includes(s.story.phase),`walled (${s.story.phase})`);assert.equal(d.active,false,'the seat let go');assert.notEqual(s.shot,'dogScout','the chase camera gone');
+  const k9=s.companions.units.find(u=>u.id==='k9');assert.equal(k9.driven,false,'the K9 a companion again');}
+ await until(`${T}.state().programme.printed.includes('gate')`,120000).catch(async()=>assert.fail(`the gate (${JSON.stringify((await st()).programme)})`));await mark('the gate stands');
+ await until(`${T}.state().towers===1`,180000).catch(async()=>assert.fail(`Isao's Rotor (${JSON.stringify((await st()).story)})`));await mark('the Rotor stands');
+ assert((await st()).story.said.includes('dog_rotor'),'his line');
+ await until(`(window.__ph||[]).some(r=>r[0]==='tremor')`,90000);await mark('the tremor');
+ await until(`${T}.seatState().seatKey==='rotor'`,120000).catch(async()=>assert.fail(`the Rotor's seat (${JSON.stringify((await st()).story)})`));await mark('the Rotor\'s seat');
+ await delay(1500);current='dog-rotor-seat';await finish();
+ await until('!!window.__stalheartPilotTest',30000);await evaluate('window.__stalheartPilotTest.hold(true)');
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000).catch(async()=>assert.fail(`the first wave cleared (${JSON.stringify((await st()).story)} alive ${(await st()).enemiesAlive})`));
+ await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('the first wave cleared');
+ await until(`${T}.state().programme.printed.includes('depot')`,180000).catch(async()=>assert.fail(`the depot at the harvest (${JSON.stringify((await st()).programme)})`));await mark('the depot stands');
+ await until(`${T}.state().story.scout.flared`,60000).catch(async()=>assert.fail(`Isao's flare (${JSON.stringify(await evaluate(`${T}.rover.state()`))})`));await mark('Isao\'s flare: the rover dispatched');
+ {const r=await evaluate(`${T}.rover.state()`);console.log(`  dog: rover ${r.mode}, field ${r.field} kg on ${r.piles} piles, flares ${JSON.stringify(r.flares)}`);assert.ok(r.field>0,'the first wave\'s bodies on the ground');}
+ await until(`${T}.rover.state().mode==='harvest'`,180000).then(async()=>{await delay(800);current='dog-harvest';await finish();}).catch(()=>console.log('  dog: no still of the harvest'));
+ await until(`${T}.state().story.phase==='orders'`,240000).catch(async()=>assert.fail(`the rover's first run home (${JSON.stringify(await evaluate(`${T}.rover.state()`))})`));
+ {const r=await evaluate(`${T}.rover.state()`);await mark(`the rover home (${r.trips} trip, ${r.delivered} kg)`);}
+ await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,30000).catch(async()=>assert.fail(`THE FIRST ORDERS (${JSON.stringify((await st()).board)})`));await mark('THE FIRST ORDERS');
+ {const s=await st(),bd=s.board;console.log(`  dog: the card: bank ${bd.bank}; ${bd.offers.map(o=>`${o.id} ${o.price}`).join(' · ')}`);
+  assert.equal(s.paused,true);assert(!bd.offers.some(o=>o.id==='sentry:rotor'),'no Rotor card: the Rotor stands');assert.deepEqual(bd.offers.map(o=>o.id),['build:landing','build:foundry','build:solar']);
+  assert(!s.programme.printed.includes('stalheart')&&s.programme.active!=='stalheart','the Stålheart waits for the card');}
+ current='dog-first-orders';await finish();
+ for(const id of ['build:landing','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
+ await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
+ await until(`${T}.state().programme.active==='stalheart'`,120000).catch(async()=>assert.fail(`the Stålheart's print after the card (${JSON.stringify((await st()).programme)})`));await mark('the Stålheart\'s print begins');
+ await until(`${T}.state().story.phase==='quiver-piloting'`,120000).catch(async()=>assert.fail(`the Quiver's hard cores (${JSON.stringify((await st()).story)})`));await mark('the Quiver\'s seat');
+ await evaluate('window.__stalheartPilotTest?.hold(true)');
+ await until(`(()=>{const s=window.__stalheartTest.state();if(['construction','settled'].includes(s.story.phase))return true;const t=window.__stalheartPilotTest;if(t&&!s.gunship.seat){if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();t.aimEnemy();}}return false;})()`,240000).catch(async()=>assert.fail(`sector 0 (${JSON.stringify((await st()).story)})`));
+ await evaluate('window.__stalheartPilotTest?.hold(false)');
+ {const s=await st();await mark(`after the Quiver: ${s.story.phase}`);assert.equal(s.story.phase,'construction','sector 0 under the Stålheart\'s print');assert.equal(s.gunship.station,true,'GS01 on station');assert.equal(s.programme.active,'stalheart','still printing');}
+ await delay(1000);current='dog-sector-0';await finish();
+ console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
  } else if(args.includes('--settling')) {
  // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to
  // build first with limited building material, the Stalheart being non-negotiable ... Isao tells the player that we will need to scout for more
@@ -3374,12 +3454,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // a) planet view, the beacons lit one by one, b) then the view deep dives directly towards the rotor, without cut"): every frame's
  // camera from the end of the close-up to the Rotor's optic; no frame may move the eye by more than `cut` x the planet's radius
  const T='window.__stalheartTest',cut=0.06;
- // THE SETTLING (2026-11-08): the story's own start waits a settle before the first contact; &settle=10 keeps it short (the tune's 120 s is two
- // minutes of a headless clock), and the Rotor's seat now comes after the emergency Rotor at the settle's end, behind the Stålheart's print in Isao's book
- await go('opening-cuts','index.html?sw=0&acceptance=1&world=story&settle=10#td');
+ await go('opening-cuts','index.html?sw=0&acceptance=1&world=story#td');   // THE RECON DOG (2026-11-12): the dog's opening, surveyed at once on an acceptance page (no close-up, no seat): the tour, then the dive into the Rotor
  await until(`!!${T}`,90000);
  await evaluate(`(()=>{const T=${T},L=window.__cam=[];(function f(){try{const s=T.seatState(),st=T.state();L.push([performance.now()/1000,s.pos,st.shot||"",s.view,s.seatKey||"",(st.programme?.colony?.beaconPulse||[]).filter(b=>b.lit).map(b=>b.id).join(",")]);}catch(e){}requestAnimationFrame(f);})();})()`);
- await until(`${T}.seatState().seatKey==="rotor"`,300000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);   // 300 s: the seat behind the settle, the Stålheart's 75 s and the emergency Rotor (was 150 s)
+ await until(`${T}.seatState().seatKey==="rotor"`,300000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);   // 300 s: the seat behind the wall's and the Rotor's prints
  const L=await evaluate('window.__cam'),d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
  const from=L.findIndex(r=>r[2]==='sitesTour');assert(from>=0,'the tour of the landers plays');
  const jumps=[];for(let i=Math.max(1,from);i<L.length;i++){const m=d(L[i][1],L[i-1][1]);if(m>cut){jumps.push(`${(L[i][0]-L[from][0]).toFixed(2)} s ${L[i-1][2]||L[i-1][3]} -> ${L[i][2]||L[i][3]} ${m.toFixed(3)}`);if(args.includes('--probe'))for(let k=Math.max(0,i-4);k<Math.min(L.length,i+4);k++)console.log(`    ${(L[k][0]-L[from][0]).toFixed(3)} ${L[k][2]||'-'} ${L[k][3]} r=${Math.hypot(...L[k][1]).toFixed(4)} step=${k?d(L[k][1],L[k-1][1]).toFixed(4):0}`);}}

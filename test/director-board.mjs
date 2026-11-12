@@ -44,7 +44,8 @@ for (const doorAt of [t.sectorDoor.earliest, t.sectorDoor.latest]) {
   ok(`door ${doorAt}: idle steps say "at the lull"`, prints.filter((r) => t.programme.find((s) => s.id === r.step).when.idle).every((r) => r.tags.includes('at the lull')));
   // DROPS & COMPANIONS
   const drops = lane('drops');
-  ok(`door ${doorAt}: C-07 in EXPEDITION, RECKON K9 at the radar plus 3 days`, drops.find((r) => r.id === 'pet-c07')?.col === 'ch:expedition' && drops.find((r) => r.id === 'pet-k9')?.col === 's:2' && drops.find((r) => r.id === 'pet-k9').tags.includes('days'));
+  // THE RECON DOG (2026-11-12): RECKON K9 is the beats' own print at the dog's opening; its trigger (the fallback where the opening had no dog) and C-07's, a day after it, in EXPEDITION
+  ok(`door ${doorAt}: RECKON K9's fallback and C-07 (a day after it) in EXPEDITION`, drops.find((r) => r.id === 'pet-c07')?.col === 'ch:expedition' && drops.find((r) => r.id === 'pet-k9')?.col === 'ch:expedition' && drops.find((r) => r.id === 'pet-c07').tags.includes('days'));
   ok(`door ${doorAt}: the mech at THE ARENA (s:${doorAt + 1}), after the kill (round 6)`, drops.find((r) => r.id === 'pet-mech')?.col === `s:${doorAt + 1}` && drops.find((r) => r.id === 'pet-mech').tags.includes('after the kill') && /King dead/.test(drops.find((r) => r.id === 'pet-mech').rule));
   ok(`door ${doorAt}: K0-TECH at the greenhouse (s:3) plus 2 days (round 6)`, drops.find((r) => r.id === 'pet-k0')?.col === 's:3' && drops.find((r) => r.id === 'pet-k0').tags.includes('days'));
   ok(`door ${doorAt}: the FEIDS-26 drop spans the radar to THE ARENA, its days written`, (() => { const r = drops.find((x) => x.id === 'feids-drop'); return r?.col === 's:2' && r.to === `s:${doorAt + 1}` && r.sub.includes(`${t.reinforcements.days} days`); })());

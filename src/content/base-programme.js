@@ -108,6 +108,16 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'bridge-e2', label: 'bridge E2', structures: ['bridge-e2'], frame: true, plot: BRIDGE_PLOT, when: { stand: ['dome-e', 'dome-se'] }, passable: true, seconds: 8, metres: 6, brief: 'build_bridge', perk: null },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
+// THE RECON DOG'S OPENING (owner, 2026-11-10, his call 1: "the Stålheart prints AFTER the Rotor fight, not from the deploy"; spec
+// docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 2.C, 2.D): on the story's own start (the beats' `scout`) these steps lead Isao's
+// programme in this order with these `when`s (src/domain/build-programme.js openingSteps): the gate once the dog is home (`walled`), the depot after the
+// first wave's clear (`harvest`: the rover's first run, moved up from sector 1), the Stålheart once THE FIRST ORDERS have closed (the Quiver's beat follows the
+// card at once: `quiver-piloting`; at `orders` it was claimed in the frame the card opened). Chapters, SKIP TUTORIAL and the static stages keep BASE_PROGRAMME as it stands
+export const OPENING_PROGRAMME = Object.freeze({
+  order: Object.freeze(['gate', 'depot', 'stalheart']),
+  when: Object.freeze({ gate: Object.freeze({ phase: 'walled' }), depot: Object.freeze({ phase: 'harvest' }), stalheart: Object.freeze({ phase: 'quiver-piloting' }) }),
+});
+
 // ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the
 // AFR-01 and back to the gate plot cost more than the prints themselves. Nothing is skipped at 4.2 — he is simply not dawdling.
 export const BASE_BUILDER = Object.freeze({ cellsPerSecond: 4.2 });

@@ -22,7 +22,7 @@
 //         eye(), wire() (the wireframe options or null), seed, born (true: both born at once), party() (round 4: DAY 42's dance floor, the
 //         ground point under the ball while the party is on, else null: src/fx/disco-party.js floor)
 //   createCompanions(host) -> { tick(dt, t), state(), contacts(), roots(), frameOf(i, pos, quat), spots(cells, padM), print(i, ci), wake(i), birth(i),
-//         life(i), born(), loaded(i), dispose() }
+//         driven(i, pose) (the recon dog's seat, 2026-11-12), point(i) (its unit point, heading and cell), life(i), born(), loaded(i), dispose() }
 import * as THREE from '../../vendor/three.module.js';
 import { COMPANIONS } from '../content/companions.js';
 import { createPlay, stepPlay, gaitFor, MOVING } from '../domain/companion-play.js';
@@ -32,6 +32,7 @@ import { createMechPoser } from './mech-pose.js';
 import { motionOf } from '../domain/mech-pose.js';
 import { pushOut, inHull } from '../domain/friendly-push.js';
 
+const u3 = (v) => [v.x, v.y, v.z];
 export function createCompanions(h) {
   const K = COMPANIONS, units = [], play = createPlay(K.play, K.units.length);
   let s = (h.seed >>> 0) || 7, roam = [], disposed = false, last = 0;
@@ -160,9 +161,24 @@ export function createCompanions(h) {
     u.mixer.update(u.still ? 0 : dt);
   }
 
+  // THE DOG'S SEAT (2026-11-12, the recon dog, src/fx/dog-scout.js): a driven unit is placed where the seat puts it and plays the gait of the speed it
+  // gives (or its one-shot); the play leaves it alone (not `present`) until the seat lets go
+  function stepDriven(u, dt) {
+    const d = u.driven, m = h.metres(), def = u.def;
+    if (d.pos) { u.pos.set(d.pos[0], d.pos[1], d.pos[2]).normalize(); u.cell = nearestFrom(u.cell, u.pos); }
+    if (d.heading) u.heading.set(d.heading[0], d.heading[1], d.heading[2]);
+    u.speed = Math.abs(d.speed ?? 0); u.blocked = false; place(u);
+    if (u.farRoot && u.root) { const lod = def.lodMetres ?? K.lodMetres, dd = u.wrap.position.distanceTo(h.eye()) / m, far = u.isFar ? dd > lod - K.fade : dd > lod; u.isFar = far; u.farRoot.visible = far; u.root.visible = !far; }
+    if (!u.mixer) return;
+    if (d.oneShot) { if (u.oneShot !== d.oneShot) { u.oneShot = d.oneShot; fadeTo(u, d.oneShot, K.crossfade, true); } u.rate = 1; }
+    else { u.oneShot = null; if (u.speed > 0.05) { const gt = gaitFor(def.gaits, u.speed, K.rate); fadeTo(u, gt.clip); u.rate = gt.rate; } else { fadeTo(u, def.idle); u.rate = 1; } if (u.cur) u.cur.timeScale = u.rate; }
+    if (dt > 0) u.mixer.update(dt);
+  }
+
   function stepUnit(u, p, dt) {
     if (u.life === 'unborn') return;
     if (u.life === 'printing') { stepPrinting(u, dt); return; }
+    if (u.driven) { stepDriven(u, dt); return; }
     const m = h.metres(), def = u.def;
     if (p.retarget) { p.retarget = false; u.goalToken = p.target; resolve(u, p.target); }
     else if (u.goalToken === 'other' || u.goalToken === 'hull') resolve(u, u.goalToken);   // live targets
@@ -198,7 +214,7 @@ export function createCompanions(h) {
     now: 0, rand, units: K.units.map((d) => ({ top: d.top, trot: d.trot, wander: d.wander, heavy: d.kind === 'heavy', idle: d.idle, sit: d.sit, tricks: d.tricks })),
     dist: (i, j) => metresBetween(units[i].pos, units[j].pos), toTarget: (i) => metresBetween(units[i].pos, units[i].goal),
     toHull: (i) => { const p = h.hull(); return p ? Math.hypot(units[i].pos.x - p[0], units[i].pos.y - p[1], units[i].pos.z - p[2]) / h.metres() : null; },
-    blocked: (i) => units[i].blocked, clipSecs, present: (i) => units[i]?.life === 'born', dancing: () => !!h.party?.(),
+    blocked: (i) => units[i].blocked, clipSecs, present: (i) => units[i]?.life === 'born' && !units[i].driven, dancing: () => !!h.party?.(),
     hullMotion: (i) => {   // the hull as unit i sees it (metres, m/s): the play's dodge (src/domain/companion-play.js)
       if (!hullSeen) return null; const m = h.metres(), u = units[i];
       w.copy(u.pos).sub(hullP); const d = w.length() / m, speed = hullV.length() / m, along = speed > 1e-9 ? w.dot(hullV) / hullV.length() : 0;
@@ -229,7 +245,7 @@ export function createCompanions(h) {
   function hullBox() { const p = h.hull(), d = h.hullDir?.(); return p && d ? { pos: p, dir: d } : null; }
   const hullPad = (u) => (u.def.kind === 'heavy' ? u.def.padM : K.hull.pad);
   function pushFromHull(u) {
-    if (u.life !== 'born' || !u.loaded) return;
+    if (u.life !== 'born' || !u.loaded || u.driven) return;
     const b = hullBox(); if (!b) return; const m = h.metres(), pu = padOf(u);
     const free = (q) => roamSet.has(nearestFrom(u.cell, v.fromArray(q))) && !h.solidAt(q, pu);
     const o = pushOut(u.pos.toArray(), b, { halfLength: K.hull.halfLength * m, halfWidth: K.hull.halfWidth * m, pad: hullPad(u) * m, free });
@@ -249,7 +265,7 @@ export function createCompanions(h) {
     state: () => ({
       loaded: units.every((u) => u.loaded), failed: units.some((u) => u.failed), roam: roam.length, t: +last.toFixed(2), dist: +ctx.dist(...play.game.pair).toFixed(2),
       game: { on: play.game.on, pair: play.game.pair.slice(), chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) }, dodges: play.dodges, hullMps: +(hullV.length() / h.metres()).toFixed(2),
-      units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, hullM: hullSeen ? +(u.pos.distanceTo(hullP) / h.metres()).toFixed(2) : null, inHullFrames: u.inHullFrames, inHullMax: +u.inHullMax.toFixed(3), pushes: u.pushes, underM: +((u.pos.length() * (h.floorAt?.(u.pos.toArray()) ?? 1) - u.wrap.position.length()) / h.metres()).toFixed(3), far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pose: u.poser?.state() ?? null, pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
+      units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, driven: !!u.driven, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, hullM: hullSeen ? +(u.pos.distanceTo(hullP) / h.metres()).toFixed(2) : null, inHullFrames: u.inHullFrames, inHullMax: +u.inHullMax.toFixed(3), pushes: u.pushes, underM: +((u.pos.length() * (h.floorAt?.(u.pos.toArray()) ?? 1) - u.wrap.position.length()) / h.metres()).toFixed(3), far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pose: u.poser?.state() ?? null, pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
     }),
     contacts: () => units.filter((u) => u.loaded && u.life !== 'unborn').map((u) => ({ pos: u.wrap.position.toArray() })),
     roots: () => units.map((u) => u.root),
@@ -266,6 +282,14 @@ export function createCompanions(h) {
     },
     wake(i) { const u = units[i]; if (u) u.still = false; },
     birth(i) { const u = units[i]; if (!u || u.life === 'born') return false; u.life = 'born'; u.still = false; u.wrap.visible = u.loaded; play.units[i].mode = 'idle'; play.units[i].until = last + 1; return true; },
+    // the seat's hand: driven(i, { pos, heading, speed, oneShot }) places unit i (a born one) each frame from the seat; driven(i, null) gives it back to the play
+    driven(i, pose) {
+      const u = units[i]; if (!u || u.life !== 'born') return false;
+      if (pose) { u.driven = pose; return true; }
+      if (u.driven) { u.driven = null; u.oneShot = null; u.goal.copy(u.pos); u.goalToken = null; play.units[i].mode = 'idle'; play.units[i].until = last + 1; play.units[i].target = null; }
+      return true;
+    },
+    point: (i) => (units[i] ? { pos: u3(units[i].pos), heading: u3(units[i].heading), cell: units[i].cell } : null),
     life: (i) => units[i]?.life ?? null,
     born: () => units.filter((u) => u.life === 'born').map((u) => u.def.id),
     loaded: (i) => !!units[i]?.loaded,

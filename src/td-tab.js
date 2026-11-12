@@ -55,6 +55,7 @@ import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroun
 import { createDaylight, dayFlag } from './fx/daylight.js'; import { createDiscoParty } from './fx/disco-party.js'; import { createHudDim } from './fx/hud-dim.js';
 import { createReinforcements } from './fx/reinforcements-host.js'; import { createMechSquad } from './fx/mech-squad.js'; import { REINFORCEMENTS } from './content/reinforcements.js';   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23)
 import { createCompanions } from './fx/companions.js'; import { createPetPrint } from './fx/pet-print.js'; import { createAntennaPrint } from './fx/antenna-print.js';   // C-07 AND RECKON K9, THE BASE COMPANIONS (owner, 2026-10-27)
+import { createDogScout } from './fx/dog-scout.js'; import { createFirstHarvest } from './fx/first-harvest.js';   // THE RECON DOG'S SEAT AND THE FIRST HARVEST (2026-11-12)
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { setWireframe, wireCount } from './fx/model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the sentries, the hull and the Ridgebacks drawn as the briefings' wireframe; the gunship and SOL as they are
 import { createSyntheticModal } from './fx/synthetic-modal.js';
@@ -112,7 +113,7 @@ export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
   const wire = flags.wire !== '0', wireOpts = { tint: flags.wire !== 'flat' };   // WIREFRAME UNITS, THE DEFAULT (owner, 2026-10-26 a test, 2026-10-27 "make the wireframe look the default, not a flag": "all the sentries, Mork, Mechs. but not the gunship or sol"): tinted per part (src/fx/model-fixture.js wireLook); ?wire=flat the briefings' one cyan, ?wire=0 the solids
   let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, discoParty = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
-  let reinforcements = null, mechSquad = null, companions = null, petPrint = null, antennaPrint = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
+  let reinforcements = null, mechSquad = null, companions = null, petPrint = null, antennaPrint = null, dogScout = null;   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the call, the drop and the four after it (src/fx/reinforcements-host.js, src/fx/mech-squad.js)
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -2399,6 +2400,8 @@ export function initTdTab(root) {
     petPrint?.restore(); petPrint = companions ? createPetPrint({ scene, camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, showBrief, companions: () => companions, isao: () => isao, phase: () => story?.beats?.phase?.() ?? null, perk: (id) => programme.hasPerk(id), day: () => daylight?.day?.() ?? 0, sectorRun: () => sectorRun,   /* ISAO PRINTS THE COMPANIONS (owner, 2026-10-30; src/fx/pet-print.js) */
       shotActive: () => shotActive() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() || !!controlsCard?.state().shown, isaoBusy: () => !!briefs.queue(), alive: () => playerHP > 0, won: () => !!player.won, slabAt: (p, pad) => storyBase?.slabAt(p, pad) ?? null }) : null;
     antennaPrint?.restore(); antennaPrint = story ? createAntennaPrint({ camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, want: (id) => briefs.want(id), print: () => story?.print ?? null, shotActive: () => shotActive() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship }) : null;   /* THE ANTENNA ON SCREEN (round 4, 2026-11-02; src/fx/antenna-print.js) */
+    dogScout?.dispose(); dogScout = companions ? createDogScout({ scene, camera, metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false, companions: () => companions, petPrint: () => petPrint,   /* THE RECON DOG (2026-11-12; src/fx/dog-scout.js) */
+      startShot, endShot, shotActive, shotId, enemies: () => enemies, eco: () => eco, showToast, showBrief, held: () => ({ fwd: keys.fast || cruise, back: keys.slow, left: keys.left, right: keys.right, sprint: keys.laser }), unheld: () => { cruise = false; }, auto: flags.acceptance === '1' && !storyQuery.dog }) : null;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
     // model happens to land — which is what lets a reset place the tank once instead of standing it beside the Heart and
     // teleporting it later.
@@ -4213,7 +4216,7 @@ export function initTdTab(root) {
     briefs.stepClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|arrivalFlight|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|arrivalFlight|sol88Launch|isaoTalk|sitesTour|discoReveal|feidsDrop|mechLook|petPrint|antennaPrint|dogScout)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
@@ -4301,7 +4304,7 @@ export function initTdTab(root) {
       }
     }
     if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? [...(sectorRun?.gates() ?? []), ...bossRun.rows()] : [] }, dt);   /* src/fx/integrity-hud.js */
-    reinforcements?.tick(frozen ? 0 : dt); mechSquad?.tick(frozen ? 0 : dt, t); companions?.tick(frozen ? 0 : dt, t); petPrint?.tick(frozen ? 0 : dt); antennaPrint?.tick(frozen ? 0 : dt);   // FEIDS-26: the drop's clock and the four (2026-10-23)
+    reinforcements?.tick(frozen ? 0 : dt); mechSquad?.tick(frozen ? 0 : dt, t); companions?.tick(frozen ? 0 : dt, t); petPrint?.tick(frozen ? 0 : dt); antennaPrint?.tick(frozen ? 0 : dt); dogScout?.tick(frozen ? 0 : dt);   // FEIDS-26: the drop's clock and the four (2026-10-23)
     story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); discoParty?.tick(frozen ? 0 : dt); /* DAY 42 after the base's mixers: the paused clip rewrites the arm each update */ story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos((obj.userData.clear??CONTENT.breach.clearRadius)*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
@@ -4668,6 +4671,7 @@ export function initTdTab(root) {
     hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
     shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base), spriteShot, towerLook: () => params.towerLook });
   const firstOrders = createFirstOrders({ board: buildBoard, story: () => story, touring: () => storyApi.touring(), pause: (v) => { paused = !!v; }, brief: (id) => briefs.want(id), acceptance: flags.acceptance === '1', wanted: storyQuery.first });   // THE FIRST ORDERS (2026-11-08, THE SETTLING; src/fx/first-orders.js); want: the scouting line waits for a busy panel (--settling saw showBrief's one-deep slot drop it behind the Stålheart's lines)
+  const firstHarvest = createFirstHarvest({ rover: () => roverGlue.test.state(), lay: (ci, kg) => roverGlue.lay(ci, kg), flareAt: (ci) => roverGlue.test.flareAt(ci), story: () => story, graph: () => graph, dungeon: () => dungeon });   // THE FIRST HARVEST on the dog's opening (2026-11-12; src/fx/first-harvest.js)
   // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
   const endingHost = createEndingHost({
     storyBase: () => storyBase,
@@ -4788,6 +4792,7 @@ export function initTdTab(root) {
     bossBegin: bossRun.begin, bossEnd: bossRun.end, arenaDue: () => bossRun.arenaDue(), bossTalking: () => bossRun.talking(),   // THE ARENA sector (src/fx/boss-run.js): its breach opens once the hull is at the beacon
     descent: (then) => descentHost.begin(then),   // THE DESCENT before the ending (src/fx/descent-host.js)
     printNow: (id, then) => !!petPrint?.printNow(id, then),
+    dog: () => dogScout, harvest: () => firstHarvest, orders: () => firstOrders,   // THE RECON DOG's seat, the first harvest and the first orders for the beats (src/domain/story-beats.js scout)
     breakSide: canyonRun.breakSide,
     repaired: programme.repaired,
     printed: programme.printed,
@@ -5217,6 +5222,7 @@ export function initTdTab(root) {
       viewBack: (height, back) => { const m = story?.backMouth; if (!m) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...m.dir), { id: 'backview', hold: 600, dive: { ...story.backDoor.dive, height: height ?? story.backDoor.dive.height, back: back ?? story.backDoor.dive.back, diveSeconds: 1e-3 } }); },
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
       rover: roverGlue.test,   // the rover, the field and the pearls (round 8 note 7, --rover)
+      dog: { state: () => dogScout?.test.state() ?? null, goto: (i) => !!dogScout?.test.goto(i) },   // the recon dog's seat (2026-11-12, --dog-scout)
       // THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems
       // through these and nothing else, so it needs no ?acceptance=1
       showcase: createShowcaseHooks({

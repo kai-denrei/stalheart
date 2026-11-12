@@ -352,6 +352,18 @@ export const BRIEFS = {
     id: 'rotor_emergency', face: 'determined', title: 'COMMS · ISAO', once: true,
     lines: ['Contact on the radar and no sentry up.', 'Printing the Rotor myself. Get ready.'],
   },
+  // THE RECON DOG (owner, 2026-11-10, note 2; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1): the opening re-paced round
+  // the dog's survey (captions only, unrecorded). dog_print as the K9's print starts (COMPANIONS.prints.triggers[0]); dog_scout as its seat is
+  // taken; dog_survey_* on the first two surveys (src/fx/dog-scout.js); dog_contact the last survey's pack; dog_wall the dog home (the gate's
+  // print); dog_rotor the Rotor printed after the wall; first_harvest Isao's flare on the first wave's bodies (the rover's first run)
+  dog_print: { id: 'dog_print', face: 'focused', title: 'COMMS · ISAO', once: true, lines: ['First, eyes on the ground. I print a scout.'] },
+  dog_scout: { id: 'dog_scout', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Rock, crystals, biomass. Take the dog and look.', 'Three marks on your screen. Stand in each ring.'] },
+  dog_survey_first: { id: 'dog_survey_first', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['Good rock. I can print with that.'] },
+  dog_survey_second: { id: 'dog_survey_second', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Crystals in the ground. One more mark.'] },
+  dog_contact: { id: 'dog_contact', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['Movement. That is not rock.', 'Bring the dog home!'] },
+  dog_wall: { id: 'dog_wall', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['They follow you. We need a wall.'] },
+  dog_rotor: { id: 'dog_rotor', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Too much for the dog. I print the Rotor.', 'Get ready.'] },
+  first_harvest: { id: 'first_harvest', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['A depot, and the rover\'s first run.', 'My flare is on the bodies at the gate: watch it fill.'] },
   build_solar: {
     id: 'build_solar', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The hull can drink from the sun.', 'Printing the array. Park on its pad for shield.'],
