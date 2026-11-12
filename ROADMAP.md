@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 73 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 74 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### The design agent's calls: the economy made to bind, the rover escorted by the tank, the colony re-laid round a plaza for the mobile Stålheart
+
+`2026-11-12-the-design-agent-s-calls-economy-escort-colony` · decision · **proposed**
+
+The owner, 2026-11-12, leaving for a few hours: "this is still a beta ... the gameplay and pacing needs a lot of work; we need to organize better so we can make the important gameplay decisions" and "use a separate agent to make tough decisions and note them." His direction the same day (docs/DECISIONS.md): no start bank, biomass bonds and what is not gathered seeps away, automation stays and the tank leans toward escorting the rover, the colony toward the elevator-city diorama with the KIDOU, the player choosing what goes where, some structures meaningful (shells, the radar's mech cavalry, the catapult's automated SOL). A design agent wrote two specs and made the calls that block building, documents only.
 
 ### Round 7 stream C: SOL-82's second seat at once, the Ridgebacks as batteries, the mech's print a beat of THE ARENA's SECURE
 

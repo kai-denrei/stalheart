@@ -17,6 +17,23 @@ Evidence:
 - The owner's message of 2026-11-12, quoted in the context.
 - docs/DECISIONS.md at eec6404f, the list he answered from.
 
+## 2026-11-12 — The design agent's calls: the economy made to bind, the rover escorted by the tank, the colony re-laid round a plaza for the mobile Stålheart
+
+decision · proposed · 2026-11-12-the-design-agent-s-calls-economy-escort-colony
+
+The owner, 2026-11-12, leaving for a few hours: "this is still a beta ... the gameplay and pacing needs a lot of work; we need to organize better so we can make the important gameplay decisions" and "use a separate agent to make tough decisions and note them." His direction the same day (docs/DECISIONS.md): no start bank, biomass bonds and what is not gathered seeps away, automation stays and the tank leans toward escorting the rover, the colony toward the elevator-city diorama with the KIDOU, the player choosing what goes where, some structures meaningful (shells, the radar's mech cavalry, the catapult's automated SOL). A design agent wrote two specs and made the calls that block building, documents only.
+
+PROPOSED, nothing built. Economy (docs/superpowers/specs/2026-11-12-economy-and-escort-design.md): kill pay unchanged, every pre-board price x20 (sentries 900-5,200 kg, salvage 1,920/3,600/4,800, barrel and foundry pay-back 1,200, held pay 800-1,200, farm 800 a sector, STORY_SKIP 4,000); the constraint target (cheapest sentry affordable 40-60 % of fighting time in sectors 1-3; each board before sectors 2-4 buys one mid card, not two); streak unchanged and told as bonding; sentry cap 6, +2 fabrication dome, +2 logistics dome; upgrades 0.8x/1.5x, refund 60 %; rover trip unchanged; seepage max(0.5 kg, kg/400) a second replaces the 240 s rot; the break banks the hold and half the flagged ground; kills held from the story's first kill; whites and yellows hunt the rover outside the walls, a jab eats 100 kg of its hold, no hit points; the escort is the hull near the rover (it outranks the rover in the hunt); pearls' cap 36,000 kept; no start bank, THE FIRST ORDERS at ~3,100/4,800/6,000 kg by grade with four cards (pad 1,200, foundry 800 paying 1,200, array 2,400, a second Rotor 900); survey 300 kg a point; board index [1, 2, 4, 4.5, 5] until re-derived from an escort ledger; three Isao lines. Colony (docs/superpowers/specs/2026-11-12-colony-layout-design.md): KIDOU default on the dome base; six slots in today's dome positions round a cleared plaza; HUGIN, launcher, depot, solar, scoreboard, garage and bays moved so the KIDOU's 46 m corridors are clear (a scratch check passes); six dome kinds carrying the old buildings' perks (LOGISTICS shells, flares, +2 cap; RESEARCH the radar and the cavalry; FABRICATION hull rebuild, +2 cap; BIOSPHERE +800 kg; POWER SOL a fifth sooner; HABITAT nothing); the launcher its own card; a COLONY row on the board, a dome one of the two picks; slots open in pairs, the player picks the slot; the KIDOU drives 4 m/s, straddles, prints in 30 s, the bridges wait for it home. Every call is a line in docs/DECISIONS.md for the owner to overturn.
+
+Alternatives: Cutting kill pay to a twentieth (E1's remedy, computed before the rover): not taken, it would leave the rover nothing to fetch; a cut to about a third is the alternative offered.; A rover with hit points and a wreck rebuilt for 3,600 kg: not taken this round (no rebuild flow, no friendly-fire rule).; Seven dome slots in a closed U with the bays moved out, closer to the diorama: offered as a second round.; The old colony buildings kept beside their domes on the outer belt: offered, the plaza has no room for them.
+
+Evidence:
+
+- --ledger with the rover (round 8 stream D, docs/STATE.md): banked 1,031 / 12,086 / 24,186 kg in sectors 1-3 (2,585 in sector 1 with the break) against 11,996 / 36,380 / 107,019 kg laid on the ground.
+- src/towers.js sentry costs 45-260 kg; src/content/build-board.js structures 1,500-4,800 kg x index [1, 2.2, 5.5, 6, 7]; src/content/landing-game.js salvage 60/48 kg a barrel; src/domain/campaign.js GAME_START_BIOMASS 170.
+- The elevator-city diorama's layout.json and README (eight domes on a 3 x 3 grid at 48 m, the centre empty, a closed ring of eight 20 m hallways, the station and transfer hall on the front); its viewer code and pictures were not read.
+- A scratch plan check (not committed): islands 4 m apart, inside 142 m, the sightline free, nothing under a bridge, the six KIDOU corridors 46 m wide clear: ALL CLEAR for the colony design's table.
+
 ## 2026-11-12 — No start bank, biomass as the building material, THE KING, the colony's order chosen by the player
 
 decision · accepted · 2026-11-12-no-start-bank-biomass-as-the-building-material-the-king-the-colony-s-order-chosen
