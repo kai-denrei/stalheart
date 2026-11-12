@@ -12,6 +12,9 @@
 // THE GUNS AND THE ORBIT ARE READ EACH CALL (owner, 2026-10-23, a: "not enough nukes on the gunship"; src/fx/boss-run.js guns(), orbit()): `host.guns()` the
 // guns now (THE ARENA's boss phase hands the lab's MK-9, perPass 0 and a 6 s reload; the content's guns otherwise), `host.orbit()` the orbit now; an orbit whose
 // `station` is not finite holds the pass open (gunship.left Infinity; a finite one back gives a fresh station)
+// THE CALLED NUKE (owner, 2026-11-12 night: "funnels it to a spot where a nuke is about to drop"; src/content/arena-king.js ARENA_KING.nuke): while `host.nukeCall()`
+// hands a call ({ countdown }: THE KING's fight), the gunner's MK-9 paint is a mark: the release is held until the round's fall ends on the countdown, then the
+// seat lets it go on its own (heavyDue, src/sentry-pilot.js); a second press, a re-mark and the nudge are refused; callText() is the seat's MK-9 line
 import { sub3, scale3, norm3, len3 } from '../vec3.js';
 import { BLOCKED } from '../dungeon.js';
 import { makeDotBurst } from '../units.js';
@@ -25,6 +28,7 @@ import { GUNSHIP_CALL, GUNSHIP_FAR, GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_NUK
 import { createGunshipOptic } from './gunship-optic.js';
 import { createGunshipDrop } from './gunship-drop.js';
 import { isaoSpeak } from './isao-voice.js';
+import { nukeCall as callNow } from '../domain/king-fight.js';
 
 const SEAT_EASE = 1.5;   // seconds, the least glide for a re-placement of the platform under the taken seat
 
@@ -32,6 +36,9 @@ export function createGunshipRig(host) {
   const { scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing } = host;
   let optic = null, track = null, walls = null, drop = null;
   const guns = () => host.guns?.() ?? GUNSHIP_GUNS;
+  // THE CALLED NUKE (above): the call now and the mark's countdown (null: no call, or nothing marked)
+  const called = () => host.nukeCall?.() ?? null;
+  const markNow = () => { const k = called(), hs = heavyState(gunship, guns()); return k && hs.phase === 'painted' ? callNow(hs.since ?? 0, guns().heavy.travel, k) : null; };
   // THE CALL METER RUNS after the handover, or once sector 0's free pass has come (src/domain/story-beats.js construction). A
   // kill's biomass feeds it, times the base programme's gunship perk once that is built.
   const onCall = () => automated() || !!host.story()?.gunshipIn;
@@ -140,9 +147,11 @@ export function createGunshipRig(host) {
     burst: (p, hex, n, scale) => { const b = makeDotBurst(hex, norm3(p), n); b.scale.setScalar(host.cellSide() * scale); b.position.set(p[0], p[1], p[2]); scene.add(b); host.debris().push(b); },
     laser: (ci) => { if (ci >= 0) showRangeRing(ci, host.strikeTune().blastCells, 0xff2a1a); else hideRangeRing(); },
     loop: (name, o) => sfx.loop(name, o),
-    paintHeavy: (ci, o) => paintHeavy(gunship, ci, guns(), o),
-    launchHeavy: (o) => { const lc = launchHeavy(gunship, guns(), o); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05); the automated one is booked apart ({ auto: true })
-    nudgeHeavy: (ci) => nudgeHeavy(gunship, ci),
+    paintHeavy: (ci, o) => (called() && gunship.heavyPaint != null ? false : paintHeavy(gunship, ci, guns(), o)),   // a call: no re-mark
+    heavyDue: () => !!markNow()?.release,   // the called MK-9's release is due (the seat lets it go)
+    callText: (hs) => { const k = called(); if (!k) return null; const left = hs.phase === 'painted' ? markNow()?.left : hs.left; return hs.phase === 'ready' ? 'ARMED · FIRE TO MARK THE SPOT' : left != null && ['painted', 'released', 'ignited'].includes(hs.phase) ? `${k.label} ${Math.ceil(left)} S` : null; },
+    launchHeavy: (o) => { if (called() && !o?.auto && !markNow()?.release) return -1; const lc = launchHeavy(gunship, guns(), o); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05); the automated one is booked apart ({ auto: true })
+    nudgeHeavy: (ci) => (called() ? false : nudgeHeavy(gunship, ci)),   // no nudge on a called nuke
     stepHeavy: () => stepHeavy(gunship),
     heavyState: () => heavyState(gunship, guns()),
     get optic() { return optic ??= createGunshipOptic(scene, { cellSide: host.cellSide(), metresPerCell: GUNSHIP_PLATFORM.metresPerCell }); },
@@ -175,6 +184,8 @@ export function createGunshipRig(host) {
     // THE LURE'S DANGERS (src/fx/boss-run.js, 2026-10-16): the MK-9's cell while it is painted, falling or diving, and the shells in the air
     dangerPoints: () => { const out = []; const hs = heavyState(gunship, guns()); if ((hs.ci ?? -1) >= 0 && ['painted', 'released', 'ignited'].includes(hs.phase)) out.push(host.graph().centers[hs.ci]); for (const r of gunship.rounds) out.push(r.point); return out; },
     // THE LURE'S MK-9 (2026-10-23): its cell's point while it is painted, falling or diving, else null (src/fx/hull-drive.js keeps the hull LURE.nuke cells off it)
+    // THE CALLED NUKE's marker (src/fx/boss-run.js): its cell, point, seconds to impact and phase while marked or falling, else null
+    nukeMark: () => { const hs = heavyState(gunship, guns()), ci = hs.ci ?? -1; if (ci < 0 || !['painted', 'released', 'ignited'].includes(hs.phase)) return null; const left = hs.phase === 'painted' ? markNow()?.left ?? null : hs.left; return { ci, point: host.graph().centers[ci] ?? null, left, phase: hs.phase }; },
     nukePoint: () => { const hs = heavyState(gunship, guns()); return (hs.ci ?? -1) >= 0 && ['painted', 'released', 'ignited'].includes(hs.phase) ? host.graph().centers[hs.ci] ?? null : null; },
     // the MK-9 in flight, for the story monitor's feed
     get drop() { return drop; },

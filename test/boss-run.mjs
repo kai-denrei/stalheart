@@ -291,9 +291,9 @@ function host(o = {}) {
   assert.equal(run.state().phase, 'boss'); assert.equal(run.state().card, true, 'the card is up as she rises'); assert.deepEqual(h.log.pause, [true], 'over the paused game');
   const shown = h.choiceCard.shown[0];
   assert.equal(shown.title, 'THE KING'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
-  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.equal(shown.hint, ARENA_HANDOVER.hint);
+  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.deepEqual(shown.hint, [...ARENA_KING.hint, ARENA_HANDOVER.hint], 'THE KING\'s two actions, then the seat\'s controls (2026-11-12 night)');
   assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aim, 'the seat footer\'s own aim text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimTouch);
-  assert.match(shown.hint, /move it to aim/); assert.match(shown.hint, /Space or the button fires/); assert.match(shown.hint, /MK-9/);
+  assert.match(shown.hint.at(-1), /move it to aim/); assert.match(shown.hint.at(-1), /Space or the button fires/); assert.match(shown.hint.join(' '), /40MM/); assert.match(shown.hint.join(' '), /mark/);
   assert.ok(!h.log.briefs.includes('arena_force'), 'the card says it, not the panel');
   assert.equal(h.params().directive, 'lure', 'Isao has the hull as the lure');
   for (let k = 1; k <= ARENA.seatWait + 5; k++) { h.now = 2 + k; run.tick(0.1); }
@@ -305,7 +305,7 @@ function host(o = {}) {
   // on a phone the hint is the seat's touch footer
   const h2 = host({ mobile: () => true }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
   h2.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h2.now = 2; run2.tick(0.1);
-  assert.equal(h2.choiceCard.shown[0].hint, ARENA_HANDOVER.hintTouch);
+  assert.equal(h2.choiceCard.shown[0].hint.at(-1), ARENA_HANDOVER.hintTouch);
   run2.end('lost'); assert.equal(h2.choiceCard.disposed, true, 'the run ended under the card: it goes'); assert.equal(run2.state().card, false); }
 
 // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out ... more scare of 40mm. Gameplay = push her to a
@@ -491,7 +491,8 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   const mechs = { units: () => [mech], hurt: (i, n) => { hurts.push([i, n]); mech.hp -= n; if (mech.hp <= 0) mech.down = true; return { hp: mech.hp, down: mech.down }; }, fallBack: (i, p) => { falls.push(p ? 'away' : null); } };
   let hullPos = u(400, 0);
   const h = host({ enemies: [], cellSide: () => 10 / R, player: () => ({ pos: hullPos, cur: 9 }), centre: () => [0, 0, 1], creatures: () => ({ body: () => body, metres: () => R }), mechs: () => mechs, hitHull: (p) => dents.push(p), hullUp: () => true, ring: (ci) => rings.push(ci),
-    pilotMode: () => true, storyViews: () => ({ now: () => 'gunship' }) }), run = createBossRun(h);
+    pilotMode: () => true, storyViews: () => ({ now: () => 'gunship' }), mark: () => mk, damageEnemy: (e, _t, d) => { e.hp -= d * (e.armour ?? 1); } }), run = createBossRun(h);
+  let mk = null;
   run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
   const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: u(0, 0), cur: 1 }; h.enemies.push(b); h.now = 2; run.tick(0.1); b.ground = null;
   assert.equal(b.armour, ARENA_KING.armour, 'the King wears its armour');
@@ -515,7 +516,16 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   mech.down = false; mech.hp = 12; mech.pos = u(-80, 0); const n0 = hurts.length; run.landed('bofors', u(-75, 0));
   assert.deepEqual(hurts[n0], [0, ARENA_KING.friendly.bofors.mech], 'a 40 mm by a mech: its points'); run.landed('rotary', u(-200, 0)); assert.equal(hurts.length, n0 + 1, 'a round far off hurts nobody');
   assert.equal(run.king().log.friendly.hull, 1); assert.equal(run.king().log.friendly.mech, 1);
-  b.alive = false; h.now += 0.1; run.tick(0.1); assert.equal(falls[falls.length - 1], null, 'its death: the mechs back to their roles');
+  // THE CALLED NUKE (stage three): the call in the boss phase; a marker: its countdown row, a mech inside its blast walks out of it; on the King its share, a miss nothing
+  assert.deepEqual(run.nukeCall().nuke, ARENA_KING.nuke, 'the gunner\'s MK-9 is called in the boss phase');
+  mk = { ci: 3, point: u(-80, 0), left: 5.2, phase: 'painted' }; h.now += 0.1; run.tick(0.1);
+  assert.equal(falls[falls.length - 1], 'away', 'the mech inside the marker walks out of it');
+  const nr = run.rows().find((r) => r.id === 'nuke'); assert.ok(nr && nr.name === `${ARENA_KING.labels.nuke} 6 S` && nr.max === ARENA_KING.nuke.countdown, `the countdown row (${JSON.stringify(run.rows())})`);
+  mk = null; const hp0 = b.hp; run.landed('heavy', u(400, 0)); assert.equal(b.hp, hp0, 'a miss takes nothing'); assert.equal(run.king().log.nukes.at(-1).share, 0);
+  run.landed('heavy', u(at[0], at[1])); assert.ok(Math.abs(hp0 - b.hp - ARENA_KING.nuke.share * 180) < 1e-6, `a nuke on it: ${ARENA_KING.nuke.share * 100} % of its points (${hp0 - b.hp})`);
+  assert.ok(run.king().log.hp.nuke >= ARENA_KING.nuke.share * 180 - 1e-6, 'booked as the nuke\'s');
+  assert.equal(run.rows().some((r) => r.id === 'nuke'), false, 'no marker: no countdown row');
+  b.alive = false; h.now += 0.1; run.tick(0.1); assert.equal(falls[falls.length - 1], null, 'its death: the mechs back to their roles'); assert.equal(run.nukeCall(), null, 'no call once it is dead');
   run.end('secure'); }
 
 console.log('Boss run: the order to investigate the tremor, its callout and reminders, no arena_open and her row whole with no small wave (straight to the mother, note 4); the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then the road\'s first burnable rock between the guard and 10 cells, in the band 6.5 to 10 cells in driving (100 m) ahead of the hull as it drives (note 3), each ask\'s lead logged at the ask and the burn\'s end (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');

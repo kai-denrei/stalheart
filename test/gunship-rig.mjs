@@ -166,3 +166,23 @@ const storyAt = (o = {}) => ({ gunshipIn: false, grow: false, programme: null, s
   arena = false; rig.tick(1); assert.equal(gunship.left, GUNSHIP_ORBIT.station - 1, 'a finite orbit back: a fresh station');
 }
 console.log('Gunship rig: the meter, the frame\'s step, the track, the MK-9, the new run\'s reset, the seat\'s bag and the probe behave as the controller\'s did.');
+
+// THE CALLED NUKE (owner, 2026-11-12 night: "funnels it to a spot where a nuke is about to drop"; ARENA_KING.nuke): with a call the MK-9's paint is a mark; the
+// release is held until the fall ends on the countdown, then due; no re-mark, no second-press release, no nudge; the marker and the seat's line count down; with
+// no call the paint and release are the seat's own as before
+{
+  const { ARENA_KING } = await import('../src/content/arena-king.js'), { mountGunship } = await import('../src/domain/gunship.js');
+  let call = { nuke: ARENA_KING.nuke, label: ARENA_KING.labels.marked };
+  const { rig, gunship } = controller({ story: storyAt() }, { nukeCall: () => call });
+  startStation(gunship, GUNSHIP_ORBIT); mountGunship(gunship); const G = rig.pilotBag(), travel = GUNSHIP_GUNS.heavy.travel, hold = ARENA_KING.nuke.countdown - travel;
+  assert.equal(G.callText(G.heavyState()), 'ARMED · FIRE TO MARK THE SPOT');
+  assert.equal(G.paintHeavy(4), true, 'the mark'); assert.equal(G.launchHeavy(), -1, 'a second press does not release it'); assert.equal(G.heavyDue(), false);
+  assert.equal(G.paintHeavy(5), false, 'no re-mark'); assert.equal(G.callText(G.heavyState()), `${ARENA_KING.labels.marked} ${ARENA_KING.nuke.countdown} S`);
+  assert.deepEqual(rig.nukeMark(), { ci: 4, point: centers[4], left: ARENA_KING.nuke.countdown, phase: 'painted' }, 'the marker counts down from the mark');
+  gunship.clock += hold - 0.05; assert.equal(G.heavyDue(), false, 'held'); gunship.clock += 0.1; assert.equal(G.heavyDue(), true, 'due as the fall would end on the countdown');
+  assert.equal(G.launchHeavy(), 4, 'released'); assert.equal(G.nudgeHeavy(5), false, 'no nudge on a called nuke');
+  assert.ok(Math.abs(rig.nukeMark().left - travel) < 1e-9 && rig.nukeMark().phase === 'released', 'and falls the rest of the countdown');
+  call = null; gunship.heavyFalling = null; gunship.heavyReadyAt = 0; gunship.heavyPass = -1;   // a fresh pass (the content's MK-9 is one a pass)
+  assert.equal(G.callText(G.heavyState()), null, 'no call: the seat\'s own lines'); assert.equal(G.paintHeavy(6), true); assert.equal(G.launchHeavy(), 6, 'paint and release as before');
+}
+console.log('Gunship rig: the called nuke (mark, hold, due, no nudge).');
