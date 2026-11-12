@@ -123,7 +123,7 @@ const withDocument = (on) => { if (on) globalThis.document = { body: { name: 'bo
   const pg4 = { perks: perksOf('farm'), sector: 0 };
   const h4 = host({ story: { programme: pg4 }, members: { eco: () => eco, laserStation: {}, scene: null } });
   h4.tick.perks({ pg: pg4, sector: 2 });
-  assert.deepEqual(tk(), [['biomass', 40, { category: 'farm' }], ['updateHud']], 'a station without setPeriodScale is tolerated; the farm pays');
+  assert.deepEqual(tk(), [['biomass', 400, { category: 'farm' }], ['updateHud']], 'a station without setPeriodScale is tolerated; the farm pays');
   const pgR = { perks: perksOf('rebuild'), sector: 0 }, hR = host({ story: { programme: pgR }, state: { hp: 1 }, members: { scene: null } });
   hR.tick.perks({ pg: pgR, sector: 1 });
   assert.deepEqual(tk().slice(0, 2), [['setPlayerHP', 2], ['lives']], 'the rebuild adds rebuildHulls to the hull, capped at PLAYER_MAX');

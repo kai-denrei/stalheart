@@ -1307,7 +1307,7 @@ try{
   assert.equal(s.cargo.carrying,null,'nothing is on the back deck');
   // THE BASE IS STANDING THROUGH THE BAYS, so the three hulls read as lives
   assert.equal(s.hulls,3,'three hulls');assert.equal(s.bays.length,3,'three bays');
-  assert(s.biomass>=300,`biomass enough to place a few towers (${s.biomass})`);
+  assert(s.biomass>=2000,`the skipped opening's grant, STORY_SKIP 2,000 kg on no start bank (x10, 2026-11-12): biomass enough to place a few towers (${s.biomass})`);
   assert(s.shield.rack>=2,`the shield rack is full (${s.shield.rack})`);
   assert(s.shield.arrayReserve>0,`the array reserve is charged (${s.shield.arrayReserve})`);}
  // the first hull rolls out of its bay: the first frames a player sees have the MÖRK in them, not an empty yard
@@ -1625,6 +1625,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // first wave cleared by the pilot's hands; the depot, Isao's flare and the rover's first trip home; THE FIRST ORDERS (no Rotor card); the Stålheart's
  // print begins after it; the Quiver's hard cores and sector 0 under its print. Every beat's story clock prints as DOG TIMELINE.
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),dog=()=>evaluate(`${T}.dog.state()`),{DOG_SCOUT}=await import('../src/content/dog-scout.js');
+ // THE BUDGET (the economy design 2.7, 2026-11-12): no start bank; the automatic landing's salvage (HARD's three barrels); the bank at each beat as DOG BUDGET
+ const {LANDING_GAME}=await import('../src/content/landing-game.js'),SALV=LANDING_GAME.salvage.HARD,SALVAGE=SALV.sections*SALV.feedstockPerBarrel+SALV.bonus*SALV.feedstockPerBarrel,budget=[];
  const PH=`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`;
  const KEYS={w:['w','KeyW',87],a:['a','KeyA',65],d:['d','KeyD',68],shift:['Shift','ShiftLeft',16]},held={};
  const hold=async(k,on)=>{if(!!held[k]===on)return;held[k]=on;const [key,code,vk]=KEYS[k];await send('Input.dispatchKeyEvent',{type:on?'keyDown':'keyUp',key,code,windowsVirtualKeyCode:vk,...(on&&key.length===1?{text:key}:{})});};
@@ -1633,9 +1635,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await go('dog-scout','index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1#td');
  await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
- const b0=(await st()).biomass;
+ const b0=(await st()).biomass;assert.equal(b0,0,`no start bank (${b0})`);budget.push(['landing',b0]);
  await until(`${T}.state().story.phase==='dog-print'`,120000).catch(async()=>assert.fail(`the deploy into the dog's print (${JSON.stringify((await st()).story)})`));await mark('deploy: the dog\'s print asked');
- {const s=await st();assert.equal(s.towers,0,'no Rotor at the deploy');assert.equal(s.biomass,b0+180,`the whole salvage at the deploy (${b0} -> ${s.biomass})`);assert.equal(s.programme.printed.length,0,'nothing printed: no gate, no Stålheart');}
+ {const s=await st();assert.equal(s.towers,0,'no Rotor at the deploy');assert.equal(s.biomass,b0+SALVAGE,`the whole salvage at the deploy (${b0} -> ${s.biomass})`);budget.push(['salvage',s.biomass]);assert.equal(s.programme.printed.length,0,'nothing printed: no gate, no Stålheart');}
  await until(`!!${T}.state().companions?.print?.printing&&${T}.state().companions.print.printing.id==='k9'`,90000).catch(async()=>assert.fail(`Isao prints the K9 (${JSON.stringify((await st()).companions?.print)})`));await mark('the K9\'s print (close-up)');
  {const s=await st();assert.equal(s.shot,'petPrint','the print\'s close-up');}
  await delay(1500);current='dog-print';await finish();
@@ -1659,8 +1661,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await drive(async(d)=>d.surveyed.length>=n,360000,`survey ${n}`);
   const d=await dog();await mark(`survey ${n} (${d.points[d.surveyed.at(-1)].kind})`);
  }
- const sv=await st();assert.equal(sv.biomass,b0+180+3*DOG_SCOUT.survey.pay,`the three surveys paid ${DOG_SCOUT.survey.pay} kg each (bank ${sv.biomass})`);
- assert.match(await evaluate('document.body.innerText'),/SURVEYED \+30 KG/,'the survey\'s toast');
+ const sv=await st();assert.equal(sv.biomass,b0+SALVAGE+3*DOG_SCOUT.survey.pay,`the three surveys paid ${DOG_SCOUT.survey.pay} kg each (bank ${sv.biomass})`);budget.push(['surveys',sv.biomass]);
+ assert.ok((await evaluate('document.body.innerText')).includes(`SURVEYED +${DOG_SCOUT.survey.pay} KG`),'the survey\'s toast');
  await until(`${T}.state().story.phase==='contact'`,10000).catch(async()=>assert.fail(`the last survey: the contact (${JSON.stringify((await st()).story)})`));
  {const s=await st();assert.equal(s.story.scout.pack,12,'the pack: twelve bodies');assert(s.story.said.includes('dog_contact'));}
  await delay(500);current='dog-contact';await finish();
@@ -1686,11 +1688,12 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const r=await evaluate(`${T}.rover.state()`);await mark(`the rover home (${r.trips} trip, ${r.delivered} kg)`);}
  await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,30000).catch(async()=>assert.fail(`THE FIRST ORDERS (${JSON.stringify((await st()).board)})`));await mark('THE FIRST ORDERS');
  {const s=await st(),bd=s.board;console.log(`  dog: the card: bank ${bd.bank}; ${bd.offers.map(o=>`${o.id} ${o.price}`).join(' · ')}`);
-  assert.equal(s.paused,true);assert(!bd.offers.some(o=>o.id==='sentry:rotor'),'no Rotor card: the Rotor stands');assert.deepEqual(bd.offers.map(o=>o.id),['build:landing','build:foundry','build:solar']);
+  budget.push(['card',bd.bank]);assert.equal(s.paused,true);assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'four cards at x10: the Rotor stands, so the SECOND ROTOR');
   assert(!s.programme.printed.includes('stalheart')&&s.programme.active!=='stalheart','the Stålheart waits for the card');}
  current='dog-first-orders';await finish();
  for(const id of ['build:landing','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
  await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
+ {const s=await st();budget.push(['after the card',s.biomass]);assert.equal(s.biomass,budget.at(-2)[1]-1000,`the pad and the foundry's work paid (600 + 400): ${s.biomass}`);}
  await until(`${T}.state().programme.active==='stalheart'`,120000).catch(async()=>assert.fail(`the Stålheart's print after the card (${JSON.stringify((await st()).programme)})`));await mark('the Stålheart\'s print begins');
  await until(`${T}.state().story.phase==='quiver-piloting'`,120000).catch(async()=>assert.fail(`the Quiver's hard cores (${JSON.stringify((await st()).story)})`));await mark('the Quiver\'s seat');
  await evaluate('window.__stalheartPilotTest?.hold(true)');
@@ -1698,7 +1701,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate('window.__stalheartPilotTest?.hold(false)');
  {const s=await st();await mark(`after the Quiver: ${s.story.phase}`);assert.equal(s.story.phase,'construction','sector 0 under the Stålheart\'s print');assert.equal(s.gunship.station,true,'GS01 on station');assert.equal(s.programme.active,'stalheart','still printing');}
  await delay(1000);current='dog-sector-0';await finish();
- console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
+ console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
  } else if(args.includes('--settling')) {
  // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to
  // build first with limited building material, the Stalheart being non-negotiable ... Isao tells the player that we will need to scout for more
@@ -1727,8 +1730,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  console.log(`  settling: THE FIRST ORDERS at story clock ${sb.story.clock}: bank ${bd.bank} kg; ${bd.offers.map(o=>`${o.id} ${o.price} kg`).join(' · ')}; settle left ${sb.story.settleLeft} s; Isao's book: printed ${JSON.stringify(sb.programme.printed)}, printing ${sb.programme.print?.step??'-'} k ${sb.programme.print?.k?.toFixed?.(2)??'-'}`);
  assert.equal(sb.paused,true,'over the paused game');
  assert.deepEqual(bd.offers.map(o=>o.id),['sentry:rotor','build:landing','build:foundry','build:solar'],'the Rotor and the opening\'s three first steps');
- assert.deepEqual(bd.offers.map(o=>o.price),[45,60,40,120],'the radial\'s Rotor, then the salvage\'s scale (BUILD_BOARD.first)');
- assert.equal(bd.bank,b0+180,`the whole salvage at the deploy: an automatic landing's three barrels (${b0} -> ${bd.bank})`);
+ assert.deepEqual(bd.offers.map(o=>o.price),[450,600,400,1200],'the radial\'s Rotor, then the salvage\'s scale (BUILD_BOARD.first, x10 on 2026-11-12)');
+ assert.equal(b0,0,'no start bank');assert.equal(bd.bank,b0+1800,`the whole salvage at the deploy: an automatic landing's three barrels (${b0} -> ${bd.bank})`);
  // NOTHING ON THE FIELD BUT THE NESTS: the other landers' nests are manned from the start (owner, 2026-10-03: "they should be there from the start"), so
  // enemiesAlive counts their guards (200 on this page); the fodder is the beats' own count, and no breach has opened
  assert.equal(sb.story.spawned,0,'no fodder up');assert(!(await evaluate(seenPhase('breach'))),'no breach');console.log(`  settling: ${sb.enemiesAlive} alive at the first orders (the landers' nest guards), ${sb.story.spawned} fodder`);assert.equal(sb.story.phase,'printing','the beats at printing, the Rotor nobody\'s yet');assert.equal(sb.towers,0,'no sentry stands');
@@ -1747,7 +1750,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.deepEqual((await st()).board.picked,['sentry:rotor','build:foundry'],'the Rotor and the recycler\'s work picked');console.log(`  settling: picked by ${p.length===2?'a real key and a real tap':'the harness (see above)'}`);}
  await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
  {const s=await st();console.log(`  settling: ordered ${JSON.stringify(s.board.last)}; bank ${bd.bank} -> ${s.biomass}`);
-  assert.equal(s.biomass,b0+180-85,'paid at the pick: 45 + 40 out of 180');assert(s.board.bought.includes('foundry'),'the recycler\'s work bought on the programme');
+  assert.equal(s.biomass,b0+1800-850,'paid at the pick: 450 + 400 out of 1,800');assert(s.board.bought.includes('foundry'),'the recycler\'s work bought on the programme');
   assert.equal(s.board.last.n,'first','the history row is the first orders\'');assert.deepEqual(s.board.last.took,['sentry:rotor','build:foundry'],'both placed');assert.equal(s.paused,false,'the game runs again');}
  await until(`${briefs}.includes('scout_material')||/That was the rocket/.test(document.querySelector('#td-brief:not(.hidden) #td-brief-line')?.textContent||'')`,30000).catch(async()=>assert.fail(`Isao's scouting line as the card closes (seen ${JSON.stringify(await evaluate(briefs))}; the panel's log ${JSON.stringify(await evaluate('window.__seen?.briefs'))})`));
  console.log('  settling: Isao said scout_material');
@@ -1771,10 +1774,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.seatState().seatKey==='rotor'`,30000).catch(async()=>assert.fail(`the Rotor's seat (${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
  {const s=await st();assert(s.story.spawned>0,'the first fodder is up');console.log(`  settling: the Rotor's seat at story clock ${s.story.clock}, ${s.story.spawned} spawned, Stålheart ${s.programme.printed.includes('stalheart')?'standing':`printing (${s.programme.active})`}`);}
  await delay(1500);current='settling-seat';await finish();
- // THE RECYCLER'S WORK PAYS (spec 2.B: foundry 40, pays 60): it prints behind the Stålheart's 75 s (and the Rotor); the page's watcher read the grants
+ // THE RECYCLER'S WORK PAYS (spec 2.B: foundry 400, pays 600 since the x10 of 2026-11-12): it prints behind the Stålheart's 75 s (and the Rotor); the page's watcher read the grants
  await until(`window.__fdy?.g1!=null`,180000).catch(()=>{});
  {const F=await evaluate('window.__fdy');console.log(`  settling: the recycler's work ${JSON.stringify(F)}`);
-  if(F?.g0!=null&&F?.g1!=null)assert.equal(F.b1-F.b0,60,`the recycler's work pays its barrel (bank ${F.b0} -> ${F.b1}; the grants count the Quiver's cost too, granted and spent at its order: ${F.g0} -> ${F.g1})`);else console.log('  settling: the recycler\'s work not measured within the budget');}
+  if(F?.g0!=null&&F?.g1!=null)assert.equal(F.b1-F.b0,600,`the recycler's work pays its barrel (bank ${F.b0} -> ${F.b1}; the grants count the Quiver's cost too, granted and spent at its order: ${F.g0} -> ${F.g1})`);else console.log('  settling: the recycler\'s work not measured within the budget');}
  // PAGE 2: the card skipped, nobody ordered the Rotor: Isao prints it himself at the settle's end
  // &settle=16, not 8: the landers' tour takes ~10.4 s of the beats' clock before the card opens, so an 8 s settle ran out under it (the emergency
  // came before the card, which then offered no Rotor); 16 leaves ~5 s after the card
@@ -3537,13 +3540,14 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // THE LEDGER PROBE (round 6, THE BUILD BOARD, 2026-11-05; the economy plan's probe, docs/superpowers/specs/2026-10-26-economy-plan.md): a skipped
  // opening plays sectors FROM..TO (1..5) with an ideal defender who EARNS (every live body within R cells of a door, 999: all, dies, paid as PAY's kill:
  // tank (default) | tower | none), and at each debrief the books: income by source (eco.ledger: kill pay by who killed, credits by category),
- // spend by kind, the bank at the sector's end, the share of fighting samples the bank could buy the cheapest sentry (45 kg). BOARD=pick takes
+ // spend by kind, the bank at the sector's end, the share of fighting samples the bank could buy the cheapest sentry (450 kg since 2026-11-12). BOARD=pick takes
  // two affordable cards, the board's own (structures, the hull's) first and cheapest first, then sentries, through the real CONTINUE (the build board, src/fx/build-board.js); else the harness continues
  // past it with no pick. No assertions but a page error; the JSON goes to artifacts/browser/ledger(-TAG).json. MAX_S caps the wall time (2400).
  // THE FIELD (round 8 note 7: kills lie on the ground, the rover brings them to the pearls, the pearls are the bank, src/fx/rover-glue.js): ROVER=flare
  // (the default) is the reference flagger: whenever the rover stands idle and the richest ground holds FLAG_KG (default 0: the first pile; 1500
  // banked less, 2026-11-06: S1 700, S2 12,086, S3 18,186 kg against 1,031, 12,086, 24,186 at 0), a flare there (the real trips, the income's clock); ROVER=collect banks the whole field every sample (the ideal stand-in, the round-6 numbers' shape); ROVER=none flags
  // nothing. Each row adds the field (on the ground, rotted, brought home) and the rover's trips.
+ const cheapest=Math.min(...(await import('../src/towers.js')).TOWERS.map(t=>t.cost));   // the cheapest sentry (450 kg since the x10 of 2026-11-12; was 45)
  const T='window.__stalheartTest',from=+process.env.FROM||1,to=+process.env.TO||5,pay=process.env.PAY??'tank',board=process.env.BOARD||'none',maxS=+process.env.MAX_S||2400,reach=+(process.env.R??999),rover=process.env.ROVER||'flare',flagKg=+(process.env.FLAG_KG??0);
  await go('ledger',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${from}#td`);
  await until(`!!${T} && ${T}.state().sector?.n===${from}`,120000);
@@ -3552,7 +3556,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const books=()=>evaluate(`(()=>{const s=${T}.state();return {n:s.sector?.n,phase:s.sector?.phase,debrief:!!s.sector?.debriefOpen,board:s.board??null,bank:s.biomass,ledger:s.ledger,clock:s.shieldClock,report:s.sector?.debriefOpen?${T}.sectorReport():null,printed:s.programme?.printed??[],towers:s.towers};})()`);
  while(Date.now()-t0<maxS*1000){
   const b=await books();
-  if(b.phase==='fighting'){const k=samples[b.n]??={n:0,afford:0};k.n++;if(b.bank>=45)k.afford++;if(pay)await evaluate(`${T}.sectorCull(${reach},${JSON.stringify(pay)})`);}
+  if(b.phase==='fighting'){const k=samples[b.n]??={n:0,afford:0};k.n++;if(b.bank>=cheapest)k.afford++;if(pay)await evaluate(`${T}.sectorCull(${reach},${JSON.stringify(pay)})`);}
   if(rover==='collect')await evaluate(`${T}.rover?.collect?.()`);
   else if(rover==='flare')await evaluate(`(()=>{const r=${T}.rover?.state?.();if(r?.built&&r.mode==='idle'&&!r.queued&&r.field>0&&!r.flares.some(f=>f.id===r.order)){const c=${T}.rover.richest();if(c&&c.kg>=${flagKg})${T}.rover.flareAt(c.cell);}})()`);
   await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();if(${T}.state().screenOpen)document.querySelector('#synthetic-modal [data-continue]')?.click();`);

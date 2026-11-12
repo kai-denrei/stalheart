@@ -364,6 +364,12 @@ export const BRIEFS = {
   dog_wall: { id: 'dog_wall', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['They follow you. We need a wall.'] },
   dog_rotor: { id: 'dog_rotor', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Too much for the dog. I print the Rotor.', 'Get ready.'] },
   first_harvest: { id: 'first_harvest', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['A depot, and the rover\'s first run.', 'My flare is on the bodies at the gate: watch it fill.'] },
+  // THE EXPOSITION (owner, 2026-11-12: no start bank; "Isao and Stalheart require local resources to build", biomass "bonds together well, otherwise
+  // it seeps into the ground and some is lost"; the economy design 2.7; captions only, unrecorded): after first_harvest, each waiting for the panel
+  // (DOG_SCOUT.words.exposition)
+  no_bank: { id: 'no_bank', face: 'focused', title: 'COMMS · ISAO', once: true, lines: ['We brought nothing to build with.', 'The Stålheart prints from what this planet gives us.'] },
+  biomass_bonds: { id: 'biomass_bonds', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Their tissue is the best feedstock I have seen.', 'It binds to itself: kill them close together and it holds.'] },
+  biomass_seeps: { id: 'biomass_seeps', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['What we leave lying seeps into the ground.', 'The rover brings it in. What it does not reach, we lose.'] },
   build_solar: {
     id: 'build_solar', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The hull can drink from the sun.', 'Printing the array. Park on its pad for shield.'],

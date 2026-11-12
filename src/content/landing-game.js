@@ -115,9 +115,9 @@ export const LANDING_GAME = Object.freeze({
     wreckDust: 840,     // a wreck's dust embers (the arrival's own 420, doubled; spec 2.5)
   }),
   salvage: Object.freeze({   // what the foundry cuts after each grade (spec 6): sections of the SH02, a barrel's biomass, extra barrels at deploy
-    CLEAN: Object.freeze({ sections: 3, feedstockPerBarrel: 60, bonus: 1 }),
-    HARD: Object.freeze({ sections: 3, feedstockPerBarrel: 60, bonus: 0 }),
-    WRECK: Object.freeze({ sections: 2, feedstockPerBarrel: 48, bonus: 0 }),
+    CLEAN: Object.freeze({ sections: 3, feedstockPerBarrel: 600, bonus: 1 }),
+    HARD: Object.freeze({ sections: 3, feedstockPerBarrel: 600, bonus: 0 }),
+    WRECK: Object.freeze({ sections: 2, feedstockPerBarrel: 480, bonus: 0 }),
   }),
   lines: Object.freeze({ override: 'override', CLEAN: 'arrival_talk_clean', HARD: 'arrival_talk', WRECK: 'arrival_talk_wreck' }),
 });

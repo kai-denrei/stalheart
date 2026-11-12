@@ -1,6 +1,9 @@
 import { SHIELD_TUNE } from './shield.js';
 // Campaign purchase policy; ordinary combat earnings are unchanged.
 export const GAME_START_BIOMASS = 170;
+// NO START BANK IN THE STORY (owner, 2026-11-12: "remove the start bank for now"; the economy design 2.7): the story builds from the landing's salvage
+// and what the planet gives; the TD tab and the simulator keep GAME_START_BIOMASS
+export const STORY_START_BIOMASS = 0;
 export const SINK = Object.freeze({ tollBase:250, tollStep:150, hull:400, strike:350, drone:500, mines:200, shields:SHIELD_TUNE.price });
 export const tollFor = sector => SINK.tollBase + SINK.tollStep * Math.max(0, sector - 1);
 export const breachGrant = (biomass, sector, total=5) => sector < total ? Math.max(0, tollFor(sector)-biomass) : 0;

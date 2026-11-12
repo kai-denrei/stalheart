@@ -1,10 +1,12 @@
 import { firingFor } from './content/firing-defaults.js';
 // Sentry combat rules. Identity, numbering and radial order have one content owner.
 import { SENTRIES, SENTRY_ORDER } from './content/sentries.js';
+// THE PRICES x10 (owner, 2026-11-12: "let's raise prices 10x not 20x"; spec docs/superpowers/specs/2026-11-12-economy-and-escort-design.md 2.1): kill pay
+// is unchanged and the rover's trips set the income, so the radial's old small prices (45-260) rose to 450-2,600
 const COMBAT = {
   "rotor": {
     "color": 15397631,
-    "cost": 45,
+    "cost": 450,
     "dmg": 0.1,
     "range": 4.6,   // 4.6 (owner, 2026-10-16: the first wave is the lemon, whose bodies hold about 42 m off the wall; at 3.6 cells the piloted Rotor read OUT OF RANGE on all of them)
     "rate": 2.2,
@@ -12,7 +14,7 @@ const COMBAT = {
   },
   "plasma": {
     "color": 3139280,
-    "cost": 80,
+    "cost": 800,
     "dmg": 0.044444444444444446,
     "range": 2.6,
     "rate": 6,
@@ -20,7 +22,7 @@ const COMBAT = {
   },
   "quiver": {
     "color": 5938175,
-    "cost": 90,
+    "cost": 900,
     "dmg": 0.14444444444444443,
     "range": 3.5,
     "rate": 1.2,
@@ -29,7 +31,7 @@ const COMBAT = {
   },
   "relay": {
     "color": 12904191,
-    "cost": 100,
+    "cost": 1000,
     "dmg": 0,
     "range": 3.5,
     "rate": 1,
@@ -39,7 +41,7 @@ const COMBAT = {
   },
   "mortar": {
     "color": 10470655,
-    "cost": 110,
+    "cost": 1100,
     "dmg": 0.3,
     "range": 3.5,
     "rate": 0.5,
@@ -49,7 +51,7 @@ const COMBAT = {
   },
   "lancer": {
     "color": 16777215,
-    "cost": 130,
+    "cost": 1300,
     "dmg": 0.3333333333333333,
     "range": 7,
     "rate": 0.45,
@@ -59,7 +61,7 @@ const COMBAT = {
   },
   "needle": {
     "color": 13102079,
-    "cost": 220,
+    "cost": 2200,
     "dmg": 0.37777777777777777,
     "range": 8,
     "rate": 0.45,
@@ -69,7 +71,7 @@ const COMBAT = {
   },
   "heptapod": {
     "color": 16757854,
-    "cost": 260,
+    "cost": 2600,
     "dmg": 0.17777777777777778,
     "range": 3.4,
     "rate": 1.8,
@@ -89,12 +91,12 @@ export const useRoster = () => ROSTER;
 export const starterTower = () => TOWERS[0];
 export const towerSound = def => def.sound;
 
-// upgrade economics, HK-exact: tier1 = 70% of purchase, tier2 = 120%,
-// two tiers max. Returns null when maxed.
+// upgrade economics: tier1 = 80% of purchase, tier2 = 150%, two tiers max (HK's 70% / 120% until the economy design of 2026-11-12, 2.5:
+// with the sentry cap binding, the top tier is the luxury; docs/superpowers/specs/2026-11-12-economy-and-escort-design.md). Returns null when maxed.
 export const MAX_TIER = 2;
 export function upgradeCost(def, currentTier) {
-  if (currentTier === 0) return Math.round(def.cost * 0.7);
-  if (currentTier === 1) return Math.round(def.cost * 1.2);
+  if (currentTier === 0) return Math.round(def.cost * 0.8);
+  if (currentTier === 1) return Math.round(def.cost * 1.5);
   return null;
 }
 

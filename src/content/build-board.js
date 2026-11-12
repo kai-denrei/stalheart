@@ -16,12 +16,13 @@
 // cards (about 3k each), not the two dearest; the index follows the measured income of the sector before the board, smoothed.
 export const BUILD_BOARD = Object.freeze({
   offers: 6, picks: 2, structuresMax: 4, sentryKinds: 2,
-  index: Object.freeze([1, 2.2, 5.5, 6, 7]),
+  // [1, 2, 4, 4.5, 5] since the economy design of 2026-11-12 (2.8; was [1, 2.2, 5.5, 6, 7] off the pre-rover ledger): the rover flattened income from sector 3
+  index: Object.freeze([1, 2, 4, 4.5, 5]),
   structures: Object.freeze({
     board: Object.freeze({ price: 1500, effect: 'your kills and your rank, on a board in the base' }),
     garage: Object.freeze({ price: 2500, effect: 'the paint bay; parked in it, the hull mends' }),
     armory: Object.freeze({ price: 3200, effect: 'its pad refills the hull\'s shells, two a second' }),
-    farm: Object.freeze({ price: 3200, effect: '+40 kg of biomass every sector' }),
+    farm: Object.freeze({ price: 3200, effect: '+400 kg of biomass every sector' }),
     chips: Object.freeze({ price: 2800, effect: 'SOL\'s passes come a fifth sooner' }),
     launcher: Object.freeze({ price: 4000, effect: 'SOL-88 goes up: SOL fires on its own' }),
     pearl: Object.freeze({ price: 2000, effect: '+12,000 kg of storage: a fourth Bio-Pearl' }),   // round 8 note 7: the bank is the pearls' sum
@@ -42,17 +43,18 @@ export const BUILD_BOARD = Object.freeze({
   // the paused game when the landers' tour ends (src/fx/first-orders.js): the Rotor at the radial's price (45) on the plan's own socket and the opening's
   // three `first` steps (src/content/base-programme.js) priced in the salvage's scale: the deploy grants the whole rocket, 180 kg after an automatic or
   // HARD landing, 240 after CLEAN, 96 after a WRECK; on the pure rule alone a WRECK buys the Rotor and the foundry's work, CLEAN the Rotor and the array.
-  // IN PLAY THE BUDGET DOES NOT BIND (final review, 2026-11-08): the page's GAME_START_BIOMASS (170 kg, src/domain/campaign.js) sits under the salvage, so
-  // the bank at the card is 266 / 350 / 410 kg (WRECK / automatic or HARD / CLEAN; 350 measured by --settling) and every grade affords any pair (the
-  // dearest pair is 180). Whether a settled opening starts at 0 or these prices rise is the owner's call. Never index-scaled,
+  // x10 AND NO START BANK (owner, 2026-11-12: "remove the start bank for now", "let's raise prices 10x not 20x"; the economy design 2.7): the story's
+  // bank starts at 0 (src/domain/campaign.js STORY_START_BIOMASS), so the card is paid from the salvage by grade (2,400 / 1,800 / 960), the survey
+  // (3 x 150) and the first harvest; the pairs cost 850 to 1,800. On the dog's opening the Rotor stands (Isao's), so its card is the SECOND ROTOR on
+  // the wall's other socket at the radial's price (`second`, src/domain/build-board.js firstOffers). Never index-scaled,
   // never on a sector board (BUILD_BOARD.structures has no entry for them): not bought is not built. The recycler's work pays its barrel back (`pays`)
   first: Object.freeze({
     structures: Object.freeze({
-      landing: Object.freeze({ price: 60, effect: 'a landing pad on the SH02\'s ground' }),
-      foundry: Object.freeze({ price: 40, effect: 'Isao works the AFR-01: one more barrel, +60 kg' }),
-      solar: Object.freeze({ price: 120, effect: 'the array: the hull\'s shield charges on its island' }),
+      landing: Object.freeze({ price: 600, effect: 'a landing pad on the SH02\'s ground' }),
+      foundry: Object.freeze({ price: 400, effect: 'Isao works the AFR-01: one more barrel, +600 kg' }),
+      solar: Object.freeze({ price: 1200, effect: 'the array: the hull\'s shield charges on its island' }),
     }),
-    words: Object.freeze({ title: 'THE FIRST ORDERS', line: 'The rocket is all we have. The Stålheart I print whatever you choose. Two more things: choose.', rotor: 'the first sentry, on the wall beside the mouth' }),
+    words: Object.freeze({ title: 'THE FIRST ORDERS', line: 'The rocket is all we have. The Stålheart I print whatever you choose. Two more things: choose.', rotor: 'the first sentry, on the wall beside the mouth', second: 'SECOND ROTOR', secondEffect: 'a second Rotor on the wall\'s other socket' }),
   }),
   // the cards' wireframe thumbnails (round 7 note 4, src/fx/board-thumbs.js): fitted to `frame` units on the largest side, centred at `centre`
   // units up, where the sprite rig's camera looks (src/fx/wave-card.js); the dome stands for the shield charges (no model of its own)

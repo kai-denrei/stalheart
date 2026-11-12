@@ -191,12 +191,12 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
 }
 // THE FIRST ORDERS (2026-11-08, THE SETTLING, spec 2.B): the Rotor on its own socket at the radial's price, then the three first steps at their prices; no Rotor card once it stands or is on the book; a bought or standing step is not offered; the pick of two within the salvage
 {
-  const rotor = { key: 'rotor', name: 'Rotor', cost: 45 };
+  const rotor = { key: 'rotor', name: 'Rotor', cost: 450 };   // x10 (the economy design, 2026-11-12)
   const fw = (over = {}) => ({ steps: CLASSIC, done: new Set(), bought: new Set(), rotor, rotorCell: 77, rotorBuilt: false, rotorPending: false, ...over });
   const all = firstOffers(fw(), BUILD_BOARD);
   assert.deepEqual(all.map((o) => o.id), ['sentry:rotor', 'build:landing', 'build:foundry', 'build:solar']);
-  assert.deepEqual(all[0], { id: 'sentry:rotor', kind: 'sentry', key: 'rotor', site: 77, label: 'ROTOR', price: 45, effect: BUILD_BOARD.first.words.rotor });
-  assert.deepEqual(all.slice(1).map((o) => [o.step, o.price]), [['landing', 60], ['foundry', 40], ['solar', 120]], 'the salvage\'s scale, no index');
+  assert.deepEqual(all[0], { id: 'sentry:rotor', kind: 'sentry', key: 'rotor', site: 77, label: 'ROTOR', price: 450, effect: BUILD_BOARD.first.words.rotor });
+  assert.deepEqual(all.slice(1).map((o) => [o.step, o.price]), [['landing', 600], ['foundry', 400], ['solar', 1200]], 'the salvage\'s scale (x10), no index');
   assert.deepEqual(firstOffers(fw({ rotorBuilt: true }), BUILD_BOARD).map((o) => o.id), ['build:landing', 'build:foundry', 'build:solar'], 'a standing Rotor is not a card');
   assert.ok(!firstOffers(fw({ rotorPending: true }), BUILD_BOARD).some((o) => o.id === 'sentry:rotor'), 'nor one on the book');
   assert.ok(!firstOffers(fw({ rotor: null }), BUILD_BOARD).some((o) => o.kind === 'sentry'), 'no Rotor kind, no card');
@@ -204,10 +204,15 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
   // no socket, no Rotor card (the plan has none): rotorCell undefined or -1; a short tune.offers slices the pool (the Rotor and the pad only)
   for (const rotorCell of [undefined, -1]) assert.deepEqual(firstOffers(fw({ rotorCell }), BUILD_BOARD).map((o) => o.id), ['build:landing', 'build:foundry', 'build:solar'], `rotorCell ${rotorCell}: no Rotor card`);
   assert.deepEqual(firstOffers(fw(), { ...BUILD_BOARD, offers: 2 }).map((o) => o.id), ['sentry:rotor', 'build:landing'], 'offers: 2 keeps the Rotor and the pad');
-  // the pure rule at the salvage alone (96 / 240): in play the page's 170 kg start bank sits under it (266 / 410 at the card), so every grade affords any pair
-  assert.equal(pickable(all, [], 'build:solar', 96), false, 'the pure rule: a bank of 96 kg (a WRECK\'s salvage alone, without the page\'s 170 kg start) cannot buy the array'); assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:foundry', 96), ['sentry:rotor', 'build:foundry'], 'the Rotor and the foundry\'s work fit');
-  assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:solar', 240), ['sentry:rotor', 'build:solar'], 'CLEAN buys the Rotor and the array');
-  assert.deepEqual(toggle(all, ['sentry:rotor', 'build:solar'], 'build:landing', 240), ['sentry:rotor', 'build:solar'], 'two picks');
+  // NO START BANK (2026-11-12, the economy design 2.7): a WRECK's salvage alone (960) cannot take the pad with the array (1,800); CLEAN (2,400) buys any pair
+  assert.deepEqual(toggle(all, ['build:landing'], 'build:solar', 960), ['build:landing'], 'a WRECK cannot take the pad with the array'); assert.deepEqual(toggle(all, ['sentry:rotor'], 'build:foundry', 960), ['sentry:rotor', 'build:foundry'], 'the Rotor and the foundry\'s work fit');
+  assert.deepEqual(toggle(all, ['build:landing'], 'build:solar', 2400), ['build:landing', 'build:solar'], 'CLEAN buys the dearest pair');
+  assert.deepEqual(toggle(all, ['sentry:rotor', 'build:solar'], 'build:landing', 2400), ['sentry:rotor', 'build:solar'], 'two picks');
+  // THE SECOND ROTOR (2026-11-12): the Rotor standing (the dog's opening, Isao's), a second one on w.secondCell at the radial's price; none without a socket
+  const two = firstOffers(fw({ rotorBuilt: true, secondCell: 88 }), BUILD_BOARD);
+  assert.deepEqual(two.map((o) => [o.id, o.site, o.label, o.price]), [['sentry:rotor', 88, 'SECOND ROTOR', 450], ['build:landing', undefined, 'LANDING PAD', 600], ['build:foundry', undefined, 'SEED FOUNDRY', 400], ['build:solar', undefined, 'SOLAR ARRAY', 1200]], 'four cards: the second Rotor first');
+  assert.ok(!firstOffers(fw({ rotorBuilt: true, secondCell: -1 }), BUILD_BOARD).some((o) => o.kind === 'sentry'), 'no free socket, no second Rotor');
+  assert.ok(!firstOffers(fw({ secondCell: 88, rotorCell: -1 }), BUILD_BOARD).some((o) => o.kind === 'sentry'), 'no first Rotor standing, no second card');
 }
 // A CHAPTER STANDS IN FOR THE FIRST ORDERS (2026-11-08, src/fx/story-entry.js): its start buys the three first steps, and only those
 {

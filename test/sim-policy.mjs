@@ -18,7 +18,7 @@ assert.deepEqual(trunkCells([{ ci: 6, alive: true }], { distToHeart: [0, 1, 2, 3
 
 assert.deepEqual(['style1', 'style2', 'style0', null].map(simDirective), ['ram', 'avoid', 'wander', 'wander']);
 
-function world({ wave = 1, have = [], biomass = 500, spots = [7], alive = [true, true] } = {}) {
+function world({ wave = 1, have = [], biomass = 5000, spots = [7], alive = [true, true] } = {}) {   // the fixtures x10 with the prices (2026-11-12)
   const asked = [];
   const eco = { canAfford: (c) => { asked.push(c); return c <= biomass; } };
   let trunks = 0;
@@ -36,16 +36,16 @@ assert.deepEqual(simPick('style1', early.w), { tower: early.w.towers[0] }, 'noth
 // two slow fields and two lobbers built: reach everywhere
 assert.deepEqual(simPick('style1', world({ wave: 8, have: ['relay', 'relay', 'mortar', 'mortar'] }).w), { key: 'needle', ci: 7 });
 // a priority buy it cannot afford is saved up for: no upgrade either
-const poor = world({ wave: 5, have: ['rotor', 'plasma', 'quiver', 'rotor'], biomass: 99 });
+const poor = world({ wave: 5, have: ['rotor', 'plasma', 'quiver', 'rotor'], biomass: 990 });
 assert.equal(simPick('style1', poor.w), null);
-assert.deepEqual(poor.asked, [100], 'it asked for the relay and stopped');
+assert.deepEqual(poor.asked, [1000], 'it asked for the relay and stopped');
 // affordable but nowhere to put it: the cheapest upgrade it can pay for
 const walled = world({ wave: 5, have: ['plasma', 'rotor', 'quiver', 'rotor'], spots: [] });
 assert.deepEqual(simPick('style1', walled.w), { tower: walled.w.towers[1] });
 // STYLE2: the newest sentry it can afford
-assert.deepEqual(simPick('style2', world({ wave: 3, biomass: 85 }).w), { key: 'plasma', ci: 7 });
-assert.deepEqual(simPick('style2', world({ wave: 3, biomass: 20 }).w), null, 'nothing affordable and no towers');
-const full = world({ wave: 2, have: ['rotor'], biomass: 40, spots: [] });
+assert.deepEqual(simPick('style2', world({ wave: 3, biomass: 850 }).w), { key: 'plasma', ci: 7 });
+assert.deepEqual(simPick('style2', world({ wave: 3, biomass: 200 }).w), null, 'nothing affordable and no towers');
+const full = world({ wave: 2, have: ['rotor'], biomass: 400, spots: [] });
 assert.deepEqual(simPick('style2', full.w), { tower: full.w.towers[0] }, 'nowhere to build: its upgrade');
 // NO TRUNK, NO BUILD: not even an upgrade; style0 never looks
 const dead = world({ wave: 3, have: ['rotor'], alive: [false, false] });

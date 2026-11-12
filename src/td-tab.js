@@ -36,7 +36,7 @@ import { createMissilePool, launchDart, advanceDart } from './missiles.js';
 import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
 import { CONTENT } from './content/runtime.js';
 import { preloadSentryTerraformer, makeSentryTerraformer } from './terraformer.js';
-import { GAME_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable } from './campaign.js';
+import { GAME_START_BIOMASS, STORY_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable } from './campaign.js';
 import { record } from './diagnostics.js';
 import { storage as localStorage } from './storage.js';
 // td-tab.js — the game controller: one closure (initTdTab) that owns the world, the frame loop and the wiring between them. The
@@ -2350,8 +2350,8 @@ export function initTdTab(root) {
     campaignReset();
     if (assistant) { scene.remove(assistant.obj); disposeObj(assistant.obj); assistant = null; }
     for (const o of orders) o.worker = null;
-    // opening biomass: exactly a Rapid (70kg) + a Slow (100kg) — your first plan
-    eco = makeEconomy({ startBiomass: GAME_START_BIOMASS });
+    // opening biomass: the campaign's 170 kg; the story's none (2026-11-12, src/domain/campaign.js STORY_START_BIOMASS)
+    eco = makeEconomy({ startBiomass: storyMode ? STORY_START_BIOMASS : GAME_START_BIOMASS });
     score.reset();
     // THE OPENING GARRISON (sim batch: the heart pays half its total in waves 1-3, before any kit exists). Not pre-built behind the heart
     // (operator, 2026-09-02: nothing the player has is built by nobody): Isao flies out and prints these like any order, still free (the
@@ -4512,7 +4512,7 @@ export function initTdTab(root) {
     enemies: () => enemies.filter((e) => e.alive && !e.guard).length + spawnQueue.filter((q) => !q.guard).length,   // the site guards are not the beats' business
     creatures: (q, side, wave) => creatureEnemies.replace(q, side, wave),   // a sector wave's share of ?creatures, the Pearl set's build-up (src/fx/creature-enemies.js)
     spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard || o?.here ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
-    brief: (id) => showBrief(id),
+    brief: (id) => showBrief(id), want: (id) => briefs.want(id),   /* want: a line that waits for a busy panel (the first harvest's exposition, 2026-11-12) */
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
     // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
     breach: (ci, o) => { const obj = buildPortalObj(ci, o?.radius ?? 1); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; obj.userData.keep = !!o?.keep; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },

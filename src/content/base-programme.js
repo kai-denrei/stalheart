@@ -37,7 +37,7 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'landing', label: 'landing pad', islands: ['landing'], board: true, first: true, when: { phase: 'foundry' }, seconds: 4, metres: 2, brief: 'build_landing', perk: null },
   // (2026-10-03) Isao's work on the recycler comes after the Stålheart's print, not before the gate: the gate and the tremor no longer
   // wait on it (owner: "faster intro, more intensity")
-  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], board: true, first: true, pays: 60, when: { phase: 'foundry' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
+  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], board: true, first: true, pays: 600, when: { phase: 'foundry' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
   { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], board: true, first: true, when: { phase: 'foundry' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
   { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
@@ -145,7 +145,7 @@ export const ANTENNA_CLOSEUP = Object.freeze({
 // the colony's perks (2026-10-01): farmKg biomass at each sector start while the farm stands; chipsPeriod scales the uplink's pass
 // period while the chip plant stands; the armory's pad refills `shellsPerSecond` while the hull's centre is within radiusMetres of
 // the island's centre (the solar array's pad is the model, src/content/shield-array.js)
-export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, farmKg: 40, chipsPeriod: 0.8, armory: Object.freeze({ radiusMetres: 12, shellsPerSecond: 2, lift: 0.6, island: 'assembly', pad: [-18, 1] }),
+export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, farmKg: 400, chipsPeriod: 0.8, armory: Object.freeze({ radiusMetres: 12, shellsPerSecond: 2, lift: 0.6, island: 'assembly', pad: [-18, 1] }),
   // PIMP MY RIDE (owner, 2026-10-03): the purple pad beside the bays (`pad` metres off the bay island's centre: east of it, off the
   // roll-out a fresh hull takes out of the doors, so a deploy never parks on it); the hull inside
   // `radiusMetres` and slower than `still` m/s for `settle` seconds opens the paint shop (src/fx/paint-pad.js)
