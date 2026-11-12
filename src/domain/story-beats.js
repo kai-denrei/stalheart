@@ -195,7 +195,7 @@ export function makeStoryBeats({
         // THE TANK AFTER THE NUKE (owner, 2026-10-05: "after the nuke is dropped, we take control of the tank ... facing where the explosion
         // just took place"): the first MK-9 blast of sector 0, and `tankAfterNuke` seconds later the hull is the player's
         if (tankAfterNuke != null && nukes0 != null && nukeAt === null && (api.nukes?.() ?? 0) > nukes0) nukeAt = clock;
-        if (nukeAt !== null && !said.has('tank_ready') && clock - nukeAt >= tankAfterNuke) { api.tankReady?.(); said.add('tank_ready'); }
+        if (nukeAt !== null && !said.has('tank_ready') && clock - nukeAt >= tankAfterNuke) { api.tankReady?.(); said.add('tank_ready'); if (!up) { api.want?.('construction_ram'); said.add('construction_ram'); } }   // the tank's job while the Stålheart prints (flow fixes, 2026-11-13)
         if (up && upAt === null) upAt = clock;
         // ...or once the hull has had `mopUpSeconds` at them: a player who drives off instead never stalls the story (unmanned towers
         // do not fire before the handover), and the harmless leftovers roll on into sector 1 as bodies to ram
