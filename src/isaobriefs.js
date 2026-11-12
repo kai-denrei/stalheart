@@ -295,6 +295,8 @@ export const BRIEFS = {
     lines: ['Drop a flare where the bodies lie, F. The rover comes.', 'It brings the biomass home to the pearls. Nothing else does now.'],
   },
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12; captions only, unrecorded): the first jab at the rover's hold beyond the walls (src/fx/rover-glue.js bite)
+  // THE ROVER DISABLED (2026-11-12 night; captions only, unrecorded): the first time the hunters stop it beyond the walls (src/fx/rover-glue.js)
+  rover_disabled: { id: 'rover_disabled', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['The rover is down out there. It will not move on its own.', 'Get the tank beside it and hold. I restart it through your hull.'] },
   rover_bitten: { id: 'rover_bitten', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['They are on the rover! Every bite is harvest lost.', 'Take the tank out to it: they go for you first.'] },
   rover_break: {
     id: 'rover_break', face: 'glee', title: 'COMMS · ISAO', once: true,

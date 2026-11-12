@@ -31,7 +31,7 @@ function scope(o = {}) {
     ctx, player: s.player, camera: { quaternion: { x: 0, y: 0, z: 0, w: 1 } }, towers: s.towers, enemies: s.enemies, spawnPoints: s.spawnPoints, strike: s.strike,
     poleFrame: () => { s.poles++; return { hn: [1, 0, 0], t1: [0, 1, 0], t2: [0, 0, 1] }; },
     graph: () => s.graph, dungeon: () => s.dungeon, size: () => s.size, mapMode: () => s.mapMode, pilot: () => s.pilot, pilotMode: () => s.pilotMode,
-    cellSide: () => s.cellSide, waveCharge: () => s.waveCharge, mechs: () => s.mechs,
+    cellSide: () => s.cellSide, waveCharge: () => s.waveCharge, mechs: () => s.mechs, rover: () => s.rover?.() ?? null,
   });
   return { ctx, s, radar };
 }
@@ -127,11 +127,25 @@ function scope(o = {}) {
       assert.equal(before.filter((l) => l[0] === '=strokeStyle').at(-1)[1], '#4bd7e0', 'the ring is the towers\' cyan');
       assert.equal(before.filter((l) => l[0] === '=lineWidth').at(-1)[1], 1, 'one pixel');
     }
-    assert.deepEqual(radar.state(), { mechs: 4 }, `${mapMode}: the count drawn`);
+    assert.deepEqual(radar.state(), { mechs: 4, rover: null }, `${mapMode}: the count drawn`);
   }
   const { ctx, radar } = scope();
   radar.draw(0.5);
   assert.equal(calls(ctx, 'fillRect').filter((r) => r[3] === 3.5).length, 0, 'no mech blips with the squad empty');
-  assert.deepEqual(radar.state(), { mechs: 0 }, 'none counted');
+  assert.deepEqual(radar.state(), { mechs: 0, rover: null }, 'none counted');
+}
+// THE YUSHI ROVER (2026-11-12 night): away from home an olive blip, always lit; disabled a red blip blinking with a red ring round it
+{
+  const { ROVER } = await import('../src/content/rover.js'), RV = ROVER.radar;
+  for (const [disabled, t, lit] of [[false, 0.3, true], [true, 0.1, true], [true, 0.3, false]]) {
+    const { ctx, radar } = scope({ rover: () => ({ pos: [0.03, 0.99, 0.02], disabled }) });
+    radar.draw(t);
+    const blips = calls(ctx, 'fillRect').filter((r) => r[3] === RV.size), rings = calls(ctx, 'arc').filter((a) => a[3] === RV.ring);
+    assert.equal(blips.length, lit ? 1 : 0, `disabled ${disabled} at ${t}: the blip ${lit ? 'lit' : 'dark (the blink)'}`);
+    if (lit) { const fill = ctx.log.slice(0, ctx.log.indexOf(blips[0])).filter((l) => l[0] === '=fillStyle').at(-1)[1]; assert.equal(fill, disabled ? RV.disabled : RV.colour); }
+    assert.equal(rings.length, disabled ? 1 : 0, 'a ring round it while disabled');
+    assert.equal(radar.state().rover, disabled ? 'disabled' : 'out');
+  }
+  const { radar } = scope({ rover: () => null }); radar.draw(0); assert.equal(radar.state().rover, null, 'home: no mark');
 }
 console.log('Radar scope paints the frame, contacts, proximity arcs, heart frame and strike cross from the host it is given.');

@@ -37,6 +37,25 @@ Evidence:
 - test/drive-ground.mjs, test/rover-road.mjs (round a rock block, no point on it, the direction never jumps over 0.5 rad), test/rover-run.mjs (a wall built mid-trip: round it; no way round: held, noted once, no jump; NO ROAD HOME; a pile on a blocked cell raked from beside; a door holds it). npm test 346 programs; npm run check green (td-tab 5,352 under 5,450, no long line).
 - Other suites on 5e2ccd94: --dog-scout PASS 7 (the first harvest 317 kg, was 323); --gunship-ff PASS 1; --story-world red twice at step 16 'spent cases fell from the Rotor in sentry control' (15 PASS before it), and red at the same step on the clean base 5c6d3b52 (15 PASS): a base red, not this change.
 
+## 2026-11-12 — The rover disabled until the tank comes; bonded piles hold (a grace, seepage slowed by a pile's bodies, a sector's cap)
+
+change · accepted · 2026-11-12-the-rover-disabled-until-the-tank-comes-bonded-piles-hold
+
+Measured after the economy build (docs/DECISIONS.md, 2026-11-12): unescorted the rover took 6-15 bites and still came home with 4,438-5,342 kg of 6,500 laid (escorted 5,950), so the escort was not worth the tank's trip; sector 3 seeped 61 % of all laid (42,768 kg) from a flat 0.5 kg/s floor on each of hundreds of small piles. Owner: "leaning towards the tank doing sorties and protection missions of the yushi-rover collecting biomass"; "biomass bonds together well, otherwise it seeps into the ground and some is lost"; "we will tune the difficulty later, first we want the flow of stages". Branch escort-seep from e4e9cefb.
+
+ac8971e2: ROVER.disable { bites 3, every 2, floor 0.25, cells 3, seconds 4 } (src/domain/rover-run.js bite, restart, restartShare): the third jab of a trip (an empty hold counts) disables the rover where it stands; disabled it is bitten one bite in 2 s at most down to a quarter of its capacity; only the tank (the hull alive) within 3 cells for 4 s restarts it (the hold's clock runs down while the tank is away), and it resumes its trip; still no hit points; the break brings a disabled rover home with what is aboard. Readouts: the console ROVER DISABLED · NEEDS THE TANK / ROVER RESTARTING n %, the callouts, Isao's rover_disabled caption once, a red restart ring with an amber arc (src/fx/rover.js), the radar's rover mark (olive while out, blinking red with a ring while disabled, src/fx/radar-scope.js; td-tab +1 line), the first sortie's hint callout. 3371ccd7: FIELD.seep { grace 20, floor 0.5, share 1/400, bond 3, cap 0.25 } (src/domain/biomass-field.js): no seepage for 20 s after a pile's first body; then max(floor, kg x share) / min(bodies, bond) kg/s; a sector's seepage stops at 25 % of its laid kg (field.term() at the break); a full field drops its smallest pile. Measured: --rover unescorted disabled at 4,110 kg, held (0.00 m in 6 s), the hull beside it restarted it after 10.6 s, home with 5,814 kg; escorted 0 bites, never disabled, home with 6,000. --ledger TO=3 BOARD=pick: laid 11,296 / 25,206 / 69,939, home 275 / 16,546 / 26,401, seeped 138 / 1,006 / 11,663 (1 / 4 / 17 %), bank at the debriefs 3,075 / 18,271 / 35,272 (before: home 1,794 / 13,756 / 22,112, seeped 390 / 2,735 / 42,768, bank 4,594 / 17,000 / 29,712).
+
+Alternatives: Bites end the trip (home at once with what is left): rejected, the rover would still come home and the tank would not have to go.; Bond 8 with the grace renewed by every body: measured 0 / 0.4 / 7 % seeped (S3 under the 15-30 % band); a lane under a stream of kills never seeped.; Bond 8 with the grace from the first body: 0.4 / 1 / 7 %; taken: bond 3 (S3 17 %).; Bonding by neighbouring piles: not built (the field would need the lattice's distances every tick).; A disabled rover losing its load at the break: not taken; the break banks what is aboard (the floor at worst).
+
+Evidence:
+
+- --rover PASS 9 on the final tree (harvest, unload, after, disabled, hunted, escorted, reroute, no-road; the first sortie's hint said); an earlier run on the escort commit alone passed the disabled, hunted and escorted pages and failed 'no road: held' once (the rover drove past the shut ring before the recheck; passed on the rerun, nothing in the change touches it).
+- --dog-scout PASS 9 (DOG BUDGET: first harvest poured 391 of 433 laid, card 2,491).
+- --gunship-ff PASS 1.
+- --ledger TO=3 BOARD=pick, four runs: bond 8 renewed grace (S3 7 %), bond 8 first-body grace (S3 7 %), bond 3 (the rows in the outcome).
+- npm test (347 programs) and npm run check green at both commits; test/rover-run.mjs, test/biomass-field.mjs, test/radar-scope.mjs gained the rules' cases.
+- Not run: --story-world (known flaky / red on the base), the colony or landing suites; not played by hand.
+
 ## 2026-11-12 — THE RECON DOG: the opening re-paced round the dog's survey
 
 change · accepted · 2026-11-12-the-recon-dog-the-opening-re-paced-round-the-dog-s-survey

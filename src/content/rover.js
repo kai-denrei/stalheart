@@ -26,8 +26,11 @@
 //                      and `tall` high, `up` metres over the ground, the slurry's colour on a dark track, amber from `warn` of the hold, shown
 //                      whenever it is away from its pad or carries anything
 //   ROVER.price        the catalog's price of a second rover: no board card this round ("buildable, but not used for now")
-//   FIELD.seep         SEEPAGE (owner, 2026-11-12; the economy design 2.6): a pile loses max(floor, kg x share) kg a second (src/domain/biomass-field.js);
-//                      it replaced the 240 s rot. maxPiles the instanced mesh's cap
+//   FIELD.seep         SEEPAGE (owner, 2026-11-12; the economy design 2.6): it replaced the 240 s rot (src/domain/biomass-field.js). BONDED PILES HOLD
+//                      (2026-11-12 night; owner: biomass "bonds together well, otherwise it seeps into the ground"): nothing seeps for `grace` s after
+//                      a pile's last body; then it loses max(floor, kg x share) / min(bodies, bond) kg a second (a lone kill at the floor, a chain
+//                      of `bond` kills on one cell at a `bond`-th); a sector's seepage stops at `cap` of the kg laid in it (the term closes at
+//                      the break). maxPiles the instanced mesh's cap (a full field loses its smallest pile)
 //   ROVER.breakShare   the share of the flagged piles the sector's end banks (the economy design 2.6: half; the rest stays on the ground)
 //   ROVER.recheck      s between looks at the road ahead (a wall, a building or a sinkhole across it sends it round; src/domain/rover-run.js)
 //   ROVER.road         THE TANK'S GROUND (owner, 2026-11-12: "yushi-rover must have the same collision logic as the tank; walls, rocks, etc."):
@@ -42,6 +45,15 @@ export const ROVER = Object.freeze({
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the whites and yellows hunt it (src/domain/soft-hunt.js huntGoal) and each
   // jab's peak eats `bite` kg of its hold (lost; it has no hit points); the callout at most every `every` s, Isao's rover_bitten the first time
   threat: Object.freeze({ bite: 100, every: 15 }),
+  // THE ROVER DISABLED (2026-11-12 night: "leaning towards the tank doing sorties and protection missions of the yushi-rover"; src/domain/rover-run.js):
+  // the `bites`-th jab of a trip stops it where it stands; the hunters still bite, one in `every` s, the hold down to `floor` of its capacity; the
+  // tank within `cells` (10 m) of it for `seconds` restarts it (the ring round it at `cells`); the console's words. Not destroyable: no hit points
+  disable: Object.freeze({ bites: 3, every: 2, floor: 0.25, cells: 3, seconds: 4,
+    words: Object.freeze({ disabled: 'DISABLED · NEEDS THE TANK', restarting: 'RESTARTING' }) }),
+  // its restart ring on the ground (src/fx/rover.js: red at disable.cells, the amber arc filling) and its mark on the radar (src/fx/radar-scope.js:
+  // the slurry's olive while it is away from home, red and blinking `blink` times a second while disabled, a ring `ring` px round it)
+  ring: Object.freeze({ colour: 0xff4a3c, progress: 0xffb43c, points: 64, up: 0.4 }),
+  radar: Object.freeze({ colour: '#9fc24a', disabled: '#ff4a3c', size: 3, ring: 6, blink: 2 }),
   gauge: Object.freeze({ metres: 7, tall: 0.9, up: 7.5, colour: '#9fc24a', warn: 0.9, warnColour: '#ffb43c', track: 'rgba(8,12,10,0.72)', edge: '#cfe6a0' }),
   model: 'assets/models/yushi-rover/yushirover_d0_lod1.glb', far: 'assets/models/yushi-rover/yushirover_d0_lod2.glb',
   // where it stands on the depot island (metres off the island's centre, the island's frame): its pad on the west half, facing the mouth (-Z);
@@ -51,7 +63,7 @@ export const ROVER = Object.freeze({
   // the scene: the hose drawn while it unloads (the author's viewer supplies a flexible hose; ours is one olive tube), the slurry's colour
   hose: Object.freeze({ colour: 0x71863c, radius: 0.12 }),
 });
-export const FIELD = Object.freeze({ seep: Object.freeze({ floor: 0.5, share: 1 / 400 }), maxPiles: 400 });
+export const FIELD = Object.freeze({ seep: Object.freeze({ grace: 20, floor: 0.5, share: 1 / 400, bond: 3, cap: 0.25 }), maxPiles: 400 });
 export const PEARLS = Object.freeze({ count: 3, capacity: 12000, ids: Object.freeze(['pearl-a', 'pearl-b', 'pearl-c', 'pearl-d']) });
 // THE PILES (src/fx/biomass-piles.js): an olive blob (the author's slurry colour, yushi045 runtime.js yushiOlive) on the ground where the body fell,
 // its radius `metres` x the cube root of its kg (a 100 kg pile 1.5 m across, 2,000 kg 4 m), at most `maxMetres`, squashed to `flat` of its width
@@ -69,4 +81,7 @@ export const ROVER_WORDS = Object.freeze({
   rover: 'ROVER', field: 'FIELD', full: 'STORAGE FULL', flare: 'FLARE', dispatched: 'ROVER DISPATCHED', queued: 'ROVER · NEXT FLARE QUEUED',
   noDepot: 'NO ROVER YET', flares: 'FLARES', noFlares: 'NO FLARES · RESTOCK AT BASE', restocked: 'FLARES RESTOCKED', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
   attacked: 'ROVER UNDER ATTACK', bitten: 'rover_bitten',
+  // THE ROVER DISABLED (2026-11-12 night): the callouts, Isao's caption, the first sortie's hint (the first time it leaves the walls), the radar's mark
+  disabled: 'ROVER DISABLED · NEEDS THE TANK', restarted: 'ROVER RESTARTED', disabledBrief: 'rover_disabled',
+  escort: 'ROVER BEYOND THE WALLS · THE HUNTERS GO FOR IT · ESCORT IT WITH THE TANK', escortSeconds: 4.5,
 });
