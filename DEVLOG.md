@@ -17,6 +17,21 @@ Evidence:
 - The owner's message of 2026-11-12, quoted in the context.
 - docs/DECISIONS.md at eec6404f, the list he answered from.
 
+## 2026-11-12 — The landing's CRASH: a grade beyond WRECK ends the run, FLY IT AGAIN, the fuel called
+
+decision · accepted · 2026-11-12-the-landing-crash-a-grade-beyond-wreck-ends-the-run-fly-it-again-fuel-calls
+
+The owner (2026-11-12): "flown landing, we need a fuel limit (but generous) and while a total CRASH is an option. Game over right away. the other options should be more limited start resources because less is salvageable." Built on branch landing-crash from ecef3736. Before: any touchdown past the HARD lines (sink over 6 m/s, off the pad, steep ground) was a WRECK and the game went on with two sections; the no-input descent (~33 m/s) graded WRECK off-pad.
+
+BUILT, unmerged, not seen by the owner. A touchdown faster than LANDING_GAME.crash.sink (15 m/s) or with the hull past crash.tiltDeg (45 degrees) against the local ground is a CRASH (pure rule in src/domain/manual-landing.js verdict, the tune an argument; it outranks legs, slope and off-pad). A CRASH ends the run at the wreck: no salvage, no rail, no Isao talk, the arrival never finishes; the full-screen card SH02 LOST (src/fx/landing-lost.js) offers FLY IT AGAIN (Enter or R; the same seeded entry restarts, no signature, no Isao line) and START OVER (S; a reload of the page); the camera shot arrivalLost eats every key and tap, Esc included, and cannot be skipped; the card takes no key for 1 s (a burn key still held). Esc during a flight is still the skip (CLEAN, skipped), not a crash. The no-input descent is now a CRASH (sink). Fuel: the model already cut the engines at zero; the panel's FUEL now reads red at or under fuel.lowSeconds (6 s) and EMPTY at zero, the annunciator calls LOW FUEL once and NO FUEL / ENGINES OUT once (with the alarm cue). Measured: the scripted pilot (browser suite's, ported to node over 200 planet seeds) spends 4.9-6.2 s of the 18-22 s tank including the 1.5 s override burn, a margin of at least 199 percent over the seed's lowest tank, so the seed range stays; a held full burn empties the tank and the dry fall is a CRASH. WRECK < HARD < CLEAN salvage is unchanged and the start bank was not touched.
+
+Alternatives: Reuse src/fx/choice-card.js for the end card: not taken, its header reads COMMS / ISAO and the owner wants no Isao talk on a crash; a small dedicated card keeps the choice card's behaviour untouched.; START OVER as a reload of the story start: a flown landing is remembered (td.landing.flown), so a plain reload lands itself and offers FLY THE LANDING on the gate; on an acceptance page with ?landing=1 it flies again. Simplest option taken; whether START OVER should force the flown landing is open.; A crash on the first contact only if the legs are down: not taken, the crash outranks legs, slope and off-pad.
+
+Evidence:
+
+- node test/manual-landing.mjs, test/arrival.mjs, test/landing-hud.mjs: the CRASH rule and its strict lines, the fuel cut and the dry fall, the arrival's crash state, FLY IT AGAIN, no salvage, no talk.
+- scripts/browser-test.mjs --landing: results in docs/STATE.md under THE LANDING (2026-11-12 paragraph).
+
 ## 2026-11-12 — No start bank, biomass as the building material, THE KING, the colony's order chosen by the player
 
 decision · accepted · 2026-11-12-no-start-bank-biomass-as-the-building-material-the-king-the-colony-s-order-chosen
