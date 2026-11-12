@@ -1687,14 +1687,14 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const marks=[],mark=async(what)=>{const s=await st();marks.push([what,s.story.clock]);console.log(`  dog: ${what} at story clock ${s.story.clock}`);};
  await go('dog-scout','index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1#td');
  await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);await evaluate(CAM_LOG);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
+ const b0=(await st()).biomass;assert.equal(b0,0,`no start bank (${b0})`);budget.push(['landing',b0]);
  // THE HELD SHOT (note 1): the door open and Isao climbing out, then his lines on the same framing (stills); the swap waits off screen
- await until(`(a=>a.phase==='landing'&&a.t>=${STORY_ARRIVAL_T.isao}+0.4)(${T}.state().arrival)`,120000).catch(async()=>assert.fail(`the held shot on the rocket (${JSON.stringify((await st()).arrival)})`));
+ await until(`(a=>a.phase==='landing'&&a.t>=${STORY_ARRIVAL_T.isao}+${STORY_ARRIVAL.landing.isao})(${T}.state().arrival)`,120000).catch(async()=>assert.fail(`the held shot on the rocket (${JSON.stringify((await st()).arrival)})`));
  {const a=(await st()).arrival;assert.ok(a.hold&&a.rocket===true&&a.isao?.visible,`the rocket held, Isao out of it (${JSON.stringify({hold:a.hold,rocket:a.rocket,isao:a.isao,t:a.t})})`);current='dog-landing-door';await finish();}
  await until(`(a=>a.phase!=='landing'&&(a.phase!=='talk'||a.talkT>=1.2))(${T}.state().arrival)`,60000);
  {const s=await st(),a=s.arrival;console.log(`  dog: the talk on the held shot: ${JSON.stringify({shot:s.shot,phase:a.phase,hold:a.hold,rocket:a.rocket,salvage:a.salvage,fov:a.fov})}`);
   if(a.phase==='talk'){assert.equal(s.shot,'arrivalTalk');assert.ok(a.fov>60,`no long lens on his face (${a.fov})`);assert.equal(a.rocket,true,'the intact rocket still on screen: the swap waits');current='dog-landing-talk';await finish();}}
- await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
- const b0=(await st()).biomass;assert.equal(b0,0,`no start bank (${b0})`);budget.push(['landing',b0]);
  await until(`${T}.state().story.phase==='dog-print'`,120000).catch(async()=>assert.fail(`the deploy into the dog's print (${JSON.stringify((await st()).story)})`));await mark('deploy: the dog\'s print asked');
  {const s=await st();assert.notEqual(s.shot,'sitesTour','no landers\' tour on the dog\'s opening');}
  {const s=await st();assert.equal(s.towers,0,'no Rotor at the deploy');assert.equal(s.biomass,b0+SALVAGE,`the whole salvage at the deploy (${b0} -> ${s.biomass})`);budget.push(['salvage',s.biomass]);assert.equal(s.programme.printed.length,0,'nothing printed: no gate, no Stålheart');}

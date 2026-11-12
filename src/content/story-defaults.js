@@ -60,7 +60,7 @@ export const STORY_ARRIVAL = Object.freeze({
     Object.freeze({ t: 0, pos: [70, 12, 70], look: [0, 105, 0], fov: 42 }),
     Object.freeze({ t: 2.6, pos: [48, 10, 48], look: [0, 15, 0] }),   // the touchdown: the held shot takes over from here
   ]),
-  hold: Object.freeze({ look: [0, 22, 12], dist: [64, 54], up: [9, 13], push: 16, ease: 2.5, side: 50, hand: 4,
+  hold: Object.freeze({ look: [0, 20, 10], dist: [54, 46], up: [8, 12], push: 16, ease: 2.5, side: 50, hand: 4,
     swap: Object.freeze({ mid: 18, radius: 22, screen: 0.08, maxS: 60 }) }),
   isao: Object.freeze({ scale: 0.4, from: 15, rim: 39, arc: 4, clear: 35 }),
   talk: Object.freeze({ fov: 20, brief: 'arrival_talk' }),
