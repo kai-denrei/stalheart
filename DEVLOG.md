@@ -17,6 +17,21 @@ Evidence:
 - The owner's message of 2026-11-12, quoted in the context.
 - docs/DECISIONS.md at eec6404f, the list he answered from.
 
+## 2026-11-12 — No start bank, biomass as the building material, THE KING, the colony's order chosen by the player
+
+decision · accepted · 2026-11-12-no-start-bank-biomass-as-the-building-material-the-king-the-colony-s-order-chosen
+
+The owner, 2026-11-12, answering three follow-up questions (his words kept): "remove the start bank for now, we establish with exposition that Isao and Stalheart require local resources to build, and that Biomass actually works GREAT because <insert pseudo science diegetic reasons> and that biomass bonds together well, otherwise it seeps into the ground and some is lost (justifying the chain-kills). Arena Creature; The King? larger than the others, Isao registers it as a male from the chatter, and infers that there must a queen below then. 5. the colony layout, Stalheart builds the dome, the player chooses the order of what goes where, and some are meaningful, e.g. getting replenishment shells, or the radar calling in the Mech cavalry, or the catapult launching an automated SOL."
+
+THE KING is BUILT (7be0f7ed): ARENA_HANDOVER.title, arena_force ('It is larger than all the others.'), arena_decoded ('That one was a male: their King.' / 'A King means a Queen. She is down there, in the nest.'), descent_brief; captions only, unrecorded; code comments and identifiers still say mother. DIRECTION, not built: (1) the start bank (GAME_START_BIOMASS 170) goes on the story's start, so the landing's salvage is all the player has; Isao explains that he and the Stålheart build from local resources and that biomass is an excellent building material that bonds to itself, and what is not gathered together seeps into the ground and is partly lost, which is the fiction for the kill streak; queued behind the recon dog opening because both change the opening's bank and its suites. (2) The colony: the Stålheart builds the domes, the player chooses what goes where and in what order, and some structures carry a real function: shell replenishment, the radar that calls the mech reinforcements, the catapult that launches an automated SOL.
+
+Alternatives: Keeping the start bank and raising the first orders' prices so the grade binds: not taken; the bank goes.; A fixed print order with perks (as built): replaced in direction by the player's own order and placement.
+
+Evidence:
+
+- The owner's message of 2026-11-12, quoted in the context.
+- npm test: 343 test programs passed after the rename (test/boss-run.mjs, test/director-board.mjs updated to the new words).
+
 ## 2026-11-08 — THE SETTLING: time to settle, the first orders, the first contact on a clock
 
 change · accepted · 2026-11-08-the-settling-time-to-settle-the-first-orders-the-first-contact-on-a-clock

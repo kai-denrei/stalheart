@@ -35,6 +35,16 @@ Entry `2026-11-12-the-owner-s-calls-on-the-open-decisions-automation-colony-land
 - **The ending (10, N1-N3).** The Queen dead and the Dyson sphere finished; the player walks the finished base; then a new run on another
   generated planet. Details to be decided.
 
+Second set, same day (entry `2026-11-12-no-start-bank-biomass-as-the-building-material-the-king-the-colony-s-order-chosen`):
+
+- **No start bank (O3, F4).** The landing's salvage is all the player has. Isao explains that he and the Stålheart build from local resources,
+  that biomass bonds to itself and makes an excellent material, and that what is not gathered seeps into the ground and is partly lost (the
+  fiction for the kill streak, E5). *Work:* remove the 170 kg on the story's start, write the exposition, re-price the first orders; queued
+  behind the recon dog opening.
+- **THE KING (9).** Built 7be0f7ed: the card and Isao's lines. Larger than the others, a male by its chatter, so a Queen below.
+- **The colony's order is the player's (6, E9, E10).** The Stålheart builds the domes; the player chooses what goes where and when; some
+  structures carry a real function: shell replenishment, the radar that calls the mech reinforcements, the catapult that launches an automated SOL.
+
 Still open among the ten: 1 kill pay, 2 the constraint target, 3 the sentry cap, 4 the difficulty curve, 7 close early or hold.
 
 ## O. Landing and opening
