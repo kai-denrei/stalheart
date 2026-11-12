@@ -181,11 +181,11 @@ console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a 
   const steps = openingSteps(BASE_PROGRAMME, OPENING_PROGRAMME), ids = steps.map((s) => s.id);
   assert.deepEqual(ids.slice(0, 3), ['gate', 'depot', 'stalheart']); assert.equal(steps.length, BASE_PROGRAMME.length);
   assert.deepEqual(ids.filter((id) => !['gate', 'depot', 'stalheart'].includes(id)), BASE_PROGRAMME.map((s) => s.id).filter((id) => !['gate', 'depot', 'stalheart'].includes(id)), 'the rest in order');
-  assert.deepEqual(steps.slice(0, 3).map((s) => s.when), [{ phase: 'walled' }, { phase: 'harvest' }, { phase: 'quiver-piloting' }]);
+  assert.deepEqual(steps.slice(0, 3).map((s) => s.when), [{ phase: 'walled' }, { phase: 'rotor-ready' }, { phase: 'quiver-piloting' }]);
   assert.deepEqual(BASE_PROGRAMME.find((s) => s.id === 'gate').when, { phase: 'foundry' }, 'the base programme as it stood');
   const st = makeBuildProgramme(steps);
   assert.equal(due(st, { phase: 'scouting' }), null, 'nothing while the dog scouts'); assert.equal(due(st, { phase: 'walled' }).id, 'gate');
-  finish(st, steps[0]); assert.equal(due(st, { phase: 'piloting' }), null, 'the depot waits for the clear'); assert.equal(due(st, { phase: 'harvest' }).id, 'depot');
+  finish(st, steps[0]); assert.equal(due(st, { phase: 'printing' }), null, 'the depot waits for the Rotor'); assert.equal(due(st, { phase: 'rotor-ready' }).id, 'depot', 'and prints in the wait for its seat (flow fixes, 2026-11-13)');
   finish(st, steps[1]); assert.equal(due(st, { phase: 'orders' }), null, 'the Stålheart waits for the card to close'); assert.equal(due(st, { phase: 'quiver-piloting' }).id, 'stalheart');
   assert.deepEqual(openingSteps(BASE_PROGRAMME.filter((s) => s.id !== 'depot'), OPENING_PROGRAMME).slice(0, 2).map((s) => s.id), ['gate', 'stalheart'], 'a plan without the depot');
   console.log('build-programme: the recon dog\'s opening');
