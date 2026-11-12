@@ -1,6 +1,7 @@
 // Story planet, clearing, terrace and arrival tunables. Pure data; the
 // domain modules take these as explicit configuration.
 import { LANDING_GAME } from './landing-game.js';
+import { DOG_SCOUT } from './dog-scout.js';
 
 export const STORY_RECIPE = Object.freeze({
   seed: 7, points: 16000, k: 12, relaxIters: 80, pullRate: 0.25,
@@ -304,6 +305,13 @@ export const STORY_CHAPTERS = Object.freeze([
   { id: 'stalheart', label: 'STÅLHEART', phases: ['construction'], from: 'construction', printed: ['foundry', 'gate'], towers: ['rotor', 'quiver'], head: { stalheart: 0.5 } },
   { id: 'expedition', label: 'EXPEDITION', phases: ['settled', 'study-talk', 'study', 'expedition'], from: 'settled', printed: ['foundry', 'gate', 'stalheart', 'landing'], towers: ['rotor', 'quiver'] },
 ].map((c) => Object.freeze({ printed: [], towers: [], head: {}, ...c })));
+// ?skip=dog (2026-11-13, THE RECON DOG replay): the opening at THE FIRST ORDERS' card, after the dog's three beats, the first wave and the rover's first trip: the gate
+// and the depot stand (the SEED FOUNDRY, the pad and the array are the card's cards), Isao's Rotor on its socket, and the bank an automatic landing (HARD) has at the card: its salvage (the sections' barrels), the surveys' pay and the
+// first harvest the rover poured, all from content (LANDING_GAME.salvage, DOG_SCOUT). It is no chapter of the tutorial's six: `n` is the QUIVER, the chapter whose phases hold 'orders'
+// (the card reads TUTORIAL 4/6), and `dogOpening` says the beats are the dog's (they open the card, the pad and the foundry's and the array's steps are the card's to sell, not bought for the page)
+const SALVAGE_HARD = LANDING_GAME.salvage.HARD;
+export const STORY_CHAPTER_DOG = Object.freeze({ id: 'dog', label: 'FIRST ORDERS', phases: [], from: 'orders', n: STORY_CHAPTERS.findIndex((c) => c.phases.includes('orders')), dogOpening: true, printed: ['gate', 'depot'], towers: ['rotor'], head: {},
+  bank: (SALVAGE_HARD.sections + SALVAGE_HARD.bonus) * SALVAGE_HARD.feedstockPerBarrel + DOG_SCOUT.points.count * DOG_SCOUT.survey.pay + DOG_SCOUT.harvest.poured });
 export const STORY_CHAPTER_END = Object.freeze({ id: 'sector-1', label: 'SECTOR 1', phases: [], from: 'expedition', printed: ['foundry', 'gate', 'stalheart', 'landing', 'solar'], towers: ['rotor', 'quiver'], head: {} });
 
 // EXPEDITIONS (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): the landing sites, the tower each

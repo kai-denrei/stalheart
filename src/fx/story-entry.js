@@ -23,7 +23,9 @@ export function openStoryAt(query, story, h) {
   // THE FIRST ORDERS (2026-11-08, THE SETTLING): a chapter starts after them, so it stands in for the player's picks: the three first steps bought. Those not in
   // ch.printed print at their turn, and all three are `when: foundry` now: the array (before 2026-11-08 `when: expedition`) prints right after the pad, its
   // station perk on, in the first wave (FIRST WAVE), the Quiver's fight (QUIVER) or sector 0 (STÅLHEART), no longer at the expedition
-  for (const s of story.programme.steps) if (s.first) buy(story.programme, s.id);
+  // ?skip=dog opens AT the card: the steps marked `first` are its offers, so they are not bought, and the bank is the one the dog's opening has there (STORY_CHAPTER_DOG)
+  if (!ch.dogOpening) for (const s of story.programme.steps) if (s.first) buy(story.programme, s.id);
+  if (ch.bank > 0) h.grant(ch.bank);
   for (const id of ch.printed) { const step = story.programme.steps.find((s) => s.id === id); if (step && !story.programme.done.has(id)) h.printed(step, { replay: true }); }   // replay: the recycler's `pays` is not granted twice (2026-11-08)
   for (const t of ch.towers) if (t.ci >= 0) h.commitTower(t.key, t.ci, 0);
   if (ch.berths) h.setBerths(ch.berths);

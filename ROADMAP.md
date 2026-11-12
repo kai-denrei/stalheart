@@ -371,7 +371,7 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 76 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 77 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### The flow of stages audited end to end: the timeline as it plays and the problems ranked (docs/FLOW.md)
 
@@ -384,6 +384,12 @@ Owner, 2026-11-12: "the gameplay and pacing needs a lot of work"; "we have many 
 `2026-11-13-the-ending-proposal-queen-walk-new-planet` · decision · **proposed**
 
 Owner, 2026-11-12: "ending will be Queen dead and Dyson sphere finished. ability to run around the finished base and observe, then start over on another procedurally generated planet. tbd." The same day: THE KING (a male, so a Queen below), "all the elements should be there already", the dome city printed by the KIDOU, "first we want the flow of stages". docs/FLOW.md (2026-11-13) found the Queen as a fight, the walk and a new planet missing; NEW RUN reloads the page. A design agent wrote the proposal from the code, documents only.
+
+### Four small items: the opening measured for a CLEAN and a WRECK landing, ?skip=dog, SOL's automated beam on the tank, and the 31,018 kg reading
+
+`2026-11-13-small-items-opening-grades-skip-dog-sol-beam-and-the-31018-reading` · experiment · **observed**
+
+Follow-ups from the 2026-11-12 economy and recon-dog rounds on branch small-items from c8c4be48: only the automatic landing (HARD) had been measured at THE FIRST ORDERS; the owner wanted a replay point at the card; SOL's beam is the one automated weapon whose footprint lists the tank (src/fx/laser-arsenal.js candidates, LASER_BURN.tank 1 s); an earlier --grow session had read 31,018 kg from the HUD.
 
 ### The design agent's calls: the economy made to bind, the rover escorted by the tank, the colony re-laid round a plaza for the mobile Stålheart
 

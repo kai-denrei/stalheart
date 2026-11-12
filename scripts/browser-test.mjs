@@ -1259,6 +1259,25 @@ try{
  await until(`${T}.state().programme.isao?.state==="build"`,30000);
  {const k=(await st()).programme.isao.printK;assert(k>=0.33,`the Stålheart print is a third done (${k})`);}
  await finish();
+ // 3b. ?skip=dog (2026-11-13): the opening at THE FIRST ORDERS' card: the gate, the depot and the Rotor stand, the bank is the one an automatic landing has there from content
+ // (STORY_CHAPTER_DOG: the HARD salvage, the surveys, the first harvest's pour), the four cards, the card paused over the game and read as QUIVER 4/6; the SECOND ROTOR and the
+ // foundry's work picked and paid, then the Quiver's beat and the Stålheart's print begin together as the dog's opening has them
+ await go('chapters-dog',`index.html?${H}&first=1&skip=dog#td`);await loaded('chapters-dog');
+ {const {STORY_CHAPTER_DOG:D}=await import('../src/content/story-defaults.js');
+  const s=await world('dog',['gate','depot'],['rotor']);assert.equal(s.skip.chapter,'dog');assert.ok(!s.programme.done.includes('stalheart'),'the Stålheart waits for the card');
+  await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,30000).catch(async()=>assert.fail(`THE FIRST ORDERS' card (${JSON.stringify((await st()).board)}; beats ${JSON.stringify((await st()).story)})`));
+  const b=await st(),bd=b.board;console.log(`  chapters dog: the card: bank ${bd.bank} (content ${D.bank}); ${bd.offers.map(o=>`${o.id} ${o.price}`).join(' · ')}; phase ${b.story.phase}`);
+  assert.equal(b.story.phase,'orders','the beats are at the orders');assert.equal(bd.bank,D.bank,'the bank is the content\'s: salvage, surveys and the first harvest');assert.equal(b.biomass,D.bank);
+  assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'the four cards: the Rotor stands, so the SECOND ROTOR');
+  assert.equal(b.paused,true,'the card pauses the game');assert.ok(!b.programme.printed.includes('stalheart')&&b.programme.active!=='stalheart','nothing of the Stålheart before the card');
+  const c=await card();assert.match(c.where,/^TUTORIAL 4\/6\s*QUIVER/,`4/6 (${c.where})`);assert.match(c.next,/^NEXT ›\s*STÅLHEART$/);
+  current='chapters-dog';await finish();
+  for(const id of ['sentry:rotor','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
+  await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
+  {const a=await st();assert.deepEqual(a.board.last.took,['sentry:rotor','build:foundry'],'both placed');assert.equal(a.biomass,D.bank-850,`the second Rotor and the foundry's work paid (${a.biomass})`);}
+  await until(`${T}.state().programme.active==='stalheart'`,60000).catch(async()=>assert.fail(`the Stålheart's print after the card (${JSON.stringify((await st()).programme)})`));
+  await until(`${T}.state().story.phase==='quiver-piloting'`,60000).catch(async()=>assert.fail(`the Quiver's beat after the card (${JSON.stringify((await st()).story)})`));
+  assert.deepEqual(errors,[],'chapters dog: browser errors');}
  // 4. STÅLHEART: sector 0: the gunship comes from orbit, the first wave after its delay, no hull until the Stålheart stands
  await go('chapters-stalheart',`index.html?${H}&skip=stalheart#td`);await loaded('chapters-stalheart');
  {const s=await world('stalheart',['foundry','gate'],['rotor','quiver']);assert.equal(s.hull.state,'held','no hull yet');const c=await card();assert.match(c.where,/^TUTORIAL 5\/6\s*STÅLHEART/,`5/6 (${c.where})`);}
@@ -1850,22 +1869,39 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),dog=()=>evaluate(`${T}.dog.state()`),{DOG_SCOUT}=await import('../src/content/dog-scout.js');
  const {makeLandingSequence}=await import('../src/domain/landing-sequence.js'),{STORY_ARRIVAL}=await import('../src/content/story-defaults.js'),STORY_ARRIVAL_T={isao:makeLandingSequence(STORY_ARRIVAL.landing).isaoAt};
  // THE BUDGET (the economy design 2.7, 2026-11-12): no start bank; the automatic landing's salvage (HARD's three barrels); the bank at each beat as DOG BUDGET
- const {LANDING_GAME}=await import('../src/content/landing-game.js'),SALV=LANDING_GAME.salvage.HARD,SALVAGE=SALV.sections*SALV.feedstockPerBarrel+SALV.bonus*SALV.feedstockPerBarrel,budget=[];
+ // OPENING GRADES (2026-11-13): GRADE=CLEAN|HARD|WRECK (HARD is the automatic landing, the default) plays the same opening from a landing of that grade (CLEAN and WRECK
+ // are flown by a scripted pilot, the --landing suite's two) and stops at THE FIRST ORDERS' card: the bank there, the cards, every pair the board lets be picked; prints OPENING GRADES
+ const GRADE=process.env.GRADE||null,FLOWN=!!GRADE&&GRADE!=='HARD';assert.ok(!GRADE||['CLEAN','HARD','WRECK'].includes(GRADE),`GRADE is CLEAN, HARD or WRECK (${GRADE})`);
+ const {LANDING_GAME}=await import('../src/content/landing-game.js'),SALV=LANDING_GAME.salvage[GRADE||'HARD'],SALVAGE=SALV.sections*SALV.feedstockPerBarrel+SALV.bonus*SALV.feedstockPerBarrel,budget=[];
  const PH=`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`;
  const KEYS={w:['w','KeyW',87],a:['a','KeyA',65],d:['d','KeyD',68],shift:['Shift','ShiftLeft',16]},held={};
  const hold=async(k,on)=>{if(!!held[k]===on)return;held[k]=on;const [key,code,vk]=KEYS[k];await send('Input.dispatchKeyEvent',{type:on?'keyDown':'keyUp',key,code,windowsVirtualKeyCode:vk,...(on&&key.length===1?{text:key}:{})});};
  const letGo=async()=>{for(const k of Object.keys(KEYS))await hold(k,false);};
  const marks=[],mark=async(what)=>{const s=await st();marks.push([what,s.story.clock]);console.log(`  dog: ${what} at story clock ${s.story.clock}`);};
- await go('dog-scout','index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1#td');
+ await go('dog-scout',`index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1${FLOWN?'&landing=1':''}#td`);
  await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);await evaluate(CAM_LOG);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
  const b0=(await st()).biomass;assert.equal(b0,0,`no start bank (${b0})`);budget.push(['landing',b0]);
+ // THE FLOWN LANDING (GRADE=CLEAN or WRECK): `?landing=1`, the signature skipped by the harness (as Esc), the --landing suite's scripted pilot (CLEAN: the burn 30 m early; WRECK: 6 m late)
+ // to the contact; the grade it earned must be the one asked for. Everything after the deploy is the same page as the automatic landing's.
+ if(FLOWN){
+  const A=`${T}.state().arrival`,LD=`${A}.landing`,why=async(w)=>assert.fail(`${w} (${JSON.stringify(await evaluate(`(a=>a&&{phase:a.phase,t:a.t,manual:a.manual,signature:a.signature,landing:a.landing})(${A})`))})`);
+  const pilotAt=(margin)=>`(()=>{const T=window.__stalheartTest;(function f(){const L=T.state().arrival?.landing;if(!L||L.phase==='done'||L.phase==='touched')return;if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.along*0.3)),e=want-L.vx,tiltWant=Math.max(-0.35,Math.min(0.35,e*0.08)),tr=Math.max(-1,Math.min(1,(tiltWant-L.tilt)*6));T.landing('input',{throttle:stop+${margin}>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}requestAnimationFrame(f);})();})()`;
+  await until(`${A}?.phase==='landing'&&${A}.signature===true`,120000).catch(()=>why('the flown landing begins under its signature'));
+  assert.equal(await evaluate(`${T}.landing('skip')`),'signature','the harness skips the signature');
+  await until(`${LD}?.phase==='manual'`,45000).catch(()=>why('MANUAL'));
+  await evaluate(pilotAt(GRADE==='CLEAN'?30:-6));
+  await until(`(L=>!L||L.phase==='done')(${LD})||${A}.phase!=='landing'`,90000).catch(()=>why('the pilot to the contact'));await delay(400);
+  const g=(await evaluate(A)).landing;console.log(`  grades: the flown landing: ${JSON.stringify(g)}`);
+  assert.equal(g?.grade,GRADE,`the pilot lands ${GRADE} (${JSON.stringify(g)})`);
+ } else {
  // THE HELD SHOT (note 1): the door open and Isao climbing out, then his lines on the same framing (stills); the swap waits off screen
  await until(`(a=>a.phase==='landing'&&a.t>=${STORY_ARRIVAL_T.isao}+${STORY_ARRIVAL.landing.isao})(${T}.state().arrival)`,120000).catch(async()=>assert.fail(`the held shot on the rocket (${JSON.stringify((await st()).arrival)})`));
  {const a=(await st()).arrival;assert.ok(a.hold&&a.rocket===true&&a.isao?.visible,`the rocket held, Isao out of it (${JSON.stringify({hold:a.hold,rocket:a.rocket,isao:a.isao,t:a.t})})`);current='dog-landing-door';await finish();}
  await until(`(a=>a.phase!=='landing'&&(a.phase!=='talk'||a.talkT>=1.2))(${T}.state().arrival)`,60000);
  {const s=await st(),a=s.arrival;console.log(`  dog: the talk on the held shot: ${JSON.stringify({shot:s.shot,phase:a.phase,hold:a.hold,rocket:a.rocket,salvage:a.salvage,fov:a.fov})}`);
   if(a.phase==='talk'){assert.equal(s.shot,'arrivalTalk');assert.ok(a.fov>60,`no long lens on his face (${a.fov})`);assert.equal(a.rocket,true,'the intact rocket still on screen: the swap waits');current='dog-landing-talk';await finish();}}
+}
  await until(`${T}.state().story.phase==='dog-print'`,120000).catch(async()=>assert.fail(`the deploy into the dog's print (${JSON.stringify((await st()).story)})`));await mark('deploy: the dog\'s print asked');
  {const s=await st();assert.notEqual(s.shot,'sitesTour','no landers\' tour on the dog\'s opening');}
  {const s=await st();assert.equal(s.towers,0,'no Rotor at the deploy');assert.equal(s.biomass,b0+SALVAGE,`the whole salvage at the deploy (${b0} -> ${s.biomass})`);budget.push(['salvage',s.biomass]);assert.equal(s.programme.printed.length,0,'nothing printed: no gate, no Stålheart');}
@@ -1878,7 +1914,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.equal(await evaluate(`document.querySelectorAll('.dog-scout-hud > div').length`),NP+2,'a marker a point, the home marker and the line');
  // ONE MOVE (note 1): from the touchdown's held shot to the chase settled behind the dog, no frame cuts
  await delay((DOG_SCOUT.camera.easeIn+1)*1000);
- {const L=await evaluate('window.__camLog'),from=L.findIndex(r=>r[6]),to=L.length,c=camCuts(L.slice(from,to));
+ if(!FLOWN){const L=await evaluate('window.__camLog'),from=L.findIndex(r=>r[6]),to=L.length,c=camCuts(L.slice(from,to));
   console.log(`  dog: the camera from the touchdown to the seat: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
   assert.ok(from>=0,'the held shot began');assert.deepEqual(c.cuts,[],'no cut from the touchdown to the dog\'s seat');
   assert.ok(!c.shots.includes('sitesTour'),'no landers\' tour');for(const id of ['arrivalTalk','petPrint','dogScout'])assert.ok(c.shots.includes(id),`${id} on the way`);await evaluate('window.__camStop=true');}
@@ -1926,9 +1962,17 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const r=await evaluate(`${T}.rover.state()`);await mark(`the rover home (${r.trips} trip, ${r.delivered} kg)`);budget.push(['first harvest poured',r.delivered]);}
  await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,30000).catch(async()=>assert.fail(`THE FIRST ORDERS (${JSON.stringify((await st()).board)})`));await mark('THE FIRST ORDERS');
  {const s=await st(),bd=s.board;console.log(`  dog: the card: bank ${bd.bank}; ${bd.offers.map(o=>`${o.id} ${o.price}`).join(' · ')}`);
-  budget.push(['card',bd.bank]);assert.equal(s.paused,true);assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'four cards at x10: the Rotor stands, so the SECOND ROTOR');
+  budget.push(['card',bd.bank]);assert.equal(s.paused,true);if(!GRADE||GRADE==='HARD')assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'four cards at x10: the Rotor stands, so the SECOND ROTOR');
   assert(!s.programme.printed.includes('stalheart')&&s.programme.active!=='stalheart','the Stålheart waits for the card');}
  current='dog-first-orders';await finish();
+ if(GRADE){
+  // OPENING GRADES: what the card lets be picked with this bank, asked of the board itself: every single card and every pair (the board refuses a pick it cannot pay, and a third)
+  const bd=(await st()).board,ids=bd.offers.map(o=>o.id),picks=async(list)=>{for(const id of list)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);const p=(await st()).board.picked.slice();for(const id of p)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);return p;};
+  const singles=[],pairs=[];for(const a of ids)if((await picks([a])).length===1)singles.push(a);
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++)if((await picks([ids[i],ids[j]])).length===2)pairs.push([ids[i],ids[j]]);
+  const prices=Object.fromEntries(bd.offers.map(o=>[o.id,o.price])),laid=Math.round((await st()).ledger.field);
+  console.log(`OPENING GRADES ${JSON.stringify({grade:GRADE,flown:FLOWN,salvage:SALVAGE,bank:bd.bank,prices,affordable:singles,pairs:pairs.map(p=>p.join(' + ')),pairsOf:`${pairs.length}/${ids.length*(ids.length-1)/2}`,laidAtCard:laid,budget})}`);
+ } else {
  for(const id of ['sentry:rotor','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
  await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
  {const s=await st();budget.push(['after the card',s.biomass]);assert.deepEqual(s.board.last.took,['sentry:rotor','build:foundry'],'both placed: the second Rotor on the wall');assert.equal(s.biomass,budget.at(-2)[1]-850,`the second Rotor and the foundry's work paid (450 + 400): ${s.biomass}`);}
@@ -1941,7 +1985,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await delay(1000);current='dog-sector-0';await finish();
  // THE SECOND ROTOR stands on the wall beside the first (measured 2026-11-12: 14 s after the card, during sector 0; the wait allows for it queuing behind the Stålheart's print)
  await until(`${T}.state().towers>=3`,300000).catch(async()=>assert.fail(`the second Rotor printed after the Stålheart (${JSON.stringify((await st()).programme)}, ${(await st()).towers} sentries)`));await mark('the second Rotor stands');
- console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);
+ }
+ if(!GRADE)console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);
  {const d=marks[0][1],seat=marks.find(m=>/Rotor\'s seat/.test(m[0]));console.log(`DOG FROM THE DEPLOY ${JSON.stringify(marks.map(([w,c])=>[w,+(c-d).toFixed(1)]))}`);if(seat)console.log(`  dog: the Rotor's seat ${(seat[1]-d).toFixed(1)} s of story clock after the deploy`);}console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
  } else if(args.includes('--flow')) {
  // THE FLOW OF STAGES (owner, 2026-11-12: "first we want the flow of stages"; the audit docs/FLOW.md): one story page played end to end by harness
@@ -3306,6 +3351,62 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   kills:{gunship:(s1.killsBySrc?.strike??0)-k0,bySrc:Object.fromEntries(Object.entries(s1.killsBySrc??{}).map(([k,v])=>[k,v-(s0.killsBySrc?.[k]??0)]))},keep:{gunSafeCells:GUNSHIP_AUTO.gunSafeCells,nukeSafeCells:GUNSHIP_AUTO.nukeSafeCells}};
  console.log(`GUNSHIP FF ${JSON.stringify(out)}`);
  assert.ok(out.fired>0,`the gunship fired by itself over the escort (${out.fired} rounds)`);
+ } else if(args.includes('--sol-ff')) {
+ // SOL'S AUTOMATED BEAM ON THE TANK, MEASURED (2026-11-13, the small-items brief; modelled on --gunship-ff): the one automated weapon whose footprint
+ // can reach the hull (src/fx/laser-arsenal.js: `candidates` lists the tank, LASER_BURN.tank 1 s inside the footprint, `destroy` -> burnTank -> playerHit('laser')).
+ // The hull stands on open ground beside a gate breach with bodies kept up round it (SOL_ALIVE, default 40) in a ring of 4-7 hops, SOL-88 on auto (?laser=online + laserAuto),
+ // a pass called whenever none is up, for SOL_SPAN wall seconds (default 150). Read through the debugger as --gunship-ff reads: every aim the auto picks (its distance to the hull),
+ // every burn's start, every frame the footprint is computed (does it hold the tank; the contact's closest approach to the hull), every hull hit by source (and the shield state).
+ // Printed as SOL FF. A probe: it asserts only that SOL burned by itself. SOL_DRIVE=1 teleports the hull (placeTank) onto the cell nearest the beam's contact each 700 ms while it
+ // burns, the worst case of a player driving into it
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),SPAN=(+process.env.SOL_SPAN||150)*1000,ALIVE=+process.env.SOL_ALIVE||40,DRIVE=process.env.SOL_DRIVE==='1';
+ const {LASER_AUTO,LASER_GAME}=await import('../src/content/orbital-laser.js');
+ await go('sol-ff',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&laser=online#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===2`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ await evaluate(`${T}.sectorQuiet(true)`);for(let k=0;k<20;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(300);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
+ // the hull beside the gate's breach, outside the walls
+ const S0=(await st()).sector,br=S0.breaches.find(b=>b.side==='gate')??S0.breaches[0];assert.ok(br&&br.cell>=0,`a breach to stand beside (${JSON.stringify(S0.breaches)})`);
+ const open=(r)=>r.cells.filter(c=>!c.rock&&!c.solid).map(c=>c.ci);
+ const near3=open(await evaluate(`${T}.showcase.cellsNear(${br.cell},3)`)).filter(ci=>ci!==br.cell),tankCell=near3[Math.floor(near3.length/2)];assert.ok(tankCell>=0,'an open cell for the hull');
+ await evaluate(`${T}.placeTank(${tankCell})`);await delay(300);
+ const inner=new Set(open(await evaluate(`${T}.showcase.cellsNear(${tankCell},3)`))),ring=open(await evaluate(`${T}.showcase.cellsNear(${tankCell},7)`)).filter(ci=>!inner.has(ci));assert.ok(ring.length>8,`a ring of open ground round the hull (${ring.length} cells)`);
+ const lineOf=(file,needle)=>{const i=readFileSync(file,'utf8').split('\n').findIndex(l=>l.includes(needle));assert.ok(i>=0,`${file}: ${needle}`);return i;};
+ await evaluate('window.__sol={frames:0,withHull:0,tankFrames:0,episodes:[],aims:[],hits:[],minContactM:null,burningFrames:0}');await send('Debugger.enable');
+ const bp=async(file,line,condition)=>{const r=await send('Debugger.setBreakpointByUrl',{urlRegex:file.replace(/[.\/]/g,'\\$&')+'(\\?.*)?$',lineNumber:line,condition});assert.ok(r.locations?.length,`the probe in ${file}:${line+1} is placed (${JSON.stringify(r)})`);};
+ const LA='src/fx/laser-arsenal.js';
+ // every frame the footprint is computed (the burn is lit): does it hold the tank, and the contact's distance to the hull
+ await bp(LA,lineOf(LA,'const things = inFootprint(st.contact, beam.radius, candidates(cU));')+1,
+  'try{const W=window.__sol;if(W){W.frames++;W.cellNow=host.cellAt(cU);const tk=host.tank();if(tk)W.withHull++;if(things.some(t=>t.kind==="tank"))W.tankFrames++;if(tk){const l=Math.hypot(tk[0],tk[1],tk[2])||1,d=Math.hypot(cU[0]-tk[0]/l,cU[1]-tk[1]/l,cU[2]-tk[2]/l)*metres();W.minContactM=W.minContactM==null?d:Math.min(W.minContactM,d);}}}catch(e){window.__solErr=String(e&&e.stack||e)} false');
+ // a beam lit
+ await bp(LA,lineOf(LA,'if (!burningWas) { laser.lay(ground, normal);'),'try{window.__sol&&!burningWas&&window.__sol.episodes.push(performance.now())}catch(e){window.__solErr=String(e)} false');
+ // an aim the auto picked (the densest pile outside every friend's margin): its distance to the hull
+ await bp(LA,lineOf(LA,'autoAim = next;'),'try{const W=window.__sol,tk=host.tank();if(W&&next){let d=null;if(tk){const l=Math.hypot(tk[0],tk[1],tk[2])||1;d=Math.hypot(next[0]-tk[0]/l,next[1]-tk[1]/l,next[2]-tk[2]/l)*metres();}W.aims.push(d==null?null:+d.toFixed(1));}}catch(e){window.__solErr=String(e)} false');
+ // a hull hit, by source (the shield takes it first: shieldUp)
+ await bp('src/td-tab.js',lineOf('src/td-tab.js','if (lab.on && lab.immortalTank)'),'try{if(window.__sol){window.__sol.hits.push({type:killerType,whole,hp:playerHP,armour:hullArmour,shield:shieldUp()});if(killerType!=="laser"){hullArmour=hullHits();}}}catch(e){window.__solErr=String(e)} false');
+ await evaluate(`${T}.laserAuto(true)`);
+ const h0=await evaluate(`${T}.state().hull`),s0=await st();
+ let spawned=0,passes=0,teleports=0,lastDrive=0;
+ for(const t0=Date.now();Date.now()-t0<SPAN;){
+  const alive=await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`);
+  if(alive<ALIVE)for(let k=0;k<10;k++)spawned+=await evaluate(`${T}.creatures.spawnAt('amoeba',${ring[(spawned+k*7)%ring.length]})`).catch(()=>0);
+  const l=(await st()).laser;
+  if(l.phase!=='overhead'&&!l.burning){await evaluate(`${T}.laserPassNow()`);passes++;}
+  if(DRIVE&&l.burning&&l.contact&&Date.now()-lastDrive>700){lastDrive=Date.now();const ci=await evaluate('window.__sol.cellNow??-1');if(ci>=0){await evaluate(`${T}.placeTank(${ci})`);teleports++;}}
+  await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();`);
+  await delay(DRIVE?250:1000);
+ }
+ current='sol-ff';await finish();
+ const W=await evaluate('window.__sol'),e1=await evaluate('window.__solErr??null'),l1=(await st()).laser,s1=await st(),h1=await evaluate(`${T}.state().hull`);
+ await send('Debugger.disable');
+ const R=LASER_GAME.pass.radius,reachTank=LASER_GAME.reach.tank,hitDist=R+reachTank,laserHits=W.hits.filter(h=>h.type==='laser'),aimsD=W.aims.filter(d=>d!=null);
+ const out={drive:DRIVE,teleports,alive:ALIVE,span:{wallS:SPAN/1000,storyClockS:+((s1.story?.clock??0)-(s0.story?.clock??0)).toFixed(1)},spawned,passesAsked:passes,passesRun:l1.passes,burnSeconds:l1.seconds,
+  beamsLit:W.episodes.length,aimsPicked:W.aims.length,aimsWithTankInFootprint:aimsD.filter(d=>d<=hitDist).length,closestAimToTankM:aimsD.length?Math.min(...aimsD):null,
+  footprintFrames:W.frames,framesTankInFootprint:W.tankFrames,closestContactToTankM:W.minContactM==null?null:+W.minContactM.toFixed(1),burnedTank:l1.burned.tank,
+  solHullHits:laserHits.length,hullHitsBySource:W.hits.reduce((a,h)=>(a[h.type??'null']=(a[h.type??'null']??0)+1,a),{}),laserHitsWithShieldUp:laserHits.filter(h=>h.shield).length,
+  hullBefore:h0,hullAfter:h1,framesWithHull:W.withHull,probeError:e1,keep:{footprintRadiusM:R,tankReachM:reachTank,hitWithinM:hitDist,safeMetres:LASER_AUTO.safeMetres,guardM:R+LASER_AUTO.safeMetres,retargetS:LASER_AUTO.retarget}};
+ console.log(`SOL FF ${JSON.stringify(out)}`);
+ assert.equal(e1,null,`the probes ran clean (${e1})`);assert.ok(W.episodes.length>0,`SOL burned by itself (${JSON.stringify(out)})`);
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see

@@ -3,11 +3,11 @@
 import assert from 'node:assert/strict';
 import { createFirstOrders } from '../src/fx/first-orders.js';
 
-function rig({ settle = 120, phase = 'printing', touring = false, acceptance = false, wanted = false, offers = true, scout = null } = {}) {
+function rig({ settle = 120, phase = 'printing', touring = false, acceptance = false, wanted = false, offers = true, scout = null, loading = false } = {}) {
   const log = []; let go = null;
   const story = { beats: { state: () => ({ settle, phase, scout }) } };
   const board = { first: (g) => { log.push('first'); go = g; return offers; } };
-  const fo = createFirstOrders({ board, story: () => story, touring: () => touring, pause: (v) => log.push(['pause', v]), brief: (id) => log.push(['brief', id]), acceptance, wanted });
+  const fo = createFirstOrders({ board, story: () => story, touring: () => touring, loading: () => loading, pause: (v) => log.push(['pause', v]), brief: (id) => log.push(['brief', id]), acceptance, wanted });
   return { fo, log, close: () => go?.(), story, set: (k, v) => { if (k === 'touring') touring = v; } };
 }
 { const r = rig(); r.fo.tick(); assert.deepEqual(r.log, [['pause', true], 'first'], 'paused, then the card'); assert.deepEqual(r.fo.state(), { shown: true, open: true });
@@ -22,5 +22,6 @@ function rig({ settle = 120, phase = 'printing', touring = false, acceptance = f
 { const r = rig({ settle: null, scout: {}, phase: 'piloting' }); r.fo.tick(); assert.deepEqual(r.log, [], 'not before the beats\' orders'); assert.equal(r.fo.done(), false); }
 { const r = rig({ settle: null, scout: {}, phase: 'orders', touring: true }); r.fo.tick(); assert.deepEqual(r.log, [['pause', true], 'first'], 'at orders'); assert.equal(r.fo.done(), false, 'open');
   r.close(); assert.deepEqual(r.log.slice(2), [['pause', false]], 'closed: no scouting line'); assert.equal(r.fo.done(), true); }
+{ const r = rig({ settle: null, scout: {}, phase: 'orders', loading: true }); r.fo.tick(); assert.deepEqual(r.log, [], '?skip=dog: not while the rocket\'s swap is still loading (a paused page freezes it)'); }
 { const r = rig({ settle: null, scout: {}, phase: 'orders', acceptance: true }); assert.equal(r.fo.done(), true, 'an acceptance page passes it by: done at once'); }
 console.log('First orders: once after the tour over the paused game, the scouting line as it closes.');
