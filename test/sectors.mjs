@@ -107,6 +107,8 @@ assert.equal(firstSectorDue({ sinceReady: 10, grace: SECTOR_TIMING.firstGrace, p
 assert.equal(firstSectorDue({ sinceReady: 10, grace: SECTOR_TIMING.firstGrace, partsHome: 1 }), true, 'a part home opens it');
 assert.equal(firstSectorDue({ sinceReady: SECTOR_TIMING.firstGrace, grace: SECTOR_TIMING.firstGrace }), true, 'and so does the grace running out');
 assert.equal(firstSectorDue({ sinceReady: 0, grace: 0 }), true, 'a run that starts past the expedition opens at once');
+assert.equal(firstSectorDue({ sinceReady: 30, grace: 90, total: 200, cap: 240 }), false, 'the player out on the errand: the grace waits (flow fixes, 2026-11-13)');
+assert.equal(firstSectorDue({ sinceReady: 30, grace: 90, total: 240, cap: 240 }), true, 'up to the cap');
 
 // the clock's guard, kept for the campaign board: a pulse arms while it fits, and an empty field always takes the next one
 assert.equal(pulseFits(100, 120, 520), true);

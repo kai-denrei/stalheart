@@ -4475,7 +4475,7 @@ export function initTdTab(root) {
   function makeSectorRun() {
     return createSectorRun({ story, host: root, api: storyApi, waveSize: params.waveSize, threatMult, hardcore: story.hardcore, spawnGap: { spread: SPAWN_SPREAD, max: SPAWN_GAP_MAX }, store: localStorage, rng: () => whim(),
       ready: () => automated() && (story.beats.phase() === 'expedition' || story.handover.stage >= (story.handover.defendStage ?? 8)) && !briefs.queue() && !shotActive() && !syntheticModal?.isOpen() && !paused, firstSector: storyQuery.firstSector,   /* SKIP TUTORIAL opens the run at the back-door sector: its collapse and breach are the first thing the player sees */
-      tune: () => tune, centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(), hold: () => creatureEnemies.holds(), clockHeld: () => !!discoParty?.holding(),
+      tune: () => tune, centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, hullHops: () => (story?.hull && player.cur >= 0 ? dungeon.distToHeart?.[player.cur] ?? -1 : -1), bank: () => eco.biomass, reload: () => location.reload(), hold: () => creatureEnemies.holds(), clockHeld: () => !!discoParty?.holding(),
       ground: () => roverGlue.ground(), breakHome: () => roverGlue.breakHome(),   // the debrief's ON THE GROUND; the rover's run finished in the break (round 8 note 7)
       // the ring the gunship's far breach walks: a minute out
       field: () => ({
