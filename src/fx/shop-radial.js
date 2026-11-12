@@ -12,6 +12,7 @@ import { sellRefund } from '../domain/economy.js';
 import { unlockedTowers } from '../domain/expeditions.js';
 import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
 import { STORY_SENTRIES } from '../content/sentries.js';
+import { sentryCap } from '../domain/sentry-cap.js';   // the live cap (2026-11-12)
 
 // RADIAL menu, HokorobiTawaa-style: options ring the tapped cell.
 // R follows HK's sizing (max(66, min(104, 0.3·viewport-min))); the
@@ -72,7 +73,7 @@ export function createShopRadial(host) {
       showRangeRing(ci, effectiveStats(existing.def, existing.tier).range, existing.def.color, 0);
     } else {
       const err = placeError(ci);
-      center = `<div class="radial-center">${err ? 'blocked' : host.eco().biomass + 'kg'}${host.story() ? `<small>${towers.length + orders.filter((o) => o.kind === 'tower').length}/${STORY_SENTRIES.cap} sentries</small>` : ''}</div>`;
+      center = `<div class="radial-center">${err ? 'blocked' : host.eco().biomass + 'kg'}${host.story() ? `<small>${towers.length + orders.filter((o) => o.kind === 'tower').length}/${sentryCap(host.story().programme?.done, STORY_SENTRIES)} sentries</small>` : ''}</div>`;
       const unlocked = new Set(automated() ? unlockedTowers(host.story().expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(host.wave()));
       items = TOWERS.map((def) => {
         const locked = !unlocked.has(def.key);

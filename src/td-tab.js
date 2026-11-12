@@ -97,7 +97,7 @@ import { wallCushion as cushionWalls, breachBlocked as craterBlocked, CRATER_PAD
 import {TOWERS, TOWER_BY_KEY, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER} from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js'; import { createBuildBoard } from './fx/build-board.js'; import { createFirstOrders } from './fx/first-orders.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull, sentryCap } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js'; import { createAmmoOrbs } from './fx/ammo-orbs.js';
 import {makeTankFeel, landTankFeel, applyTankHealth} from './tankfeel.js';
@@ -3238,7 +3238,7 @@ export function initTdTab(root) {
       return story ? STORY_SENTRIES.rock : 'towers need HIGH GROUND';
     }
     if (towerByCell.has(ci)) return 'occupied';
-    if (story && sentryBookFull({ towers: towers.length, orders, ci, cap: STORY_SENTRIES.cap })) return STORY_SENTRIES.full;
+    if (story) { const cap = sentryCap(story.programme?.done, STORY_SENTRIES); if (sentryBookFull({ towers: towers.length, orders, ci, cap })) return STORY_SENTRIES.fullAt(cap); }   // 6, +2 +2 with the colony (2026-11-12)
     if (story && STORY_SENTRIES.buildCells != null && chord(graph.centers[ci], graph.centers[dungeon.heart]) > STORY_SENTRIES.buildCells * cellSide) return STORY_SENTRIES.far;
     if (!graph.adj[ci].some((nb) => dungeon.tags[nb] !== BLOCKED)) {
       return story ? STORY_SENTRIES.deep : 'beyond the frontier';

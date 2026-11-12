@@ -19,8 +19,8 @@ export const VOICE_HOOKS = Object.freeze({
   vibration_study: Object.freeze(['vibration_study#2']),
   plasma_dry: Object.freeze(['PLASMA DRY']),
   // THE SENTRY CAP REFUSED (owner, 2026-10-07, labs 145 and 146: 'when the player tries to build extra sentries above 10'): the NOT HERE
-  // toast with STORY_SENTRIES.full (td-tab refuseCaption), matched on its start
-  sentry_overload: Object.freeze(['NOT HERE Isao keeps 10 sentries']),
+  // toast with STORY_SENTRIES.fullAt(cap) (td-tab refuseCaption), matched on its start
+  sentry_overload: Object.freeze(['NOT HERE Isao keeps']),   // any cap since 2026-11-12 (6, +2 +2)
   // THE LAST STAND (owner, 2026-10-13: "'Do not go gently into the good night' followed by 'rage, rage against the dying of the light'"):
   // the final sector's brief, BOTH WALLS (src/fx/sector-run.js briefOf), once a run, the last fight before THE ENDING; its brief has
   // no recording of its own, so nothing essential gives way. The second line follows the first (VOICE_SEQUENCE)

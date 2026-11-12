@@ -91,5 +91,10 @@ export const QUIVER_SPLASH = Object.freeze({ cells: 1.2, share: 0.5 });
 // we can build towers"). In the story Isao keeps at most `cap` sentries running (standing and ordered), every sentry hits `dmgMul` times
 // harder, and with `buildCells` set an order farther than that many cells from the Stålheart is refused (null: no limit, the owner is
 // still weighing it); dmgMul 1.4 -> 1.15 (2026-10-03: "it feels a bit too easy"). `full` and `far` are the refusals the build menu shows; `rock` and `deep` say the terrain rules in the story's words.
-export const STORY_SENTRIES = Object.freeze({ cap: 10, dmgMul: 1.15, buildCells: null, full: 'Isao keeps 10 sentries running: sell one to build another', far: 'too far from the Stålheart',
+// THE CAP GROWS WITH THE COLONY (the economy design 2.4, 2026-11-12; the owner approved the economy at 10x): `cap` 6 at the start, `plus` +2 for each
+// group with a step standing (FABRICATION: the fabrication dome or, on ?base=classic, the assembly line; LOGISTICS: a logistics dome or the armory), at
+// most `max` (src/domain/sentry-cap.js sentryCap); `fullAt(n)` the refusal at the live cap
+export const STORY_SENTRIES = Object.freeze({ cap: 6, max: 10, dmgMul: 1.15, buildCells: null,
+  plus: Object.freeze([Object.freeze({ steps: Object.freeze(['dome-e', 'assembly']), add: 2 }), Object.freeze({ steps: Object.freeze(['dome-ne', 'dome-se', 'armory']), add: 2 })]),
+  fullAt: (n) => `Isao keeps ${n} sentries running: sell one to build another`, far: 'too far from the Stålheart',
   rock: 'sentries stand on ROCK: pick a rock cell beside the open ground', deep: 'too deep in the rock: a sentry needs open ground beside it' });

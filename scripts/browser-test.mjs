@@ -1336,7 +1336,7 @@ try{
  // THE BUILD MENU IS THE PROOF OF THE UNLOCK: the player's own radial offers the Relay and the Mortar at their price and
  // still reads PART OUT on a part nobody fetched. It moves the build camera, so it runs after the fight is photographed.
  assert.equal(await evaluate(`${T}.openBuildMenu()`),true,'the build menu opens on an open cell');
- assert.match(await evaluate('document.querySelector("#td-shop .radial-center")?.textContent??""'),/\d+\/10 sentries/,'the menu counts the sentries against the cap (eighth notes)');await delay(400);current='skip-tutorial-build-menu';await finish();
+ assert.match(await evaluate('document.querySelector("#td-shop .radial-center")?.textContent??""'),/\d+\/(6|8|10) sentries/,'the menu counts the sentries against the live cap, 6 +2 +2 since 2026-11-12 (eighth notes)');await delay(400);current='skip-tutorial-build-menu';await finish();
  await delay(300);
  {const shop=await evaluate(`(()=>{const out={};for(const b of document.querySelectorAll('#td-shop .shop-buy'))out[b.dataset.key]={locked:b.classList.contains('locked'),disabled:b.disabled,txt:b.textContent};return out;})()`);
   for(const key of ['rotor','quiver','relay','mortar'])assert(shop[key]&&!shop[key].locked,`${key} is offered (${JSON.stringify(shop[key])})`);
@@ -1628,7 +1628,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const a0=await R();await evaluate(`${T}.rover.lay(${rich.cell},6500)`);await evaluate(`${T}.rover.flareAt(${rich.cell})`);
   await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover at the hunted ground (${JSON.stringify(await R())})`));
   const ring=await evaluate(`${T}.creatures.neighbours(${rich.cell})`);let made=0;for(let k=0;k<5;k++)made+=await evaluate(`${T}.creatures.spawnAt('amoeba',${(ring.length?ring:[rich.cell])[k%Math.max(1,ring.length)]})`);
-  await until(`${T}.rover.state().trips>${a0.trips}`,240000).catch(async()=>assert.fail(`the hunted trip home (${JSON.stringify(await R())})`));
+  await until(`(()=>{if(/ROVER UNDER ATTACK/.test(document.body.innerText))window.__attacked=true;return ${T}.rover.state().trips>${a0.trips};})()`,240000).catch(async()=>assert.fail(`the hunted trip home (${JSON.stringify(await R())})`));   // the toast lives 1.8 s: seen while it stands
   const a1=await R(),hs=(await st()).softHunt??null,kg=a1.delivered-a0.delivered,bit=a1.bitten-(a0.bitten??0);
   console.log(`ROVER HUNTED ${escort?'escorted':'unescorted'}: ${made} whites, home with ${kg} kg, ${bit} kg bitten off, hunt ${JSON.stringify(hs)}`);
   return {kg,bit};
@@ -1638,7 +1638,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // guarantees are asserted: the bites, and the escort bringing home more of the same ground with fewer bites
  const H={};
  {const u=H.u=await hunted(false);assert.ok(u.bit>=ROVER.threat.bite,`unescorted, the hunters bite its hold (${u.bit} kg)`);console.log(`  the design's line: unescorted home ${u.kg<4500?'under':'OVER'} 4,500 kg (${u.kg})`);
-  assert.match(await evaluate(`document.body.innerText`),/ROVER UNDER ATTACK/,'the callout');assert.ok((await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")')).includes('rover_bitten'),'Isao\'s rover_bitten');current='rover-hunted';await finish();}
+  assert.equal(await evaluate('!!window.__attacked'),true,'the callout ROVER UNDER ATTACK');assert.ok((await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")')).includes('rover_bitten'),'Isao\'s rover_bitten');current='rover-hunted';await finish();}
  {const e=await hunted(true);console.log(`  the design's line: escorted home ${e.kg>4500?'over':'UNDER'} 4,500 kg (${e.kg})`);assert.ok(e.kg>H.u.kg&&e.bit<H.u.bit,`escorted, more of the same ground home with fewer bites (${e.kg} kg, ${e.bit} bitten; unescorted ${H.u.kg}, ${H.u.bit})`);current='rover-escorted';await finish();}
  } else if(args.includes('--dog-scout')) {
  // THE RECON DOG (owner, 2026-11-10, note 2; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1, 5): the story's own start with the
@@ -1725,7 +1725,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate('window.__stalheartPilotTest?.hold(false)');
  {const s=await st();await mark(`after the Quiver: ${s.story.phase}, ${s.towers} sentries`);assert.equal(s.story.phase,'construction','sector 0 under the Stålheart\'s print');assert.equal(s.gunship.station,true,'GS01 on station');assert.equal(s.programme.active,'stalheart','still printing');}
  await delay(1000);current='dog-sector-0';await finish();
- // THE SECOND ROTOR waits on Isao's book behind the Stålheart's 75 s print (as THE SETTLING's bought Rotor did), then stands on the wall
+ // THE SECOND ROTOR stands on the wall beside the first (measured 2026-11-12: 14 s after the card, during sector 0; the wait allows for it queuing behind the Stålheart's print)
  await until(`${T}.state().towers>=3`,300000).catch(async()=>assert.fail(`the second Rotor printed after the Stålheart (${JSON.stringify((await st()).programme)}, ${(await st()).towers} sentries)`));await mark('the second Rotor stands');
  console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
  } else if(args.includes('--settling')) {
