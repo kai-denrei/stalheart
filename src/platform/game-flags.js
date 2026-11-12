@@ -34,6 +34,10 @@ export function readGameFlags(search = globalThis.location?.search ?? '') {
 // KIDOU moving gantry in the Stålheart's place for the owner to look at in the morning; anything else (or nothing) is the rail terraformer, which
 // stays the game's until he says. Pure, read by the story world beside ?base= (src/platform/story-world.js), so src/td-tab.js does not grow.
 export const GANTRY_MODES = Object.freeze(['rail', 'kidou']);
-export function gantryMode(search) {
-  return new URLSearchParams(search || '').get('gantry') === 'kidou' ? 'kidou' : 'rail';
+// THE KIDOU IS THE DOME BASE'S STÅLHEART (2026-11-12 night, the colony on the grid; design docs/superpowers/specs/2026-11-12-colony-layout-design.md:
+// "the domes cannot be printed by a gantry that does not move"): with no ?gantry= the dome base (the default) stands the KIDOU and the classic base
+// the rail terraformer; ?gantry=rail or ?gantry=kidou names one on either
+export function gantryMode(search, base = 'classic') {
+  const q = new URLSearchParams(search || '').get('gantry');
+  return GANTRY_MODES.includes(q) ? q : base === 'dome' ? 'kidou' : 'rail';
 }

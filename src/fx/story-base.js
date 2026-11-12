@@ -67,7 +67,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   // A LANDMARK WITH A RIG (the owner's note of 2026-11-07, call C): a tier no clip moves, posed by its author's adapter instead (s.rig 'kidou', the
   // wheeled Stålheart behind ?gantry=kidou: src/fx/kidou-rig.js), one per mounted tier, built at mount and ticked with the mixers
-  const rigs = [], RIGS = { kidou: createKidouRig };
+  const rigs = [], RIGS = { kidou: createKidouRig }, rigsOf = new Map(), rigPose = new Map();   // by landmark id, and the pose the drive last set (a tier mounted later takes it)
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
   let alsoNear = null;   // more friendlies a door opens for, beside the hull (nearAlso: the Yushi Rover, round 8 note 7)
   const patches = new Map();   // cell -> the meshes of a wall printed where the plan had rock (patchWall)
@@ -170,7 +170,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       shutCaps(s, root);
       for (const name of s.dark ?? []) { const n = root.getObjectByName(name); if (n?.material?.emissive) { n.material = n.material.clone(); n.material.emissiveIntensity = 0; owned.add(n.material); } }   // its own copy, dark: the cached glTF's material is shared
       holder.add(root); root.position.set(...s.offset);
-      if (s.rig) { const make = RIGS[s.rig]; if (!make) throw new Error(`no rig '${s.rig}'`); rigs.push(make(THREE, root)); }   // posed at once, before a warm or a print reads it
+      if (s.rig) { const make = RIGS[s.rig]; if (!make) throw new Error(`no rig '${s.rig}'`); const r = make(THREE, root); rigs.push(r); if (!rigsOf.has(s.id)) rigsOf.set(s.id, []); rigsOf.get(s.id).push(r); if (rigPose.has(s.id)) { r.set(rigPose.get(s.id)); r.tick(clock); } }   // posed at once, before a warm or a print reads it; a tier mounted mid-drive takes the drive's pose
       const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null, held = {};
       if (mixer) {
         for (const clip of gltf.animations) {
@@ -256,6 +256,17 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       for (const s of plan.structures) if (s.caps?.some(([, b]) => b === id)) { const d = records.get(s.id); if (d) for (const t of [d.far, d.near]) shutCaps(s, t); }   // a bridge begun opens the ports it meets, on every mounted tier
     },
     printState: (id) => prints.state(id, records.get(id)),
+    // THE MOBILE STÅLHEART (2026-11-12 night, src/fx/gantry-drive.js): a landmark set down at another frame point and heading (its holder's
+    // placement, so every tier, its print and its rigs go with it; the boxes the repair, the console and the footprint measured are measured
+    // again), and its rigs' pose (src/fx/kidou-rig.js set)
+    move: (id, x, z, heading) => {
+      const st = plan.structures.find((q) => q.id === id), r = records.get(id); if (!st || !r) return false;
+      place(r.holder, x, z, st.y, heading, st.scale, st.tilt ?? 0, st.lift ?? 0, st.scaleY ?? st.scale);
+      r.holder.userData.placed = r.holder.matrix.clone(); r.box = null; r.foot = null;
+      const l = lod.find((q) => q.id === id); if (l) l.at.setFromMatrixPosition(r.holder.matrix);
+      return true;
+    },
+    rig: (id, pose) => { rigPose.set(id, { ...(rigPose.get(id) ?? {}), ...pose }); for (const r of rigsOf.get(id) ?? []) r.set(pose); return (rigsOf.get(id) ?? []).map((r) => r.state()); },
     growGate: (k, id = null) => { const n = id ? gates.findIndex((x) => x.id === id) : 0, g = gates[n]; if (!g) return; grown.gates[n] = k; if (n === 0) grown.gate = k; if (g.obj) lift(g.obj, k); if (k >= 1) g.built = true; },
     // a beat's hand on a landmark: show or hide it, or take its shown tier and clip actions
     reveal: (id) => { const r = records.get(id); if (r) r.holder.visible = true; },

@@ -23,7 +23,7 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
     if (s.when.phase) assert.ok(STORY_PHASES.includes(s.when.phase), `${s.id}: ${s.when.phase} is a story phase`);
     assert.ok(BRIEFS[s.brief] && BRIEFS[s.brief].lines.length <= 2, `${s.id}: Isao's brief ${s.brief} exists, two lines at most`);
   }
-  assert.deepEqual(BASE_PROGRAMME.map((s) => s.perk).filter(Boolean).sort(), ['armory', 'backgate', 'board', 'chips', 'depot', 'farm', 'garage', 'gate', 'gunship', 'hulls', 'launcher', 'rebuild', 'stalheart', 'station', 'uplink'], 'the perks the other systems consult');
+  assert.deepEqual([...new Set(BASE_PROGRAMME.map((s) => s.perk).filter(Boolean))].sort(), ['armory', 'backgate', 'board', 'chips', 'depot', 'farm', 'garage', 'gate', 'gunship', 'hulls', 'launcher', 'rebuild', 'stalheart', 'station', 'uplink'], 'the perks the other systems consult');
   assert.ok(BASE_PERKS.gunshipMeter > 1 && BASE_PERKS.rebuildHulls >= 1);
   const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
   const plan = planBase(planet, { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES }, 1, { reach: STAGES.length - 1 });
@@ -91,7 +91,7 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   begin(st, steps[3]); finish(st, steps[3]);
   assert.equal(due(st, { phase: 'expedition', sector: 9 }), null, 'the programme runs out');
   assert.deepEqual([...perks(st)].sort(), ['gate', 'hulls', 'rebuild']); perks(st).clear(); assert.ok(hasPerk(st, 'gate'), 'perks() hands out a copy');
-  assert.deepEqual(snapshot(st), { active: null, done: ['a', 'b', 'c', 'd'], printed: ['a', 'b', 'c', 'd'], next: null, owed: [], bought: [], perks: ['gate', 'hulls', 'rebuild'], lost: [] });
+  assert.deepEqual(snapshot(st), { active: null, done: ['a', 'b', 'c', 'd'], printed: ['a', 'b', 'c', 'd'], next: null, owed: [], bought: [], perks: ['gate', 'hulls', 'rebuild'], lost: [], kinds: {} });
 }
 
 // standing steps count as printed from the start, perks included, and are never printed again
@@ -126,7 +126,7 @@ console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a 
 // A BUILDING SOL-82 BURNED (src/content/orbital-laser.js LASER_STRUCTURES): the step stays done — Isao does not print it back — but
 // its perk goes out, and everything that consults the programme goes without what that building was paying for
 {
-  const st = makeBuildProgramme(BASE_PROGRAMME, { standing: () => true });
+  const st = makeBuildProgramme(BASE_PROGRAMME.filter((s) => !s.cell), { standing: () => true });   // a classic plan's programme: the grid's cells pay the same perks as kinds (2026-11-12 night)
   assert.ok(hasPerk(st, 'uplink') && hasPerk(st, 'gunship') && hasPerk(st, 'rebuild') && hasPerk(st, 'hulls'), 'a finished base has every perk');
   assert.equal(lose(st, 'radar'), 'uplink', 'the radar takes the uplink with it');
   assert.equal(hasPerk(st, 'uplink'), false, '...and SOL-82 goes offline with it');

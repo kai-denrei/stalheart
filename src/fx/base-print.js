@@ -43,6 +43,7 @@ export function createBasePrint({ base, plan, placer }) {
   const split = (step) => (step.gate ? (step.walls ? 0.35 : 1) : step.frame ? 0 : step.structures.length ? 0.3 : 1);
   return {
     cellOf: (step) => plotOf(step)?.cell ?? -1,
+    split,   // the share of a step's print its slabs (or its gate) take (the gantry's tool, src/fx/gantry-drive.js)
     // (ox, oy) in -1..1 across and along the plot, k the print's progress: a host point on the plot at the height the print has reached
     bed(step) {
       const p = plotOf(step), h = step.metres ?? 4; if (!p) return null;

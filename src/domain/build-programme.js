@@ -23,7 +23,7 @@ export function openingSteps(steps, opening) {
 }
 
 // does a step's `when` hold in this context? (the build board asks it of the coming sector)
-export function whenHolds(w, { phase, sector, waveActive, back, manned, standing }) {
+export function whenHolds(w, { phase, sector, waveActive, back, manned, standing, home = true }) {
   const at = STORY_PHASES.indexOf(phase);
   if (w.phase != null && !(at >= 0 && at >= STORY_PHASES.indexOf(w.phase))) return false;
   if (w.sector != null && !((sector ?? 0) >= w.sector)) return false;
@@ -36,6 +36,9 @@ export function whenHolds(w, { phase, sector, waveActive, back, manned, standing
   // THE BRIDGES FOLLOW THEIR DOMES (2026-11-07): `when.stand` is the structure ids that must STAND before the step is due (a bridge waits for its
   // two domes). The host answers with `standing(id)`; with no answer nothing stands, so a bridge is never printed toward a dome that is not there; an empty list names nothing to wait for.
   if (w.stand?.length && !(typeof standing === 'function' && w.stand.every((id) => standing(id)))) return false;
+  // THE KIDOU IS HOME (2026-11-12 night, the colony on the grid): `when.home` waits for the mobile Stålheart to be parked on its plaza (the host's
+  // `home`; true when there is no gantry to wait for), so it never sets out while it is out and Isao never prints a bridge across its road
+  if (w.home && home === false) return false;
   return true;
 }
 
@@ -44,10 +47,10 @@ export function whenHolds(w, { phase, sector, waveActive, back, manned, standing
 // turn comes round again (the ARC-01 waits on the player's hands, and the back gate must not wait behind it).
 export function due(st, ctx = {}) {
   if (st.active) return null;
-  const { phase = null, sector = 0, waveActive = false, back = null, manned = 0, standing } = ctx;
+  const { phase = null, sector = 0, waveActive = false, back = null, manned = 0, standing, home = true } = ctx;
   for (const s of st.steps) {
     if (st.done.has(s.id) || (s.board && !st.bought.has(s.id))) continue;
-    if (whenHolds(s.when ?? {}, { phase, sector, waveActive, back, manned, standing })) return s;
+    if (whenHolds(s.when ?? {}, { phase, sector, waveActive, back, manned, standing, home })) return s;
     if (!s.passable) return null;
   }
   return null;
@@ -55,20 +58,27 @@ export function due(st, ctx = {}) {
 
 export function begin(st, step) { st.active = step.id; }
 
-// the board's purchase: true when `id` is a board step not yet bought or standing
-export function buy(st, id) {
+// the board's purchase: true when `id` is a board step not yet bought or standing. A COLONY CELL IS BOUGHT AS A KIND (2026-11-12 night): `as`
+// ({ kind, perk }) names the dome kind the cell will hold and the perk it switches on when it stands (the content's, handed in); with none the
+// step's own `kind` and `perk` (the default city's) stand
+export function buy(st, id, as = null) {
   const s = st.steps.find((x) => x.id === id);
   if (!s?.board || st.bought.has(id) || st.done.has(id)) return false;
-  st.bought.add(id); return true;
+  st.bought.add(id);
+  if (as) (st.kinds ??= new Map()).set(id, { kind: as.kind ?? s.kind ?? null, perk: as.perk ?? null });
+  return true;
 }
+// a colony cell's kind and perk: as bought, else the step's own
+export const kindOf = (st, step) => st.kinds?.get(step.id) ?? { kind: step.kind ?? null, perk: step.perk ?? null };
 
 // the step stands: returns its perk (or null)
 export function finish(st, step) {
   if (st.active === step.id) st.active = null;
   if (st.done.has(step.id)) return null;
   st.done.add(step.id); st.printed.push(step.id);
-  if (step.perk) st.perks.add(step.perk);
-  return step.perk ?? null;
+  const perk = kindOf(st, step).perk;
+  if (perk) st.perks.add(perk);
+  return perk ?? null;
 }
 
 // A BUILDING IS LOST (SOL-82 can burn one; src/content/orbital-laser.js LASER_STRUCTURES). The step that printed it keeps counting
@@ -84,7 +94,8 @@ export function lose(st, structureId) {
   st.lost.add(structureId);
   if (!step) return null;
   // a perk only goes out if no OTHER standing step still pays for it
-  if (step.perk && !st.steps.some((s) => s !== step && s.perk === step.perk && st.done.has(s.id) && !s.structures.some((id) => st.lost.has(id)))) { st.perks.delete(step.perk); return step.perk; }
+  const perk = kindOf(st, step).perk;
+  if (perk && !st.steps.some((s) => s !== step && kindOf(st, s).perk === perk && st.done.has(s.id) && !s.structures.some((id) => st.lost.has(id)))) { st.perks.delete(perk); return perk; }
   return null;
 }
 
@@ -105,4 +116,5 @@ export const rebuildDue = (st, sector) => sectorStarted(st, sector) && st.perks.
 // `owed`: the steps not yet printed that the programme must still print in order (a passable step, waiting on the door or the player, is not
 // owed; nor is a board step nobody bought); `bought`: the board's purchases
 export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id) && (!s.board || st.bought.has(s.id)))?.id ?? null,   // next: a board step nobody bought is not next (2026-11-08)
-   owed: st.steps.filter((s) => !st.done.has(s.id) && !s.passable && (!s.board || st.bought.has(s.id))).map((s) => s.id), bought: [...st.bought], perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });
+   owed: st.steps.filter((s) => !st.done.has(s.id) && !s.passable && (!s.board || st.bought.has(s.id))).map((s) => s.id), bought: [...st.bought], perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort(),
+   kinds: Object.fromEntries(st.steps.filter((s) => s.cell && (st.bought.has(s.id) || st.done.has(s.id))).map((s) => [s.cell, kindOf(st, s).kind])) });
