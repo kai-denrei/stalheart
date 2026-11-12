@@ -92,7 +92,7 @@ export function createRoverGlue(h) {
     threat: (cell) => {
       const p = cell == null ? S.rover?.point() : centers()[cell], list = h.enemies?.(); if (!p || !list) return 0;
       const r = ROVER.retreat.cells * h.cellSide(); let n = 0;
-      for (const e of list) if (e.alive && !e.guard && e.pos && chord(e.pos, p) <= r) n++;   // not a lander's nest guards: they stand where they are
+      for (const e of list) if (e.alive && !e.guard && !(e.hunt?.ringed && e.hunt.on === 'hull') && e.pos && chord(e.pos, p) <= r) n++;   // not a lander's nest guards: they stand where they are; nor bodies ringed on the hull (THE ESCORT, 2026-11-12: the tank beside the rover draws them off, so they must not scare it home)
       return n;
     },
   };

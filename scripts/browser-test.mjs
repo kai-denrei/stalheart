@@ -1622,6 +1622,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // ROVER.threat.bite kg of its hold: ROVER UNDER ATTACK, Isao's rover_bitten, home under 4,500 kg. Escorted (the hull on the flare's cell) the hull
  // outranks the rover in the hunt and draws them off: home over 4,500 kg. Printed as ROVER HUNTED
  const hunted=async(escort)=>{
+  await evaluate(`(()=>{const b=${T}.state().biomass;return ${T}.rover.spend(Math.max(0,b-5000));})()`);   // room in the pearls: the pages before left them near the cap
   await until(`${T}.rover.state().mode==='idle'`,120000).catch(async()=>assert.fail(`the rover home before the hunted run (${JSON.stringify(await R())})`));
   await evaluate(`${T}.sectorQuiet(true)`);for(let k=0;k<20;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(300);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
   if(escort)await evaluate(`${T}.placeTank(${rich.cell})`);else await evaluate(`${T}.parkHull('stalheart')`);await delay(300);
@@ -1630,7 +1631,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const ring=await evaluate(`${T}.creatures.neighbours(${rich.cell})`);let made=0;for(let k=0;k<5;k++)made+=await evaluate(`${T}.creatures.spawnAt('amoeba',${(ring.length?ring:[rich.cell])[k%Math.max(1,ring.length)]})`);
   await until(`(()=>{if(/ROVER UNDER ATTACK/.test(document.body.innerText))window.__attacked=true;return ${T}.rover.state().trips>${a0.trips};})()`,240000).catch(async()=>assert.fail(`the hunted trip home (${JSON.stringify(await R())})`));   // the toast lives 1.8 s: seen while it stands
   const a1=await R(),hs=(await st()).softHunt??null,kg=a1.delivered-a0.delivered,bit=a1.bitten-(a0.bitten??0);
-  console.log(`ROVER HUNTED ${escort?'escorted':'unescorted'}: ${made} whites, home with ${kg} kg, ${bit} kg bitten off, hunt ${JSON.stringify(hs)}`);
+  console.log(`ROVER HUNTED ${escort?'escorted':'unescorted'}: ${made} whites, home with ${kg} kg, ${bit} kg bitten off, hunt ${JSON.stringify(hs)}; the trip ${JSON.stringify(a1.events.filter(e=>e.t>=(a0.events.at(-1)?.t??0)).map(e=>[e.ev,e.t,e.cargo,e.why??'']))}`);
   return {kg,bit};
  };
  // THE DESIGN'S 4,500 kg LINE (spec 4 step 4) is printed, not asserted: the rover rakes until its hold is full or the ground is bare, so a bitten trip on rich
