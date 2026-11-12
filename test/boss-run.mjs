@@ -490,7 +490,8 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   const mech = { i: 0, role: 'arena', pos: u(60, 0), ci: 4, hp: 12, max: 12, down: false, fleeing: false, attackedAt: -Infinity }, falls = [], hurts = [], dents = [], rings = [];
   const mechs = { units: () => [mech], hurt: (i, n) => { hurts.push([i, n]); mech.hp -= n; if (mech.hp <= 0) mech.down = true; return { hp: mech.hp, down: mech.down }; }, fallBack: (i, p) => { falls.push(p ? 'away' : null); } };
   let hullPos = u(400, 0);
-  const h = host({ enemies: [], cellSide: () => 10 / R, player: () => ({ pos: hullPos, cur: 9 }), centre: () => [0, 0, 1], creatures: () => ({ body: () => body, metres: () => R }), mechs: () => mechs, hitHull: (p) => dents.push(p), hullUp: () => true, ring: (ci) => rings.push(ci) }), run = createBossRun(h);
+  const h = host({ enemies: [], cellSide: () => 10 / R, player: () => ({ pos: hullPos, cur: 9 }), centre: () => [0, 0, 1], creatures: () => ({ body: () => body, metres: () => R }), mechs: () => mechs, hitHull: (p) => dents.push(p), hullUp: () => true, ring: (ci) => rings.push(ci),
+    pilotMode: () => true, storyViews: () => ({ now: () => 'gunship' }) }), run = createBossRun(h);
   run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
   const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: u(0, 0), cur: 1 }; h.enemies.push(b); h.now = 2; run.tick(0.1); b.ground = null;
   assert.equal(b.armour, ARENA_KING.armour, 'the King wears its armour');
@@ -507,6 +508,13 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   while (run.king().mode !== 'charge' && guard++ < 1200) { h.now += 0.1; run.tick(0.1); }
   assert.equal(run.king().target, 'hull'); at[0] = 55; at[1] = 25; h.now += 0.1; run.tick(0.1);
   assert.equal(dents.length, ARENA_KING.hits.hull, 'the charge dents the hull'); assert.equal(run.king().log.charges.hull, 1);
+  // THE PLAYER'S SHELLS (stage two): a 40 mm within its blast of the hull dents it, the next round of the burst does not; one by a standing mech takes its points
+  await h.choiceCard.take(); await null; h.now += 0.1; run.tick(0.1); assert.equal(run.state().seated, true, 'the seat taken');
+  const d0 = dents.length; run.landed('bofors', u(65, 30)); assert.equal(dents.length, d0 + ARENA_KING.friendly.bofors.hull, 'a 40 mm on the hull: a dent');
+  run.landed('bofors', u(65, 30)); assert.equal(dents.length, d0 + ARENA_KING.friendly.bofors.hull, 'the next round of the burst: no second dent');
+  mech.down = false; mech.hp = 12; mech.pos = u(-80, 0); const n0 = hurts.length; run.landed('bofors', u(-75, 0));
+  assert.deepEqual(hurts[n0], [0, ARENA_KING.friendly.bofors.mech], 'a 40 mm by a mech: its points'); run.landed('rotary', u(-200, 0)); assert.equal(hurts.length, n0 + 1, 'a round far off hurts nobody');
+  assert.equal(run.king().log.friendly.hull, 1); assert.equal(run.king().log.friendly.mech, 1);
   b.alive = false; h.now += 0.1; run.tick(0.1); assert.equal(falls[falls.length - 1], null, 'its death: the mechs back to their roles');
   run.end('secure'); }
 

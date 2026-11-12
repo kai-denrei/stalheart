@@ -54,6 +54,7 @@ import { TANK_DRIVE } from '../content/tank.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
 import { createArenaFight } from './boss/arena-fight.js';
 import { ARENA_KING } from '../content/arena-king.js';
+import { friendlyHits } from '../domain/king-fight.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
@@ -136,7 +137,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; fight = createArenaFight({ now: c.t, king: ARENA_KING }); kingLog = freshLog(); tellsSeen = 0; ringAt = -9; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; nukeAt = -99; nukeHit = null; roadNukes = []; nukeAims = new Set(); lookAt = -99; lead = null; leadMax = 0; cutLog = []; roadFlank = false; arriveCell = -1; arrivals = { cells: 0, narrow: 0, last: [] }; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; fight = createArenaFight({ now: c.t, king: ARENA_KING }); kingLog = freshLog(); ffLast.clear(); tellsSeen = 0; ringAt = -9; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; nukeAt = -99; nukeHit = null; roadNukes = []; nukeAims = new Set(); lookAt = -99; lead = null; leadMax = 0; cutLog = []; roadFlank = false; arriveCell = -1; arrivals = { cells: 0, narrow: 0, last: [] }; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -334,6 +335,20 @@ export function createBossRun(c) {
     // THE MECHS FALL BACK from the King's tell and charge on them (THE MARKER's clearing is stage three's, below)
     for (const u of c.mechs?.()?.units?.() ?? []) { const threatened = (k.mode === 'tell' || k.mode === 'charge') && k.target === `m${u.i}`; c.mechs().fallBack(u.i, threatened ? b.pos : null); }
   }
+  // THE PLAYER'S SHELLS ON FRIENDLIES (owner, 2026-11-12 night: "time the shells so they a) do not deal friendly fire damage"): in the boss phase, the seat taken
+  // (the automated gunship is off in it and never hurts friendlies), a round landing within its gun's blast of the hull or a standing mech hurts it by
+  // ARENA_KING.friendly (at most once per unit per gun every `every` s): the hull a dent (c.hitHull), a mech its points; on the arena's plane (the fight's)
+  const ffLast = new Map();
+  function friendlyFire(gun, point) {
+    if (phase !== 'boss' || !seated || !ARENA_KING.friendly[gun] || !point) return;
+    const at = fight.plane(point); if (!at) return;
+    const units = kingTargets().map((u) => ({ id: u.id, kind: u.id === 'hull' ? 'hull' : 'mech', pos: fight.plane(u.pos) })).filter((u) => u.pos);
+    const radius = (guns()[gun]?.blastCells ?? 0) * GUNSHIP_PLATFORM.metresPerCell;
+    for (const hit of friendlyHits({ point: at, radius, gun, units, last: ffLast, now: c.t() }, ARENA_KING)) {
+      kingLog.friendly[hit.kind]++; kingLog.friendly.byGun[gun] = (kingLog.friendly.byGun[gun] ?? 0) + 1;
+      if (hit.kind === 'hull') for (let n = 0; n < hit.dmg; n++) c.hitHull?.(point); else hurtMech(mechOf(hit.id), hit.dmg, gun);
+    }
+  }
   // a hit the King's armour does not scale (the nuke's): booked as the nuke's share of its points
   function kingDamage(b, n) { const was = Math.max(0, b.hp); c.damageEnemy?.(b, c.t(), n / (b.armour ?? 1), false, 'strike', 'heavy'); const now = Math.max(0, b.hp); kingLog.hp.nuke += was - now; kingLog.hpWas = now; }
   // the mechs back to their roles (the fight over)
@@ -356,6 +371,7 @@ export function createBossRun(c) {
     if (on && phase === 'beacon' && gun === 'heavy' && point) { const g = c.roadGraph?.(), cs = c.cellSide(), h = c.player()?.pos, ci = [...nukeAims].find((a) => { const o = c.centre?.(a); return o && Math.hypot(o[0] - point[0], o[1] - point[1], o[2] - point[2]) < cs * 0.5; });
       if (ci != null && g) { roadNukes.push({ at: +c.t().toFixed(2), cell: ci, hull: h ? +(Math.hypot(h[0] - point[0], h[1] - point[1], h[2] - point[2]) / cs).toFixed(2) : null, rocks: rocksNear(g, ci, guns().heavy.blastCells) }); if (roadNukes.length > 30) roadNukes.shift(); } return false; }
     const b = on ? bossRecord() : null;
+    if (b?.bodyLed && fight) friendlyFire(gun, point);   // THE PLAYER'S SHELLS HURT FRIENDLIES in this fight (stage two, below)
     if (b?.bodyLed && fight) { const took = fight.landed(gun, point); if (took) { if (gun === 'bofors') frights++; else if (gun === 'heavy') { stuns++; kingDamage(b, BOSS_FIGHT.nuke.damage); } } return took; }   // THE FIGHT ON THE LAB'S ENGINE; an MK-9 within reach deals the fight's own BOSS_FIGHT.nuke.damage (the lab's 60: the strike's 10 at ground zero made her a fifteen-minute fight, merge of 2026-10-23)
     if (!b || !point || (gun !== 'bofors' && gun !== 'heavy') || (gun === 'bofors' && b.ground)) return false;   // on the sinkhole (the ground phase) she stands: no flight off it
     const at = groundAt(b), m = GUNSHIP_PLATFORM.metresPerCell, r0 = CREATURE_TIERS[def.boss.family]?.[def.boss.boss.tier]?.r0 ?? 20, g = GUNSHIP_GUNS[gun];
