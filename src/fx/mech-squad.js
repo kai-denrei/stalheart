@@ -21,20 +21,26 @@
 // meshes is drawn by one InstancedMesh holding the four mechs' copies of it (their own meshes stay in the tree, hidden, posed by the gait as before, and
 // lend their world matrices every frame); a mech on its far tier is a zero instance, and the parts hide when all four are far.
 //   host: scene, metres(), cellSide(), graph(), dungeon(), story(), enemies(), hull() (the hull's position, or null), hullDir() (round 8: its facing, or null), towerDef(key), towerId(), seed, eye() (the camera's position)
-//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), contacts(), frameOf(i, pos, quat), show(on), restore() }
+// THE KING'S FIGHT (owner, 2026-11-12 night: "the mechs should be more tactical too"; docs/DECISIONS.md "The arena fight"): each mech has ARENA_KING.mech.hp
+// points; hurt(i, n) takes them (the King's charge, the player's shells in that fight, src/fx/boss-run.js); at 0 it is DOWN for the run: it sinks onto its side,
+// stops walking and its four records leave towers() (no fire). fallBack(i, point) walks it away from a point at ARENA_KING.mech.retreat cells a second (the
+// King's tell or charge on it, a nuke's marker), null lets it go back to its role; units() is the fight's read (place, cell, points, the last round it put on the King)
+//   createMechSquad(host) -> { adopt(mechs, frame, centre), tick(dt, t), towers(), state(), parts(), contacts(), frameOf(i, pos, quat), show(on), restore(), units(), hurt(i, n), fallBack(i, point) }
 import * as THREE from '../../vendor/three.module.js';
 import { REINFORCEMENTS } from '../content/reinforcements.js';
 import { ARENA } from '../content/sectors.js';
 import { MAX_TIER } from '../towers.js';
-import { nextCell, parkCell, batteryDef } from '../domain/mech-roles.js';
+import { nextCell, parkCell, batteryDef, fleeStep } from '../domain/mech-roles.js';
 import { arenaFloor } from '../domain/arena.js';
 import { pushOut } from '../domain/friendly-push.js';
 import { COMPANIONS } from '../content/companions.js';
 import { BLOCKED } from '../dungeon.js';
 import { createGait, rigOf, applyGait, gaitRate } from './mech-gait.js';
-import { setWireframe } from './model-fixture.js';   // ?wire=1 (owner, 2026-10-26): the four as wireframes once they are the squad's
+import { setWireframe } from './model-fixture.js';
+import { ARENA_KING } from '../content/arena-king.js';   // ?wire=1 (owner, 2026-10-26): the four as wireframes once they are the squad's
 
 const SECTOR = Math.PI / 5, TURN = 0.8, WALK_TURN = 0.6;   // the model's gun sector (the runtime's aimYaw clamp), a parked body's turn and a walking body's, radians a second
+const DOWN = { seconds: 1, roll: 1.35, sink: 1.5 };   // a downed Ridgeback: rolled this many radians over `seconds`, `sink` metres into the ground
 const SPEED_EASE = 0.5;   // the measured ground speed's smoothing, seconds (state().mechs[i].gait.speed, the harness's check of the rate)
 const PIVOT = { rotor: ['MINIGUN_YAW', 'MINIGUN_PITCH', /^SOCKET_MINIGUN_MUZZLE_/], lancer: ['LASER_YAW', 'LASER_PITCH', /^SOCKET_LASER_MUZZLE$/], quiver: ['MISSILE_ELEVATION', null, /^SOCKET_MISSILE_[LR]_/] };
 
@@ -74,7 +80,7 @@ export function createMechSquad(h) {
       m.mixer.stopAllAction();   // the landing clip let go: the gait poses the rig from here (its first pose is the park's, this tick)
       const farRoot = m.far ? m.far.clone(true) : null; if (farRoot) { farRoot.visible = false; m.wrap.add(farRoot); }
       const wo = h.wire?.(); if (wo) { setWireframe(m.root, true, wo); if (farRoot) setWireframe(farRoot, true, wo); }   // before instance(): the parts' InstancedMeshes take the wire material (host.wire, ?wire=1)
-      const mc = { ...m, farRoot, isFar: false, role, cur, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0, quarry: -1, frames: 0, aimed: 0 };   // frames, aimed: the frames run and those with a weapon on a target (round 7's measure)
+      const mc = { ...m, farRoot, isFar: false, role, cur, hp: ARENA_KING.mech.hp, down: false, downT: 0, flee: null, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0, quarry: -1, frames: 0, aimed: 0 };   // frames, aimed: the frames run and those with a weapon on a target (round 7's measure)
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
     }
@@ -109,7 +115,9 @@ export function createMechSquad(h) {
     // THE PAIR CLOSES (round 7, note 7): while the mother is up (her body leads her record) the arena pair walks to her ring, then back to the plain
     const her = mc.role === 'arena' ? h.enemies().find((e) => e.alive && e.bodyLed) : null;
     mc.quarry = her ? nearestFrom(her.cur >= 0 ? her.cur : mc.cur, bq.fromArray(her.pos)) : -1;
-    return nextCell({ role: mc.role, cur: mc.cur, prev: mc.prev, adj: g.adj, open, rand, plain, dist: h.dungeon().distToHeart, park, targets, avoid, quarry: mc.quarry, engage: REINFORCEMENTS.engageCells });
+    if (mc.flee) return fleeStep({ cur: mc.cur, adj: g.adj, open, centers: g.centers, from: mc.flee });   // THE KING'S FIGHT: a fall back
+    const spread = her ? mechs.filter((o) => o !== mc && !o.down && o.role === 'arena').map((o) => centre(o.cur)) : null;   // and on her ring, away from the other
+    return nextCell({ role: mc.role, cur: mc.cur, prev: mc.prev, adj: g.adj, open, rand, plain, dist: h.dungeon().distToHeart, park, targets, avoid, quarry: mc.quarry, engage: REINFORCEMENTS.engageCells, spread, centers: g.centers });
   }
 
   // the far tier past lodMetres, the game tier back inside lodMetres - 20 m: a view decision, so it is taken on frozen frames too (a camera cut
@@ -131,9 +139,23 @@ export function createMechSquad(h) {
     mc.wrap.position.fromArray(o.pos); mc.pushes = (mc.pushes ?? 0) + 1;
     if (mc.prog < 1) { mc.from.copy(mc.wrap.position); mc.seg = Math.max(1e-6, mc.from.distanceTo(v.fromArray(centre(mc.next)))); mc.prog = 0; }
   }
+  // DOWN (THE KING'S FIGHT): it rolls onto its side over a second and settles a little into the ground, and stays there
+  function lieDown(mc, dt) {
+    const m = h.metres(), k = Math.min(1, (mc.downT += dt) / DOWN.seconds);
+    up.copy(mc.wrap.position).normalize(); mc.heading.addScaledVector(up, -mc.heading.dot(up)).normalize();
+    x.crossVectors(up, mc.heading).normalize(); m4.makeBasis(x, up, mc.heading); mc.wrap.quaternion.setFromRotationMatrix(m4);
+    q.setFromAxisAngle(fwd.set(0, 0, 1), DOWN.roll * k * k); mc.wrap.quaternion.multiply(q);
+    mc.wrap.position.normalize().multiplyScalar(1 - DOWN.sink * m * k);
+    mc.wrap.scale.setScalar(REINFORCEMENTS.scale * m); mc.walking = false; mc.rate = 0; mc.speed = 0;
+    tierOf(mc, m); mc.wrap.updateMatrixWorld(true);
+  }
   function stepMech(mc, dt) {
-    const m = h.metres(), cs = h.cellSide(), speed = REINFORCEMENTS.pace * cs;   // world units a second along the chord
+    if (mc.down) { lieDown(mc, dt); return; }
+    const m = h.metres(), cs = h.cellSide(), speed = (mc.flee ? ARENA_KING.mech.retreat : REINFORCEMENTS.pace) * cs;   // world units a second along the chord (a fall back at the fight's retreat)
     mc.wait -= dt;
+    // a fall back asked mid-walk turns at once (the walk is a cell's chord, ~12 s at the base pace): the segment re-laid from here toward the flight's cell
+    if (mc.flee && !mc.fleeing) { mc.fleeing = true; mc.wait = 0; if (mc.prog < 1) { mc.next = mc.cur; mc.prog = 1; } }
+    if (!mc.flee) mc.fleeing = false;
     if (mc.prog >= 1 && mc.wait <= 0) {
       if (mc.next !== mc.cur) { mc.prev = mc.cur; mc.cur = mc.next; mc.cells++; }
       const n = decide(mc); if (n === mc.cur) mc.wait = 1;   // standing: asked again in a second (the hunter's search, the base mech parked)
@@ -182,10 +204,15 @@ export function createMechSquad(h) {
   return {
     adopt,
     tick(dt, t) { last = t; if (!mechs.length) return; mechs.forEach((mc) => { if (dt > 0) { stepMech(mc, dt); mc.frames++; if (mc.recs.some((r) => r.trackTarget?.alive || r.missileTarget?.alive)) mc.aimed++; } else { tierOf(mc, h.metres()); mc.wrap.updateMatrixWorld(true); } stepRecords(mc); }); drawParts(); },
-    towers: () => records,
+    towers: () => records.filter((r) => !mechs.find((mc) => mc.index === r.mechIndex)?.down),   // a downed mech's guns are silent
+    // THE KING'S FIGHT's read: each mech's place, cell, points, whether it is down, and the last game second one of its rounds left for her (a record aimed at a body-led one)
+    units: () => mechs.map((mc) => ({ i: mc.index, role: mc.role, pos: mc.wrap.position.toArray(), ci: mc.prog >= 0.5 ? mc.next : mc.cur, hp: mc.hp, max: ARENA_KING.mech.hp, down: mc.down, fleeing: !!mc.flee,
+      attackedAt: mc.recs.reduce((a, r) => ((r.trackTarget?.bodyLed || r.missileTarget?.bodyLed) && r.firedAt != null ? Math.max(a, r.firedAt) : a), -Infinity) })),
+    hurt(i, n) { const mc = mechs.find((x) => x.index === i); if (!mc || mc.down || !(n > 0)) return null; mc.hp = Math.max(0, mc.hp - n); if (mc.hp <= 0) { mc.down = true; mc.flee = null; } return { hp: mc.hp, down: mc.down }; },
+    fallBack(i, point) { const mc = mechs.find((x) => x.index === i); if (mc && !mc.down) mc.flee = point ? [...point] : null; },
     state: () => mechs.map((mc) => {
       const shots = mc.recs.reduce((n, r) => n + (r.shots ?? 0), 0), fired = Math.max(...mc.recs.map((r) => r.firedAt ?? -1e9));
-      return { role: mc.role, pushes: mc.pushes ?? 0, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), gait: { rate: +(mc.rate ?? 0).toFixed(3), contacts: mc.contacts, speed: +mc.speed.toFixed(3), mode: mc.gait.mode }, heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
+      return { role: mc.role, hp: mc.hp, down: mc.down, fleeing: !!mc.flee, pushes: mc.pushes ?? 0, cell: mc.cur, start: mc.start, cells: mc.cells, walking: mc.walking, rate: +(mc.rate ?? 0).toFixed(2), gait: { rate: +(mc.rate ?? 0).toFixed(3), contacts: mc.contacts, speed: +mc.speed.toFixed(3), mode: mc.gait.mode }, heartDist: h.dungeon().distToHeart[mc.cur], startDist: mc.startDist,
         onPlain: plain ? plain.has(mc.cur) : null, park, parkDist: park >= 0 ? h.dungeon().distToHeart[park] : null, far: mc.isFar, eyeM: Math.round(mc.wrap.position.distanceTo(h.eye()) / h.metres()), t: +last.toFixed(2), records: mc.recs.map((r) => `${r.key}:${r.tier}`), shots, byWeapon: mc.recs.map((r) => r.shots ?? 0), frames: mc.frames, aimed: mc.aimed, quarry: mc.quarry, herCells: herCells(mc), firedAt: fired > -1e8 ? +fired.toFixed(2) : null };
     }),
     restore() { for (const mc of mechs) { mc.wrap.removeFromParent(); mc.mixer.stopAllAction(); } for (const p of parts ?? []) { p.inst.removeFromParent(); p.inst.dispose(); } parts = null; mechs = []; records = []; plain = null; },

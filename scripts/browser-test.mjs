@@ -2464,7 +2464,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // tank"): the hand-over card over the paused game as she rises, Isao's lines and the seat's controls on it; no seat until the step presses TAKE THE GUN
  await until(`${T}.state().boss.card`,15000).catch(async()=>assert.fail(`THE MOTHER's card is up as she rises (${JSON.stringify((await st()).boss)})`));
  {const s=await st(),txt=await evaluate('document.querySelector(".choice-card")?.innerText||""');assert.equal(s.paused,true,'the game paused under the card');
-  assert.match(txt,/THE MOTHER/,`the card's title (${txt})`);assert.match(txt,/Bait is the only play/,'Isao\'s hand-over on it');assert.match(txt,/move it to aim/,'the seat\'s controls');assert.match(txt,/TAKE THE GUN/,'the one button');
+  assert.match(txt,/THE KING/,`the card's title (${txt})`);assert.match(txt,/Bait is the only play/,'Isao\'s hand-over on it');assert.match(txt,/move it to aim/,'the seat\'s controls');assert.match(txt,/TAKE THE GUN/,'the one button');
   await delay(3000);assert.equal((await st()).boss.seated,false,'no seat while the card is up');}
  current='boss-card';await finish();
  await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');await delay(400);
@@ -2573,6 +2573,70 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`(${T}.state().companions.print.printing?.t??0)>=12`,90000).catch(()=>{});
  {const s=await st(),p=s.companions.print.printing,hops=await evaluate(`(()=>{const T=${T},a=${cell},b=${p?.cell??-1},seen=new Map([[a,0]]),q=[a];while(q.length){const c=q.shift(),d=seen.get(c);if(c===b)return d;if(d>=400)return -1;for(const n of T.creatures.neighbours(c))if(!seen.has(n)){seen.set(n,d+1);q.push(n);}}return -1;})()`);
   console.log(`  the mech mid-print at t ${p?.t} (${p?.phase}), bed cell ${p?.cell}, ${hops} hops from the carcass's cell ${cell} (-1: more than 400)`);current='arena-carcass-mech';await finish();}}
+ } else if(args.includes('--king')) {
+ // THE KING'S FIGHT (owner, 2026-11-12 night: "we tune the aggro of the King so that it aims for the mechs and the tank, the player controls the gunship, and needs
+ // to time the shells so they a) do not deal friendly fire damage and b) stop the King in its track and funnels it to a spot where a nuke is about to drop";
+ // docs/DECISIONS.md "The arena fight"; ARENA_KING). From ?boss=1 with arenaNow(), the hull 6 hops out, THE KING card (its two actions) taken; then on the GAME
+ // clock (state().boss.t; every wait has a wall cap) with harness hands: the King picks a target and tells (a screenshot of the tell); a 40 mm by it stops it and
+ // turns it away from the burst; a 40 mm on a standing Ridgeback takes its points; then the nuke loop: the MK-9 marked on the King (a screenshot of the marker and
+ // its countdown), the King held on the mark with 40 mm on its far side until the impact, again until it dies. Printed: the fight's length, its points by source,
+ // each nuke, the friendlies hurt and lost. KING_CAP (s of wall clock, default 900) caps the run.
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),{SECTOR_DOOR}=await import('../src/content/sectors.js'),{ARENA_KING}=await import('../src/content/arena-king.js'),{BOSS_FIGHT}=await import('../src/content/boss-fight.js');
+ const CAP=+(process.env.KING_CAP||900),w0=Date.now(),wall=()=>(Date.now()-w0)/1000,norm=(v)=>{const l=Math.hypot(...v);return v.map(x=>x/l);},sub=(a,b)=>a.map((v,i)=>v-b[i]),add=(a,b,k=1)=>a.map((v,i)=>v+b[i]*k);
+ const fire=(gun,p)=>evaluate(`${T}.arenaFire(${JSON.stringify(gun)},${JSON.stringify(p)})`);
+ const waitGame=async(sec,cond=()=>false)=>{const g0=(await st()).boss.t;let s;do{await delay(150);s=await st();if(cond(s))return s;}while(s.boss.t-g0<sec&&wall()<CAP);return s;};
+ await go('king-load',`index.html?sw=0&acceptance=1&cine=0&intro=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest+1}&boss=1#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().boss.on && ${T}.state().boss.phase==='beacon'`,90000).catch(async()=>assert.fail(`the beacon phase (${JSON.stringify((await st()).boss)})`));
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")');
+ await evaluate(SEEN_LOG);
+ const hullAt=await evaluate(`(()=>{const T=${T},a=T.state().arena.cell,seen=new Map([[a,0]]),q=[a];while(q.length){const c=q.shift(),d=seen.get(c);if(d>=6)return c;for(const n of T.creatures.neighbours(c))if(!seen.has(n)){seen.set(n,d+1);q.push(n);}}return -1;})()`);
+ assert.ok(hullAt>=0,'an open cell six hops from the arena');await evaluate(`${T}.placeTank(${hullAt})`);await evaluate(`${T}.arenaNow()`);
+ await until(`${T}.state().boss.card`,120000).catch(async()=>assert.fail(`THE KING's card (${JSON.stringify((await st()).boss)})`));
+ {const txt=await evaluate('document.querySelector(".choice-card")?.innerText||""');assert.match(txt,/THE KING/,`the card's title (${txt})`);for(const l of ARENA_KING.hint)assert.ok(txt.includes(l),`the card carries the action "${l}" (${txt})`);}
+ current='king-card';await finish();
+ await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');
+ await until(`${T}.state().boss.seated`,120000).catch(async()=>assert.fail(`the gun taken (${JSON.stringify((await st()).boss)})`));
+ await until(`${T}.state().boss.led && ${T}.state().boss.fear.ground==='hunt'`,120000).catch(async()=>assert.fail(`its body leads, off the sinkhole (${JSON.stringify((await st()).boss.fear)})`));
+ const s0=await st(),g0=s0.boss.t,hulls0=s0.hulls,cs=Math.hypot(...sub(s0.boss.dist.at.hull,s0.boss.dist.at.boss))/s0.boss.dist.gap,M=cs/10;   // world units a metre (10 m a cell)
+ console.log(`KING set-up: seated at game ${g0.toFixed(1)} s; the hull ${s0.boss.dist.gap} cells from it; hulls ${hulls0}; the Ridgebacks ${JSON.stringify(s0.boss.king?.mechs?.map(m=>[m.i,m.role,m.hp]))}`);
+ // the Ridgebacks: dropped at the arena's start (the drop's cut plays beside it); give them up to 60 s of wall clock
+ {const s=await waitGame(60,(s)=>(s.boss.king?.mechs?.length??0)>0);console.log(`KING the Ridgebacks: ${s.boss.king?.mechs?.length??0} at game +${(s.boss.t-g0).toFixed(1)} s`);}
+ // (1) THE AGGRO: a target and a tell within 40 s of game clock; the tell's screenshot
+ const targets=new Set();let tellSeen=null;
+ {let s;const g1=(await st()).boss.t;do{await delay(120);s=await st();const k=s.boss.king;if(k?.target)targets.add(k.target);if(k?.mode==='tell'&&!tellSeen){tellSeen={g:+(s.boss.t-g0).toFixed(1),target:k.target};await evaluate(`${T}.seatAim(${JSON.stringify(s.boss.dist.at.boss)})`);await delay(400);current='king-tell';await finish();}   /* the optic turned onto it first */}while(!tellSeen&&s.boss.t-g1<40&&wall()<CAP&&s.boss.phase==='boss');
+  console.log(`KING (1) aggro: targets ${JSON.stringify([...targets])}; the first tell ${JSON.stringify(tellSeen)}; log ${JSON.stringify((await st()).boss.king?.log?.charges)}`);}
+ // (2) THE 40 MM STOPS IT AND TURNS IT: a shell 10 m to one side of it; the stagger, then the veer, measured as its displacement away from the burst
+ let shellRes=null;
+ for(let k=0;k<6&&!shellRes&&wall()<CAP;k++){const s=await st(),b=s.boss.dist.at.boss,h=s.boss.dist.at.hull,side=norm(sub(h,b)),burst=norm(add(b,side,-10*M)),st0=s.boss.king?.staggers??0;
+  await fire('bofors',burst);const s2=await waitGame(5,(x)=>(x.boss.king?.staggers??0)>st0);
+  if((s2.boss.king?.staggers??0)>st0){const at0=s2.boss.dist.at.boss,mode0=s2.boss.king.mode,s3=await waitGame(ARENA_KING.stagger.seconds+ARENA_KING.veer.seconds,(x)=>x.boss.king?.mode!=='stagger'&&x.boss.king?.mode!=='veer'&&x.boss.king?.mode!=null);
+   const disp=sub(s3.boss.dist.at.boss,at0),away=sub(at0,burst),moved=Math.hypot(...disp)/M,along=(disp[0]*away[0]+disp[1]*away[1]+disp[2]*away[2])/Math.hypot(...away)/M;
+   shellRes={tries:k+1,mode0,staggers:s2.boss.king.staggers,moved:+moved.toFixed(1),awayFromBurst:+along.toFixed(1),veer:s2.boss.king.veer};}
+  else await waitGame(2);}
+ console.log(`KING (2) the 40 mm by it: ${JSON.stringify(shellRes)}`);
+ // (3) A 40 MM ON A RIDGEBACK takes its points
+ let ffRes=null;{const s=await st(),m=(s.boss.king?.mechs??[]).find(x=>!x.down);if(m){const hp0=m.hp,f0=s.boss.king.log.friendly.mech;await fire('bofors',m.pos);const s2=await waitGame(5,(x)=>(x.boss.king?.log?.friendly?.mech??0)>f0);const m2=s2.boss.king.mechs.find(x=>x.i===m.i);ffRes={mech:m.i,hp0,hp:m2?.hp,friendly:s2.boss.king.log.friendly};}}
+ console.log(`KING (3) a 40 mm on a Ridgeback: ${JSON.stringify(ffRes)}`);
+ // (4) THE NUKE LOOP: mark the MK-9 on it, hold it on the mark with 40 mm on its far side, until the impact; until it dies
+ const nukes=[],mechNear={};let markShot=false,herd=0,dead=null,lastHerd=-9;
+ while(wall()<CAP){const s=await st();const b=s.boss;if(!b.on||b.phase!=='boss'||b.bossHp==null){dead={g:+(b.t-g0).toFixed(1),phase:b.phase};break;}
+  const k=b.king,mk=k?.mark,heavy=s.gunship.heavy?.phase;if(k?.target)targets.add(k.target);for(const m of k?.mechs??[])if(!m.down&&m.pos&&b.dist.at.boss)mechNear[m.i]=Math.min(mechNear[m.i]??Infinity,+(Math.hypot(...sub(m.pos,b.dist.at.boss))/M).toFixed(0));
+  if(!mk&&heavy==='ready'&&b.dist.at.boss){const ok=await fire('heavy',b.dist.at.boss);if(ok)nukes.push({g:+(b.t-g0).toFixed(1),hp:+b.bossHp.toFixed(1)});}
+  else if(mk?.point&&b.dist.at.boss&&b.t-lastHerd>=1){const off=sub(b.dist.at.boss,mk.point),d=Math.hypot(...off)/M;if(d>8){await fire('bofors',norm(add(b.dist.at.boss,norm(off),14*M)));herd++;lastHerd=b.t;}}
+  if(mk&&!markShot&&mk.left!=null&&mk.left<=5){markShot=true;await evaluate(`${T}.seatAim(${JSON.stringify(mk.point)})`);await delay(400);current='king-marker';await finish();console.log(`  marker ${JSON.stringify(mk)} rows ${JSON.stringify(s.integrity?.gates)}`);}
+  await delay(150);}
+ const s9=await st(),L=s9.boss.king?.log??{},len=dead?dead.g:+(s9.boss.t-g0).toFixed(1);
+ console.log(`KING (4) nukes marked ${JSON.stringify(nukes)}; landed ${JSON.stringify(L.nukes)}; herding shells ${herd}; its targets over the fight ${JSON.stringify([...targets])}; each Ridgeback's nearest to it (m) ${JSON.stringify(mechNear)}`);
+ console.log(`KING fight length: ${len} s of game clock from the seat${dead?` (dead: ${JSON.stringify(dead)})`:' (not dead in the cap)'}; ${wall().toFixed(0)} s of wall clock`);
+ console.log(`KING its points by source: nukes ${(L.hp?.nuke??0).toFixed(1)}, everything else ${(L.hp?.other??0).toFixed(1)} of ${BOSS_FIGHT.health}`);
+ console.log(`KING friendlies: charges that hit ${JSON.stringify(L.charges)}, the player's shells that hit ${JSON.stringify(L.friendly)}, mechs down ${JSON.stringify(L.downs)}, hulls ${hulls0} -> ${s9.hulls}; tells ${s9.boss.king?.tells}, charges ${s9.boss.king?.charges}, staggers ${s9.boss.king?.staggers}, veers ${s9.boss.king?.veers}`);
+ current='king-end';await finish();
+ assert.ok(targets.size>=1&&tellSeen,`(1) it chose a target and told a charge (${JSON.stringify([...targets])}, ${JSON.stringify(tellSeen)})`);
+ assert.ok(shellRes&&shellRes.awayFromBurst>0,`(2) a 40 mm stopped it and it turned away from the burst (${JSON.stringify(shellRes)})`);
+ assert.ok(!ffRes||ffRes.hp<ffRes.hp0,`(3) a 40 mm on a Ridgeback took its points (${JSON.stringify(ffRes)})`);
+ assert.ok((L.nukes??[]).some(n=>n.share>0),`(4) a marked nuke on it took its share (${JSON.stringify(L.nukes)})`);
+ assert.ok(dead,`(4) it died within the cap (${len} s)`);
  } else if(args.includes('--arena-fight')) {
  // THE ARENA FIGHT ON THE LAB'S ENGINE (owner, 2026-10-23: "the Nih-Dairia fight; there is a well-tuned version in the lab and we keep reproducing something that does
  // not work. a) not enough nukes on the gunship, b) nih-dairia aggro is different, c) the whole idea is the monster aggro on the tank, acting as a lure, and it leaves
@@ -2631,8 +2695,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   if(b.speed>0){speeds.push(b.speed);(byMode[lab.mode]??=[]).push(b.speed);}if(b.hullSpeed>0)hullSpeeds.push(b.hullSpeed);
   if(!s.gunship.station&&stationLost==null)stationLost=+g.toFixed(1);
   // (c) the 40 mm: fired between them, then the scare's gap watched for 3 s
-  if(b.t>=nextForty&&b.dist.at?.boss&&b.dist.at?.hull){const ok=await fire('bofors',between(b));fortys.push({g:+g.toFixed(1),ok,gap:b.dist.gap,wild:lab.wild??0});nextForty=b.t+8;}
-  if(!scare&&fortys.length&&(lab.wild??0)>fortys[0].wild)scare={g:+g.toFixed(1),t:b.t,gap0:b.dist.gap,gapMax:b.dist.gap};
+  if(b.t>=nextForty&&b.dist.at?.boss&&b.dist.at?.hull){const ok=await fire('bofors',between(b));fortys.push({g:+g.toFixed(1),ok,gap:b.dist.gap,wild:(lab.wild??0)+(lab.king?.staggers??0)});nextForty=b.t+8;}   /* THE KING (2026-11-12 night): a 40 mm staggers and veers it (lab.king), not the lab's wild flight */
+  if(!scare&&fortys.length&&(lab.wild??0)+(lab.king?.staggers??0)>fortys[0].wild)scare={g:+g.toFixed(1),t:b.t,gap0:b.dist.gap,gapMax:b.dist.gap};
   if(scare&&b.t-scare.t<=3)scare.gapMax=Math.max(scare.gapMax,b.dist.gap);
   // (d) and (a) the MK-9 on her: the stun, the reload, a second release the same pass
   if(s.hulls<hullsWas)hullsLost+=hullsWas-s.hulls;hullsWas=s.hulls;
@@ -2650,7 +2714,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  }
  const sf=s.boss.fear?.lab??labLast??{},gSpan=last?.g??0,wall=(Date.now()-w0)/1000,mean=(a)=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(2):null;
  console.log(`ARENA FIGHT clock: ${gSpan} s of game clock in ${wall.toFixed(0)} s of wall clock (${(gSpan/wall).toFixed(2)}x); ${samples} samples${dead?`; the fight ended early ${JSON.stringify(dead)}`:''}`);
- console.log(`ARENA FIGHT (a) MK-9 cadence: launches ${JSON.stringify(launches.map(l=>l.g))} (game s); ready again ${readyAgain} s after the first (limit 12: the reload ${BOSS_FIGHT.arenaGuns.reload} + the fall); a second release in the same pass: ${second!=null?`yes, at ${second} s`:'no'}`);
+ console.log(`ARENA FIGHT (a) MK-9 cadence: launches ${JSON.stringify(launches.map(l=>l.g))} (game s); ready again ${readyAgain} s after the first mark (limit: the reload ${BOSS_FIGHT.arenaGuns.reload} + the called nuke's countdown + 1); a second release in the same pass: ${second!=null?`yes, at ${second} s`:'no'}`);
  console.log(`ARENA FIGHT (b) the disc over ${gSpan} s: the hull at most ${hullMax} cells from the arena's centre, she at most ${bossMax} (disc ${DISC}); the gap ${gapMin}..${gapMax} cells`);
  console.log(`ARENA FIGHT (c) the 40 mm between them: ${fortys.length} fired ${JSON.stringify(fortys.map(x=>x.g))}; wild scares ${sf.wild??0}, flinches ${sf.flinch??0}; the first scare at ${scare?.g ?? '-'} s: the gap ${scare?.gap0 ?? '-'} -> ${scare?.gapMax ?? '-'} cells within 3 s`);
  console.log(`ARENA FIGHT (d) the MK-9 on her (only with the hull ${CLEAN} cells clear: a clean nuke; ${cleanWait} samples waited for it): stuns ${sf.stuns??0}, panics ${sf.panic??0}, stunned seen ${stunSeen}; her hit points ${s.boss.bossHp}`);
@@ -2678,9 +2742,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   console.log(`ARENA FIGHT NOFIRE: the pair ${per.toFixed(0)} shots a mech a minute (base 382); her death ${alone==null?'not in the window':`${alone} s after they landed`}`);
   assert.ok(pair.length===2&&per>=2*382,`the arena pair fires at least twice as often (${per.toFixed(0)} vs 382)`);assert.ok(alone==null||alone>=60,`the four alone do not end her inside 60 s (${alone})`);}
  else{
- assert.ok(readyAgain!=null&&readyAgain<=12,`(a) the MK-9 ready again within 12 s of a launch (${readyAgain})`);assert.ok(second!=null,'(a) a second MK-9 in the same pass');
+ {const {ARENA_KING}=await import('../src/content/arena-king.js'),lim=BOSS_FIGHT.arenaGuns.reload+ARENA_KING.nuke.countdown+1;assert.ok(readyAgain!=null&&readyAgain<=lim,`(a) the MK-9 ready again within ${lim} s of its mark (the called nuke's countdown + the reload; ${readyAgain})`);}assert.ok(second!=null,'(a) a second MK-9 in the same pass');
  assert.ok(hullMax<=DISC&&bossMax<=DISC,`(b) neither leaves the disc (hull ${hullMax}, boss ${bossMax}, disc ${DISC})`);assert.ok(gSpan>=Math.min(60,WINDOW)||dead,`(b) watched at least 60 s of game clock (${gSpan})`);
- assert.ok((sf.wild??0)>=1&&scare&&scare.gapMax>scare.gap0,`(c) a 40 mm sent her wild and the gap grew within 3 s (${JSON.stringify(scare)})`);
+ assert.ok((sf.wild??0)+(sf.king?.staggers??0)>=1&&scare&&scare.gapMax>scare.gap0,`(c) a 40 mm stopped and turned it and the gap grew within 3 s (${JSON.stringify(scare)})`);
  assert.ok(stunSeen&&(sf.stuns??0)>=1,`(d) an MK-9 within its blast stunned her (${sf.stuns})`);
  assert.ok(stationLost==null,`(e) the station did not end (${stationLost})`);}
  }

@@ -1,7 +1,7 @@
 // mech-roles.mjs — the four Ridgebacks' walk (src/domain/mech-roles.js; owner, 2026-10-23: "2 will stay near the arena ... 1 makes its way to the
 // main base, the other roams and hunts enemies"): the next cell for each role on a small lattice, deterministic for a seeded draw.
 import assert from 'node:assert/strict';
-import { nextCell, parkCell, huntStep, engageRing, batteryDef } from '../src/domain/mech-roles.js';
+import { nextCell, parkCell, huntStep, engageRing, batteryDef, fleeStep } from '../src/domain/mech-roles.js';
 
 // a 10 x 10 grid, 4-connected; the heart at (0,0) = cell 0; the gate at (2,0); rock everywhere at x = 3 except the gate's row
 const W = 10, id = (x, y) => y * W + x, adj = [];
@@ -48,4 +48,13 @@ for (let k = 0; k < 50; k++) assert.ok(open(nextCell({ role: 'hunt', cur: id(2, 
   const def = { key: 'rotor', rate: 2, range: 4, dmg: 1 }, b = batteryDef(def, { cadence: 1.8, range: 1.35 });
   assert.deepEqual([b.rate, b.range, b.dmg, b.key, def.rate, def.range], [3.6, 5.4, 1, 'rotor', 2, 4], 'a battery: faster and farther, the def untouched');
   assert.equal(batteryDef(def, null), def); }
+// THE KING'S FIGHT (2026-11-12 night): the fall back takes the open neighbour farthest from the threat (never rock), stands when nothing is farther; on her ring
+// with `spread` the pair walks the way farthest from the other
+{ const centers = Array.from({ length: W * W }, (_, c) => [c % W, Math.floor(c / W), 0]);
+  assert.equal(fleeStep({ cur: id(5, 5), adj, open, centers, from: [5, 2, 0] }), id(5, 6), 'away from a threat to the north');
+  assert.equal(fleeStep({ cur: id(4, 5), adj, open, centers, from: [6, 5, 0] }), id(4, 4), 'never into the rock behind it: aside instead')
+  assert.ok(open(fleeStep({ cur: id(4, 5), adj, open, centers, from: [6, 5, 0] })), 'an open cell');
+  assert.equal(fleeStep({ cur: id(9, 9), adj, open, centers, from: [0, 0, 0] }), id(9, 9), 'in the corner: stands');
+  const n = nextCell({ role: 'arena', cur: id(7, 5), prev: -1, adj, open, rand, quarry: id(7, 7), engage: 2, spread: [[9, 5, 0]], centers });
+  assert.equal(n, id(6, 5), `on her ring, the way away from the other mech (${n})`); }
 console.log('mech-roles: the arena pair keeps its plain, the base mech parks outside the gate, the hunter takes the shortest way to the nearest enemy');

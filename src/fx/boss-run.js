@@ -33,6 +33,12 @@
 // `bodyLed`: its body owns her position (src/fx/enemy-step.js ledPoint) and hunts the point ./boss/arena-fight.js hands it each frame of the boss phase (the
 // hull, the lab's fear per gun, the lab's temperament, the disc); landed() feeds that fight every shell. A record whose body is not made (or a family without
 // bodies) keeps the walker's fright and stun (frightRecord / stunRecord). c.centre(ci) the cell's unit point, c.creatures() the creature seam.
+// THE KING'S FIGHT (owner, 2026-11-12 night: "we tune the aggro of the King so that it aims for the mechs and the tank, the player controls the gunship, and needs
+// to time the shells so they a) do not deal friendly fire damage and b) stop the King in its track and funnels it to a spot where a nuke is about to drop";
+// docs/DECISIONS.md "The arena fight"; ARENA_KING): the fight is made with the King's will (./boss/arena-fight.js king) and stepped with its targets, the hull
+// (c.hullUp(), Isao's bait) and the standing Ridgebacks (c.mechs(): src/fx/mech-squad.js units/hurt/fallBack); a charge that reaches the hull dents it
+// (c.hitHull(from)), one that reaches a mech takes its points; the tell is rung under the target and under it (c.ring) with a callout; a mech it tells or
+// charges falls back from it; the record wears ARENA_KING.armour (src/fx/creature-enemies.js damageScale) so the nukes decide it. king() is the harness's read.
 import { bossAlive } from '../domain/boss-sector.js';
 import { CREATURE_TIERS } from '../content/creature-enemies.js';
 import { ARENA, ARENA_HANDOVER, ARENA_ROAD_GUARD } from '../content/sectors.js';
@@ -47,8 +53,11 @@ import { GUNSHIP_AUTO, GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../
 import { TANK_DRIVE } from '../content/tank.js';
 import { METRES_PER_CELL } from '../core/stage-units.js';
 import { createArenaFight } from './boss/arena-fight.js';
+import { ARENA_KING } from '../content/arena-king.js';
+import { friendlyHits, nukeShare } from '../domain/king-fight.js';
 
 const ISAO_ALT = 3.4;   // the worker's: wall-heights above the wall tops (src/fx/isao-worker.js)
+const CALL = Object.freeze({ nuke: ARENA_KING.nuke, label: ARENA_KING.labels.marked });   // THE CALLED NUKE (2026-11-12 night): the rig's call in THE KING's fight
 const RETRY = 1;        // seconds between tries at the seat while the gunship comes on station
 const REFILL = 5;       // seconds between calls for the gunship while it is off station (the arena's long session, 2026-10-16)
 const INVESTIGATE = 'INVESTIGATE THE TREMOR';   // the beacon phase's callout (owner, 2026-10-18, note 6)
@@ -70,6 +79,9 @@ export function createBossRun(c) {
   let card = null, cardUp = false, taken = false;   // THE MOTHER (2026-10-19, note 8a): the hand-over card (made on first use; c.choiceCard in the node tests), up, taken
   let decoded = false, talkUntil = 0, deadAt = 0;   // THE NEST AND THE QUEEN (2026-10-19, note 9): arena_decoded held for the panel's first free frame after boss_dead (said at deadAt)
   let fight = null;   // THE FIGHT ON THE LAB'S ENGINE (./boss/arena-fight.js): made with the run, stepped once her body is made
+  // THE KING'S FIGHT: what the harness reads (hits both ways, downs, the shares of its points by source), the tells already called, the last ring
+  const freshLog = () => ({ charges: { hull: 0, mech: 0 }, downs: [], friendly: { hull: 0, mech: 0, byGun: {} }, nukes: [], hp: { nuke: 0, other: 0 }, hpWas: null, startedAt: null, deadAt: null });
+  let kingLog = freshLog(), tellsSeen = 0, ringAt = -9;
   let brood = null, broodAt = 0, broodI = 0;   // THE BROOD DIES WITH THE MOTHER (tick below): the wave's hunters alive at her death, when she died, how many have gone
   const wavesOf = () => def?.boss?.waves ?? (def?.boss?.wave ? [def.boss.wave] : []);
   const hunters = () => bossAlive(c.enemies, { waveTiers: wavesOf().map((w) => w.tier), bossTier: def?.boss?.boss?.tier ?? 'huge' });
@@ -126,7 +138,7 @@ export function createBossRun(c) {
   }
   function begin(row) {
     if (on || !row?.boss) return false;
-    on = true; def = row; fight = createArenaFight({ now: c.t }); cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; nukeAt = -99; nukeHit = null; roadNukes = []; nukeAims = new Set(); lookAt = -99; lead = null; leadMax = 0; cutLog = []; roadFlank = false; arriveCell = -1; arrivals = { cells: 0, narrow: 0, last: [] }; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
+    on = true; def = row; fight = createArenaFight({ now: c.t, king: ARENA_KING }); kingLog = freshLog(); ffLast.clear(); tellsSeen = 0; ringAt = -9; cardUp = false; taken = false; decoded = false; talkUntil = 0; deadAt = 0; frights = 0; stuns = 0; brood = null; broodI = 0; nukeAt = -99; nukeHit = null; roadNukes = []; nukeAims = new Set(); lookAt = -99; lead = null; leadMax = 0; cutLog = []; roadFlank = false; arriveCell = -1; arrivals = { cells: 0, narrow: 0, last: [] }; seated = false; bossSeen = false; hullHit = false; done = false; shotSaid = false; dueNow = false; hpWas = c.playerHP(); roadAt = -99; roadUntil = 0; roadSaid = false; roadAsks = 0; roadCell = -2; roadLaid = null; plan = null; route = null; roadCuts = 0; roadPlanned = false; markAt = -99;
     was = { auto: c.autoMode(), directive: c.params().directive, gsAuto: !!c.story()?.gsAuto };
     phase = 'beacon';
     c.tremor?.(arenaCell());   // the beacon: a tremor far out on the radar
@@ -155,7 +167,7 @@ export function createBossRun(c) {
   // and the seat left with her (the hand-over is over): Isao's panel is not drawn in the gunship's seat, so a seated player read none of it (probe r3-f, 2026-10-19)
   // THE WHEEL BACK AT HER DEATH (review, 2026-10-19): the boss phase re-asserted the lure autopilot every frame until end(), about 16 s with the debrief waiting on
   // Isao, so the player sat in a hull they could not drive and boss_hit_me / arena_lure could take the panel after "Target down"; the phase is `over` now
-  const dead = () => { if (done) return; done = true; if (on) { phase = 'over'; if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); } } if (on && seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot(); c.clearBriefs?.(); c.showBrief('boss_dead'); c.speak('boss_dead'); decoded = true; deadAt = c.t(); };
+  const dead = () => { if (done) return; done = true; calm(); kingLog.deadAt = +c.t().toFixed(2); if (on) { phase = 'over'; if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); } } if (on && seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot(); c.clearBriefs?.(); c.showBrief('boss_dead'); c.speak('boss_dead'); decoded = true; deadAt = c.t(); };
   function tick(dt) {
     sayDecoded();
     if (!on) return;
@@ -261,10 +273,10 @@ export function createBossRun(c) {
     while (brood && broodI < brood.length && t >= broodAt + broodI * BROOD_STAGGER) { const e = brood[broodI++]; if (e.alive) c.kill?.(e, true); }
     // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c; BOSS_FIGHT.arenaBoss): the first frame she is seen, her record walks onto the sinkhole before the hunt
     // (`ground`, src/fx/enemy-step.js) and takes the guns by her own rule (`ownFear`: the generic impact scare leaves her alone; landed() below)
-    { const b = bossRecord(); if (b && !b.ownFear) { b.ownFear = true; b.ground = { ...BOSS_FIGHT.arenaBoss.ground }; } }
+    { const b = bossRecord(); if (b && !b.ownFear) { b.ownFear = true; b.ground = { ...BOSS_FIGHT.arenaBoss.ground }; b.armour = ARENA_KING.armour; } }   // THE KING's armour: the nukes decide it
     // THE BODY OWNS HER POSITION (2026-10-23): her body made, the record is body-led and its body hunts what the fight hands it (the hull, a flee point, her centre)
     { const b = phase === 'boss' ? bossRecord() : null, body = b && c.creatures?.()?.body?.(b), centre = body ? c.centre?.(arenaCell()) : null;
-      if (body && centre) { b.bodyLed = true; b.bodyAim = fight.step(dt, { body, centre, R: c.creatures().metres(), hull: c.player()?.pos ?? null, radius: BOSS_FIGHT.bounds.radius, ground: !!b.ground }) ?? b.bodyAim; } }
+      if (body && centre) { b.bodyLed = true; b.bodyAim = fight.step(dt, { body, centre, R: c.creatures().metres(), hull: c.player()?.pos ?? null, radius: BOSS_FIGHT.bounds.radius, ground: !!b.ground, targets: kingTargets() }) ?? b.bodyAim; kingTick(b); } }
     if (phase === 'boss') {
       // ISAO KEEPS THE WHEEL: a seat's entry and any drive input put the hull back on manual (src/fx/hull-drive.js, src/platform/tank-input.js);
       // while the boss is up the hull is his, so the autopilot is re-asserted every frame
@@ -291,11 +303,80 @@ export function createBossRun(c) {
   // seatWait) starts from the press (game time stands still under the card)
   function handOver() {
     card ??= c.choiceCard ?? createChoiceCard(c.root); cardUp = true; taken = false; c.pause?.(true);
-    card.show({ title: ARENA_HANDOVER.title, lines: brief('arena_force')?.lines ?? [], hint: c.mobile?.() ? ARENA_HANDOVER.hintTouch : ARENA_HANDOVER.hint, a: ARENA_HANDOVER.take }).then(() => {
+    card.show({ title: ARENA_HANDOVER.title, lines: brief('arena_force')?.lines ?? [], hint: [...ARENA_KING.hint, c.mobile?.() ? ARENA_KING.controlsTouch : ARENA_KING.controls], a: ARENA_HANDOVER.take })   /* THE KING's two actions over the seat's controls (2026-11-12 night) */.then(() => {
       if (!on || !cardUp) return;   // the run ended under the card
       cardUp = false; taken = true; c.pause?.(false); forcedAt = c.t(); retryAt = -9;
     });
   }
+  // THE KING'S TARGETS: the hull while it stands (Isao's bait), the Ridgebacks not down, as unit points with their cells
+  function kingTargets() {
+    const out = [], p = c.player();
+    if (p?.pos && (c.hullUp?.() ?? c.playerHP() > 0)) out.push({ id: 'hull', pos: p.pos, ci: p.cur ?? -1, lure: true });
+    for (const u of c.mechs?.()?.units?.() ?? []) if (!u.down) out.push({ id: `m${u.i}`, pos: u.pos, ci: u.ci, attackedAt: u.attackedAt });
+    return out;
+  }
+  const mechOf = (id) => (typeof id === 'string' && id[0] === 'm' ? +id.slice(1) : -1);
+  // a mech's points taken (the King's charge, the player's shell): RIDGEBACK DOWN at 0
+  function hurtMech(i, n, by) { const r = c.mechs?.()?.hurt?.(i, n); if (r?.down) { kingLog.downs.push({ i, by, at: +c.t().toFixed(2) }); c.callout(ARENA_KING.labels.down, 'co-dent'); } return r; }
+  const cellRing = (ci, hex, metres) => { if (ci >= 0) c.ring?.(ci, hex, 0.5, metres / METRES_PER_CELL * c.cellSide()); };
+  // each frame of the King's fight after the step: the hits handed over, the tell called and rung, the mechs it threatens falling back, its points by source
+  function kingTick(b) {
+    const t = c.t(), k = fight.state().king, hp = Math.max(0, b.hp);
+    if (kingLog.startedAt == null) kingLog.startedAt = +t.toFixed(2);
+    if (kingLog.hpWas != null && hp < kingLog.hpWas) kingLog.hp.other += kingLog.hpWas - hp;   // whatever the nuke's share did not take (it books its own, landed())
+    kingLog.hpWas = hp;
+    for (const id of fight.hits()) {
+      if (id === 'hull') { kingLog.charges.hull++; for (let n = 0; n < ARENA_KING.hits.hull; n++) c.hitHull?.(b.pos); }
+      else if (mechOf(id) >= 0) { kingLog.charges.mech++; hurtMech(mechOf(id), ARENA_KING.hits.mech, 'king'); }
+    }
+    if (!k) return;
+    const tg = kingTargets().find((x) => x.id === k.target);
+    if (k.tells > tellsSeen) { tellsSeen = k.tells; c.callout(`${ARENA_KING.tell.callout} · ${k.target === 'hull' ? ARENA_KING.labels.hull : ARENA_KING.labels.mech}`, 'co-dent'); }
+    if ((k.mode === 'tell' || k.mode === 'charge') && t - ringAt >= 0.4) { ringAt = t; cellRing(tg?.ci ?? -1, ARENA_KING.tell.ring, ARENA_KING.charge.reach); cellRing(b.cur ?? -1, ARENA_KING.tell.ring, ARENA_KING.charge.reach * 1.4); }
+    // THE MECHS FALL BACK from the King's tell and charge on them, and out of a marked or falling nuke's blast (+ ARENA_KING.nuke.clear)
+    const mk = markerTick(b);
+    for (const u of c.mechs?.()?.units?.() ?? []) { const threatened = (k.mode === 'tell' || k.mode === 'charge') && k.target === `m${u.i}`; c.mechs().fallBack(u.i, mk?.inside(u.pos) ? mk.point : threatened ? b.pos : null); }
+  }
+  // THE PLAYER'S SHELLS ON FRIENDLIES (owner, 2026-11-12 night: "time the shells so they a) do not deal friendly fire damage"): in the boss phase, the seat taken
+  // (the automated gunship is off in it and never hurts friendlies), a round landing within its gun's blast of the hull or a standing mech hurts it by
+  // ARENA_KING.friendly (at most once per unit per gun every `every` s): the hull a dent (c.hitHull), a mech its points; on the arena's plane (the fight's)
+  const ffLast = new Map();
+  function friendlyFire(gun, point) {
+    if (phase !== 'boss' || !seated || !ARENA_KING.friendly[gun] || !point) return;
+    const at = fight.plane(point); if (!at) return;
+    const units = kingTargets().map((u) => ({ id: u.id, kind: u.id === 'hull' ? 'hull' : 'mech', pos: fight.plane(u.pos) })).filter((u) => u.pos);
+    const radius = (guns()[gun]?.blastCells ?? 0) * GUNSHIP_PLATFORM.metresPerCell;
+    for (const hit of friendlyHits({ point: at, radius, gun, units, last: ffLast, now: c.t() }, ARENA_KING)) {
+      kingLog.friendly[hit.kind]++; kingLog.friendly.byGun[gun] = (kingLog.friendly.byGun[gun] ?? 0) + 1;
+      if (hit.kind === 'hull') for (let n = 0; n < hit.dmg; n++) c.hitHull?.(point); else hurtMech(mechOf(hit.id), hit.dmg, gun);
+    }
+  }
+  // THE CALLED NUKE LANDS (stage three; ARENA_KING.nuke): its centre within the blast + slack takes the fixed share of its hit points (the armour does not
+  // scale it), a miss nothing; each logged for the harness (where it landed from its centre, the share)
+  function nukeLanded(b, point) {
+    const at = fight.plane(point), cen = fight.centre(); if (!at || !cen) return;
+    const blast = (guns().heavy?.blastCells ?? 0) * GUNSHIP_PLATFORM.metresPerCell, share = nukeShare(cen, at, blast, ARENA_KING), was = Math.max(0, b.hp);
+    if (share > 0) kingDamage(b, share * def.boss.boss.hp);
+    kingLog.nukes.push({ at: +c.t().toFixed(2), metres: +Math.hypot(at[0] - cen[0], at[1] - cen[1]).toFixed(1), share, took: +(was - Math.max(0, b.hp)).toFixed(1) });
+  }
+  // THE CALL (src/fx/gunship-rig.js host.nukeCall): in the boss phase the gunner's MK-9 is called onto a mark with ARENA_KING.nuke's countdown
+  const nukeCall = () => (on && phase === 'boss' ? CALL : null);
+  // THE MARKER (stage three): a pulse on its cell every second it is marked or falling, its blast wide; the mechs inside its blast + `clear` walk out of it
+  let pulseAt = -9;
+  function markerTick(b) {
+    const m = c.mark?.(), t = c.t(); if (!m?.point) return null;
+    const blast = (guns().heavy?.blastCells ?? 0) * GUNSHIP_PLATFORM.metresPerCell;
+    if (t - pulseAt >= 1) { pulseAt = t; cellRing(m.ci, ARENA_KING.tell.mark, blast); }
+    const cen = fight.plane(m.point); if (!cen) return null;
+    return { point: m.point, inside: (p) => { const q = fight.plane(p); return !!q && Math.hypot(q[0] - cen[0], q[1] - cen[1]) <= blast + ARENA_KING.nuke.clear; } };
+  }
+  // a hit the King's armour does not scale (the nuke's): booked as the nuke's share of its points
+  function kingDamage(b, n) { const was = Math.max(0, b.hp); c.damageEnemy?.(b, c.t(), n / (b.armour ?? 1), false, 'strike', 'heavy'); const now = Math.max(0, b.hp); kingLog.hp.nuke += was - now; kingLog.hpWas = now; }
+  // the mechs back to their roles (the fight over)
+  const calm = () => { for (const u of c.mechs?.()?.units?.() ?? []) c.mechs().fallBack(u.i, null); };
+  // the harness's read of THE KING's fight (state().boss.king): its will, the marker and the call, the log, the mechs (with their points), the hull's dents left
+  const kingRead = () => ({ ...(fight?.state().king ?? {}), mark: c.mark?.() ?? null, call: !!nukeCall(), log: { ...kingLog, downs: kingLog.downs.slice(), nukes: kingLog.nukes.slice() },
+    mechs: (c.mechs?.()?.units?.() ?? []).map((u) => ({ i: u.i, role: u.role, hp: u.hp, down: u.down, fleeing: u.fleeing, pos: u.pos })) });
   function release() {
     roadUntil = 0;
     { const e = cutLog[cutLog.length - 1]; if (e && e.cell === roadCell && e.endAt == null) Object.assign(e, { endAt: +c.t().toFixed(2), end: signedLead(roadCell), endRoad: roadLeft(), cleared: roadCell >= 0 && isOpen(roadCell) }); }   // the lead at the burn's end
@@ -314,7 +395,8 @@ export function createBossRun(c) {
     if (on && phase === 'beacon' && gun === 'heavy' && point) { const g = c.roadGraph?.(), cs = c.cellSide(), h = c.player()?.pos, ci = [...nukeAims].find((a) => { const o = c.centre?.(a); return o && Math.hypot(o[0] - point[0], o[1] - point[1], o[2] - point[2]) < cs * 0.5; });
       if (ci != null && g) { roadNukes.push({ at: +c.t().toFixed(2), cell: ci, hull: h ? +(Math.hypot(h[0] - point[0], h[1] - point[1], h[2] - point[2]) / cs).toFixed(2) : null, rocks: rocksNear(g, ci, guns().heavy.blastCells) }); if (roadNukes.length > 30) roadNukes.shift(); } return false; }
     const b = on ? bossRecord() : null;
-    if (b?.bodyLed && fight) { const took = fight.landed(gun, point); if (took) { if (gun === 'bofors') frights++; else if (gun === 'heavy') { stuns++; c.damageEnemy?.(b, c.t(), BOSS_FIGHT.nuke.damage, false, 'strike', 'heavy'); } } return took; }   // THE FIGHT ON THE LAB'S ENGINE; an MK-9 within reach deals the fight's own BOSS_FIGHT.nuke.damage (the lab's 60: the strike's 10 at ground zero made her a fifteen-minute fight, merge of 2026-10-23)
+    if (b?.bodyLed && fight) friendlyFire(gun, point);   // THE PLAYER'S SHELLS HURT FRIENDLIES in this fight (stage two, below)
+    if (b?.bodyLed && fight) { const took = fight.landed(gun, point); if (took) { if (gun === 'bofors') frights++; else if (gun === 'heavy') stuns++; } if (gun === 'heavy') nukeLanded(b, point); return took; }   // THE FIGHT ON THE LAB'S ENGINE; an MK-9 within reach deals the fight's own BOSS_FIGHT.nuke.damage (the lab's 60: the strike's 10 at ground zero made her a fifteen-minute fight, merge of 2026-10-23)
     if (!b || !point || (gun !== 'bofors' && gun !== 'heavy') || (gun === 'bofors' && b.ground)) return false;   // on the sinkhole (the ground phase) she stands: no flight off it
     const at = groundAt(b), m = GUNSHIP_PLATFORM.metresPerCell, r0 = CREATURE_TIERS[def.boss.family]?.[def.boss.boss.tier]?.r0 ?? 20, g = GUNSHIP_GUNS[gun];
     const reach = ((r0 + BOSS_FIGHT.fear.reach) / m + (g?.blastCells ?? 0)) * c.cellSide();
@@ -324,7 +406,7 @@ export function createBossRun(c) {
   }
   function end(outcome) {
     if (!on) return;
-    on = false; shotSaid = false; phase = 'off'; if (cardUp) { cardUp = false; card?.dispose(); }
+    on = false; shotSaid = false; phase = 'off'; calm(); if (cardUp) { cardUp = false; card?.dispose(); }
     c.tremor?.(-1); if (roadUntil) { roadUntil = 0; c.solRoad?.(-1); } roadSaid = false; roadAt = -99;
     if (seated && c.pilotMode() && c.storyViews()?.now?.() === 'gunship') c.leavePilot();   // out of the seat FIRST (round 3, 2026-10-26): the gunship sent home under a taken seat moved the seat's camera across the planet
     if (was) { c.params().directive = was.directive; c.setAutoMode(was.auto); if (c.story()) { c.story().gsAuto = was.gsAuto; if (c.story().gsStage >= 0) c.gunshipOver?.(c.heartCell?.() ?? -1); c.story().gsStage = -1; } }   // the gunship home at once: it crawled back across the planet after SECURE (2026-10-18)
@@ -338,7 +420,8 @@ export function createBossRun(c) {
   function rows() {
     if (!on || !def) return [];
     const h = hunters(), b = bossRecord();
-    if (b) return [{ id: 'boss', name: bossName(), hp: Math.max(0, b.hp), max: def.boss.boss.hp, broken: false, quiet: true }];
+    if (b) { const m = phase === 'boss' ? c.mark?.() : null;   // THE KING (2026-11-12), and the called nuke's countdown under it while one is marked or falling
+      return [{ id: 'boss', name: ARENA_KING.name, hp: Math.max(0, b.hp), max: def.boss.boss.hp, broken: false, quiet: true }, ...(m?.left != null ? [{ id: 'nuke', name: ARENA_KING.labels.nuke, hp: m.left, max: ARENA_KING.nuke.countdown, broken: false, quiet: true, clock: true }] : [])]; }
     if (phase === 'beacon') return [{ id: 'boss', name: 'TREMOR · FAR OUT', hp: 1, max: 1, broken: false, quiet: true }];
     if (!bossSeen && !wavesOf().length) return [{ id: 'boss', name: bossName(), hp: def.boss.boss.hp, max: def.boss.boss.hp, broken: false, quiet: true }];   // no wave (note 4, 2026-10-19): her row, whole, while she climbs out
     if (!bossSeen) return [{ id: 'boss', name: `WAVE · ${bossName().split(' ')[0]}`, hp: h.wave, max: wavesOf().reduce((a, w) => a + w.count, 0), broken: false, quiet: true }];
@@ -371,6 +454,7 @@ export function createBossRun(c) {
   // the harness's distances in cells (2026-10-23, spec decision 5): the hull and the boss from the arena's centre, and the gap between them
   const cells = (a, p) => (a && p ? +(Math.hypot(a[0] - p[0], a[1] - p[1], a[2] - p[2]) / c.cellSide()).toFixed(2) : null);
   const distState = () => { const b = bossRecord(), a = arenaCell() >= 0 ? c.centre?.(arenaCell()) : null, h = c.player()?.pos ?? null; return { hull: cells(a, h), boss: cells(a, b?.pos), gap: cells(h, b?.pos), at: { centre: a, hull: h, boss: b?.pos ?? null } }; };
-  return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, drives, roadNukeTarget, force: () => { dueNow = true; }, on: () => on,
-    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })), arrivals: { ...arrivals, last: arrivals.last.slice() }, nukes: roadNukes.map((e) => ({ ...e })), nukeTarget: nukeHit ? { cell: nukeHit.cell, rocks: nukeHit.rocks } : null }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, blob: bossRecord() ? !!bossRecord().blob : null, rubble: bossRecord() ? !!bossRecord().rubble : null, fear: fearState(), led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
+  return { begin, tick, end, rows, lure, arenaDue, landed, talking, guns, orbit, drives, roadNukeTarget, nukeCall, force: () => { dueNow = true; }, on: () => on,
+    king: () => kingRead(),
+    state: () => ({ on, phase, t: +c.t().toFixed(2), card: cardUp, decoded, seated, bossSeen, hullHit, reminders, drove, hullCells: Number.isFinite(c.hullCells?.()) ? +c.hullCells().toFixed(1) : null, road: { said: roadSaid, burning: roadUntil > 0, asks: roadAsks, cell: roadCell, laid: roadLaid, planned: roadPlanned, wired: !!c.roadNext, path: roadAheadCells(), lead, leadMax, cuts: cutLog.map((e) => ({ ...e })), arrivals: { ...arrivals, last: arrivals.last.slice() }, nukes: roadNukes.map((e) => ({ ...e })), nukeTarget: nukeHit ? { cell: nukeHit.cell, rocks: nukeHit.rocks } : null }, roadCuts, ...hunters(), bossHp: bossRecord()?.hp ?? null, blob: bossRecord() ? !!bossRecord().blob : null, rubble: bossRecord() ? !!bossRecord().rubble : null, fear: fearState(), king: on && phase !== 'beacon' ? kingRead() : null, led: !!bossRecord()?.bodyLed, dist: distState(), speed: fight?.state().speed ?? null, hullSpeed: fight?.state().hullSpeed ?? null, due: arenaDue(), auto: c.autoMode(), directive: c.params().directive }) };
 }

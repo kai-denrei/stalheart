@@ -111,7 +111,7 @@ const heavySpent = (st, guns, auto = false) => {
   const n = guns.heavy.perPass ?? 0, mine = st.heavyPass === st.passes ? st.heavyCount ?? 1 : 0;
   return n > 0 && (auto ? mine > 0 || st.heavyAutoPass === st.passes : mine >= n);   // the automated round never follows any of the gunner's
 };
-export function paintHeavy(st, ci, guns, { auto = false } = {}) { if (!st.mounted || st.phase !== 'station' || ci < 0 || st.heavyFalling || st.clock < st.heavyReadyAt || heavySpent(st, guns, auto)) return false; st.heavyPaint = ci; return true; }
+export function paintHeavy(st, ci, guns, { auto = false } = {}) { if (!st.mounted || st.phase !== 'station' || ci < 0 || st.heavyFalling || st.clock < st.heavyReadyAt || heavySpent(st, guns, auto)) return false; st.heavyPaint = ci; st.heavyPaintAt = st.clock; return true; }   // heavyPaintAt: THE KING'S FIGHT's countdown runs from the mark (src/fx/gunship-rig.js)
 export function launchHeavy(st, guns, { auto = false } = {}) {
   const gun = guns.heavy; if (!st.mounted || st.phase !== 'station' || st.heavyPaint == null || st.heavyFalling || st.clock < st.heavyReadyAt || heavySpent(st, guns, auto)) return -1;
   const ci = st.heavyPaint; st.heavyPaint = null; st.heavyFalling = { ci, at: st.clock + gun.travel, from: st.clock, lit: st.clock + (gun.freeFall ?? 0) };
@@ -128,7 +128,7 @@ export function heavyState(st, guns) {
   if (f) return { phase: st.clock < f.lit ? 'released' : 'ignited', left: f.at - st.clock, burn: Math.max(0, f.lit - st.clock), ci: f.ci, nudged: !!f.nudged, total: guns.heavy.travel };
   if (st.clock < st.heavyReadyAt) return { phase: 'reloading', left: st.heavyReadyAt - st.clock, total: guns.heavy.reload };
   if (heavySpent(st, guns)) return { phase: 'spent' };
-  return st.heavyPaint != null ? { phase: 'painted', ci: st.heavyPaint } : { phase: 'ready' };
+  return st.heavyPaint != null ? { phase: 'painted', ci: st.heavyPaint, since: st.clock - (st.heavyPaintAt ?? st.clock) } : { phase: 'ready' };
 }
 
 // Where a ray from the platform meets the planet: the nearer root of

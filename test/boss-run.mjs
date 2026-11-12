@@ -10,7 +10,8 @@ import { METRES_PER_CELL } from '../src/core/stage-units.js';
 import { GUNSHIP_SEAT_HINT, GUNSHIP_GUNS, GUNSHIP_ORBIT, GUNSHIP_AUTO } from '../src/content/gunship.js';
 import { surfaceFrame, fromPlane, toPlane } from '../src/domain/surface-projection.js';
 import { NIH_DAIRIA_PREDATOR } from '../src/content/nih-dairia.js';
-import { ARENA_ROAD_GUARD as GUARD } from '../src/content/sectors.js';   // the beam's guard in cells (3.1): roadFar(ci, 0) in td-tab asks only that (laserStation.roadSafe)
+import { ARENA_ROAD_GUARD as GUARD } from '../src/content/sectors.js';
+import { ARENA_KING } from '../src/content/arena-king.js';   // the beam's guard in cells (3.1): roadFar(ci, 0) in td-tab asks only that (laserStation.roadSafe)
 
 function host(o = {}) {
   const log = { briefs: [], callouts: [], tremor: [], road: [], over: [], pause: [] };
@@ -290,9 +291,9 @@ function host(o = {}) {
   assert.equal(run.state().phase, 'boss'); assert.equal(run.state().card, true, 'the card is up as she rises'); assert.deepEqual(h.log.pause, [true], 'over the paused game');
   const shown = h.choiceCard.shown[0];
   assert.equal(shown.title, 'THE KING'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
-  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.equal(shown.hint, ARENA_HANDOVER.hint);
+  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.deepEqual(shown.hint, [...ARENA_KING.hint, ARENA_KING.controls], 'THE KING\'s two actions, then the seat\'s controls (2026-11-12 night)');
   assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aim, 'the seat footer\'s own aim text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimTouch);
-  assert.match(shown.hint, /move it to aim/); assert.match(shown.hint, /Space or the button fires/); assert.match(shown.hint, /MK-9/);
+  assert.match(shown.hint.at(-1), /move it to aim/); assert.match(shown.hint.at(-1), /Space or the button fires/); assert.match(shown.hint.join(' '), /40MM/); assert.match(shown.hint.join(' '), /mark/);
   assert.ok(!h.log.briefs.includes('arena_force'), 'the card says it, not the panel');
   assert.equal(h.params().directive, 'lure', 'Isao has the hull as the lure');
   for (let k = 1; k <= ARENA.seatWait + 5; k++) { h.now = 2 + k; run.tick(0.1); }
@@ -304,7 +305,7 @@ function host(o = {}) {
   // on a phone the hint is the seat's touch footer
   const h2 = host({ mobile: () => true }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
   h2.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h2.now = 2; run2.tick(0.1);
-  assert.equal(h2.choiceCard.shown[0].hint, ARENA_HANDOVER.hintTouch);
+  assert.equal(h2.choiceCard.shown[0].hint.at(-1), ARENA_KING.controlsTouch);
   run2.end('lost'); assert.equal(h2.choiceCard.disposed, true, 'the run ended under the card: it goes'); assert.equal(run2.state().card, false); }
 
 // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out ... more scare of 40mm. Gameplay = push her to a
@@ -472,10 +473,59 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   assert.equal(b.bodyLed, undefined, 'no body yet: the record walks'); assert.equal(run.state().led, false);
   made = true; b.ground = null; h.now = 2.1; run.tick(0.1);
   assert.equal(b.bodyLed, true, 'her body made: body-led'); assert.ok(Math.hypot(...b.bodyAim.map((v, k) => v - u(50 - BOSS_FIGHT.arenaBoss.keep, 0)[k])) < 1e-6, 'her body hunts the hull (arenaBoss.keep short of it)');
-  assert.equal(run.landed('bofors', u(20, 0)), true, 'a 40 mm by her body: the lab\'s wild flight'); assert.equal(run.state().fear.frights, 1); assert.equal(run.state().fear.lab.wild, 1);
-  h.now = 2.2; run.tick(0.1); assert.equal(run.state().fear.scared, true); assert.ok(toPlane(f, b.bodyAim, R)[0] < -20, 'her body flees away from the shell');
+  // THE KING (2026-11-12 night): a 40 mm by its body stops it (the stagger) and then turns it away from the burst (the veer), not the lab's wild flight
+  assert.equal(run.landed('bofors', u(20, 0)), true, 'a 40 mm by its body: taken'); assert.equal(run.state().fear.frights, 1); assert.equal(run.state().fear.lab.wild, 0, 'no wild flight');
+  assert.equal(run.king().staggers, 1, 'the King staggers'); h.now = 2.2; run.tick(0.1); assert.ok(Math.hypot(...toPlane(f, b.bodyAim, R)) < 1e-6, 'it stands: stopped in its tracks');
+  h.now = 2.2 + ARENA_KING.stagger.seconds + 0.05; run.tick(0.1); assert.equal(run.king().mode, 'veer'); assert.ok(toPlane(f, b.bodyAim, R)[0] < -20, 'then it veers away from the shell');
   const st = run.state(); assert.equal(st.led, true); assert.deepEqual({ hull: st.dist.hull, boss: st.dist.boss, gap: st.dist.gap }, { hull: 5, boss: 0, gap: 5 }, 'the hull 5 cells out, she at the centre'); assert.deepEqual(st.dist.at.hull, u(50, 0), 'and the points for the harness');
   assert.ok(st.speed != null && st.hullSpeed != null);
+  run.end('secure'); }
+
+// THE KING'S FIGHT (owner, 2026-11-12 night: "we tune the aggro of the King so that it aims for the mechs and the tank"): it wears its armour; it hunts a Ridgeback in
+// range (the hull out of range), tells (the callout, the rings, the mech falls back from it), charges, and the charge reaches the mech: its points taken; then
+// the hull alone: the charge dents it; its death puts the mechs back to their roles
+{ const R = 1000, f = surfaceFrame([0, 0, 1]), u = (x, z) => fromPlane(f, x, z, R);
+  const kit = { settings: { ...NIH_DAIRIA_PREDATOR }, motion: { active: true, feeding: { locked: false }, pursuit: { phase: 'pull' }, disturb() {} } };
+  const at = [0, 0], body = { kit, get point() { return u(...at); }, radius: 20, shape: (toLocal) => ({ centre: toLocal(u(...at)), contacts: [], nodes: [] }) };
+  const mech = { i: 0, role: 'arena', pos: u(60, 0), ci: 4, hp: 12, max: 12, down: false, fleeing: false, attackedAt: -Infinity }, falls = [], hurts = [], dents = [], rings = [];
+  const mechs = { units: () => [mech], hurt: (i, n) => { hurts.push([i, n]); mech.hp -= n; if (mech.hp <= 0) mech.down = true; return { hp: mech.hp, down: mech.down }; }, fallBack: (i, p) => { falls.push(p ? 'away' : null); } };
+  let hullPos = u(400, 0);
+  const h = host({ enemies: [], cellSide: () => 10 / R, player: () => ({ pos: hullPos, cur: 9 }), centre: () => [0, 0, 1], creatures: () => ({ body: () => body, metres: () => R }), mechs: () => mechs, hitHull: (p) => dents.push(p), hullUp: () => true, ring: (ci) => rings.push(ci),
+    pilotMode: () => true, storyViews: () => ({ now: () => 'gunship' }), mark: () => mk, damageEnemy: (e, _t, d) => { e.hp -= d * (e.armour ?? 1); } }), run = createBossRun(h);
+  let mk = null;
+  run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
+  const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: u(0, 0), cur: 1 }; h.enemies.push(b); h.now = 2; run.tick(0.1); b.ground = null;
+  assert.equal(b.armour, ARENA_KING.armour, 'the King wears its armour');
+  let guard = 0; while (run.king().mode !== 'tell' && guard++ < 200) { h.now += 0.1; run.tick(0.1); }
+  assert.equal(run.king().target, 'm0', 'the mech in range is its target (the hull is out of range)');
+  assert.ok(h.log.callouts.some((x) => x.startsWith(ARENA_KING.tell.callout)), 'the tell is called out'); assert.ok(rings.includes(4) && rings.includes(1), 'rung under the mech and under it');
+  assert.equal(falls[falls.length - 1], 'away', 'the mech falls back from the tell');
+  while (run.king().mode !== 'charge' && guard++ < 400) { h.now += 0.1; run.tick(0.1); }
+  at[0] = 50; h.now += 0.1; run.tick(0.1);
+  assert.deepEqual(hurts, [[0, ARENA_KING.hits.mech]], 'the charge reached the mech: its points'); assert.equal(run.king().log.charges.mech, 1);
+  // the hull alone in range: the charge dents it
+  at[0] = 58; h.now += 0.1; run.tick(0.1); assert.equal(run.king().mode, 'recover', 'arrived: it recovers');
+  mech.down = true; hullPos = u(60, 30); at[0] = 0; at[1] = 0;
+  while (run.king().mode !== 'charge' && guard++ < 1200) { h.now += 0.1; run.tick(0.1); }
+  assert.equal(run.king().target, 'hull'); at[0] = 55; at[1] = 25; h.now += 0.1; run.tick(0.1);
+  assert.equal(dents.length, ARENA_KING.hits.hull, 'the charge dents the hull'); assert.equal(run.king().log.charges.hull, 1);
+  // THE PLAYER'S SHELLS (stage two): a 40 mm within its blast of the hull dents it, the next round of the burst does not; one by a standing mech takes its points
+  await h.choiceCard.take(); await null; h.now += 0.1; run.tick(0.1); assert.equal(run.state().seated, true, 'the seat taken');
+  const d0 = dents.length; run.landed('bofors', u(65, 30)); assert.equal(dents.length, d0 + ARENA_KING.friendly.bofors.hull, 'a 40 mm on the hull: a dent');
+  run.landed('bofors', u(65, 30)); assert.equal(dents.length, d0 + ARENA_KING.friendly.bofors.hull, 'the next round of the burst: no second dent');
+  mech.down = false; mech.hp = 12; mech.pos = u(-80, 0); const n0 = hurts.length; run.landed('bofors', u(-75, 0));
+  assert.deepEqual(hurts[n0], [0, ARENA_KING.friendly.bofors.mech], 'a 40 mm by a mech: its points'); run.landed('rotary', u(-200, 0)); assert.equal(hurts.length, n0 + 1, 'a round far off hurts nobody');
+  assert.equal(run.king().log.friendly.hull, 1); assert.equal(run.king().log.friendly.mech, 1);
+  // THE CALLED NUKE (stage three): the call in the boss phase; a marker: its countdown row, a mech inside its blast walks out of it; on the King its share, a miss nothing
+  assert.deepEqual(run.nukeCall().nuke, ARENA_KING.nuke, 'the gunner\'s MK-9 is called in the boss phase');
+  mk = { ci: 3, point: u(-80, 0), left: 5.2, phase: 'painted' }; h.now += 0.1; run.tick(0.1);
+  assert.equal(falls[falls.length - 1], 'away', 'the mech inside the marker walks out of it');
+  const nr = run.rows().find((r) => r.id === 'nuke'); assert.ok(nr && nr.name === ARENA_KING.labels.nuke && nr.clock === true && nr.hp === 5.2 && nr.max === ARENA_KING.nuke.countdown, `the countdown row (${JSON.stringify(run.rows())})`);
+  mk = null; const hp0 = b.hp; run.landed('heavy', u(400, 0)); assert.equal(b.hp, hp0, 'a miss takes nothing'); assert.equal(run.king().log.nukes.at(-1).share, 0);
+  run.landed('heavy', u(at[0], at[1])); assert.ok(Math.abs(hp0 - b.hp - ARENA_KING.nuke.share * 180) < 1e-6, `a nuke on it: ${ARENA_KING.nuke.share * 100} % of its points (${hp0 - b.hp})`);
+  assert.ok(run.king().log.hp.nuke >= ARENA_KING.nuke.share * 180 - 1e-6, 'booked as the nuke\'s');
+  assert.equal(run.rows().some((r) => r.id === 'nuke'), false, 'no marker: no countdown row');
+  b.alive = false; h.now += 0.1; run.tick(0.1); assert.equal(falls[falls.length - 1], null, 'its death: the mechs back to their roles'); assert.equal(run.nukeCall(), null, 'no call once it is dead');
   run.end('secure'); }
 
 console.log('Boss run: the order to investigate the tremor, its callout and reminders, no arena_open and her row whole with no small wave (straight to the mother, note 4); the arena opens with the hull there, never on a clock; SOL\'s first cut on the planned road at once, then the road\'s first burnable rock between the guard and 10 cells, in the band 6.5 to 10 cells in driving (100 m) ahead of the hull as it drives (note 3), each ask\'s lead logged at the ask and the burn\'s end (a burn no longer hides the next rock, a refused ask backs off), SOL CUTS THE ROAD once, the road ringed; Isao drives the hull out after the reminders, a driving player not nagged, the gunship home at the end; THE MOTHER\'s card over the paused game, the seat after TAKE THE GUN; the brood dies with the mother, the wheel back at her death; arena_decoded after boss_dead, capped.');

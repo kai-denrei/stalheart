@@ -330,7 +330,7 @@ export function createCreatureEnemies(host) {
     // THE REACH IS THE WEAK SPOT (owner, 2026-10-12, the boss lab; in the game for THE BOSS sector, 2026-10-15): a hit on a Cutis record is scaled
     // by its body's phase (src/domain/boss-sector.js phaseScale over CUTIS_HITS: full while it coils, reaches and grips, half at rest, none while
     // the body pours through the cup); every other record 1. damageEnemy multiplies by it before the damage is taken
-    damageScale: (e) => (e?.spec?.body === 'cutis' && bodies ? phaseScale(bodies.phaseOf(e), CUTIS_HITS) : 1),
+    damageScale: (e) => (e?.armour ?? 1) * (e?.spec?.body === 'cutis' && bodies ? phaseScale(bodies.phaseOf(e), CUTIS_HITS) : 1),   // `armour`: THE KING's (src/fx/boss-run.js, ARENA_KING.armour)
     // damageEnemy's every hit, after the damage: a sentry's on a creature record is counted (and its kill, once)
     hit(e, src, dmg) {
       if (e.spec?.body && e.alive && dmg > 0) e.hitFlash = 1;   // the body lights for CREATURE_FOLLOW.flash s (owner, 2026-10-15; src/fx/creature-bodies.js lookInto)

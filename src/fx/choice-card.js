@@ -4,7 +4,7 @@
 // The debrief's panel look (styles.css .choice-card, over .sdb-btn).
 // ONE BUTTON (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene explaining that we need to manually control the gunship while Isao
 // plays Lure with the tank"): THE ARENA's hand-over is the same card with a `title`, Isao's `lines`, a controls `hint` and only `a`; 1 or Enter takes it.
-//   createChoiceCard(root) -> { show({ line | lines, title?, hint?, a, b? }) -> Promise<'a' | 'b'>, isOpen(), dispose() }
+//   createChoiceCard(root) -> { show({ line | lines, title?, hint? (a line or a list), a, b? }) -> Promise<'a' | 'b'>, isOpen(), dispose() }
 export function createChoiceCard(root) {
   let card = null, resolveWith = null, single = false;
   const onKey = (e) => { if (!card) return; if (e.key === '1' || (single && e.key === 'Enter')) pick('a'); else if (e.key === '2' && !single) pick('b'); else return; e.preventDefault(); e.stopPropagation(); };
@@ -18,7 +18,7 @@ export function createChoiceCard(root) {
       const parts = [div('choice-who', 'COMMS · ISAO')];
       if (title) parts.push(div('choice-title', title));
       for (const l of lines ?? [line]) parts.push(div('choice-line', l));
-      if (hint) parts.push(div('choice-hint', hint));
+      for (const h of [].concat(hint ?? [])) parts.push(div('choice-hint', h));   // one hint or several lines (THE KING's two actions, 2026-11-12)
       const row = document.createElement('div'); row.className = 'choice-row';
       for (const [k, label] of single ? [['a', a]] : [['a', a], ['b', b]]) { const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'sdb-btn'; btn.dataset.pick = k; btn.textContent = single ? label : `${k === 'a' ? '1' : '2'} · ${label}`; btn.addEventListener('click', () => pick(k)); row.appendChild(btn); }
       card.append(...parts, row); root.appendChild(card);

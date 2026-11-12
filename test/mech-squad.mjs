@@ -69,5 +69,18 @@ assert.ok(recs.every((r) => r.ci === st[r.mechIndex].cell || adj[st[r.mechIndex]
 const want = REINFORCEMENTS.pace * 10 / (0.27778 * REINFORCEMENTS.scale);   // the heavy gait (round 2): ground speed / (the demo's walk x scale), ~3.84
 assert.ok(st.every((m) => (m.walking ? Math.abs(m.rate - want) < 0.01 : m.rate === 0) && m.gait.rate === m.rate), `the gait's rate at the pace (${st.map((m) => m.rate)} vs ${want.toFixed(2)})`);
 assert.ok(st.filter((m) => m.walking).every((m) => Math.abs(m.gait.speed - REINFORCEMENTS.pace * 10) < 0.05), `the measured ground speed (${st.map((m) => m.gait.speed)} m/s)`);
+// THE KING'S FIGHT (2026-11-12 night): the units' read, a fall back walks away from a point at the retreat pace, the points taken, down for the run: its guns leave
+// towers(), it no longer walks, it lies on its side
+{ const { ARENA_KING } = await import('../src/content/arena-king.js');
+  const u0 = squad.units().find((u) => u.i === 1); assert.equal(u0.hp, ARENA_KING.mech.hp); assert.equal(u0.down, false); assert.ok(Array.isArray(u0.pos) && u0.ci >= 0);
+  const c0 = squad.state()[1].cell, from = centers[(c0 + 1) % N];
+  squad.fallBack(1, from); for (let k = 0; k < 120; k++) squad.tick(1 / 30, 60 + k / 30);
+  const c1 = squad.state()[1].cell; assert.ok(squad.units()[1].fleeing, 'falling back'); assert.ok(dist[c1] !== undefined && Math.abs(c1 - c0) >= 1 && ((c0 - c1 + N) % N) < N / 2, `away from the threat (${c0} -> ${c1})`);
+  squad.fallBack(1, null); assert.equal(squad.units()[1].fleeing, false, 'and back to its role');
+  assert.deepEqual(squad.hurt(1, 5), { hp: ARENA_KING.mech.hp - 5, down: false });
+  assert.deepEqual(squad.hurt(1, 99), { hp: 0, down: true }, 'down'); assert.equal(squad.hurt(1, 1), null, 'a downed mech takes nothing more');
+  assert.equal(squad.towers().length, 12, 'its four guns silent'); assert.ok(squad.towers().every((r) => r.mechIndex !== 1));
+  const p0 = squad.state()[1].cell; for (let k = 0; k < 90; k++) squad.tick(1 / 30, 70 + k / 30);
+  assert.equal(squad.state()[1].cell, p0, 'it no longer walks'); assert.equal(squad.state()[1].down, true); }
 squad.restore(); assert.equal(squad.towers().length, 0, 'restored'); assert.equal(scene.children.filter((o) => o.isInstancedMesh).length, 0, 'the parts gone');
 console.log(`mech-squad: sixteen top-tier records on four mechs, the aim on the model's pivots, the base mech ${base.startDist} -> ${base.heartDist} hops from the heart, the hunter at ${hunt.cell}`);

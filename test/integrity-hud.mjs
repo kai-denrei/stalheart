@@ -36,6 +36,10 @@ const { createIntegrityHud } = await import('../src/fx/integrity-hud.js');
   assert.equal(r.querySelector('.ih-lbl').textContent, 'WAVE · NIH-DAIRIA', 'the row takes the phase\'s name');
   hud2.tick(row('NIH-DAIRIA', 180, 180), 0.1);
   assert.equal(r.querySelector('.ih-lbl').textContent, 'NIH-DAIRIA', 'and the boss\'s');
+  // A COUNTDOWN ROW (THE KING's called nuke, 2026-11-12): it reads seconds and its falling is not wear (no UNDER ATTACK)
+  hud2.tick({ heart: null, gates: [{ id: 'boss', name: 'THE KING', hp: 180, max: 180, quiet: true }, { id: 'nuke', name: 'MK-9 · IMPACT', hp: 8, max: 8, quiet: true, clock: true }] }, 0.1);
+  const nk = made.at(-1); hud2.tick({ heart: null, gates: [{ id: 'boss', name: 'THE KING', hp: 180, max: 180, quiet: true }, { id: 'nuke', name: 'MK-9 · IMPACT', hp: 4.2, max: 8, quiet: true, clock: true }] }, 0.1);
+  assert.equal(nk.querySelector('.ih-num').textContent, '5 S', 'seconds to impact'); assert.equal(nk.classList.contains('ih-worn'), false, 'never worn');
   globalThis.document.createElement = create; }
 
 console.log('Integrity strip: a gate worn down has its lines, a quiet row (the arena\'s) has none, and a row\'s name follows its phase.');

@@ -7,7 +7,7 @@
 // the first hit, half and the last three. A gate being worn down says UNDER ATTACK while its bar drops, and Isao warns at half
 // and at a quarter. The panel's text stays for the numbers; this is the alarm.
 //
-// Pure DOM over the host's numbers: tick(read) every frame with { heart: { hp, max } | null, gates: [{ id, name, hp, max, broken, quiet }] (quiet: no gate lines),
+// Pure DOM over the host's numbers: tick(read) every frame with { heart: { hp, max } | null, gates: [{ id, name, hp, max, broken, quiet, clock }] (quiet: no gate lines; clock: a countdown in seconds, never worn),
 // hidden }. The host owns the hit points; this only compares them with the last frame. `reset()` for a new run.
 // ON A PHONE the strip is not shown (styles.css; the owner's open complaint is a cluttered phone HUD, and the strip had no free slot
 // in either orientation): the stats panel already carries the hearts and GATE %, so a hit flashes that panel instead (`ih-panel-hit`).
@@ -59,10 +59,10 @@ export function createIntegrityHud(root, { sfx = null, brief = null } = {}) {
     if (row.dataset.pct !== String(pct) || row.dataset.broken !== String(g.broken)) {
       row.dataset.pct = pct; row.dataset.broken = g.broken;
       row.querySelector('i').style.width = `${pct}%`;
-      row.querySelector('.ih-num').textContent = g.broken ? 'DOWN' : `${pct}%`;
+      row.querySelector('.ih-num').textContent = g.broken ? 'DOWN' : g.clock ? `${Math.ceil(g.hp)} S` : `${pct}%`;   // `clock`: a countdown row (THE KING's called nuke, 2026-11-12) reads seconds
       row.classList.toggle('ih-down', g.broken); row.classList.toggle('ih-low', !g.broken && share <= 0.25);
     }
-    if (was !== undefined && g.hp < was - 1e-6) {
+    if (!g.clock && was !== undefined && g.hp < was - 1e-6) {   // a countdown falling is not damage: no flash, no UNDER ATTACK
       wake = true; if (!worn.get(g.id)) { flash(row); panelFlash(); }
       worn.set(g.id, WORN);
       // NOT A GATE, NO GATE LINES (owner, 2026-10-18, note 6: "not quite clear what we must do"): a `quiet` row (the arena's wave count and boss, src/fx/boss-run.js)
