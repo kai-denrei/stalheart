@@ -16,13 +16,18 @@
 import { BUILD_BOARD } from '../content/build-board.js';
 import { TOWER_BY_KEY, upgradeCost } from '../towers.js';
 import { boardOffers, firstOffers, toggle as togglePick, totalOf, emptiestLaneSite } from '../domain/build-board.js';
-import { buy, hasPerk } from '../domain/build-programme.js';
+import { buy, hasPerk, kindOf } from '../domain/build-programme.js';
+import { colonyOffers, cellStates } from '../domain/colony.js';
+import { COLONY } from '../content/colony.js';
+import { priceIndex } from '../domain/build-board.js';
 import { COMPANIONS } from '../content/companions.js';
 import { createBoardThumbs } from './board-thumbs.js';
 
 export function createBuildBoard(c) {
   const W = BUILD_BOARD.words;
-  let card = null, offers = [], picked = [], open = null, last = null;
+  let card = null, offers = [], picked = [], open = null, last = null, row = [], cellOf = {}, map = [];
+  const CW = COLONY.words, ROW_KEYS = ['q', 'w', 'e', 'r', 't', 'y'];
+  const all = () => [...offers, ...row];
   const history = [];
   const thumbs = c.spriteShot ? createBoardThumbs({ spriteShot: c.spriteShot, towerLook: c.towerLook, towers: c.towers }) : null;
   const bank = () => Math.round(c.eco().biomass);
@@ -53,26 +58,57 @@ export function createBuildBoard(c) {
       bank: bank(), sentryRoom: site() >= 0, sentries, upgrades: weakest(), hull: c.hull(), shield: c.shield(), pets: pets(),
       rotor: TOWER_BY_KEY.rotor ? { key: 'rotor', name: TOWER_BY_KEY.rotor.name, cost: TOWER_BY_KEY.rotor.cost } : null, rotorCell, rotorBuilt: c.towers().some((t) => t.ci === rotorCell), rotorPending: c.orders.some((o) => o.ci === rotorCell), secondCell: n === 'first' ? secondSite(rotorCell) : -1 } };
   }
+  // THE COLONY'S ROW (2026-11-12 night; src/domain/colony.js): the cells this story's plan holds, which are taken (a dome bought or standing), which
+  // stand (the corner rule), the kinds held, and the board's price index for the coming sector
+  function colonyWorld(n) {
+    const s = c.story(), pg = s?.programme, cells = s?.colony?.cells ?? [];
+    if (!pg || !cells.length || typeof n !== 'number') return null;
+    const stepOf = (cell) => pg.steps.find((x) => x.cell === cell), mine = (st) => st && (pg.bought.has(st.id) || pg.done.has(st.id));
+    const taken = new Set(cells.filter((x) => mine(stepOf(x.id))).map((x) => x.id)), held = Object.fromEntries([...taken].map((cell) => [cell, kindOf(pg, stepOf(cell)).kind]));
+    return { cells, taken, held, standing: (cell) => !!s.stands?.(`dome-${cell}`), index: priceIndex(BUILD_BOARD, n) };
+  }
   const div = (cls, text, tag = 'div') => { const el = document.createElement(tag); el.className = cls; if (text != null) el.textContent = text; return el; };
   function render() {
     if (!card) return;
     const b = bank(), paid = totalOf(offers, picked);
     card.querySelector('.bb-bank').textContent = `${b - paid} kg left of ${b} kg`;
     card.querySelectorAll('.bb-tile').forEach((el, i) => {
-      const o = offers[i], on = picked.includes(o.id), can = on || togglePick(offers, picked, o.id, b, BUILD_BOARD.picks) !== picked;
+      const o = all()[i], on = picked.includes(o.id), base = o.kind === 'dome' ? picked.filter((p) => !p.startsWith('dome:')) : picked, can = on || togglePick(all(), base, o.id, b, BUILD_BOARD.picks) !== base;
       el.classList.toggle('bb-on', on); el.classList.toggle('bb-short', o.price > b - (on ? paid - o.price : paid)); el.disabled = !can;
       el.querySelector('.bb-price').textContent = `${o.price} kg${o.price > b ? ` ${W.short}` : ''}`;
     });
+    // the dome tiles name the cell each would go on; the map rings the picked dome's cell
+    card.querySelectorAll('.bb-tile.bb-dome .bb-cell').forEach((el) => { el.textContent = `→ ${CW.cell(cellOf[el.dataset.offer])}`; });
+    const dome = picked.find((id) => id.startsWith('dome:')), at = dome ? cellOf[dome] : null;
+    card.querySelectorAll('.bb-map [data-cell]').forEach((el) => { el.classList.toggle('bb-at', el.dataset.cell === at); });
     card.querySelector('.bb-go').textContent = picked.length ? `${W.go} · ${paid} kg` : W.go;
     card.querySelector('.bb-go').disabled = !picked.length;
   }
-  function pick(id) { const b = togglePick(offers, picked, id, bank(), BUILD_BOARD.picks); if (b === picked) return false; picked = b; render(); return true; }
+  // ONE DOME A BOARD: picking a second dome kind takes the place of the first
+  function pick(id) {
+    const swap = id.startsWith('dome:') && !picked.includes(id) ? picked.filter((p) => !p.startsWith('dome:')) : picked;
+    const b = togglePick(all(), swap, id, bank(), BUILD_BOARD.picks); if (b === swap) return false;
+    picked = b; render(); return true;
+  }
+  // the cell the picked dome goes on: a free one on the map (a click, or Tab for the next); with no dome picked a click picks Isao's suggestion there
+  function chooseCell(cell) {
+    if (!map.some((m) => m.id === cell && m.state === 'free')) return false;
+    let dome = picked.find((id) => id.startsWith('dome:'));
+    if (!dome) { const o = row.find((x) => x.suggested) ?? row[0]; if (!o || !pick(o.id)) return false; dome = o.id; }
+    cellOf[dome] = cell; render(); return true;
+  }
+  function nextCell() {
+    const dome = picked.find((id) => id.startsWith('dome:')); if (!dome) return false;
+    const free = map.filter((m) => m.state === 'free').map((m) => m.id); if (!free.length) return false;
+    return chooseCell(free[(free.indexOf(cellOf[dome]) + 1) % free.length]);
+  }
   function apply(o) {
     const s = c.story(), e = c.eco();
     if (o.kind === 'sentry') { const ci = o.site ?? site(); return ci >= 0 && c.orderTower(o.key, ci, { quiet: true }); }
     if (o.kind === 'upgrade') { const t = c.towers().find((x) => x.ci === o.ci); return !!t && c.orderUpgrade(t); }
     if (!e.spend(o.price, { category: 'board' })) return false;
     if (o.kind === 'structure') buy(s.programme, o.step);
+    else if (o.kind === 'dome') { const cell = cellOf[o.id]; buy(s.programme, `dome-${cell}`, { kind: o.dome, perk: o.perk }); s.colony?.assign(cell, o.dome); }
     else if (o.kind === 'repair') c.mendHull();
     else if (o.kind === 'spare') c.addHull();
     else if (o.kind === 'shield') c.fillRack();
@@ -82,14 +118,14 @@ export function createBuildBoard(c) {
   function close(took, labels = []) {
     const go = open?.go;
     globalThis.removeEventListener?.('keydown', onKey, true); card?.remove(); card = null; thumbs?.close();
-    last = { n: open?.n ?? null, bank: open?.bank ?? 0, offers: offers.map((o) => `${o.id}:${o.price}`), took, after: bank() }; history.push(last); open = null; offers = []; picked = [];
+    last = { n: open?.n ?? null, bank: open?.bank ?? 0, offers: all().map((o) => `${o.id}:${o.price}`), took, cells: Object.fromEntries(took.filter((id) => id.startsWith('dome:')).map((id) => [id, cellOf[id]])), after: bank() }; history.push(last); open = null; offers = []; row = []; map = []; cellOf = {}; picked = [];
     c.callout?.(took.length ? `${W.ordered} · ${labels.join(' + ')}` : W.none, 'co-victory-sub');
     go?.();
   }
   function confirm() {
     if (!card) return false;
     const took = [], labels = [];
-    for (const id of picked) { const o = offers.find((x) => x.id === id); if (o && apply(o)) { took.push(id); labels.push(o.label); } }
+    for (const id of picked) { const o = all().find((x) => x.id === id); if (o && apply(o)) { took.push(id); labels.push(o.kind === 'dome' ? `${o.label} ${String(cellOf[id]).toUpperCase()}` : o.label); } }
     close(took, labels);
     return true;
   }
@@ -100,15 +136,19 @@ export function createBuildBoard(c) {
     const k = ev.key;
     ev.stopPropagation();
     if (/^[1-6]$/.test(k)) { const o = offers[+k - 1]; if (o) pick(o.id); }
+    else if (ROW_KEYS.includes(k.toLowerCase()) && row.length) { const o = row[ROW_KEYS.indexOf(k.toLowerCase())]; if (o) pick(o.id); }
+    else if (k === 'Tab' && row.length) nextCell();
     else if (k === 'Enter') { if (picked.length) confirm(); }
     else if (k === 'Escape') skip();
     else return;
     ev.preventDefault();
   }
   function show(n, go, { pool = (w) => boardOffers(w, BUILD_BOARD), words = W } = {}) {
-    const { w } = world(n);
+    const { w } = world(n), cw = colonyWorld(n);
     offers = pool(w); picked = [];
-    if (!offers.length) return false;
+    row = cw ? colonyOffers(cw, COLONY) : []; map = cw ? cellStates(cw.cells, { taken: cw.taken, standing: cw.standing }) : [];
+    cellOf = Object.fromEntries(row.map((o) => [o.id, o.cell]));
+    if (!offers.length && !row.length) return false;
     open = { n, go, bank: bank() };
     c.endShot();   // a live cut (a print close-up begun before the debrief) would take the board's keys and taps: it ends, as its skip would
     card = div('build-board'); card.setAttribute('role', 'dialog'); card.setAttribute('aria-live', 'assertive'); card.dataset.sector = String(n);
@@ -120,12 +160,36 @@ export function createBuildBoard(c) {
       t.append(div('bb-key', String(i + 1)), img, div('bb-name', o.label), div('bb-price', ''), div('bb-effect', o.effect));
       t.addEventListener('click', () => pick(o.id)); grid.appendChild(t);
     });
-    const row = div('bb-row');
+    // THE COLONY (2026-11-12 night): a card a dome kind left, keyed Q-Y, and the grid seen from above, the mouth at the top: the free cells to click,
+    // the taken ones, the locked ones with the corner rule's reason, the plaza and the entry
+    const colony = row.length ? div('bb-colony') : null;
+    if (colony) {
+      const tiles = div('bb-grid bb-grid--colony');
+      row.forEach((o, i) => {
+        const t = div('bb-tile bb-dome', null, 'button'); t.type = 'button'; t.dataset.offer = o.id; if (o.suggested) t.className += ' bb-suggested';
+        const img = div('bb-thumb', null, 'img'); img.alt = '';
+        const cl = div('bb-cell', ''); cl.dataset.offer = o.id;
+        t.append(div('bb-key', ROW_KEYS[i].toUpperCase()), img, div('bb-name', o.label), div('bb-price', ''), div('bb-effect', o.effect), cl, ...(o.suggested ? [div('bb-isao', CW.suggested)] : []));
+        t.addEventListener('click', () => pick(o.id)); tiles.appendChild(t);
+      });
+      const grid3 = div('bb-map'); grid3.setAttribute('role', 'group');
+      for (const r of [-1, 0, 1]) for (const cc of [-1, 0, 1]) {
+        const cell = (c.story()?.colony?.cells ?? []).find((x) => x.col === cc && x.row === r), m = cell ? map.find((x) => x.id === cell.id) : null;
+        const b = div(`bb-c bb-c--${m ? m.state : r === 0 && cc === 0 ? 'plaza' : 'entry'}`, m ? cell.id.toUpperCase() : r === 0 && cc === 0 ? 'STÅLHEART' : r < 0 && cc === 0 ? 'ENTRY' : '', 'button'); b.type = 'button';
+        if (m) { b.dataset.cell = m.id; b.disabled = m.state !== 'free'; b.title = m.state === 'locked' ? CW.locked : m.state === 'taken' ? CW.taken : CW.cell(m.id); if (m.state === 'free') b.addEventListener('click', () => chooseCell(m.id)); }
+        else b.disabled = true;
+        grid3.appendChild(b);
+      }
+      const why = map.some((m) => m.state === 'locked') ? div('bb-why', `${map.filter((m) => m.state === 'locked').map((m) => m.id.toUpperCase()).join(', ')}: ${CW.locked}`) : null;
+      const side = div('bb-mapbox'); side.append(grid3, ...(why ? [why] : []));
+      colony.append(div('bb-rowtitle', CW.row), tiles, side);
+    }
+    const bar = div('bb-row');
     const sk = div('sdb-btn bb-skip', W.skip, 'button'); sk.type = 'button'; sk.addEventListener('click', skip);
     const ok = div('sdb-btn sdb-btn--go bb-go', W.go, 'button'); ok.type = 'button'; ok.addEventListener('click', confirm);
-    row.append(sk, ok);
-    card.append(head, grid, div('bb-hint', W.hint), row); c.root.appendChild(card);
-    if (thumbs) card.querySelectorAll('.bb-tile').forEach((el, i) => thumbs.fill(offers[i], el.querySelector('.bb-thumb')));   // a GLB's thumbnail lands later
+    bar.append(sk, ok);
+    card.append(head, grid, ...(colony ? [colony] : []), div('bb-hint', colony ? `${W.hint} · ${CW.hint}` : W.hint), bar); c.root.appendChild(card);
+    if (thumbs) card.querySelectorAll('.bb-tile').forEach((el, i) => thumbs.fill(all()[i], el.querySelector('.bb-thumb')));   // a GLB's thumbnail lands later
     globalThis.addEventListener?.('keydown', onKey, true);
     render();
     return true;
@@ -139,7 +203,10 @@ export function createBuildBoard(c) {
     // THE FIRST ORDERS (2026-11-08, THE SETTLING, spec 2.B): the card once at the landing with the first pool and words (src/fx/first-orders.js opens it)
     first: (go) => !card && !!c.story()?.programme && show('first', go, { pool: (w) => firstOffers(w, BUILD_BOARD), words: BUILD_BOARD.first.words }),
     state: () => ({ open: !!card, n: open?.n ?? null, first: open?.n === 'first', bank: bank(), thumbs: card ? [...card.querySelectorAll('.bb-thumb')].filter((im) => im.src).length : 0, offers: offers.map((o) => ({ id: o.id, kind: o.kind, label: o.label, price: o.price })), picked: picked.slice(), last, boards: history.length,
+      colony: row.map((o) => ({ id: o.id, kind: o.dome, label: o.label, price: o.price, cell: cellOf[o.id], suggested: o.suggested })), cells: map.map((m) => ({ id: m.id, state: m.state })),
       bought: [...(c.story()?.programme?.bought ?? [])] }),
-    test: { toggle: (id) => pick(id), confirm, skip },
+    // test.dome(cell, kind): a dome bought on the programme as the board's pick does, unpaid, with its kind's module (the harness's colony, 2026-11-12 night)
+    test: { toggle: (id) => pick(id), confirm, skip, cell: (id) => chooseCell(id),
+      dome: (cell, kind) => { const s = c.story(), k = COLONY.kinds[kind]; if (!s?.programme || !k) return false; const ok = buy(s.programme, `dome-${cell}`, { kind, perk: k.perk ?? null }); if (ok) s.colony?.assign(cell, kind); return ok; } },
   };
 }

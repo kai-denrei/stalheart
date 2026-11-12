@@ -30,7 +30,7 @@ const domeOf = (id) => DOME_STRUCTURES.find((s) => s.id === id);
     assert.deepEqual({ ...s, label: null }, { id, label: null, cell, kind, islands: [id], structures: [id], board: true, gantry: true, when: { sector: 1, idle: true, home: true, ...(behind ? { stand: behind } : {}) }, passable: true,
       seconds: COLONY_GANTRY.seconds, metres: COLONY_GANTRY.top, brief: 'build_dome', perk: COLONY.kinds[kind].perk }, `${id}: the step's shape`);
     assert.ok(DOME_ISLANDS.some((i) => i.id === id) && domeOf(id), `${id}: its island and its dome are the grid's`);
-    assert.equal(BUILD_BOARD.structures[id]?.price, COLONY.kinds[kind].price, `${id}: its default kind's price`);
+    assert.equal(BUILD_BOARD.structures[id], undefined, `${id}: not a structure card (THE COLONY's row deals the kinds, src/domain/colony.js)`);
   }
   const at = (id) => BASE_PROGRAMME.findIndex((s) => s.id === id);
   assert.ok(DOMES.every((id) => at(id) > at('pearl')), 'every dome after the fourth Bio-Pearl');

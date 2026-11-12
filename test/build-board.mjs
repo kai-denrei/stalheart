@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { BASE_PROGRAMME } from '../src/content/base-programme.js';
 import { BUILD_BOARD } from '../src/content/build-board.js';
 import { boardOffers, firstOffers, pickable, toggle, totalOf, jumpBought, emptiestLaneSite } from '../src/domain/build-board.js';
-import { makeBuildProgramme, due, begin, finish, buy, snapshot } from '../src/domain/build-programme.js';
-import { DOME_STRUCTURES } from '../src/content/dome-city.js';
+import { makeBuildProgramme, due, begin, finish, buy, snapshot, kindOf } from '../src/domain/build-programme.js';
+import { DOME_STRUCTURES, COLONY_CELLS } from '../src/content/dome-city.js';
 
 const COLONY_STEPS = ['board', 'garage', 'armory', 'farm', 'chips', 'launcher', 'pearl'];   // round 8 note 7: the fourth Bio-Pearl
 // THE DOME CITY ON THE BOARD (the owner's note of 2026-11-07: the base from scratch): the six domes are board steps after the colony's own
@@ -23,7 +23,8 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
 {
   assert.deepEqual(BASE_PROGRAMME.filter((s) => s.board).map((s) => s.id), BOARD_STEPS, 'the three first steps, the seven colony structures, then the seven cells');
   assert.deepEqual(CLASSIC.filter((s) => s.board).map((s) => s.id), [...FIRST_STEPS, ...COLONY_STEPS], 'a classic plan holds the three and the seven');
-  for (const id of [...COLONY_STEPS, ...DOME_STEPS]) assert.ok(BUILD_BOARD.structures[id]?.price > 0 && BUILD_BOARD.structures[id].effect, `${id}: a price and an effect`);
+  for (const id of COLONY_STEPS) assert.ok(BUILD_BOARD.structures[id]?.price > 0 && BUILD_BOARD.structures[id].effect, `${id}: a price and an effect`);
+  for (const id of DOME_STEPS) assert.equal(BUILD_BOARD.structures[id], undefined, `${id}: never a structure card (THE COLONY's row, 2026-11-12 night)`);
   for (const id of FIRST_STEPS) { assert.ok(BUILD_BOARD.first.structures[id]?.price > 0 && BUILD_BOARD.first.structures[id].effect, `${id}: a first price and an effect`); assert.equal(BUILD_BOARD.structures[id], undefined, `${id}: never on a sector board`); }
   assert.equal(BUILD_BOARD.offers, 6); assert.equal(BUILD_BOARD.picks, 2);
 }
@@ -65,23 +66,13 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
   assert.ok(!boardOffers(world({ ctx: { phase: 'expedition', sector: 1 }, pets: [{ id: 'k0', index: 2, label: 'K0' }] }), BUILD_BOARD).some((o) => o.kind === 'pet'), '...not before its sector');
 }
 
-// THE DOME CITY'S POOL (the owner's note of 2026-11-07): on the dome city's programme the domes join the pool at their sector gates, after the
-// colony's cards (the first structuresMax in programme order), so a board never fills with domes; a standing or bought dome is not offered
+// THE COLONY'S CELLS ARE NOT STRUCTURE CARDS (2026-11-12 night): on the grid's programme the first row keeps the colony's own cards, and a cell is
+// bought through THE COLONY's row (the card below); a bridge is never on the board
 {
   const ids = (w) => boardOffers(world({ steps: BASE_PROGRAMME, ...w }), BUILD_BOARD).map((o) => o.id).filter((id) => id.startsWith('build:'));
   const at = (n, w = {}) => ids({ ctx: { phase: 'expedition', sector: n, back: null, manned: 0 }, ...w });
-  assert.deepEqual(at(2), ['build:board', 'build:garage', 'build:armory', 'build:dome-nw'], 'before sector 2: the colony\'s three, then the first dome');
-  const colony = new Set(COLONY_STEPS);
-  // THE GRID (2026-11-12 night): every cell from the first board, four at most, in the table's order
-  // THE CORNER RULE: W and E wait until their corners stand
-  assert.deepEqual(at(1, { done: colony }), ['build:dome-nw', 'build:dome-ne', 'build:dome-sw', 'build:dome-s'], 'sector 1: every cell but W and E, four at most');
-  assert.deepEqual(at(2, { done: colony }), ['build:dome-nw', 'build:dome-ne', 'build:dome-sw', 'build:dome-s'], 'sector 2: the same four');
-  assert.deepEqual(at(3, { done: colony, bought: new Set(['dome-nw', 'dome-sw']) }), ['build:dome-ne', 'build:dome-s', 'build:dome-se'], 'bought domes are not offered again; W waits for NW and SW to stand');
-  const up = (id) => id === 'dome-nw' || id === 'dome-sw';
-  assert.deepEqual(at(3, { done: new Set([...colony, 'dome-nw', 'dome-sw']), ctx: { phase: 'expedition', sector: 3, back: null, manned: 0, standing: up } }), ['build:dome-ne', 'build:dome-w', 'build:dome-s', 'build:dome-se'], 'NW and SW stand: W is offered');
-  assert.ok(!at(9, { done: colony }).some((id) => /build:bridge-/.test(id)), 'a bridge is never on the board');
-  const card = boardOffers(world({ steps: BASE_PROGRAMME, done: colony }), BUILD_BOARD).find((o) => o.id === 'build:dome-s');
-  assert.deepEqual([card.kind, card.step, card.label, card.price], ['structure', 'dome-s', BASE_PROGRAMME.find((s) => s.id === 'dome-s').label.toUpperCase(), BUILD_BOARD.structures['dome-s'].price], 'a dome card: its step, its label, its price at index 1');
+  assert.deepEqual(at(2), ['build:board', 'build:garage', 'build:armory'], 'before sector 2: the colony\'s own cards, no cell');
+  assert.ok(!at(9, { done: new Set(COLONY_STEPS) }).some((id) => /build:(dome|bridge)-/.test(id)), 'no cell and no bridge on the first row');
 }
 
 // the pick: up to two, affordable after the first is paid; a toggle takes a pick back
@@ -191,6 +182,38 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
     assert.equal(root.children.at(-1).querySelector('.bb-title').textContent, 'THE FIRST ORDERS');
     bb2.test.toggle('sentry:rotor'); bb2.test.toggle('build:foundry'); bb2.test.confirm();
     assert.deepEqual(ordered, [['rotor', 77]], 'the Rotor on the plan\'s socket'); assert.ok(bb2.state().bought.includes('foundry')); assert.equal(went2, 1); assert.equal(bb2.state().last.n, 'first'); assert.equal(bb2.state().first, false);
+  }
+  // THE COLONY (2026-11-12 night): on the grid's programme the card gains a row of dome kinds (Q-Y) and the 3 x 3 map; a kind picked proposes Isao's
+  // cell, Tab and a click move it to another free cell, ENTER pays the kind's price at the index and buys the cell as that kind, its module assigned
+  {
+    const pg3 = makeBuildProgramme(BASE_PROGRAMME, { standing: (st) => !st.board }), assigned = [];
+    const c3 = { ...cfg, story: () => ({ ...cfg.story(), programme: pg3, stands: () => false, colony: { cells: COLONY_CELLS, assign: (cell, kind) => { assigned.push([cell, kind]); return true; } } }) };
+    const bb3 = createBuildBoard(c3); let went3 = 0; biomass = 20000; log.length = 0;
+    assert.equal(bb3.interlude(() => went3++, { n: 2, via: 'continue' }), true);
+    const s3 = bb3.state();
+    assert.deepEqual(s3.colony.map((o) => [o.kind, o.price, o.cell, o.suggested]), [['logistics', 3200, 'ne', true], ['research', 3000, 'nw', false], ['fabrication', 2800, 'nw', false], ['biosphere', 3200, 'nw', false], ['power', 2800, 's', false], ['habitat', 2400, 'sw', false]], 'six kinds at index 1, Isao\'s NE LOGISTICS marked');
+    assert.deepEqual(s3.cells.map((x) => `${x.id}:${x.state}`), ['nw:free', 'ne:free', 'w:locked', 'e:locked', 'sw:free', 's:free', 'se:free'], 'the corner rule on the map');
+    assert.equal(root.children.at(-1).querySelectorAll('.bb-dome').length, 6, 'six dome tiles');
+    key('q'); assert.deepEqual(bb3.state().picked, ['dome:logistics'], 'Q picks the first kind');
+    key('Tab'); assert.equal(bb3.state().colony[0].cell, 'sw', 'Tab: the next free cell in the table');
+    assert.equal(bb3.test.cell('w'), false, 'a locked cell is refused');
+    assert.equal(bb3.test.cell('se'), true); assert.equal(bb3.state().colony[0].cell, 'se', 'a click on SE');
+    key('w'); assert.deepEqual(bb3.state().picked, ['dome:research'], 'a second kind takes the first one\'s place: one dome a board');
+    key('q'); bb3.test.cell('se'); key('1');
+    assert.deepEqual(bb3.state().picked, ['dome:logistics', 'build:board'], 'a dome and a card');
+    key('Enter');
+    assert.equal(went3, 1); assert.ok(pg3.bought.has('dome-se'), 'the cell is bought'); assert.deepEqual(kindOf(pg3, pg3.steps.find((x) => x.id === 'dome-se')), { kind: 'logistics', perk: 'armory' }, 'as LOGISTICS, its perk with it');
+    assert.deepEqual(assigned, [['se', 'logistics']], 'its module assigned');
+    assert.deepEqual(log.filter((l) => l[0] === 'spend').map((l) => l[1]), [3200, BUILD_BOARD.structures.board.price], 'paid at the pick');
+    assert.deepEqual(bb3.state().last.cells, { 'dome:logistics': 'se' });
+    assert.ok(log.some((l) => l[0] === 'callout' && /LOGISTICS DOME SE/.test(l[1])), 'the callout names the dome and its cell');
+    // a classic plan has no cells: no row
+    const bb4 = createBuildBoard({ ...cfg }); assert.equal(bb4.interlude(() => {}, { n: 2, via: 'continue' }), true); assert.deepEqual(bb4.state().colony, [], 'no colony row on a classic plan'); key('Escape');
+    // the harness's dome: bought unpaid with its kind
+    const pg5 = makeBuildProgramme(BASE_PROGRAMME, { standing: (st) => !st.board }), as5 = [];
+    const bb5 = createBuildBoard({ ...cfg, story: () => ({ ...cfg.story(), programme: pg5, colony: { cells: COLONY_CELLS, assign: (cell, kind) => as5.push([cell, kind]) } }) });
+    assert.equal(bb5.test.dome('nw', 'habitat'), true); assert.deepEqual(kindOf(pg5, pg5.steps.find((x) => x.id === 'dome-nw')), { kind: 'habitat', perk: null }); assert.deepEqual(as5, [['nw', 'habitat']]);
+    assert.equal(bb5.test.dome('nw', 'research'), false, 'a cell is bought once');
   }
 }
 // THE FIRST ORDERS (2026-11-08, THE SETTLING, spec 2.B): the Rotor on its own socket at the radial's price, then the three first steps at their prices; no Rotor card once it stands or is on the book; a bought or standing step is not offered; the pick of two within the salvage

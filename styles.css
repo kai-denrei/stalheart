@@ -5216,3 +5216,26 @@ body.seat-gliding #seat-vignette { display: none; }
 .build-board .bb-row { display: flex; gap: 10px; justify-content: flex-end; }
 .build-board .bb-row .sdb-btn { flex: 0 1 200px; }
 @media (max-width: 640px) { .build-board .bb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .build-board { padding: 14px 16px; } }
+/* THE COLONY (2026-11-12 night, src/fx/build-board.js): the dome kinds in a compact row keyed Q-Y, and the 3 x 3 grid from above (the mouth at
+   the top) where the picked dome's cell is chosen: free cells to click, taken and locked ones dimmed, the plaza and the entry not cells */
+.build-board .bb-colony { display: grid; grid-template-columns: minmax(0, 1fr) 156px; grid-template-rows: auto 1fr; gap: 8px 12px; margin-bottom: 12px; padding-top: 10px; border-top: 1px solid var(--bb-line); }
+.build-board .bb-rowtitle { grid-column: 1 / -1; font-size: 11px; font-weight: 700; letter-spacing: 0.22em; color: var(--bb-hi); }
+.build-board .bb-grid--colony { margin-bottom: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.build-board .bb-dome { min-height: 0; grid-template-rows: 40px auto auto auto; padding: 8px 8px 8px 30px; gap: 4px; }
+.build-board .bb-dome .bb-thumb { width: 40px; height: 40px; }
+.build-board .bb-dome .bb-effect { font-size: 10px; }
+.build-board .bb-dome::after { border-radius: 50% 50% 0 0; background: rgba(159, 220, 255, 0.35); }
+.build-board .bb-cell { font-size: 11px; letter-spacing: 0.12em; color: var(--bb-glow); }
+.build-board .bb-isao { font-size: 9px; letter-spacing: 0.16em; color: var(--bb-accent); }
+.build-board .bb-suggested { border-style: dashed; }
+.build-board .bb-mapbox { display: flex; flex-direction: column; gap: 6px; }
+.build-board .bb-map { display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 48px); gap: 4px; }
+.build-board .bb-c { font: inherit; font-size: 10px; letter-spacing: 0.08em; padding: 0; border: 1px solid var(--bb-line); background: rgba(53, 255, 208, 0.05); color: var(--bb-ink); border-radius: 50%; cursor: pointer; }
+.build-board .bb-c--free:hover, .build-board .bb-c--free:focus-visible { border-color: var(--bb-glow); background: rgba(53, 255, 208, 0.14); outline: none; }
+.build-board .bb-c--taken { background: rgba(159, 220, 255, 0.22); color: var(--bb-hi); cursor: default; }
+.build-board .bb-c--locked { opacity: 0.4; border-style: dashed; cursor: not-allowed; }
+.build-board .bb-c--plaza, .build-board .bb-c--entry { border-radius: 0; border-style: dotted; color: var(--bb-dim); font-size: 8px; cursor: default; background: none; }
+.build-board .bb-c.bb-at { border-color: var(--bb-accent); box-shadow: inset 0 0 0 2px var(--bb-accent); color: var(--bb-accent); }
+.build-board .bb-why { font-size: 10px; line-height: 1.4; color: var(--bb-dim); max-width: 156px; }
+@media (max-width: 640px) { .build-board .bb-colony { grid-template-columns: minmax(0, 1fr); } .build-board .bb-grid--colony { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+

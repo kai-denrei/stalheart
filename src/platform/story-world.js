@@ -16,7 +16,8 @@ const STORY_WORLD_SOUNDS = Object.freeze({ ...STORY_SOUNDS, ...LASER_AUDIO, ...v
 export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode, withBaseLayout, baseLayoutMode, BASE_LAYOUT_DEFAULT, stalheartEntry } from '../content/base-layout.js';
 import { gantryMode } from './game-flags.js';
-import { COLONY_CELLS, COLONY_GANTRY } from '../content/dome-city.js';
+import { COLONY_CELLS, COLONY_GANTRY, domeId, domeFiles } from '../content/dome-city.js';
+import { COLONY } from '../content/colony.js';
 import { createGantryDrive } from '../fx/gantry-drive.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
 import { createStoryBase, basisAt } from '../fx/story-base.js';
@@ -262,6 +263,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // THE MOBILE STÅLHEART (2026-11-12 night, the colony on the grid): the KIDOU drives out and prints the domes (src/fx/gantry-drive.js; the
     // programme host hands it the `gantry` steps); none with the rail terraformer or on a plan without the colony's cells, where Isao prints them
     gantry: kidou && plan.islands.some((i) => i.cell) ? createGantryDrive({ base, cells: COLONY_CELLS, tune: COLONY_GANTRY, split: print.split }) : null,
+    // THE COLONY'S CELLS (2026-11-12 night): the cells this plan holds, and a cell given its kind's module before its print (the board's pick)
+    colony: { cells: COLONY_CELLS.filter((c) => plan.structures.some((x) => x.id === domeId(c.id))), assign: (cell, kind) => !!COLONY.kinds[kind] && base.assign(domeId(cell), domeFiles(COLONY.kinds[kind].module)) },
     // A STRUCTURE STANDS (the owner's note of 2026-11-07: the bridges follow their domes): its record is mounted, its holder shown (a pending
     // piece waits hidden at zero, a burned one is concealed) and no print of it is under way (the wire, or the skin rising over it), so a bridge
     // never starts toward a dome still printing; the programme host and the build board hand it to `when.stand` as `standing`

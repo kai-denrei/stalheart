@@ -3210,8 +3210,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  } else if(args.includes('--dome-print')) {
  // THE KIDOU PRINTS THE GRID (2026-11-12 night, the colony on the grid; design docs/superpowers/specs/2026-11-12-colony-layout-design.md 3.6; src/fx/gantry-drive.js):
  // the grown base the tutorial ends on (?skip=sector-1) has none of the seven cells and six bridges standing and the KIDOU parked on the plaza; sector 1
- // held by the ledger's defender, its CONTINUE opens the board before sector 2, which deals dome-nw and not dome-w (the corner rule), picked by its key
- // and paid; sector 2 kept quiet; dome-sw bought through the programme. The gantry drives out to NW through W's empty cell, straddles it (the cell's centre
+ // held by the ledger's defender, its CONTINUE opens the board before sector 2, whose COLONY row (2026-11-12 night, stage 2) deals the six kinds, W
+ // locked by the corner rule on its map: RESEARCH picked by its key (W), proposing NW, and paid; sector 2 kept quiet; SW bought as a HABITAT through
+ // the board's test hand. The gantry drives out to NW through W's empty cell, straddles it (the cell's centre
  // under its tool), prints the island and the dome to its tool's reach (a still, artifacts/browser/dome-print-mid.png), hands the mast to Isao and drives
  // home; then SW; then dome-w (bought once both its corners stand) and the two bridges of the west column after it, by Isao, with the gantry home
  // (artifacts/browser/dome-print-end.png)
@@ -3232,17 +3233,19 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`document.querySelector('.sdb-acts [data-act=continue]').click()`);
  await until(`${T}.state().board.open`,8000).catch(async()=>assert.fail(`CONTINUE opens the build board (${JSON.stringify((await st()).board)})`));
  const bd=(await st()).board;console.log(`  board before sector ${bd.n}: bank ${bd.bank} kg; ${bd.offers.map(o=>`${o.label} ${o.price} kg`).join(' · ')}`);
- const dn=bd.offers.find(o=>o.id==='build:dome-nw');assert(dn,`the board deals dome-nw (${bd.offers.map(o=>o.id)})`);assert(!bd.offers.some(o=>o.id==='build:dome-w'),'not dome-w before its corners stand');
+ console.log(`  THE COLONY: ${bd.colony.map(o=>`${o.label} ${o.price} kg -> ${o.cell}${o.suggested?' (Isao)':''}`).join(' · ')}; cells ${bd.cells.map(c=>`${c.id}:${c.state}`).join(' ')}`);
+ const dn=bd.colony.find(o=>o.kind==='research');assert(dn&&dn.cell==='nw',`the row deals RESEARCH, proposing NW (${JSON.stringify(bd.colony)})`);assert.equal(bd.cells.find(c=>c.id==='w')?.state,'locked','W locked: the corner rule');
  assert(dn.price<=bd.bank,`the bank buys it (${bd.bank} kg)`);
+ await until(`(()=>{const b=${T}.state().board;return b.thumbs>=b.offers.length+b.colony.length;})()`,8000).catch(()=>{});
  current='dome-print-board';await finish();
  const key=async(k)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code:/^\d$/.test(k)?'Digit'+k:k,text:/^\d$/.test(k)?k:undefined});await send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code:/^\d$/.test(k)?'Digit'+k:k});await delay(120);};
- await key(String(bd.offers.indexOf(dn)+1));
- assert.deepEqual((await st()).board.picked,['build:dome-nw'],'dome-nw picked by its key');
+ await key('w');
+ assert.deepEqual((await st()).board.picked,['dome:research'],'RESEARCH picked by its key');
  const bank0=bd.bank;await key('Enter');
  await until(`!${T}.state().board.open && ${T}.state().sector.n===2`,15000).catch(async()=>assert.fail(`ENTER orders and sector 2 begins (${JSON.stringify((await st()).board)})`));
  await evaluate(`${T}.sectorQuiet(true)`);mark('sector 2, quiet');
- {const s=await st();assert(P(s).bought.includes('dome-nw'),'dome-nw bought on the programme');assert(bank0-s.biomass>=dn.price-1,`paid at the pick (${bank0} -> ${s.biomass})`);}
- assert.equal(await evaluate(`${T}.programmeBuy('dome-sw')`),true,'dome-sw bought through the programme');
+ {const s=await st();assert(P(s).bought.includes('dome-nw')&&P(s).kinds.nw==='research','NW bought as RESEARCH');assert(bank0-s.biomass>=dn.price-1,`paid at the pick (${bank0} -> ${s.biomass})`);}
+ assert.equal(await evaluate(`${T}.board.dome('sw','habitat')`),true,'SW bought as a HABITAT');
  // one cell, the whole trip: out, the straddle, the print to the tool's reach, the mast handed to Isao, home
  const trip=async(cell,stop,still,facing)=>{
   await until(`${T}.state().programme.active==='dome-${cell}'`,600000).catch(async()=>assert.fail(`the programme begins dome-${cell} (${JSON.stringify(P(await st()))})`));const a=Date.now();mark(`dome-${cell} begins`);
@@ -3262,7 +3265,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-nw')?.visible===true`,30000).catch(async()=>assert.fail(`dome-nw shown (${JSON.stringify(domes(await st()))})`));
  await trip('sw',[-70.2,67.6],false,[0,1]);
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-sw')?.visible===true`,30000).catch(()=>{});
- assert.equal(await evaluate(`${T}.programmeBuy('dome-w')`),true,'dome-w bought once its corners stand');
+ assert.equal(await evaluate(`${T}.board.dome('w','biosphere')`),true,'W bought as the BIOSPHERE once its corners stand');
  await trip('w',[-67.6,0],false,[-1,0]);
  for(const b of ['bridge-nw-w','bridge-w-sw'])await until(`${T}.state().programme.printed.includes('${b}')`,300000).catch(async()=>assert.fail(`${b} prints by itself after both domes (${JSON.stringify(P(await st()))})`));
  mark('the west column\'s bridges stand');
@@ -3270,7 +3273,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert(pr.indexOf('dome-nw')<pr.indexOf('dome-sw')&&pr.indexOf('dome-sw')<pr.indexOf('dome-w')&&pr.indexOf('dome-w')<pr.indexOf('bridge-nw-w'),'NW, SW, W, then the bridges');
   await until(`['dome-nw','dome-sw','dome-w','bridge-nw-w','bridge-w-sw'].every(id=>(${T}.state().storyLod||[]).find(l=>l.id===id)?.visible)`,30000).catch(()=>{});
   assert.deepEqual(domes(await st()).filter(d=>d.visible).map(d=>d.id).sort(),['bridge-nw-w','bridge-w-sw','dome-nw','dome-sw','dome-w'],'the west column and its two bridges stand, nothing else');
-  const said=await evaluate('window.__seen.briefs');console.log(`  Isao: ${JSON.stringify(said.filter(b=>/DOME|BRIDGE/i.test(b)))}`);}
+  const said=await evaluate('window.__seen.briefs');console.log(`  Isao: ${JSON.stringify(said.filter(b=>/DOME|BRIDGE/i.test(b)))}`);
+  // each cell wears its kind's module (src/fx/story-base.js assign)
+  const files=(id)=>(s.storyLod||[]).find(l=>l.id===id)?.files?.far;
+  for(const [cell,kind] of [['nw','research'],['sw','habitat'],['w','biosphere']])assert.equal(files(`dome-${cell}`),`assets/models/dome-colony/${kind}_d0_lod2.glb`,`${cell} wears the ${kind} dome`);}
  await frameCell('dome-w',9,11);await delay(2500);
  current='dome-print-end';await finish();
  } else if(args.includes('--dome-look')) {

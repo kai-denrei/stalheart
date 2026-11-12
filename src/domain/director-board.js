@@ -128,9 +128,9 @@ export function directorBoard(t, { doorAt = t.sectorDoor.earliest } = {}) {
   if (t.strike) prints.push({ id: 'isao-strike', col: `s:${t.strike.minSector}`, to: endCol, label: 'ISAO\'S MISSILE', sub: `once a run, from sector ${t.strike.minSector}`, rule: `a door under ${t.strike.gateShare} of its hp, ${t.strike.alive}+ bodies, the hull on screen`, when: { minSector: t.strike.minSector, gateShare: t.strike.gateShare, alive: t.strike.alive }, tags: ['once'], src: [{ file: PROGRAMME_FILE, find: 'export const ISAO_STRIKE' }] });
 
   const boardFrom = (s) => Math.max(2, s.when.sector ?? 2), price = (s) => t.buildBoard?.structures?.[s.id]?.price ?? null;
-  const offers = t.programme.filter((s) => s.board && !s.first).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: `${price(s)} kg · offered from sector ${boardFrom(s)}`,
+  const offers = t.programme.filter((s) => s.board && !s.first).map((s) => ({ id: `board-${s.id}`, col: `s:${boardFrom(s)}`, to: endCol, label: s.label.toUpperCase(), sub: s.cell ? `cell ${s.cell.toUpperCase()}, priced by the kind chosen for it (default ${s.kind}) · offered from sector ${boardFrom(s)}` : `${price(s)} kg · offered from sector ${boardFrom(s)}`,
     rule: `on THE BUILD BOARD before sector ${boardFrom(s)} (the debrief's CONTINUE); once bought Isao prints it ${whenText(s.when)}`, when: s.when, tags: ['bought on the board', s.passable && 'passable', s.when.manned && 'after manned passes'].filter(Boolean), step: s.id, perk: s.perk,
-    src: [{ file: PROGRAMME_FILE, find: stepFind(s) }, { file: 'src/content/build-board.js', find: s.cell ? '...Object.fromEntries(COLONY_CELLS.map((c) =>' : `${/^\w+$/.test(s.id) ? s.id : `'${s.id}'`}: Object.freeze({ price` }] }));   // a dome's key is quoted (2026-11-07); the grid's cells are generated (2026-11-12 night)
+    src: [{ file: PROGRAMME_FILE, find: stepFind(s) }, (s.cell ? { file: 'src/content/colony.js', find: 'kinds: Object.freeze({' } : { file: 'src/content/build-board.js', find: `${/^\w+$/.test(s.id) ? s.id : `'${s.id}'`}: Object.freeze({ price` })] }));   // a dome's key is quoted (2026-11-07); a cell is priced by the kind it is bought as (THE COLONY's row, 2026-11-12 night)
 
   // DROPS & COMPANIONS: the day-gated moments, the day rule written on them
   const dayS = t.storyDay?.seconds ?? 30;

@@ -67,6 +67,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   // A LANDMARK WITH A RIG (the owner's note of 2026-11-07, call C): a tier no clip moves, posed by its author's adapter instead (s.rig 'kidou', the
   // wheeled Stålheart behind ?gantry=kidou: src/fx/kidou-rig.js), one per mounted tier, built at mount and ticked with the mixers
+  const assigned = new Map();   // landmark id -> the structure as assigned another pair of files (a colony cell's kind, assign)
   const rigs = [], RIGS = { kidou: createKidouRig }, rigsOf = new Map(), rigPose = new Map();   // by landmark id, and the pose the drive last set (a tier mounted later takes it)
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
   let alsoNear = null;   // more friendlies a door opens for, beside the hull (nearAlso: the Yushi Rover, round 8 note 7)
@@ -208,7 +209,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     for (const l of lod) {
       const d = l.at.distanceTo(eye); l.d = d;
       if (!l.holder.visible) continue;   // a hidden landmark (not yet printed, not yet revealed) never fetches its near tier
-      if (!l.near && !l.loading && d < lodSwitch * lodHyst) { l.loading = true; const s = plan.structures.find((x) => x.id === l.id); load(s.asset).then((gltf) => { if (!gltf) return; const near = mount(s, gltf, l.holder); near.visible = false; return Promise.resolve(warm?.compile(near)).then(() => { l.near = near; }); }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
+      if (!l.near && !l.loading && l.far && d < lodSwitch * lodHyst) { l.loading = true; const s = assigned.get(l.id) ?? plan.structures.find((x) => x.id === l.id), gen = l.gen; load(s.asset).then((gltf) => { if (!gltf || l.gen !== gen) return; const near = mount(s, gltf, l.holder); near.visible = false; return Promise.resolve(warm?.compile(near)).then(() => { l.near = near; }); }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
       if (!l.near) continue;
       const near = l.shown === 'near' ? d < lodSwitch * lodHyst : d < lodSwitch;
       l.shown = near ? 'near' : 'far'; if (prints.holds(l.id)) continue;   // mid-print the tiers hold: hidden under the wire, or the one skinning
@@ -264,6 +265,20 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       place(r.holder, x, z, st.y, heading, st.scale, st.tilt ?? 0, st.lift ?? 0, st.scaleY ?? st.scale);
       r.holder.userData.placed = r.holder.matrix.clone(); r.box = null; r.foot = null;
       const l = lod.find((q) => q.id === id); if (l) l.at.setFromMatrixPosition(r.holder.matrix);
+      return true;
+    },
+    // A COLONY CELL TAKES ITS KIND (2026-11-12 night, the board's pick, src/fx/build-board.js): the landmark's files swapped before its print (the
+    // default city's module mounted at load; the kind's far tier mounted in its place, the near tier fetched as before when the camera comes close).
+    // The dropped tiers leave the holder and free their geometry; the far tier's load lands later than the call, so a print begun meanwhile mounts it
+    // at the height it reached (kOf). Same files: nothing happens
+    assign: (id, files) => {
+      const st = plan.structures.find((q) => q.id === id), r = records.get(id), l = lod.find((q) => q.id === id); if (!st || !r || !l) return false;
+      const cur = assigned.get(id) ?? st; if (cur.asset === files.asset && cur.far === files.far) return true;
+      const s2 = { ...st, ...files }; assigned.set(id, s2);
+      for (const t of [l.far, l.near]) if (t) { t.removeFromParent(); t.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+      l.far = null; l.near = null; l.loading = false; l.shown = 'far'; l.files = { far: files.far, near: files.asset }; r.foot = null; r.box = null; l.gen = (l.gen ?? 0) + 1;
+      const gen = l.gen;
+      load(files.far).then((gltf) => { if (!gltf || l.gen !== gen) return; l.far = mount(s2, gltf, r.holder); const k = kOf(grown.structures, id, st); if (k > 0 && k < 1) printAt(id, l, k); }).catch((e) => errors.push(`${id} assign: ${e}`));
       return true;
     },
     rig: (id, pose) => { rigPose.set(id, { ...(rigPose.get(id) ?? {}), ...pose }); for (const r of rigsOf.get(id) ?? []) r.set(pose); return (rigsOf.get(id) ?? []).map((r) => r.state()); },
