@@ -204,6 +204,19 @@ it 1.5 s; the mechs could not be hurt, the player's shells hurt no friendly, and
 - **Readouts.** The strip's row reads THE KING and its points; while a nuke is marked a second row counts down to impact; the seat's MK-9 line reads
   MARKED · IMPACT IN n S; the THE KING card adds the two actions (content, `ARENA_KING.hint`). Isao's recorded lines are unchanged.
 
+Measured with harness hands (`--king`, headless, two runs): dead 74.6 s and 80.3 s of game clock after the seat; three marked nukes each run, all on it
+(31.6 / 2.9 / 11.3 m and 11.1 / 10.1 / 52.6 m off, 54 points each: 162 of 180), everything else 17.8 and 17.2 (three nukes leave it at about one point); it
+targeted the hull and two or three of the four Ridgebacks; 7 and 6 tells, 3 and 0 charges reaching a mech, none the hull; a 40 mm 10 m off stopped it and it
+moved 9.7 / 8.9 m away from the burst; **the first run lost two Ridgebacks, both to the harness's own nukes** (it marks on the King without looking at who
+stands there), the second none; no hull lost. Calls this raises (none blocks the fight):
+
+1. **The mechs cannot clear a marker in time** when the King is on them: 0.4 cells/s for 8 s is 32 m against a 70 m zone. Either a faster retreat, a
+   smaller friendly radius for the nuke, or keep it as the price of a careless mark (today's).
+2. **The charges mostly miss the hull**: Isao's lure outruns the locked point. If the hull should feel the King, a shorter tell or a charge that tracks.
+3. **The tell is faint in the gunship's thermal optic** (the rings are drawn for the colour view); the arms reaching and the callout carry it.
+4. **The seat's footer** still describes the MK-9 as paint-then-release (it is shared with every other seat); THE KING card says mark.
+5. **Not measured**: a human player's fight; a lost hull during the fight (the next hull deploys at the base, far from the arena).
+
 ## O. Landing and opening
 
 - **O1 How forgiving the flown landing is.** Entry 300-400 m, sink 30-40 m/s, fuel 18-22 s; CLEAN needs sink under 2.5 m/s, drift under 1.5, tilt under 4 degrees. About half the seeds drift toward the mouth.
