@@ -4,8 +4,9 @@
 //   gantryStop(cells, tune, id) -> { points, heading }: the road from home to the stop where the cell's centre stands under the tool: home, the
 //     `via` cell's centre if any (a corner is reached through its column's middle), then the stop, `tune.tool` m short of the centre along the
 //     last leg's heading (the gantry straddles the dome with its beams along that leg)
-//   timeline(points, from, to, tune) -> legs: for each leg a turn in place to the nearer of driving on or reversing along it, then the drive;
-//     `to` (a yaw, or null) a last turn in place at the end (home: back to its parked heading)
+//   timeline(points, from, to, tune) -> legs: for each leg a turn in place to the nearer of driving on or reversing along it (driving on at a tie),
+//     then the drive; `tune.arrive` makes the last leg drive on (the road out: it arrives facing the cell); `to` (a yaw, or null) a last turn in place
+//     at the end (home: back to its parked heading)
 //   poseAt(legs, t) -> { x, z, yaw, mode: 'turn' | 'drive' | 'park', distance, turnAngle, speed, omega, done }: where it is t seconds in; distance
 //     the signed metres driven so far (the wheels' roll), turnAngle the signed radians turned so far
 //   toolShare(split, tune) -> the share of a dome step's print (k, src/fx/base-print.js: the island takes `split`, the structure the rest) the
@@ -29,7 +30,9 @@ export function timeline(points, from, to, tune) {
   for (let i = 1; i < points.length; i++) {
     const b = points[i], dx = b[0] - at[0], dz = b[1] - at[1], len = Math.hypot(dx, dz);
     if (len < 1e-6) continue;
-    const ahead = Math.atan2(dx, dz), back = wrap(ahead + Math.PI), rev = Math.abs(wrap(back - yaw)) < Math.abs(wrap(ahead - yaw));
+    // the last leg of a road out arrives facing along it (`arrive`): the tool stands ahead of the root, so a reversed arrival would put it behind the
+    // cell's centre (the first --dome-print run reached NW backwards, the tool 5.2 m short)
+    const last = i === points.length - 1, ahead = Math.atan2(dx, dz), back = wrap(ahead + Math.PI), rev = !(last && tune.arrive) && Math.abs(wrap(back - yaw)) + 1e-9 < Math.abs(wrap(ahead - yaw));
     turnTo(rev ? back : ahead, at);
     const dur = len / tune.speed;
     legs.push({ kind: 'drive', t0: t, t1: t + dur, a: at, b, yaw, sign: rev ? -1 : 1, dist0: dist, len });

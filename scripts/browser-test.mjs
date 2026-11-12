@@ -3244,11 +3244,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const s=await st();assert(P(s).bought.includes('dome-nw'),'dome-nw bought on the programme');assert(bank0-s.biomass>=dn.price-1,`paid at the pick (${bank0} -> ${s.biomass})`);}
  assert.equal(await evaluate(`${T}.programmeBuy('dome-sw')`),true,'dome-sw bought through the programme');
  // one cell, the whole trip: out, the straddle, the print to the tool's reach, the mast handed to Isao, home
- const trip=async(cell,stop,still)=>{
+ const trip=async(cell,stop,still,facing)=>{
   await until(`${T}.state().programme.active==='dome-${cell}'`,600000).catch(async()=>assert.fail(`the programme begins dome-${cell} (${JSON.stringify(P(await st()))})`));const a=Date.now();mark(`dome-${cell} begins`);
   {const g=await G();assert(g.phase==='out'&&g.cell===cell,`the gantry sets out for ${cell} (${JSON.stringify(g)})`);}
   await until(`${T}.state().programme.colony?.gantry?.phase==='print'`,240000).catch(async()=>assert.fail(`the gantry reaches ${cell} (${JSON.stringify(await G())})`));const b=Date.now();
-  {const g=await G();console.log(`  at ${cell}: ${JSON.stringify(g)} after ${((b-a)/1000).toFixed(1)} s of wall`);assert(Math.abs(g.x-stop[0])<0.05&&Math.abs(g.z-stop[1])<0.05,`straddling ${cell} at (${stop}) (${g.x}, ${g.z})`);}
+  {const g=await G();console.log(`  at ${cell}: ${JSON.stringify(g)} after ${((b-a)/1000).toFixed(1)} s of wall`);assert(Math.abs(g.x-stop[0])<0.05&&Math.abs(g.z-stop[1])<0.05,`straddling ${cell} at (${stop}) (${g.x}, ${g.z})`);assert(Math.abs(g.heading[0]-facing[0])<0.01&&Math.abs(g.heading[1]-facing[1])<0.01,`facing ${cell}, the tool over its centre (${g.heading})`);}
   if(still){await until(`(p=>p.print?.step==='dome-${cell}'&&p.print.k>=0.45)(${T}.state().programme)`,120000).catch(async()=>assert.fail(`the print under the gantry (${JSON.stringify(P(await st()).print)})`));
    await frameCell(`dome-${cell}`,6,7);await delay(1500);const s=await st();console.log(`  mid-print: ${JSON.stringify(P(s).print)}; ${JSON.stringify(P(s).colony.gantry)}`);current='dome-print-mid';await finish();await evaluate(`${T}.focusHeart()`);}
   await until(`${T}.state().programme.colony?.gantry?.phase==='back'`,180000).catch(async()=>assert.fail(`the gantry hands over and heads home (${JSON.stringify(await G())})`));const c=Date.now();
@@ -3258,12 +3258,12 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   {const g=await G();assert(Math.abs(g.x-4.5)<0.05&&Math.abs(g.z)<0.05&&Math.abs(g.heading[1]-1)<0.01,`parked on the plaza (${JSON.stringify(g)})`);}
   mark(`dome-${cell} done: out ${((b-a)/1000).toFixed(1)} s, print to the hand-over ${((c-b)/1000).toFixed(1)} s, home ${((d-c)/1000).toFixed(1)} s of wall`);
  };
- await trip('nw',[-70.2,-67.6],true);
+ await trip('nw',[-70.2,-67.6],true,[0,-1]);
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-nw')?.visible===true`,30000).catch(async()=>assert.fail(`dome-nw shown (${JSON.stringify(domes(await st()))})`));
- await trip('sw',[-70.2,67.6],false);
+ await trip('sw',[-70.2,67.6],false,[0,1]);
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-sw')?.visible===true`,30000).catch(()=>{});
  assert.equal(await evaluate(`${T}.programmeBuy('dome-w')`),true,'dome-w bought once its corners stand');
- await trip('w',[-67.6,0],false);
+ await trip('w',[-67.6,0],false,[-1,0]);
  for(const b of ['bridge-nw-w','bridge-w-sw'])await until(`${T}.state().programme.printed.includes('${b}')`,300000).catch(async()=>assert.fail(`${b} prints by itself after both domes (${JSON.stringify(P(await st()))})`));
  mark('the west column\'s bridges stand');
  {const s=await st(),p=P(s),pr=p.printed;console.log(`  printed ${pr.join(',')}; ${JSON.stringify(domes(s))}`);

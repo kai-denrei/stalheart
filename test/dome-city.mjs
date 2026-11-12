@@ -130,7 +130,7 @@ for (const c of COLONY_CELLS) {
   const tip = [stop.points.at(-1)[0] + stop.heading[0] * COLONY_GANTRY.tool, stop.points.at(-1)[1] + stop.heading[1] * COLONY_GANTRY.tool];
   assert.ok(Math.hypot(tip[0] - c.x, tip[1] - c.z) < 1e-6, `${c.id}: the cell's centre under the tool`);
   const obstacles = [...city.islands.filter((i) => !free.has(i.id)).map((i) => ({ id: i.id, ...slab(i) })), ...boxes.filter((b) => !free.has(b.island) && !free.has(b.id) && !(b.id.startsWith('bridge-') && [c.id, c.via].some((x) => x && b.id.split('-').slice(1).includes(x))))];
-  const out = timeline(stop.points, yawOf(COLONY_GANTRY.heading), null, COLONY_GANTRY), back = timeline(stop.points.slice().reverse(), out.end.yaw, yawOf(COLONY_GANTRY.heading), COLONY_GANTRY);
+  const out = timeline(stop.points, yawOf(COLONY_GANTRY.heading), null, { ...COLONY_GANTRY, arrive: true }), back = timeline(stop.points.slice().reverse(), out.end.yaw, yawOf(COLONY_GANTRY.heading), COLONY_GANTRY);
   for (const legs of [out, back]) for (let t = 0; t <= legs.end.t + 0.5; t += 0.5) {
     const p = poseAt(legs, t), f = [Math.sin(p.yaw), Math.cos(p.yaw)], r = [f[1], -f[0]];
     for (let u = -1; u <= 1; u += 0.125) for (const v of [-1, -0.5, 0, 0.5, 1]) {

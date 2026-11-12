@@ -23,7 +23,7 @@ export function createGantryDrive({ base, cells, tune, split = () => 0.3, id = '
       const stop = gantryStop(cells, tune, step.cell); if (!stop) return false;
       const s = split(step), share = toolShare(s, tune);
       job = { step, stop, progress, hand, split: s, share, k: 0 };
-      begin(timeline(stop.points, at.yaw, null, tune), 'out');
+      begin(timeline(stop.points, at.yaw, null, { ...tune, arrive: true }), 'out');
       return true;
     },
     tick(dt) {

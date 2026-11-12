@@ -18,7 +18,7 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
 }
 // the timing: a quarter turn in place at 0.39 rad/s, the drive at 4 m/s; a turn picks driving on or reversing, so no turn passes a quarter
 {
-  const s = gantryStop(COLONY_CELLS, T, 'nw'), legs = timeline(s.points, yawOf(T.heading), null, T);
+  const s = gantryStop(COLONY_CELLS, T, 'nw'), legs = timeline(s.points, yawOf(T.heading), null, { ...T, arrive: true });
   assert.deepEqual(legs.map((l) => l.kind), ['turn', 'drive', 'turn', 'drive']);
   for (const l of legs.filter((x) => x.kind === 'turn')) assert.ok(Math.abs(l.yaw1 - l.yaw0) <= Math.PI / 2 + 1e-9, 'no turn over a quarter');
   assert.ok(near(legs[0].t1, Math.PI / 2 / T.turn), 'a quarter in about 4 s');
@@ -28,6 +28,10 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
   assert.equal(mid.mode, 'drive'); assert.ok(near(mid.x, 4.5 - 8) && near(mid.z, 0), 'two seconds down the road, eight metres');
   assert.ok(near(Math.abs(mid.distance), 8) && near(Math.abs(mid.speed), 4));
   const turning = poseAt(legs, 1); assert.equal(turning.mode, 'turn'); assert.ok(near(turning.x, 4.5) && turning.omega !== 0, 'turning in place');
+  // every road out arrives facing its last leg, the tool over the centre (the first --dome-print run arrived at NW backwards)
+  for (const c of COLONY_CELLS) { const st = gantryStop(COLONY_CELLS, T, c.id), out = timeline(st.points, yawOf(T.heading), null, { ...T, arrive: true }), h = headingOf(out.end.yaw);
+    assert.ok(near(h[0], st.heading[0], 1e-9) && near(h[1], st.heading[1], 1e-9), `${c.id}: arrives facing its last leg (${h})`);
+    for (const l of out.filter((x) => x.kind === 'turn')) assert.ok(Math.abs(l.yaw1 - l.yaw0) <= Math.PI / 2 + 1e-9, `${c.id}: no turn over a quarter`); }
   const end = poseAt(legs, legs.end.t + 1); assert.equal(end.mode, 'park'); assert.equal(end.done, true); assert.ok(near(end.x, -70.2) && near(end.z, -67.6));
   // home: the road reversed and a last turn to its parked heading
   const back = timeline(s.points.slice().reverse(), legs.end.yaw, yawOf(T.heading), T), home = poseAt(back, back.end.t);
@@ -49,7 +53,7 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
   assert.equal(g.home(), false); assert.equal(g.state().phase, 'out');
   for (let t = 0; t < 25; t += 0.1) g.tick(0.1);
   assert.equal(g.state().phase, 'print', `at the cell (${JSON.stringify(g.state())})`);
-  assert.ok(near(g.state().x, -67.6, 1e-3) && near(g.state().z, 0, 1e-3), 'straddling W');
+  assert.ok(near(g.state().x, -67.6, 1e-3) && near(g.state().z, 0, 1e-3) && near(g.state().heading[0], -1, 1e-3), 'straddling W, facing it');
   assert.ok(moves.every(([id]) => id === 'stalheart') && poses.some((p) => p.mode === 'turn') && poses.some((p) => p.mode === 'drive'), 'it turned and drove, the Stålheart moved');
   const share = toolShare(0.3, T);
   for (let t = 0; t < 30 * share + 0.5; t += 0.1) g.tick(0.1);
