@@ -226,7 +226,12 @@ browser suites named in `docs/STATE.md` (the section "THE COLONY ON THE GRID").
 - **Not built**: the antenna close-up after a RESEARCH dome's print (it is the radar step's; the grid has no radar step); the mech cavalry's arrival
   point is unchanged.
 
-**Noticed, not this build's**: the HUD's bank shows unrounded kilos on these pages (13533.2764...kg).
+**Consequences found by the suites**: on a finished base (SKIP TUTORIAL, a stage link) the default city's BIOSPHERE dome pays the farm perk from
+the first frame, so K0-TECH is born there (it was not on the round-8 city, where the farm was a later card); `--reinforcements` now counts the
+companions beside the four Ridgebacks on the radar. A briefing card left open holds the story's clock, and with it the gantry's drive.
+
+**Noticed, not this build's**: the HUD's bank shows unrounded kilos on these pages (13533.2764...kg); `--story-world` is red on the base a8839146
+at "spent cases fell from the Rotor in sentry control", as on this branch.
 
 ## O. Landing and opening
 

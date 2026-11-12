@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "2026-11-12-the-colony-on-the-grid-the-kidou-prints-the-domes-the-player-chooses",
+  "date": "2026-11-12",
+  "type": "change",
+  "status": "accepted",
+  "title": "THE COLONY ON THE GRID: the KIDOU prints the domes the player chooses",
+  "context": "Owner, 2026-11-12: \"the colony, we want to overhaul the layout to be more like this [dome-city: a 3x3 grid of labelled domes joined by bridges, with four courts] which probably necessitates updating stalheart to its mobile version [stalheart-kidou]\"; \"the colony layout, Stalheart builds the dome, the player chooses the order of what goes where, and some are meaningful, e.g. getting replenishment shells, or the radar calling in the Mech cavalry, or the catapult launching an automated SOL.\" Built overnight while he slept from docs/superpowers/specs/2026-11-12-colony-layout-design.md on branch colony-grid (unpushed), in three stages, the calls for his review in docs/DECISIONS.md (The colony build).",
+  "outcome": "BUILT. Stage 1 (bfec8922, 6d5f9439): the dome base is the 3 x 3 grid at 70.2 m from one table (src/content/dome-city.js COLONY_CELLS: seven cells, the plaza and the entry empty, six bridges in a U, the courts and the outer belt; the radar, armory, farm, chip plant and assembly line dropped); the KIDOU is its default Stålheart (?gantry=rail, ?base=classic untouched); a bought cell is the gantry's job (src/fx/gantry-drive.js, the road pure in src/domain/gantry-route.js): drive the grid's lines at 4 m/s, straddle the cell facing it, print the island and dome to the tool's reach (10.5 m), hand the mast to Isao, drive home; when.home holds the next dome and the bridges; the corner rule is when.stand. Stage 2 (6c91c781, 72b71562): THE COLONY row on the build board (Q-Y) and the 3 x 3 map (click or Tab), a kind each (src/content/colony.js, src/domain/colony.js), one dome a board, the cell bought as its kind and its module swapped (story-base assign). Stage 3 (38bef4fa): LOGISTICS makes the pad at its foot the shells' pad (and a flare restock), RESEARCH's uplink books the Ridgebacks, the ARC-01 alone automates SOL, each with its caption; the other kinds keep the dropped buildings' perks; the sentry cap's groups pay by perk.",
+  "alternatives": [
+    "The design's 0.9 m clearance: measured in the engine the frame clears a dome by 4.5 m a side and 5.5 m overhead; it is the tool that stops at 11.26 m, so Isao prints the mast (the design's fallback) rather than raising the lift past the author's range.",
+    "The design's top-down site picker over the base: the picker is a 3 x 3 map on the build board itself.",
+    "The launcher at (-36, -46): its 46 m rail ran onto the gantry's middle road; (-36, -52).",
+    "Cosmetic FABRICATION, BIOSPHERE and POWER domes: they keep the assembly line's, the farm's and the chip plant's perks instead, since the grid drops those buildings.",
+    "The corner rule on purchases: it waits until the corners stand, so the gantry never crosses a dome."
+  ],
+  "evidence": [
+    "Engine measure (the KIDOU LOD1 posed by applyKidou, three's GLTFLoader in node): frame underside 28.80 m, legs' inner faces +-13.98 m, tool tip 3.21 m parked, 3.57 printing, 11.26 m at the travel height; the domes at 0.65 +-9.49 m, 23.3 m to the cradle.",
+    "Draw calls, --dome-look at 1440 x 987: base camera 1,513 on a8839146, 1,291 on the grid; from above 2,649 against 1,235.",
+    "--colony-grid PASS 6 on e40affc3's snapshot (board, board-picked, two-domes, top, three-quarter, three-quarter-back): no pad, no call and no automated SOL before; LOGISTICS on SE and ORDER by real clicks (3,200 kg), printed by the KIDOU, its caption, the rack refilled on its pad; RESEARCH on NW, its caption, the call booked (day 14, due 22); the hull by real keys through the four courts and under the SW-S bridge; two manned passes with SOL manual, the catapult with its caption, SOL-88 on its own.",
+    "--dome-print PASS 3 (stage 3 snapshot): RESEARCH on NW by its key off the colony row; the KIDOU out 43 s to a corner and 22 s to W (page time), print to the hand-over about 19 s, facing the cell; NW, SW, W, then both west bridges by Isao; each cell wearing its kind's module.",
+    "Also green: --base-look 1 and --dome-look 17 (stage 1), --board 2 (classic), --grow 16, --rover 5, --dog-scout 7, --chapters 8, --skip-tutorial 11, --day-42 9, --reinforcements 7, --colony 9 (classic), --settling 4. --story-world red at 'spent cases fell from the Rotor in sentry control' after 15 PASS, the same on the base a8839146.",
+    "npm test 346 programs, npm run check and npm run build green at each stage's commit."
+  ],
+  "supersedes": []
+}

@@ -57,8 +57,12 @@ SE bought as LOGISTICS by real clicks, printed by the KIDOU, its caption, the ra
 (day 13, due 21); on the finished base the hull driven by real keys through the four courts and under the SW-S bridge, two manned passes with SOL
 still manual, then the catapult printed with its caption and SOL-88 flying on its own.
 
-**Suites** (each on the snapshot of the commit it names): see the stage list in the colony build's log entry
-(`2026-11-12-the-colony-on-the-grid-the-kidou-prints-the-domes-the-player-chooses`).
+**Suites** (APFS snapshots of the branch, 2026-11-12 night): `--colony-grid` PASS 6 (new; the whole of it on e40affc3), `--dome-print` PASS 3
+(rewritten for the KIDOU), `--base-look` 1, `--dome-look` 17, `--grow` 16 (buys S as FABRICATION for the rebuild), `--board` 2 and `--colony` 9 (both
+on `&base=classic` now: the classic colony's cards), `--rover` 5, `--dog-scout` 7, `--chapters` 8, `--skip-tutorial` 11, `--day-42` 9,
+`--reinforcements` 7, `--settling` 4; `--story-world` red at "spent cases fell from the Rotor in sentry control" after 15 PASS, the same on the base
+a8839146. Not run: `--opening`, `--landing`, `--gunship` family, `--antenna-print` (the grid has no radar step). Stills in `.superpowers/colony/`.
+Entry `2026-11-12-the-colony-on-the-grid-the-kidou-prints-the-domes-the-player-chooses`.
 
 ## What landed on 2026-11-12 (THE ECONOMY AT 10x: no start bank, the first wave's bodies as the first harvest, seepage, the rover hunted, the cap 6+2+2)
 
