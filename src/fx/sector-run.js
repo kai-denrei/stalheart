@@ -411,13 +411,14 @@ export function createSectorRun(h) {
     if (phase === 'brief' || phase === 'fighting' || phase === 'secure') poll(dt);
     const t = now();
     if (phase === 'idle') {
-      // THE GRACE WAITS FOR THE PLAYER (flow fixes, 2026-11-13, docs/FLOW.md 5): it runs only while the story is ready (no line, no shot, no screen) and
-      // the hull is not out on Isao's errand (SECTOR_TIMING.firstAwayHops from the heart); SECTOR_TIMING.firstCap seconds after the story first was
-      // ready it opens whatever the player is doing
+      // THE GRACE WAITS FOR THE PLAYER (flow fixes, 2026-11-13, docs/FLOW.md 5): from the story's first ready it runs except while the hull is out on
+      // Isao's errand (SECTOR_TIMING.firstAwayHops from the heart) or a shot, a screen or a pause holds the game (h.graceHeld: C-07's print close-up no
+      // longer eats it; Isao's lines do not hold it: counting only the ready seconds pushed sector 1 to the cap, 249 s); SECTOR_TIMING.firstCap seconds
+      // after the story first was ready it opens whatever the player is doing
       if (readySince === null && !h.ready()) return;
       readySince ??= t;
       const away = (h.hullHops?.() ?? -1) > (SECTOR_TIMING.firstAwayHops ?? Infinity);
-      if (h.ready() && !away) graceRun += dt; else graceAway += dt;
+      if (!away && !h.graceHeld?.()) graceRun += dt; else graceAway += dt;
       if (!h.ready()) return;
       const first = Math.max(1, h.firstSector ?? 1);   // a harness or drawer entry may open the run past the lane (?skip=defence&sector=N)
       doorAt ??= openingDoorAt({ first, earliest: SECTOR_DOOR.earliest, boss: !!story.bossStart });   // ?boss=1 (2026-10-16) opens ON THE BOSS; at or past the earliest the door is that sector, one before it the canyon again (src/domain/sectors.js)
