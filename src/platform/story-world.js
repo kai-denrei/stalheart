@@ -96,6 +96,7 @@ export function readStoryQuery(search) {
     // THE SETTLING (2026-11-08): ?settle=N the seconds before the first contact on the story's own start (null: STORY_SETTLE's); ?first=1 the first orders' card on an acceptance page (a headless page would wait on it)
     settle: Number.isFinite(parseFloat(q.get('settle') ?? '')) ? Math.max(0, parseFloat(q.get('settle'))) : null,
     first: q.get('first') === '1',
+    dog: q.get('dog') === '1',   // THE RECON DOG (2026-11-12): the dog's seat on an acceptance page (one that does not ask surveys at once)
   };
 }
 

@@ -20,7 +20,7 @@ assert.equal(P.order[2], 'k0', 'K0-TECH third (round 6)'); assert.equal(P.trigge
 for (const tr of P.triggers) assert(brief(tr.brief)?.lines.length >= 1, `${tr.brief} is a line of Isao's`);
 for (const u of COMPANIONS.units) assert(brief(u.born)?.lines.length >= 1, `${u.id}'s waking line ${u.born}`);
 assert.equal(K.shot.lock, 5, 'five seconds mandatory'); assert.equal(K.shot.skipKey, ' ', 'then Space skips');
-assert(/feidsDrop\|mechLook\|petPrint\|antennaPrint\)/.test(readFileSync(new URL('../src/td-tab.js', import.meta.url), 'utf8')), 'the print\'s cut is a live shot (the world runs under it), and the antenna\'s (round 4)');
+assert(/feidsDrop\|mechLook\|petPrint\|antennaPrint\|dogScout\)/.test(readFileSync(new URL('../src/td-tab.js', import.meta.url), 'utf8')), 'the print\'s cut is a live shot (the world runs under it), and the antenna\'s (round 4)');
 
 // 2. nextPrint: strictly in order
 assert.equal(nextPrint(['c07', 'k9'], []), 'c07'); assert.equal(nextPrint(['c07', 'k9'], new Set(['c07'])), 'k9'); assert.equal(nextPrint(['c07', 'k9'], ['c07', 'k9']), null);
