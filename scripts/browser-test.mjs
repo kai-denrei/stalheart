@@ -3237,6 +3237,62 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   kills:{gunship:(s1.killsBySrc?.strike??0)-k0,bySrc:Object.fromEntries(Object.entries(s1.killsBySrc??{}).map(([k,v])=>[k,v-(s0.killsBySrc?.[k]??0)]))},keep:{gunSafeCells:GUNSHIP_AUTO.gunSafeCells,nukeSafeCells:GUNSHIP_AUTO.nukeSafeCells}};
  console.log(`GUNSHIP FF ${JSON.stringify(out)}`);
  assert.ok(out.fired>0,`the gunship fired by itself over the escort (${out.fired} rounds)`);
+ } else if(args.includes('--sol-ff')) {
+ // SOL'S AUTOMATED BEAM ON THE TANK, MEASURED (2026-11-13, the small-items brief; modelled on --gunship-ff): the one automated weapon whose footprint
+ // can reach the hull (src/fx/laser-arsenal.js: `candidates` lists the tank, LASER_BURN.tank 1 s inside the footprint, `destroy` -> burnTank -> playerHit('laser')).
+ // The hull stands on open ground beside a gate breach with bodies kept up round it (SOL_ALIVE, default 40) in a ring of 4-7 hops, SOL-88 on auto (?laser=online + laserAuto),
+ // a pass called whenever none is up, for SOL_SPAN wall seconds (default 150). Read through the debugger as --gunship-ff reads: every aim the auto picks (its distance to the hull),
+ // every burn's start, every frame the footprint is computed (does it hold the tank; the contact's closest approach to the hull), every hull hit by source (and the shield state).
+ // Printed as SOL FF. A probe: it asserts only that SOL burned by itself. SOL_DRIVE=1 teleports the hull (placeTank) onto the cell nearest the beam's contact each 700 ms while it
+ // burns, the worst case of a player driving into it
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),SPAN=(+process.env.SOL_SPAN||150)*1000,ALIVE=+process.env.SOL_ALIVE||40,DRIVE=process.env.SOL_DRIVE==='1';
+ const {LASER_AUTO,LASER_GAME}=await import('../src/content/orbital-laser.js');
+ await go('sol-ff',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&laser=online#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===2`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ await evaluate(`${T}.sectorQuiet(true)`);for(let k=0;k<20;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(300);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
+ // the hull beside the gate's breach, outside the walls
+ const S0=(await st()).sector,br=S0.breaches.find(b=>b.side==='gate')??S0.breaches[0];assert.ok(br&&br.cell>=0,`a breach to stand beside (${JSON.stringify(S0.breaches)})`);
+ const open=(r)=>r.cells.filter(c=>!c.rock&&!c.solid).map(c=>c.ci);
+ const near3=open(await evaluate(`${T}.showcase.cellsNear(${br.cell},3)`)).filter(ci=>ci!==br.cell),tankCell=near3[Math.floor(near3.length/2)];assert.ok(tankCell>=0,'an open cell for the hull');
+ await evaluate(`${T}.placeTank(${tankCell})`);await delay(300);
+ const inner=new Set(open(await evaluate(`${T}.showcase.cellsNear(${tankCell},3)`))),ring=open(await evaluate(`${T}.showcase.cellsNear(${tankCell},7)`)).filter(ci=>!inner.has(ci));assert.ok(ring.length>8,`a ring of open ground round the hull (${ring.length} cells)`);
+ const lineOf=(file,needle)=>{const i=readFileSync(file,'utf8').split('\n').findIndex(l=>l.includes(needle));assert.ok(i>=0,`${file}: ${needle}`);return i;};
+ await evaluate('window.__sol={frames:0,withHull:0,tankFrames:0,episodes:[],aims:[],hits:[],minContactM:null,burningFrames:0}');await send('Debugger.enable');
+ const bp=async(file,line,condition)=>{const r=await send('Debugger.setBreakpointByUrl',{urlRegex:file.replace(/[.\/]/g,'\\$&')+'(\\?.*)?$',lineNumber:line,condition});assert.ok(r.locations?.length,`the probe in ${file}:${line+1} is placed (${JSON.stringify(r)})`);};
+ const LA='src/fx/laser-arsenal.js';
+ // every frame the footprint is computed (the burn is lit): does it hold the tank, and the contact's distance to the hull
+ await bp(LA,lineOf(LA,'const things = inFootprint(st.contact, beam.radius, candidates(cU));')+1,
+  'try{const W=window.__sol;if(W){W.frames++;W.cellNow=host.cellAt(cU);const tk=host.tank();if(tk)W.withHull++;if(things.some(t=>t.kind==="tank"))W.tankFrames++;if(tk){const l=Math.hypot(tk[0],tk[1],tk[2])||1,d=Math.hypot(cU[0]-tk[0]/l,cU[1]-tk[1]/l,cU[2]-tk[2]/l)*metres();W.minContactM=W.minContactM==null?d:Math.min(W.minContactM,d);}}}catch(e){window.__solErr=String(e&&e.stack||e)} false');
+ // a beam lit
+ await bp(LA,lineOf(LA,'if (!burningWas) { laser.lay(ground, normal);'),'try{window.__sol&&!burningWas&&window.__sol.episodes.push(performance.now())}catch(e){window.__solErr=String(e)} false');
+ // an aim the auto picked (the densest pile outside every friend's margin): its distance to the hull
+ await bp(LA,lineOf(LA,'autoAim = next;'),'try{const W=window.__sol,tk=host.tank();if(W&&next){let d=null;if(tk){const l=Math.hypot(tk[0],tk[1],tk[2])||1;d=Math.hypot(next[0]-tk[0]/l,next[1]-tk[1]/l,next[2]-tk[2]/l)*metres();}W.aims.push(d==null?null:+d.toFixed(1));}}catch(e){window.__solErr=String(e)} false');
+ // a hull hit, by source (the shield takes it first: shieldUp)
+ await bp('src/td-tab.js',lineOf('src/td-tab.js','if (lab.on && lab.immortalTank)'),'try{if(window.__sol){window.__sol.hits.push({type:killerType,whole,hp:playerHP,armour:hullArmour,shield:shieldUp()});if(killerType!=="laser"){hullArmour=hullHits();}}}catch(e){window.__solErr=String(e)} false');
+ await evaluate(`${T}.laserAuto(true)`);
+ const h0=await evaluate(`${T}.state().hull`),s0=await st();
+ let spawned=0,passes=0,teleports=0,lastDrive=0;
+ for(const t0=Date.now();Date.now()-t0<SPAN;){
+  const alive=await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`);
+  if(alive<ALIVE)for(let k=0;k<10;k++)spawned+=await evaluate(`${T}.creatures.spawnAt('amoeba',${ring[(spawned+k*7)%ring.length]})`).catch(()=>0);
+  const l=(await st()).laser;
+  if(l.phase!=='overhead'&&!l.burning){await evaluate(`${T}.laserPassNow()`);passes++;}
+  if(DRIVE&&l.burning&&l.contact&&Date.now()-lastDrive>700){lastDrive=Date.now();const ci=await evaluate('window.__sol.cellNow??-1');if(ci>=0){await evaluate(`${T}.placeTank(${ci})`);teleports++;}}
+  await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();`);
+  await delay(DRIVE?250:1000);
+ }
+ current='sol-ff';await finish();
+ const W=await evaluate('window.__sol'),e1=await evaluate('window.__solErr??null'),l1=(await st()).laser,s1=await st(),h1=await evaluate(`${T}.state().hull`);
+ await send('Debugger.disable');
+ const R=LASER_GAME.pass.radius,reachTank=LASER_GAME.reach.tank,hitDist=R+reachTank,laserHits=W.hits.filter(h=>h.type==='laser'),aimsD=W.aims.filter(d=>d!=null);
+ const out={drive:DRIVE,teleports,alive:ALIVE,span:{wallS:SPAN/1000,storyClockS:+((s1.story?.clock??0)-(s0.story?.clock??0)).toFixed(1)},spawned,passesAsked:passes,passesRun:l1.passes,burnSeconds:l1.seconds,
+  beamsLit:W.episodes.length,aimsPicked:W.aims.length,aimsWithTankInFootprint:aimsD.filter(d=>d<=hitDist).length,closestAimToTankM:aimsD.length?Math.min(...aimsD):null,
+  footprintFrames:W.frames,framesTankInFootprint:W.tankFrames,closestContactToTankM:W.minContactM==null?null:+W.minContactM.toFixed(1),burnedTank:l1.burned.tank,
+  solHullHits:laserHits.length,hullHitsBySource:W.hits.reduce((a,h)=>(a[h.type??'null']=(a[h.type??'null']??0)+1,a),{}),laserHitsWithShieldUp:laserHits.filter(h=>h.shield).length,
+  hullBefore:h0,hullAfter:h1,framesWithHull:W.withHull,probeError:e1,keep:{footprintRadiusM:R,tankReachM:reachTank,hitWithinM:hitDist,safeMetres:LASER_AUTO.safeMetres,guardM:R+LASER_AUTO.safeMetres,retargetS:LASER_AUTO.retarget}};
+ console.log(`SOL FF ${JSON.stringify(out)}`);
+ assert.equal(e1,null,`the probes ran clean (${e1})`);assert.ok(W.episodes.length>0,`SOL burned by itself (${JSON.stringify(out)})`);
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see
