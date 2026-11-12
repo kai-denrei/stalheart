@@ -64,19 +64,21 @@ const SEEN_LOG=`(()=>{if(window.__seen)return;const L=window.__seen={briefs:[],c
  if(c){for(const n of c.children)L.callouts.push(n.textContent);new MutationObserver((ms)=>{for(const m of ms)for(const n of m.addedNodes)L.callouts.push(n.textContent);}).observe(c,{childList:true});}})()`;
 // ONE MOVE, NO CUT (owner, 2026-11-12 evening: "isao landing, the camera focus jumps too many time; focus on the rocket, no cuts, it opens, isao comes
 // out"): the camera every frame in the page (window.__cam: [ms, eye, line of sight, fov, shot, the arrival's phase, the held shot begun]); camCuts(L)
-// finds the cuts in a stretch of it: a frame whose eye or look point (60 m down the line of sight) moves over 3 m at over 150 m/s of wall time, or
-// over 25 m at all, or whose line of sight turns over 15 degrees at over 300 degrees/s (a stalled frame is slow, not a cut); metres are 1/753 of the
-// story planet's radius (STORY_SANITY cellSide / 10)
+// finds the cuts in a stretch of it: a frame whose eye or look point (60 m down the line of sight) or line of sight steps both further and faster
+// (per wall second) than 4x its two neighbours' steps, over 3 m or 8 degrees (an ease ramps, a stalled frame is long but not fast, a cut is a
+// lone spike), or over 25 m or 30 degrees at all; metres are 1/753 of the story planet's radius (STORY_SANITY cellSide / 10)
 const CAM_LOG=`(()=>{if(window.__cam)return;const T=window.__stalheartTest,L=window.__cam=[];(function f(){try{const s=T.seatState(),a=T.state().arrival,[x,y,z,w]=s.quat;
  L.push([performance.now(),s.pos,[-2*(x*z+w*y),-2*(y*z-w*x),-(1-2*(x*x+y*y))],s.fov,s.shot||'',a?.phase||'',!!a?.hold]);}catch(e){}if(!window.__camStop)requestAnimationFrame(f);})();})()`;
 function camCuts(L,metre=1/753){
  const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])/metre,look=(r)=>r[1].map((v,i)=>v+r[2][i]*60*metre),ang=(a,b)=>Math.acos(Math.max(-1,Math.min(1,(a[0]*b[0]+a[1]*b[1]+a[2]*b[2])/Math.hypot(...a)/Math.hypot(...b))))*180/Math.PI;
- const cuts=[];let maxEye=0,maxLook=0,maxTurn=0;
- for(let i=1;i<L.length;i++){const dt=Math.max(1e-3,(L[i][0]-L[i-1][0])/1000),eye=d(L[i][1],L[i-1][1]),lk=d(look(L[i]),look(L[i-1])),turn=ang(L[i][2],L[i-1][2]);
-  maxEye=Math.max(maxEye,eye);maxLook=Math.max(maxLook,lk);maxTurn=Math.max(maxTurn,turn);
-  if((Math.max(eye,lk)>3&&Math.max(eye,lk)/dt>150)||Math.max(eye,lk)>25||(turn>15&&turn/dt>300))cuts.push({ms:Math.round(L[i][0]-L[0][0]),from:L[i-1][4]||L[i-1][5],to:L[i][4]||L[i][5],eye:+eye.toFixed(1),look:+lk.toFixed(1),turn:+turn.toFixed(1),dt:+dt.toFixed(3)});}
+ const st=L.map((r,i)=>{if(!i)return {eye:0,look:0,turn:0,dt:1};const dt=Math.max(1e-3,(r[0]-L[i-1][0])/1000);return {eye:d(r[1],L[i-1][1]),look:d(look(r),look(L[i-1])),turn:ang(r[2],L[i-1][2]),dt};});
+ const cuts=[],max={eye:0,look:0,turn:0};
+ for(let i=1;i<L.length;i++){const c=st[i],p=st[i-1],n=st[i+1]??st[i-1];let hit=false;
+  for(const [k,min,abs] of [['eye',3,25],['look',3,25],['turn',8,30]]){max[k]=Math.max(max[k],c[k]);
+   if(c[k]>abs||(c[k]>min&&c[k]>4*Math.max(p[k],n[k])&&c[k]/c.dt>4*Math.max(p[k]/p.dt,n[k]/n.dt)))hit=true;}
+  if(hit)cuts.push({ms:Math.round(L[i][0]-L[0][0]),from:L[i-1][4]||L[i-1][5],to:L[i][4]||L[i][5],eye:+c.eye.toFixed(1),look:+c.look.toFixed(1),turn:+c.turn.toFixed(1),dt:+c.dt.toFixed(3)});}
  const shots=[];for(const r of L)if(shots.at(-1)!==r[4])shots.push(r[4]);
- return {cuts,frames:L.length,seconds:L.length?+((L.at(-1)[0]-L[0][0])/1000).toFixed(1):0,maxEye:+maxEye.toFixed(1),maxLook:+maxLook.toFixed(1),maxTurn:+maxTurn.toFixed(1),shots};
+ return {cuts,frames:L.length,seconds:L.length?+((L.at(-1)[0]-L[0][0])/1000).toFixed(1):0,maxEye:+max.eye.toFixed(1),maxLook:+max.look.toFixed(1),maxTurn:+max.turn.toFixed(1),shots};
 }
 async function finish(){
  writeFileSync(join(output,current+'.log'),consoleLines.join('\n')+'\n');

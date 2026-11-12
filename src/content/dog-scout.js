@@ -40,7 +40,7 @@ export const DOG_SCOUT = freeze({
   knock: { touchM: 1.6, seconds: 1.5, pushM: 4, graceS: 1, clip: 'Roll_Over' },
   home: { cells: 3 },
   drive: { sprint: 6.5, trot: 3.1, back: 1.2, accel: 7, turn: 2.8, turnFall: 6, radiusM: 0.7 },
-  camera: { back: 8, up: 3.6, ahead: 6, lookUp: 0.8, ease: 0.25, near: 0.0008, easeIn: 1.6, printEase: 2.5, hand: 3 },
+  camera: { back: 8, up: 3.6, ahead: 6, lookUp: 0.8, ease: 0.25, near: 0.0008, easeIn: 2.4, printEase: 3.5, hand: 3 },
   harvest: { kg: 150, piles: 5, maxS: 120 },
   words: {
     toast: (label, kg) => `${label} · SURVEYED +${kg} KG`,
