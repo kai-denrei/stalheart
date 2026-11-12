@@ -103,7 +103,7 @@ export function createGunshipRig(host) {
 
   // THE SEAT'S GUNSHIP (src/sentry-pilot.js reads it as pilotHost.gunship): a fresh bag for each seat the controller builds, as
   // its literal made one, so `tune`, `centers` and `normals` are the ones of that moment.
-  const pilotBag = () => ({
+  const pilotBag = () => { const bag = {
     state: gunship,
     strike,
     tune: host.strikeTune(),
@@ -147,7 +147,8 @@ export function createGunshipRig(host) {
     burst: (p, hex, n, scale) => { const b = makeDotBurst(hex, norm3(p), n); b.scale.setScalar(host.cellSide() * scale); b.position.set(p[0], p[1], p[2]); scene.add(b); host.debris().push(b); },
     laser: (ci) => { if (ci >= 0) showRangeRing(ci, host.strikeTune().blastCells, 0xff2a1a); else hideRangeRing(); },
     loop: (name, o) => sfx.loop(name, o),
-    paintHeavy: (ci, o) => (called() && gunship.heavyPaint != null ? false : paintHeavy(gunship, ci, guns(), o)),   // a call: no re-mark
+    // a call: no re-mark, and the mark is painted red on the ground in the optic for the whole countdown (the release's own paint covers only the fall)
+    paintHeavy: (ci, o) => { const k = called(); if (k && gunship.heavyPaint != null) return false; const ok = paintHeavy(gunship, ci, guns(), o); if (ok && k) bag.optic.paint(host.graph().centers[ci], host.graph().normals[ci], guns().heavy.blastCells * host.cellSide(), k.nuke.countdown); return ok; },
     heavyDue: () => !!markNow()?.release,   // the called MK-9's release is due (the seat lets it go)
     callText: (hs) => { const k = called(); if (!k) return null; const left = hs.phase === 'painted' ? markNow()?.left : hs.left; return hs.phase === 'ready' ? 'ARMED · FIRE TO MARK THE SPOT' : left != null && ['painted', 'released', 'ignited'].includes(hs.phase) ? `${k.label} ${Math.ceil(left)} S` : null; },
     launchHeavy: (o) => { if (called() && !o?.auto && !markNow()?.release) return -1; const lc = launchHeavy(gunship, guns(), o); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05); the automated one is booked apart ({ auto: true })
@@ -155,7 +156,7 @@ export function createGunshipRig(host) {
     stepHeavy: () => stepHeavy(gunship),
     heavyState: () => heavyState(gunship, guns()),
     get optic() { return optic ??= createGunshipOptic(scene, { cellSide: host.cellSide(), metresPerCell: GUNSHIP_PLATFORM.metresPerCell }); },
-  });
+  }; return bag; };
 
   // THE ACCEPTANCE PROBE'S GUNSHIP (state().gunship): the platform's clock and guns, the seat, the MK-9, the lane and the track
   const probe = () => ({
