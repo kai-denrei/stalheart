@@ -54,7 +54,7 @@ for (const k of ['shot', 'seated', 'card', 'isaoBusy', 'arena', 'won']) assert.e
 assert.equal(printReady({ ...base, alive: false }), false, 'a lost hull holds it');
 assert.equal(printReady({ ...base, fighting: true }), false, 'a fight holds it');
 assert.equal(printReady({ ...base, fighting: true, breathing: true }), true, 'a breath in the fight is quiet enough');
-assert.equal(printReady({ ...base, fighting: true, held: 151 }), true, 'past its patience a fight no longer holds it');
+assert.equal(printReady({ ...base, fighting: true, held: 151 }), false, 'THE CLOSE-UP GATE (2026-11-13): past its patience a live wave still holds it');
 assert.equal(printReady({ ...base, fighting: true, held: 151, seated: true }), false, 'a seat still does');
 assert.equal(printReady({ forced: true, gates: false, held: 0 }), true, 'forced: at once');
 assert.equal(printReady({ forced: true, shot: true }), false, 'forced still waits for a running shot');

@@ -53,10 +53,10 @@ assert.equal(dropPhase(-1, TL), 'idle'); assert.equal(dropPhase(5, TL), 'droppin
   assert.equal(dropReady(calm), true);
   assert.equal(dropReady({ ...calm, day: 9.99 }), false, 'not before the due day');
   assert.equal(dropReady({ ...calm, due: null }), false, 'not before the call');
-  assert.equal(dropReady({ ...calm, breathing: false }), true, 'the timer: mid-wave, no lull waited for');
+  assert.equal(dropReady({ ...calm, breathing: false }), false, 'THE CLOSE-UP GATE (2026-11-13): never mid-wave, the next lull');
   assert.equal(dropReady({ ...calm, fighting: false, breathing: false }), true, 'between sectors too');
-  assert.equal(dropReady({ ...calm, breathing: false, day: 10.01 }), true, 'the day counter crossing `due` is enough');
-  assert.equal(dropReady({ ...calm, breathing: false, secure: true }), true, 'a secured sector');
+  assert.equal(dropReady({ ...calm, day: 10.01 }), true, 'the day counter crossing `due` is enough');
+  assert.equal(dropReady({ ...calm, fighting: false, breathing: false, secure: true }), true, 'a secured sector');
   for (const k of ['seated', 'shot', 'card', 'isaoBusy', 'won']) { assert.equal(dropReady({ ...calm, [k]: true }), false, k); assert.equal(dropReady({ ...calm, breathing: false, day: 12, [k]: true }), false, `${k} holds it past due`); }
   assert.equal(dropReady({ ...calm, alive: false }), false, 'the hull lost');
   assert.equal(dropReady({ ...calm, arena: true, breathing: false }), true, 'THE ARENA reached first: at once, before the boss');
