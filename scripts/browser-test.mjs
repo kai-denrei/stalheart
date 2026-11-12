@@ -1024,7 +1024,7 @@ try{
    assert.deepEqual(c.cuts,[],'no cut from the touchdown to the arrival\'s end');await evaluate('window.__camStop=true');}
   assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.ok([null,'arrivalHold'].includes(s.shot),`no shot or the closing hold (2026-11-12 evening; the landers' tour was 2026-10-03's) (${s.shot})`);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
   const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['rough_landing','so_much_to_build','foundry_deploy'])assert(!seen.includes(id),`the old landing line ${id} is not said over the arrival`);
-  console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s on his face (${talk.length} frames); lines ${lines.join(' / ')}`);}
+  console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s of his lines on the held shot (${talk.length} frames); lines ${lines.join(' / ')}`);}
  // THE PLAYER LOOKS AROUND (owner, 2026-09-30: "first beat, player should be in charge of something, a free camera"): the landing
  // hands over to the orbit camera, and no seat has glided in yet
  {const s=await evaluate('window.__stalheartTest.state()');assert.ok(s.view==='orbit'||s.shot==='arrivalHold',`the landing ends on the free camera or its closing hold (${s.view}, ${s.shot})`);assert.equal(s.glide.n,0);}
@@ -3607,7 +3607,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.seatState().seatKey==="rotor"`,300000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);   // 300 s: the seat behind the wall's and the Rotor's prints
  const L=await evaluate('window.__cam'),d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
  const from=L.findIndex(r=>r[2]==='arrivalTalk');assert(from>=0,'his lines on the held shot');assert(!L.some(r=>r[2]==='sitesTour'),'no landers\' tour on the dog\'s opening');assert(L.some(r=>r[2]==='arrivalHold'),'the closing hold');
- {const C=await evaluate('window.__cam'),a=C.findIndex(r=>r[6]),b=C.findLastIndex(r=>r[4]==='arrivalHold'),c=camCuts(C.slice(a,b+1));await evaluate('window.__camStop=true');
+ {const W=await evaluate(`(()=>{const C=window.__cam||[],a=C.findIndex(r=>r[6]),b=C.findLastIndex(r=>r[4]==='arrivalHold');window.__camStop=true;return {n:C.length,a,b,S:a>=0?C.slice(a,b+1):[]};})()`),c=camCuts(W.S);
+  console.log(`  cuts: the camera log ${W.n} frames, the hold from ${W.a} to ${W.b}`);assert.ok(c.frames>20,`the held shot logged (${W.n} frames, from ${W.a} to ${W.b})`);
   console.log(`  cuts: the held shot ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
   if(!args.includes('--probe'))assert.deepEqual(c.cuts,[],'no cut from the touchdown to the end of the closing hold');}
  const jumps=[];for(let i=Math.max(1,from);i<L.length;i++){const m=d(L[i][1],L[i-1][1]);if(m>cut){jumps.push(`${(L[i][0]-L[from][0]).toFixed(2)} s ${L[i-1][2]||L[i-1][3]} -> ${L[i][2]||L[i][3]} ${m.toFixed(3)}`);if(args.includes('--probe'))for(let k=Math.max(0,i-4);k<Math.min(L.length,i+4);k++)console.log(`    ${(L[k][0]-L[from][0]).toFixed(3)} ${L[k][2]||'-'} ${L[k][3]} r=${Math.hypot(...L[k][1]).toFixed(4)} step=${k?d(L[k][1],L[k-1][1]).toFixed(4):0}`);}}
