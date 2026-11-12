@@ -149,12 +149,14 @@ export function createSentryPilot(root, host) {
   // gunner left it and never swings with the hull. Called from the tick and from pose(); a second call in a frame finds no turn.
   const headWas=new THREE.Vector3(),headNow=new THREE.Vector3(),headUp=new THREE.Vector3();let headSeen=false;
   function holdAim(){if(!ship.obj)return;headNow.set(0,0,1).applyQuaternion(ship.obj.quaternion);headUp.copy(ship.obj.position).normalize();if(headSeen)state.yaw-=headingTurn(headWas.toArray(),headNow.toArray(),headUp.toArray());headWas.copy(headNow);headSeen=true;}
+  // THE SEAT'S FOOTER: the MK-9 as paint-then-release, or in THE KING's fight a mark (G.called, flow fixes 2026-11-13); re-said when the call starts or ends
+  let footMark=false;const seatFoot=()=>{panel.querySelector('footer').textContent=host.mobile?`${footMark?H.aimMarkTouch:H.aimTouch} · ${H.leaveTouch}`:`${H.leave} · ${footMark?H.aimMark:H.aim} · ${H.views}`;};
   function mountGunship(){
     if(!G||G.mount()!=='mounted')return 'refused';
     if(!gunship)host.glide?.(1.8);   // INTO THE SEAT WITHOUT A CUT (round 3, 2026-10-26: measured 209 m and 135 degrees in one frame at the arena's hand-over): from the last picture, eased onto the optic over 1.8 s (the glide's far time: 340 m up)
     gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;state.zoomGoal=state.zoom;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();state.pitch=-1.45;   // the seat opens looking straight down, the lane's way   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
-    guns.style.display='';seatHeader??=panel.querySelector('header').innerHTML;panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent=host.mobile?`${H.aimTouch} · ${H.leaveTouch}`:`${H.leave} · ${H.aim} · ${H.views}`;   /* on touch the pad's fire button is the trigger and the seat's own buttons pick the gun: 1 2 3 have no key there */
+    guns.style.display='';seatHeader??=panel.querySelector('header').innerHTML;panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';footMark=!!G.called?.();seatFoot();   /* on touch the pad's fire button is the trigger and the seat's own buttons pick the gun: 1 2 3 have no key there */
     G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();root.classList.add('gunship-seat');panel.querySelector('.pilot-cross').style.display='none';setMode();   // the seat is thermal, the FLIR ironbow (owner, 2026-09-14; its only view, 2026-09-16)
     return 'mounted';
   }
@@ -205,6 +207,7 @@ export function createSentryPilot(root, host) {
     const releaseHeavy=(hs)=>{const hv=G.guns.heavy,tgt=G.centers[hs.ci];const lc=G.launchHeavy();if(lc<0)return false;G.sfx(hv.sound,ship.obj.position.toArray());if(!G.drop?.release(muzzleFor('heavy'),tgt,up.toArray(),G.vel?.()??[0,0,0]))G.optic.flight(muzzleFor('heavy'),tgt,hv.ringHex,hv.travel,1.2);G.optic.paint(tgt,G.normals[lc],hv.blastCells*c,hv.travel);return true;};
     let fired=null;
     // THE CALLED NUKE LETS ITSELF GO whatever gun is in hand (THE KING's fight, 2026-11-12 night: the gunner marks with the MK-9 and herds with the 40 mm)
+    if(!!G.called?.()!==footMark){footMark=!footMark;seatFoot();}
     if(!gun.strike){const hc=G.heavyState();if(hc.phase==='painted'&&G.heavyDue?.())releaseHeavy(hc);}
     if(gun.strike){   // THE MK-9 (owner, 2026-09-16): paint, then RELEASE. The camera stays in the seat and the round is a body in the world — it
       const hs=G.heavyState();   // drops free for two seconds, lights its motor, then dives onto the cell. One nudge steers it; the pass has one release.
