@@ -21,7 +21,8 @@
 //               cut: the K9's print hands it over), `printEase` seconds the K9's print eases out of the landing's hold, `hand` seconds the print's
 //               last frame is held for the chase (src/fx/print-closeup.js)
 //   harvest     THE FIRST HARVEST (spec 1, beat 10): `kg` of the first wave's bodies laid at the gate in `piles` piles once the depot stands,
-//               Isao's flare on them; `maxS` seconds the beats wait for the rover's first trip (or for a depot that never comes) before the card
+//               Isao's flare on them; `maxS` seconds the beats wait for the rover's first trip (or for a depot that never comes) before the card;
+//               `poured` the kg that trip brings home, as measured (the one number of the card's bank that is not derived from the others)
 //   beats       the beats' own tune (src/domain/story-beats.js `scout`): recall, harvest's wait, and the contact pack
 // PACED UP (owner, 2026-11-12 evening: "dog recon beginning is cute but much too slow; we accellerate for now, maybe reduce to scouting two spots,
 // much closer, rather than 3 far apart"): two points 5-7 hops out (were three at 8-12, 60 degrees apart), 50-80 degrees apart, the rock and the
@@ -41,7 +42,7 @@ export const DOG_SCOUT = freeze({
   home: { cells: 3 },
   drive: { sprint: 6.5, trot: 3.1, back: 1.2, accel: 7, turn: 2.8, turnFall: 6, radiusM: 0.7 },
   camera: { back: 8, up: 3.6, ahead: 6, lookUp: 0.8, ease: 0.25, near: 0.0008, easeIn: 2.4, printEase: 3.5, hand: 3 },
-  harvest: { kg: 150, piles: 5, maxS: 120 },
+  harvest: { kg: 150, piles: 5, maxS: 120, poured: 380 },   // poured: what the rover's first trip home brings (measured by --dog-scout 2026-11-13: 384 kg on the automatic landing's page, 380 CLEAN, 386 WRECK; 320-324 on 2026-11-12 runs): the bank ?skip=dog opens THE FIRST ORDERS with (STORY_CHAPTER_DOG)
   words: {
     toast: (label, kg) => `${label} · SURVEYED +${kg} KG`,
     hint: 'RECKON K9 · W A S D DRIVE · SHIFT SPRINT',

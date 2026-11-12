@@ -6,7 +6,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
 import { voiceSounds } from '../content/voice-hooks.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK, STORY_CALM } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_CHAPTER_DOG, STORY_NUKE_TANK, STORY_CALM } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -80,7 +80,7 @@ export function readStoryQuery(search) {
   const skip = story && skipsTutorial(search);
   // A TUTORIAL CHAPTER (?skip=<chapter>, src/content/story-defaults.js STORY_CHAPTERS): the opening from that chapter's start, a
   // growing base at stage 1 with the beats at its first phase and the full threat. The world a run has there is built at boot.
-  const chapter = story && !skip ? [...STORY_CHAPTERS, STORY_CHAPTER_END].find((c) => c.id === q.get('skip')) ?? null : null;
+  const chapter = story && !skip ? [...STORY_CHAPTERS, STORY_CHAPTER_END, STORY_CHAPTER_DOG].find((c) => c.id === q.get('skip')) ?? null : null;
   return {
     short, skip, chapter,
     world: story ? 'story' : 'default',
@@ -200,7 +200,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const arrives = grow && stage === 1 && phase == null && !!sh02 && ['sh02-salvage', 'foundry'].every((id) => plan.structures.some((s) => s.id === id));
   // THE RECON DOG (2026-11-12): the story's own start is the dog's opening unless ?settle=N asks for THE SETTLING's clock (kept for comparison); its
   // programme leads with the gate, the depot and the Stålheart on the dog's beats (OPENING_PROGRAMME)
-  const scouts = arrives && settle == null, steps = scouts ? openingSteps(steps0, OPENING_PROGRAMME) : steps0;
+  const dogStart = arrives && settle == null, scouts = dogStart || !!chapter?.dogOpening, steps = scouts ? openingSteps(steps0, OPENING_PROGRAMME) : steps0;
   const pastLanding = stage === 1 && phase != null && phase !== 'landed';   // a chapter or a jump past it: the rocket is already salvage
   const q = new URLSearchParams(typeof location === 'object' ? location.search : '');   // the page's own query, for the landing's switch (decideLanding)
   // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell, seen from the Quiver; a held one only
@@ -222,10 +222,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     arena: (() => { const dist = bfsDist(planet.graph.adj, [built.dungeon.heart], (ci) => built.dungeon.tags[ci] !== BLOCKED); const cell = Number.isInteger(arena) && arena >= 0 && arena < dist.length ? arena : pickArenaCell({ dist, blocked: (ci) => built.dungeon.tags[ci] === BLOCKED, inside: (ci) => planet.clearing.cells.has(ci), farHops: ARENA.farHops });
       const floor = cell >= 0 ? arenaFloor({ centers: planet.graph.centers, cell, cellArc: planet.cellSide ?? planet.cellArc ?? 0, radiusCells: ARENA.radiusCells, inside: (ci) => planet.clearing.cells.has(ci) }) : []; for (const ci of floor) built.dungeon.tags[ci] = PATH; return cell >= 0 ? { cell, hops: dist[cell] ?? null, floor: floor.length } : null; })(),
     beats, arrival: createArrival({ on: arrives, past: pastLanding, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius,
-      ...decideLanding({ arrives, query: q, flown: storage.getItem('td.landing.flown') === '1', acceptance: q.get('acceptance') === '1' }), seed: `landing:${params.seed}`, hand: scouts }),   // hand: the dog's opening ends the landing on a hold the K9's print eases out of (no landers' tour)
+      ...decideLanding({ arrives, query: q, flown: storage.getItem('td.landing.flown') === '1', acceptance: q.get('acceptance') === '1' }), seed: `landing:${params.seed}`, hand: dogStart }),   // hand: the dog's opening ends the landing on a hold the K9's print eases out of (no landers' tour)
     // A TUTORIAL CHAPTER'S START (src/fx/story-entry.js builds it at boot): its number, the steps it prints and the sentries it stands
     // (`berths`: past the hull's issue the Stålheart's door is every berth, as the issue leaves it, src/fx/hull-issue.js)
-    chapter: chapter ? { id: chapter.id, n: STORY_CHAPTERS.includes(chapter) ? STORY_CHAPTERS.indexOf(chapter) : STORY_CHAPTERS.length, printed: chapter.printed, head: chapter.head, towers: chapter.towers.map((key) => ({ key, ci: plan.cells[key] ?? -1 })), berths: door && !hullHeld ? [door, door, door] : null } : null,
+    chapter: chapter ? { id: chapter.id, n: chapter.n ?? (STORY_CHAPTERS.includes(chapter) ? STORY_CHAPTERS.indexOf(chapter) : STORY_CHAPTERS.length), dogOpening: !!chapter.dogOpening, bank: chapter.bank ?? 0, printed: chapter.printed, head: chapter.head, towers: chapter.towers.map((key) => ({ key, ci: plan.cells[key] ?? -1 })), berths: door && !hullHeld ? [door, door, door] : null } : null,
     hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead, firstWave: STORY_ROLLOUT.firstWave }),   // the first hull, held until the Stålheart stands
     // the MK-9 blasts (src/fx/gunship-rig.js), and the berth the nuke's tank stands on: out of the gate toward the blast, or toward the
     // sinkhole when that line runs into rock

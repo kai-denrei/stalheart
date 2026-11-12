@@ -16,9 +16,11 @@ assert.equal(pick('?stage=1&grow=1').grow, true, 'a growing stage link still gro
 assert.equal(pick('?skip=defence').skip, true, 'SKIP TUTORIAL overrides');
 // A TUTORIAL CHAPTER (owner, 2026-09-25: "Showing 1/x in tutorial, where we are, skip to next phase"): ?skip=<chapter> is the opening
 // from that chapter's start, a growing base at stage 1, the beats at its first phase and the full threat, whatever else the URL says
-import { STORY_CHAPTERS, STORY_CHAPTER_END } from '../src/content/story-defaults.js';
+import { STORY_CHAPTERS, STORY_CHAPTER_END, STORY_CHAPTER_DOG } from '../src/content/story-defaults.js';
+import { LANDING_GAME } from '../src/content/landing-game.js';
+import { DOG_SCOUT } from '../src/content/dog-scout.js';
 import { STORY_PHASES, chapterAt } from '../src/domain/automation.js';
-for (const c of [...STORY_CHAPTERS, STORY_CHAPTER_END]) {
+for (const c of [...STORY_CHAPTERS, STORY_CHAPTER_END, STORY_CHAPTER_DOG]) {
   const r = readStoryQuery(`?sw=0&acceptance=1&skip=${c.id}`);
   assert.equal(r.chapter?.id, c.id, `${c.id} is a chapter`);
   assert.deepEqual({ stage: r.stage, grow: r.grow, threat: r.threat, skip: r.skip, phase: r.phase }, { stage: 1, grow: true, threat: 1, skip: false, phase: c.from }, `${c.id} opens its start`);
@@ -34,6 +36,15 @@ for (const [i, c] of STORY_CHAPTERS.entries()) {
   assert.equal(chapterAt(STORY_CHAPTERS, c.from ?? 'landed', i), i, `a page opened at ${c.id} reads as ${c.id}`);
 }
 assert.equal(chapterAt(STORY_CHAPTERS, 'rotor-ready'), 1, 'rotor-ready in the opening is still ROTOR'); assert.equal(chapterAt(STORY_CHAPTERS, 'tremor', 1), 2, 'the tremor is the FIRST WAVE');
+// ?skip=dog (2026-11-13): the opening at THE FIRST ORDERS' card, no sixth-and-a-half chapter: it reads as the QUIVER's (4/6), the dog's beats, the bank an automatic landing has there from content
+{
+  const r = readStoryQuery('?sw=0&acceptance=1&first=1&skip=dog'), D = STORY_CHAPTER_DOG, S = LANDING_GAME.salvage.HARD;
+  assert.equal(r.chapter?.id, 'dog'); assert.equal(r.phase, 'orders'); assert.ok(!STORY_CHAPTERS.includes(D), 'not one of the six');
+  assert.equal(D.n, STORY_CHAPTERS.findIndex((c) => c.id === 'quiver'), 'the card reads QUIVER 4/6'); assert.equal(chapterAt(STORY_CHAPTERS, D.from, D.n), D.n);
+  assert.equal(D.bank, S.sections * S.feedstockPerBarrel + S.bonus * S.feedstockPerBarrel + DOG_SCOUT.points.count * DOG_SCOUT.survey.pay + DOG_SCOUT.harvest.poured, 'the bank: the HARD salvage, the surveys, the first harvest\'s pour');
+  assert.equal(D.bank, 2480, 'the figure --dog-scout measured at the card on 2026-11-13 (HARD 2,484: 1,800 + 300 + 384; CLEAN 3,080, WRECK 1,646)');
+  assert.ok(D.dogOpening && !D.printed.includes('stalheart') && D.towers.join() === 'rotor', 'the gate, the depot and the Rotor stand; the Stålheart waits for the card');
+}
 // THE SETTLING (2026-11-08): ?settle=N the settle's seconds (null: the tune's), ?first=1 the first orders on an acceptance page
 assert.equal(readStoryQuery('').settle, null); assert.equal(readStoryQuery('?settle=10').settle, 10); assert.equal(readStoryQuery('?settle=0').settle, 0); assert.equal(readStoryQuery('?settle=x').settle, null);
 assert.equal(readStoryQuery('').first, false); assert.equal(readStoryQuery('?first=1').first, true);

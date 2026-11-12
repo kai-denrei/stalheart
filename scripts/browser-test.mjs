@@ -1255,6 +1255,25 @@ try{
  await until(`${T}.state().programme.isao?.state==="build"`,30000);
  {const k=(await st()).programme.isao.printK;assert(k>=0.33,`the Stålheart print is a third done (${k})`);}
  await finish();
+ // 3b. ?skip=dog (2026-11-13): the opening at THE FIRST ORDERS' card: the gate, the depot and the Rotor stand, the bank is the one an automatic landing has there from content
+ // (STORY_CHAPTER_DOG: the HARD salvage, the surveys, the first harvest's pour), the four cards, the card paused over the game and read as QUIVER 4/6; the SECOND ROTOR and the
+ // foundry's work picked and paid, then the Quiver's beat and the Stålheart's print begin together as the dog's opening has them
+ await go('chapters-dog',`index.html?${H}&first=1&skip=dog#td`);await loaded('chapters-dog');
+ {const {STORY_CHAPTER_DOG:D}=await import('../src/content/story-defaults.js');
+  const s=await world('dog',['gate','depot'],['rotor']);assert.equal(s.skip.chapter,'dog');assert.ok(!s.programme.done.includes('stalheart'),'the Stålheart waits for the card');
+  await until(`${T}.state().board?.open===true&&${T}.state().board.first===true`,30000).catch(async()=>assert.fail(`THE FIRST ORDERS' card (${JSON.stringify((await st()).board)}; beats ${JSON.stringify((await st()).story)})`));
+  const b=await st(),bd=b.board;console.log(`  chapters dog: the card: bank ${bd.bank} (content ${D.bank}); ${bd.offers.map(o=>`${o.id} ${o.price}`).join(' · ')}; phase ${b.story.phase}`);
+  assert.equal(b.story.phase,'orders','the beats are at the orders');assert.equal(bd.bank,D.bank,'the bank is the content\'s: salvage, surveys and the first harvest');assert.equal(b.biomass,D.bank);
+  assert.deepEqual(bd.offers.map(o=>`${o.id} ${o.label} ${o.price}`),['sentry:rotor SECOND ROTOR 450','build:landing LANDING PAD 600','build:foundry SEED FOUNDRY 400','build:solar SOLAR ARRAY 1200'],'the four cards: the Rotor stands, so the SECOND ROTOR');
+  assert.equal(b.paused,true,'the card pauses the game');assert.ok(!b.programme.printed.includes('stalheart')&&b.programme.active!=='stalheart','nothing of the Stålheart before the card');
+  const c=await card();assert.match(c.where,/^TUTORIAL 4\/6\s*QUIVER/,`4/6 (${c.where})`);assert.match(c.next,/^NEXT ›\s*STÅLHEART$/);
+  current='chapters-dog';await finish();
+  for(const id of ['sentry:rotor','build:foundry'])await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);
+  await evaluate(`${T}.board.confirm()`);await until(`!${T}.state().board.open`,8000);
+  {const a=await st();assert.deepEqual(a.board.last.took,['sentry:rotor','build:foundry'],'both placed');assert.equal(a.biomass,D.bank-850,`the second Rotor and the foundry's work paid (${a.biomass})`);}
+  await until(`${T}.state().programme.active==='stalheart'`,60000).catch(async()=>assert.fail(`the Stålheart's print after the card (${JSON.stringify((await st()).programme)})`));
+  await until(`${T}.state().story.phase==='quiver-piloting'`,60000).catch(async()=>assert.fail(`the Quiver's beat after the card (${JSON.stringify((await st()).story)})`));
+  assert.deepEqual(errors,[],'chapters dog: browser errors');}
  // 4. STÅLHEART: sector 0: the gunship comes from orbit, the first wave after its delay, no hull until the Stålheart stands
  await go('chapters-stalheart',`index.html?${H}&skip=stalheart#td`);await loaded('chapters-stalheart');
  {const s=await world('stalheart',['foundry','gate'],['rotor','quiver']);assert.equal(s.hull.state,'held','no hull yet');const c=await card();assert.match(c.where,/^TUTORIAL 5\/6\s*STÅLHEART/,`5/6 (${c.where})`);}

@@ -76,7 +76,7 @@ export function makeStoryBeats({
   // STRAIGHT TO THE ACTION: a landing opens the sinkhole while the beacons are toured, so the swarm is up the lane when the Rotor is taken
   // THE SETTLING: only the story's own start settles (a chapter or a jump keeps its flow); the quiet breach at the deploy is off on it
   const settling = settle != null && arrival && startPhase === 'landed';
-  const scouting = !settling && scout != null && arrival && startPhase === 'landed', salvaged = settling || scouting;   // the dog's opening grants the whole salvage at the deploy, as the settling did
+  const scouting = !settling && scout != null && ((arrival && startPhase === 'landed') || startPhase === 'orders'), salvaged = settling || scouting;   // the dog's opening grants the whole salvage at the deploy, as the settling did
   const early = arrival && gated && earlyBreach != null && !settling && !scouting;
   let dogAsked = false, pack = 0, flared = false, ordersDone = false;   // the dog's beats: its print asked, the pack's bodies, Isao's harvest flare, the first orders closed
   const dog = (api) => api.dog?.() ?? null;

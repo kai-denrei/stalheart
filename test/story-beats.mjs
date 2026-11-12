@@ -591,5 +591,14 @@ console.log('story-beats: the settling');
     const late = mk({ startPhase: 'foundry', foundry: tune, foundryCut: 0, arrival: false }), g2 = fakeGame({ printSeconds: 1 });
     run(late, g2, 0.3); assert.deepEqual(kinds(g2, 'order'), [['order', 'rotor', 4242]], 'a chapter orders the Rotor at foundry as before'); assert.equal(late.state().scout, null);
   }
+  // ?skip=dog (2026-11-13): a late start AT `orders` with the dog's beats: the card is the beats' to wait on, then the Quiver; any other late start still never scouts
+  {
+    let closed = false;
+    const beats = mk({ startPhase: 'orders', arrival: false, foundryCut: null, gateReady: () => true }), g = fakeGame(); Object.assign(g.api, { orders: () => ({ done: () => closed }) });
+    run(beats, g, 0.5); assert.equal(beats.phase(), 'orders'); assert.deepEqual(beats.state().scout, { pack: 0, flared: false, ordersDone: false }, 'scouting: the first-orders card reads it as the dog\'s opening');
+    run(beats, g, 10); assert.equal(beats.phase(), 'orders', 'the Quiver waits for the card'); assert.deepEqual(kinds(g, 'pilot'), []);
+    assert.deepEqual(kinds(g, 'order'), [], 'no order while the card is up'); closed = true; run(beats, g, 5); assert.ok(kinds(g, 'order').some((l) => l[1] === 'quiver'), 'the card closed: the Quiver\'s beat orders the Quiver'); assert.equal(beats.state().scout.ordersDone, true);
+    const plain = mk({ startPhase: 'cleared', arrival: false }), g3 = fakeGame(); run(plain, g3, 0.5); assert.equal(plain.state().scout, null, 'a chapter before orders never scouts');
+  }
 }
 console.log('story-beats: the recon dog');

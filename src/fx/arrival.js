@@ -436,6 +436,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
+    loading: () => !!late && late.size > 0,   // a page past the landing (a chapter): the rocket's swap waits for its models, which the arrival's tick lands (a card that paused the game at the first tick would freeze it half done)
     swapHeld: () => deployed && !swapped,   // the AFR-01's deploy and its events wait while the intact rocket is in the frame (src/fx/foundry-fx.js)
     // THE LANDING's harness (window.__stalheartTest.landing): 'input' ({ throttle, tiltRate, legs }, held until the next), 'skip' (the
     // signature while it plays: 'signature', as Esc; else the flight), 'override' (takes the gate's offer before START)
