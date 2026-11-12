@@ -3,7 +3,7 @@
 // Its readings: nukes (the MK-9 blasts so far), the envelope the automations open (tier, aliveBudget, swell), gunshipAuto for the harness.
 // `c` hands in the controller: its fixed objects and functions as values (gunshipRig, camera, sfx, scene, laserStation, showBrief,
 // updateHud, explode, kill, callout) and what it rebinds as getters (story, pilot, pilotMode, briefQ, cellSide, graph, storyBase,
-// dungeon, playerPos, playerHP, isao, enemies, sectorRun).
+// dungeon, playerPos, playerHP, isao, enemies, sectorRun) and friendlies() (the rover, companions and mechs: points the gunship keeps clear of).
 import * as THREE from '../../vendor/three.module.js';
 import { LASER_AUTO } from '../content/orbital-laser.js';
 import { createIsaoStrike } from './isao-strike.js';
@@ -15,6 +15,13 @@ import { SOUNDS } from '../content/audio-defaults.js';
 import { strikeDue, pickStrikeTarget } from '../domain/isao-strike.js';
 import { ISAO_STRIKE } from '../content/base-programme.js';
 
+// THE FRIENDLIES THE GUNS AND THE MK-9 KEEP CLEAR OF (owner, 2026-11-12, docs/DECISIONS.md: "make sure the gunship is not too aggressive with friendly
+// fire"; the --gunship-ff probe): the hull and Isao as before, and now `c.friendlies()`, the rover away from home and the companions and mechs. The
+// rover was outside the old list: alone in a ring of hunters, 6 of 38 Bofors rounds burst within their 2.2 cells of it (no damage: the guns hurt only
+// enemies, but it reads as fire on our own); beside the escorting hull it was covered by the hull's keep. The points are put on the unit sphere the
+// lattice and the bodies ride, so a model's height over the ground does not count as distance. The margin is GUNSHIP_AUTO.gunSafeCells / nukeSafeCells
+const onSphere = (p) => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
+export const gunshipUnits = (hull, isao, friendlies = []) => [hull, isao, ...friendlies.map(onSphere)].filter(Boolean);
 // the pilot bag with its `guns` getter kept live (2026-10-23: a spread froze it at the content's guns, so THE ARENA's MK-9 reload, src/fx/boss-run.js guns(), never reached the auto)
 const liveBag = (b, cs) => Object.defineProperties({ ...b, cs }, { guns: Object.getOwnPropertyDescriptor(b, 'guns') });
 
@@ -38,8 +45,8 @@ export function createAutoSupport(c) {
             if (!onStation(gs) && c.gunshipRig.onCall() && callFull(c.gunshipRig.call) && callGunship(c.gunshipRig.call)) { startStation(gs, GUNSHIP_ORBIT); if (!c.pilotMode() && !c.briefQ()) showBrief(GUNSHIP_AUTO.autoBrief); }
             const view = (p, lim) => { const q = new THREE.Vector3(...p).project(c.camera); return q.z < 1 && Math.abs(q.x) < lim && Math.abs(q.y) < lim; };
             s.gsFly ??= createGunshipAuto({ G: G0, tune: GUNSHIP_AUTO, onScreen: view, callout: (t) => c.callout?.(t, 'co-victory'), sfx: c.sfx, hasCue: (k) => !!SOUNDS[k],
-              friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : [])]; },
-              units: () => [c.playerPos(), c.isao()?.obj?.position.toArray()].filter(Boolean), hull: () => (c.playerHP() > 0 ? c.playerPos() : null),
+              friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : []), ...(c.friendlies?.() ?? []).map(onSphere)]; },
+              units: () => gunshipUnits(c.playerPos(), c.isao()?.obj?.position.toArray(), c.friendlies?.()), hull: () => (c.playerHP() > 0 ? c.playerPos() : null),
               road: () => c.roadNuke?.() ?? null });   // THE NUKES ON THE ROAD (2026-10-23): THE ARENA's drive out hands its rock cluster (src/fx/boss-run.js roadNukeTarget)
             s.gsFly.tick(dt, seated);
           } else if (!seated) { G0.optic?.fade?.(dt); landGunshipRounds(G0); }   // before the auto pass exists, the player's rounds and MK-9 still land after they leave the seat

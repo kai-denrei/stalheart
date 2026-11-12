@@ -2885,6 +2885,68 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   {const s2=await st();console.log(`  reinforcements: THE ARENA first: landed, models loaded ${R(s2).loaded}, mechs ${R(s2).mechs.map(m=>`${m.role}@${m.cell}`).join(' ')}; boss ${JSON.stringify({phase:s2.boss?.phase})}`);
    assert.equal(R(s2).loaded,true,'the models loaded');assert.equal(R(s2).mechs.length,4,'four mechs at the arena');}
   current='reinforce-arena';await finish();}
+ } else if(args.includes('--gunship-ff')) {
+ // THE GUNSHIP'S FRIENDLY FIRE ON AUTO, MEASURED (owner, 2026-11-12, docs/DECISIONS.md: "make sure the gunship is not too aggressive with friendly
+ // fire"). A probe, not a gate: the escort (src/fx/rover-glue.js) beyond the gate with the gunship flying itself (?gunship=auto, the pass called
+ // and its track laid over the rover's ground), whites spawned round the rover in pulses for FF_SPAN wall seconds (default 60). Nothing in src
+ // reports where a round lands, so the page is read through the debugger: conditional breakpoints that never pause log every landed round
+ // (src/fx/gunship-auto.js landGunshipRounds), every MK-9 blast (src/fx/strike-console.js executeStrike's proof line), every hull hit by source
+ // (src/td-tab.js playerHit) and a 20 Hz snapshot of the friendlies (the hull, the rover, Isao, the companions, the sentries; src/td-tab.js frame).
+ // Printed as GUNSHIP FF: rounds per gun, rounds within each gun's damage radius (and that plus a cell) of each friendly, the closest landing,
+ // the hull's hits by source, the rover's bites, the companions' life, the sentries and walls the MK-9 took, and the gunship's kills
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),R=()=>evaluate(`${T}.rover.state()`),SPAN=(+process.env.FF_SPAN||60)*1000,ESCORT=process.env.FF_ESCORT!=='0',ALIVE=+process.env.FF_ALIVE||30;   // FF_ESCORT=0: the hull parked under the Stålheart, the rover alone; FF_ALIVE: the bodies kept up round it
+ const {GUNSHIP_AUTO}=await import('../src/content/gunship.js');
+ await go('gunship-ff',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&gunship=auto&pets=born#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===2`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ await until(`${T}.rover.state().built && ${T}.rover.state().scene.ready`,60000).catch(async()=>assert.fail(`the depot live and the rover loaded (${JSON.stringify(await R())})`));
+ const GA=async()=>(await st()).programme.colony.gunship;await until(`${T}.state().programme.colony.gunship.auto`,15000).catch(async()=>assert.fail(`Isao calibrates the gunship (${JSON.stringify(await GA())})`));
+ // ground on the far side of the gate: the --rover suite's ideal defender until 1,500 kg lie on the field, then the sector quiet and the ground clear
+ for(const t0=Date.now();Date.now()-t0<240000;){const S=await st();if(S.sector?.phase==='fighting')await evaluate(`${T}.sectorCull(999,'tank')`);await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();`);if((await R()).field>=1500)break;await delay(500);}
+ await evaluate(`${T}.sectorQuiet(true)`);for(let k=0;k<20;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(300);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
+ const rich=await evaluate(`${T}.rover.richest()`);assert.ok(rich&&rich.cell>=0,`ground to harvest (${JSON.stringify(rich)})`);
+ // the debugger's logs (0-based lines; they are looked up so an edit above them cannot move a probe onto the wrong statement)
+ const lineOf=(file,needle)=>{const i=readFileSync(file,'utf8').split('\n').findIndex(l=>l.includes(needle));assert.ok(i>=0,`${file}: ${needle}`);return i;};
+ await evaluate('window.__ff={rounds:[],strikes:[],hits:[],now:null,snaps:0}');await send('Debugger.enable');
+ const bp=async(file,line,condition)=>{const r=await send('Debugger.setBreakpointByUrl',{urlRegex:file.replace(/[.\/]/g,'\\$&')+'(\\?.*)?$',lineNumber:line,condition});assert.ok(r.locations?.length,`the probe in ${file}:${line+1} is placed (${JSON.stringify(r)})`);};
+ await bp('src/td-tab.js',lineOf('src/td-tab.js','if (showcaseMode) (showcase ??= createShowcase('),
+  'try{if(window.__ff&&(!window.__ff.now||performance.now()-window.__ff.now.t>50)){window.__ffT=[];for(const tw of towers)window.__ffT.push([tw.key,graph.centers[tw.ci]]);window.__ff.snaps++;window.__ff.now={t:performance.now(),cs:cellSide,tank:playerHP>0?player.pos.slice():null,hp:playerHP,armour:hullArmour,isao:isao&&isao.obj?isao.obj.position.toArray():null,rover:roverGlue.test.state().scene?.point??null,pets:companions?companions.state().units.map(u=>({id:u.id,pos:u.pos,life:u.life})):[],towers:window.__ffT};}}catch(e){window.__ffErr=String(e&&e.stack||e);} false');
+ await bp('src/fx/gunship-auto.js',lineOf('src/fx/gunship-auto.js','for (const r of G.landed())')+1,'window.__ff&&window.__ff.rounds.push({gun:r.gun,p:r.point.slice(),now:window.__ff.now}); false');
+ await bp('src/fx/strike-console.js',lineOf('src/fx/strike-console.js','console.log(`STRIKE ci='),'window.__ffW=0;for(const g of host.dungeon().tags)if(g===BLOCKED)window.__ffW++;window.__ff&&window.__ff.strikes.push({use,ci,c:c.slice(),radius,before,towersAfter:host.towers().length,wallsAfter:window.__ffW,now:window.__ff.now}); false');
+ await bp('src/td-tab.js',lineOf('src/td-tab.js','if (lab.on && lab.immortalTank)'),'window.__ff&&window.__ff.hits.push({type:killerType,whole,hp:playerHP,armour:hullArmour,t:performance.now()}); false');
+ await delay(1000);{const f=await evaluate('({snaps:window.__ff.snaps,err:window.__ffErr??null,now:window.__ff.now})');assert.ok(f.snaps>0&&!f.err,`the friendlies' snapshot runs (${JSON.stringify(f).slice(0,600)})`);console.log(`  probe: snapshot ${JSON.stringify(f.now).slice(0,400)}`);}
+ // the escort: the hull on the rover's ground, a flare there, the rover out to it
+ await evaluate(`${T}.placeTank(${rich.cell})`);await delay(300);await evaluate(`${T}.rover.flareAt(${rich.cell})`);if(!ESCORT){await evaluate(`${T}.parkHull('stalheart')`);await delay(300);}
+ await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover at the escorted ground (${JSON.stringify(await R())})`));
+ // the gunship on station and off the seat, its track over the escort
+ const station=async()=>{await evaluate(`${T}.showcase.gunship()`);await evaluate(`${T}.showcase.leave()`);await evaluate('document.querySelector("#story-views [data-view=tank]")?.click()');await evaluate(`${T}.showcase.track(${rich.cell})`);};
+ await station();await until(`${T}.state().gunship.station && !${T}.state().gunship.seat`,15000).catch(async()=>assert.fail(`the gunship on station, the seat empty (${JSON.stringify((await st()).gunship)})`));
+ const ring=(await evaluate(`${T}.showcase.cellsNear(${rich.cell},3)`)).cells.filter(c=>!c.rock&&!c.solid&&c.ci!==rich.cell).map(c=>c.ci);assert.ok(ring.length>3,`open ground round the rover (${ring.length} cells)`);const s0=await st(),r0=await R(),k0=s0.killsBySrc?.strike??0,g0=(await GA()).fly,c0=s0.story?.clock??0;
+ await evaluate('window.__ff.rounds.length=0;window.__ff.strikes.length=0;window.__ff.hits.length=0');
+ let spawned=0,lifeMin={},retaken=0;   // lifeMin: each companion's life states seen
+ for(const t0=Date.now();Date.now()-t0<SPAN;){
+  const alive=await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`);
+  if(alive<ALIVE)for(let k=0;k<10;k++)spawned+=await evaluate(`${T}.creatures.spawnAt('amoeba',${ring[(spawned+k*7)%ring.length]})`).catch(()=>0);
+  if(!(await evaluate(`${T}.state().gunship.station`))){await station();retaken++;}
+  for(const p of (await evaluate('window.__ff.now?.pets??[]')))(lifeMin[p.id]??=new Set()).add(p.life);   // a companion has no health, only a life state (src/fx/companions.js)
+  await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click()`);
+  await delay(2000);
+ }
+ current='gunship-ff';await finish();
+ const F=await evaluate('window.__ff'),s1=await st(),r1=await R(),g1=(await GA()).fly;
+ await send('Debugger.disable');
+ const G={rotary:GUNSHIP_GUNS.rotary.blastCells,bofors:GUNSHIP_GUNS.bofors.blastCells,heavy:GUNSHIP_GUNS.heavy.blastCells};
+ const arc=(p,q)=>{const lp=Math.hypot(...p),lq=Math.hypot(...q),c=(p[0]*q[0]+p[1]*q[1]+p[2]*q[2])/(lp*lq);return Math.acos(Math.max(-1,Math.min(1,c)))*lp;};   // ground distance on the round's own radius
+ const who=(now)=>now?[['hull',now.tank],['rover',now.rover],['isao',now.isao],...now.pets.map(p=>[p.id,p.pos]),...now.towers.map(([k,p],i)=>[`sentry:${k}#${i}`,p])].filter(([,p])=>p):[];
+ const tally={};for(const r of F.rounds){const g=tally[r.gun]??={rounds:0,near:{},plus1:{},closest:{}};g.rounds++;if(!r.now)continue;
+  for(const [n,p] of who(r.now)){const kind=n.startsWith('sentry')?'sentry':n,d=arc(r.p,p)/r.now.cs;g.closest[kind]=Math.min(g.closest[kind]??Infinity,+d.toFixed(2));if(d<G[r.gun])g.near[kind]=(g.near[kind]??0)+1;if(d<G[r.gun]+1)g.plus1[kind]=(g.plus1[kind]??0)+1;}}
+ const strikes=F.strikes.filter(x=>x.use==='gunship.nuke').map(x=>({ci:x.ci,radiusCells:+(x.radius/(x.now?.cs||1)).toFixed(2),towers:`${x.before.towers}->${x.towersAfter}`,walls:`${x.before.walls}->${x.wallsAfter}`,closest:Object.fromEntries(who(x.now).map(([n,p])=>[n,+(arc(x.c,p)/x.now.cs).toFixed(1)]))}));
+ const hitsBy={};for(const h of F.hits)hitsBy[h.type??'null']=(hitsBy[h.type??'null']??0)+1;
+ const out={escort:ESCORT,alive:ALIVE,span:{wallS:SPAN/1000,storyClockS:+((s1.story?.clock??0)-c0).toFixed(1)},spawned,gunshipRetaken:retaken,fired:(g1?.rounds??0)-(g0?.rounds??0),landed:tally,nukes:strikes,
+  hullHits:hitsBy,hullAfter:{dents:F.now?.armour,hulls:F.now?.hp},roverBitten:(r1.bitten??0)-(r0.bitten??0),roverMode:r1.mode,petsLife:Object.fromEntries(Object.entries(lifeMin).map(([k,v])=>[k,[...v]])),
+  kills:{gunship:(s1.killsBySrc?.strike??0)-k0,bySrc:Object.fromEntries(Object.entries(s1.killsBySrc??{}).map(([k,v])=>[k,v-(s0.killsBySrc?.[k]??0)]))},keep:{gunSafeCells:GUNSHIP_AUTO.gunSafeCells,nukeSafeCells:GUNSHIP_AUTO.nukeSafeCells}};
+ console.log(`GUNSHIP FF ${JSON.stringify(out)}`);
+ assert.ok(out.fired>0,`the gunship fired by itself over the escort (${out.fired} rounds)`);
  } else if(args.includes('--gunship-auto')) {
  // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
  // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see

@@ -4600,6 +4600,7 @@ export function initTdTab(root) {
   const autoSupport = createAutoSupport({
     showBrief,
     roadNuke: () => bossRun.roadNukeTarget(),   // THE NUKES ON THE ROAD (2026-10-23): the drive out's rock cluster for the automated MK-9 (src/fx/boss-run.js)
+    friendlies: () => [roverGlue.prey()?.pos, ...[...(mechSquad?.contacts() ?? []), ...(companions?.contacts() ?? [])].map((u) => u.pos)].filter(Boolean),   // what the gunship on auto keeps clear of beside the hull (2026-11-12, src/fx/auto-support.js gunshipUnits)
     updateHud,
     gunshipRig,
     camera,
