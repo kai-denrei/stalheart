@@ -95,7 +95,7 @@ async function click(selector){
 }
 try{
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Server did not start')),10000);server.stdout.once('data',()=>{clearTimeout(timer);resolve();});server.once('error',reject);server.once('exit',code=>{if(code)reject(Error(`Server exited ${code}`));});});
- browser=launchChrome([...(process.env.HEADED==='1'?['--no-first-run','--no-default-browser-check']:['--headless=new']),'--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:args.includes('--grow')?1800000:1200000});   // --grow: 30 min (THE SETTLING, 2026-11-08: the Rotor stands behind the Stålheart's 75 s on its page)
+ browser=launchChrome([...(process.env.HEADED==='1'?['--no-first-run','--no-default-browser-check']:['--headless=new']),'--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:args.includes('--grow')||args.includes('--flow')?1800000:1200000});   // --grow: 30 min (THE SETTLING, 2026-11-08: the Rotor stands behind the Stålheart's 75 s on its page)
  const chromePort=await browser.port;
  let page=null;for(let k=0;k<50&&!page;k++){page=(await(await fetch(`http://127.0.0.1:${chromePort}/json`)).json()).find(t=>t.type==='page');if(!page)await delay(200);}   // a headed window lists its page a moment later
  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));
@@ -1805,6 +1805,78 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.state().towers>=3`,300000).catch(async()=>assert.fail(`the second Rotor printed after the Stålheart (${JSON.stringify((await st()).programme)}, ${(await st()).towers} sentries)`));await mark('the second Rotor stands');
  console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);
  {const d=marks[0][1],seat=marks.find(m=>/Rotor\'s seat/.test(m[0]));console.log(`DOG FROM THE DEPLOY ${JSON.stringify(marks.map(([w,c])=>[w,+(c-d).toFixed(1)]))}`);if(seat)console.log(`  dog: the Rotor's seat ${(seat[1]-d).toFixed(1)} s of story clock after the deploy`);}console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
+ } else if(args.includes('--flow')) {
+ // THE FLOW OF STAGES (owner, 2026-11-12: "first we want the flow of stages"; the audit docs/FLOW.md): one story page played end to end by harness
+ // hands that do what a plain player does at each hand-over, and a FLOW TIMELINE of every change a player would notice: the story beat, the camera
+ // shot, the seat, the sector and its phase, the build board, a pause, the hull, Isao's print, the study screen, with the game clock (shieldClock),
+ // the story clock and the wall; and every line on Isao's panel, the callouts, the order and the toasts with the same clocks. A measuring probe: no
+ // assertion but the page's errors (logged, never thrown), so a stuck hand-over is printed as FLOW STUCK and the run goes on to its wall cap.
+ // FROM=open (default: the story's own start, the dog surveying at once on an acceptance page, the first orders' card) or FROM=N (?skip=defence&sector=N);
+ // TO=M stops at sector M's start (default 3); MAX_S the wall cap (default 1500). The hands: a seat is aimed and held (aimEnemy); the first orders take
+ // the second Rotor and the foundry's work; the gunship's seat in sector 0 releases one MK-9 where it looks, then breachStrike after 30 s; the study
+ // screen is read 3 s then CONTINUE; a briefing card is skipped after 2 s; a sector is fought by the ledger's ideal defender (sectorCull, every 2 s)
+ // with the reference flagger; the debrief is read 3 s and the real CONTINUE pressed; the build board takes the two cheapest affordable cards. The hull
+ // is never driven (the expedition's sites are not visited: the first sector waits its grace). JSON to artifacts/browser/flow(-FROM).json.
+ const T='window.__stalheartTest',from=process.env.FROM||'open',to=+process.env.TO||3,maxS=+process.env.MAX_S||1500,tag=from==='open'?'open':`s${from}`;
+ const url=from==='open'?'index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&first=1#td':`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${+from}#td`;
+ await go('flow-'+tag,url);
+ await until(`!!${T}&&!!${T}.state().story`,120000);
+ await evaluate(`(()=>{const T=window.__stalheartTest,F=window.__flow={rows:[],texts:[],ticks:[],last:''};
+  const clk=()=>{try{const s=T.state();return [+(performance.now()/1000).toFixed(1),+(s.shieldClock??0).toFixed(1),s.story?.clock??null];}catch(e){return [+(performance.now()/1000).toFixed(1),null,null];}};
+  const watch=(sel,name)=>{const read=(el)=>{const tx=el&&!el.classList.contains('hidden')&&!el.hidden&&getComputedStyle(el).display!=='none'?el.innerText.replace(/\\s+/g,' ').trim():'';const k=name+':'+tx;if(tx&&F['t'+name]!==tx){F['t'+name]=tx;F.texts.push([...clk(),name,tx.slice(0,220)]);}};
+   (function hook(){const el=document.querySelector(sel);if(!el){setTimeout(hook,500);return;}read(el);new MutationObserver(()=>read(el)).observe(el,{subtree:true,childList:true,characterData:true,attributes:true});})();};
+  watch('#td-brief','brief');watch('#td-order','order');watch('#td-toast','toast');
+  (function cb(){const c=document.querySelector('#td-callouts');if(!c){setTimeout(cb,500);return;}new MutationObserver((ms)=>{for(const m of ms)for(const n of m.addedNodes)F.texts.push([...clk(),'callout',(n.textContent||'').slice(0,160)]);}).observe(c,{childList:true});})();
+  let n=0;(function f(){try{const s=T.state(),q=T.seatState(),S=s.sector||{};
+   const seat=q.gunshipSeat?'gunship':(q.seatKey||(s.laser?.seated?'sol':''));
+   const k=['beat:'+(s.story?.phase??''),'shot:'+(s.shot??''),'seat:'+seat,'sector:'+(S.n??'')+'/'+(S.phase??''),s.board?.open?'BOARD':'',s.paused?'PAUSED':'','hull:'+(s.hull?.state??''),'print:'+(s.programme?.active??''),s.screenOpen?'SCREEN':'','pet:'+(s.companions?.print?.printing?.id??''),'boss:'+(s.boss?.phase??''),'descent:'+(s.descent?.phase??'')].join(' ');
+   if(k!==F.last){F.rows.push([...clk(),k,s.enemiesAlive]);F.last=k;}
+   const said=s.story?.said??[];if(said.length!==(F.said??0)){const seen=document.querySelector('#td-brief'),shown=!!seen&&getComputedStyle(seen).display!=='none';F.texts.push([...clk(),'said',said.slice(F.said??0).join(',')+(shown?'':' (panel hidden: '+(document.body.classList.contains('sentry-pilot-mode')||document.querySelector('.sentry-pilot-mode')?'a seat':'?')+')')]);F.said=said.length;}
+   if(++n%20===0)F.ticks.push([...clk(),s.enemiesAlive,s.biomass,seat,S.phase??null]);
+  }catch(e){}setTimeout(f,250);})();})()`);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
+ const hands=[],hand=async(what)=>{const c=await evaluate(`[+(performance.now()/1000).toFixed(1),+(${T}.state().shieldClock??0).toFixed(1),${T}.state().story?.clock??null]`);hands.push([...c,what]);console.log(`  flow hand: ${what} @ ${JSON.stringify(c)}`);};
+ const pageErrors=[];const snap=async(name)=>{try{const sh=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(output,`flow-${tag}-${name}.png`),Buffer.from(sh.data,'base64'));}catch(e){}if(errors.length){pageErrors.push(...errors.map(e=>`${name}: ${String(e).slice(0,300)}`));errors.length=0;}};
+ const t0=Date.now(),done=new Set(),since={};let lastSector=null,seatSince=null,nukeTried=false,lastCull=0,boardsSeen=0;
+ const once=(k)=>{if(done.has(k))return false;done.add(k);return true;};
+ const wait=(k,ms)=>{since[k]??=Date.now();return Date.now()-since[k]>=ms;};
+ while(Date.now()-t0<maxS*1000){
+  const s=await evaluate(`(()=>{const s=${T}.state(),q=${T}.seatState();return {beat:s.story?.phase,shot:s.shot,seat:q.gunshipSeat?'gunship':q.seatKey,board:s.board?{open:s.board.open,first:s.board.first,bank:s.board.bank,offers:(s.board.offers||[]).map(o=>({id:o.id,price:o.price}))}:null,paused:s.paused,sector:s.sector?{n:s.sector.n,phase:s.sector.phase,debrief:!!s.sector.debriefOpen}:null,screen:s.screenOpen,bank:s.biomass,alive:s.enemiesAlive,hull:s.hull?.state,nuke:s.gunship?.nuke?.ready,sealed:s.story?.construction?.sealed};})()`).catch(()=>null);
+  if(!s){await delay(1000);continue;}
+  if(s.sector?.n>=to&&s.sector.phase==='fighting'){await hand(`stop: sector ${s.sector.n} fighting`);await snap(`sector-${s.sector.n}`);break;}
+  if(s.sector?.n&&s.sector.n!==lastSector){lastSector=s.sector.n;await hand(`sector ${s.sector.n} begins (${s.sector.phase})`);}
+  // the briefing cards and the study screen: read, then skipped
+  if(await evaluate(`!!document.querySelector('#gunship-briefing:not([hidden]) [data-skip],#sol82-briefing:not([hidden]) [data-skip]')`)){if(wait('brf',2000)){await evaluate(`document.querySelector('#gunship-briefing:not([hidden]) [data-skip],#sol82-briefing:not([hidden]) [data-skip]')?.click()`);delete since.brf;await hand('briefing card skipped');}}
+  if(s.screen){if(once('screen-snap'))await snap('study-screen');if(wait('scr',3000)){await evaluate(`document.querySelector('#synthetic-modal [data-continue]')?.click()`);delete since.scr;await hand('study screen CONTINUE');}}
+  // the build board: the first orders' two, else the two cheapest affordable (the board's own first)
+  if(s.board?.open){if(wait('brd',2500)){delete since.brd;boardsSeen++;await snap(s.board.first?'first-orders':`board-${boardsSeen}`);
+    let take;if(s.board.first)take=['sentry:rotor','build:foundry'].filter(id=>s.board.offers.some(o=>o.id===id));
+    else{const own=o=>!/^(sentry|upgrade):/.test(o.id),cards=s.board.offers.filter(o=>o.price<=s.board.bank).sort((x,y)=>(own(y)-own(x))||x.price-y.price);let left=s.board.bank;take=[];for(const c of cards)if(take.length<2&&c.price<=left){take.push(c.id);left-=c.price;}}
+    for(const id of take)await evaluate(`${T}.board.toggle(${JSON.stringify(id)})`);await evaluate(`${T}.board.confirm()`);await hand(`board${s.board.first?' (FIRST ORDERS)':''}: bank ${s.board.bank}; offers ${s.board.offers.map(o=>o.id+' '+o.price).join(', ')}; took ${take.join(', ')||'none'}`);}
+   await delay(400);continue;}
+  // the debrief: read, then the real CONTINUE
+  if(s.sector?.debrief){if(once('db'+s.sector.n))await snap(`debrief-${s.sector.n}`);if(wait('dbr',3000)){delete since.dbr;const ok=await evaluate(`(()=>{const b=document.querySelector('.sdb-acts [data-act=continue]');if(b){b.click();return true;}return false;})()`);if(!ok)await evaluate(`${T}.sectorContinue('continue')`);await hand(`debrief ${s.sector.n} CONTINUE (${ok?'button':'harness'})`);}await delay(400);continue;}
+  // a seat: aimed and held
+  if(s.seat==='rotor'||s.seat==='quiver'){if(once('seat-'+s.seat))await hand(`in the ${s.seat}'s seat`);await evaluate(`(()=>{const t=window.__stalheartPilotTest;if(!t)return;t.hold(true);if(!t.state().overheated)t.aimEnemy();})()`);}
+  else await evaluate('window.__stalheartPilotTest?.hold?.(false)').catch(()=>{});
+  // sector 0's gunship seat: NUKE THE ENTRANCE
+  if(s.seat==='gunship'&&s.beat==='construction'){seatSince??=Date.now();if(once('gs0'))await snap('sector-0-gunship');
+   if(!nukeTried&&s.nuke){nukeTried=true;await evaluate(`${T}.gunshipGun("heavy")`);await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(false)`);await delay(300);await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(false)`);await hand('MK-9 painted and released where the optic looks');}
+   if(!s.sealed&&Date.now()-seatSince>30000&&once('strike')){await evaluate(`${T}.breachStrike()`);await hand('breachStrike (the MK-9 did not seal it in 30 s)');}}
+  // the sector: the ideal defender and the reference flagger
+  if(s.sector?.phase==='fighting'&&Date.now()-lastCull>2000){lastCull=Date.now();await evaluate(`${T}.sectorCull(999,'tank')`);
+   await evaluate(`(()=>{const r=${T}.rover?.state?.();if(r?.built&&r.mode==='idle'&&!r.queued&&r.field>0&&!r.flares.some(f=>f.id===r.order)){const c=${T}.rover.richest();if(c)${T}.rover.flareAt(c.cell);}})()`);}
+  if(s.sector?.phase==='lost'||s.sector?.phase==='lost-shown'){await hand(`sector ${s.sector.n} LOST`);break;}
+  for(const [k,cond] of [['dog-print',s.beat==='dog-print'],['harvest',s.beat==='harvest'],['construction',s.beat==='construction'],['study-talk',s.beat==='study-talk'],['expedition',s.beat==='expedition']])if(cond&&once('snap-'+k)){await delay(800);await snap(k);}
+  await delay(400);}
+ if(Date.now()-t0>=maxS*1000)console.log(`FLOW STUCK: the wall cap ${maxS} s reached`);
+ await evaluate('window.__stalheartPilotTest?.hold?.(false)').catch(()=>{});
+ const F=await evaluate('window.__flow');
+ writeFileSync(join(output,`flow-${tag}.json`),JSON.stringify({from,to,url,wallSeconds:Math.round((Date.now()-t0)/1000),rows:F.rows,texts:F.texts,ticks:F.ticks,hands,pageErrors},null,1));
+ console.log('FLOW TIMELINE (wall s, game clock, story clock, state, alive)');for(const r of F.rows)console.log('  '+JSON.stringify(r));
+ console.log('FLOW TEXTS');for(const r of F.texts)console.log('  '+JSON.stringify(r));
+ console.log(`FLOW HANDS ${JSON.stringify(hands)}`);console.log(`FLOW ERRORS ${JSON.stringify(pageErrors)}`);
+ current='flow-'+tag+'-end';await snap('end');
  } else if(args.includes('--settling')) {
  // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to
  // build first with limited building material, the Stalheart being non-negotiable ... Isao tells the player that we will need to scout for more
