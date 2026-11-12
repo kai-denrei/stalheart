@@ -1626,6 +1626,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await until(`${T}.rover.state().mode==='idle'`,120000).catch(async()=>assert.fail(`the rover home before the hunted run (${JSON.stringify(await R())})`));
   await evaluate(`${T}.sectorQuiet(true)`);for(let k=0;k<20;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(300);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
   if(escort)await evaluate(`${T}.placeTank(${rich.cell})`);else await evaluate(`${T}.parkHull('stalheart')`);await delay(300);
+  {const n=await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`);if(n)console.log(`  hunted: ${n} bodies still alive before the page`);}
   const a0=await R();await evaluate(`${T}.rover.lay(${rich.cell},6500)`);await evaluate(`${T}.rover.flareAt(${rich.cell})`);
   await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover at the hunted ground (${JSON.stringify(await R())})`));
   const ring=await evaluate(`${T}.creatures.neighbours(${rich.cell})`);let made=0;for(let k=0;k<5;k++)made+=await evaluate(`${T}.creatures.spawnAt('amoeba',${(ring.length?ring:[rich.cell])[k%Math.max(1,ring.length)]})`);
