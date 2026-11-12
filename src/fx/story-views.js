@@ -73,7 +73,7 @@ export function createUnlockHost(host) {
       (host.gunshipBriefing() ?? host.setGunshipBriefing(createGunshipBriefing(root))).later();
       selectGun(gunship, 'heavy', GUNSHIP_GUNS);
       if (!host.pilotMode()) enterPilot(towers.map((t) => t.ci));
-      if (host.pilot()?.mountGunship() !== 'mounted') return false;
+      if (host.pilot()?.mountGunship({ onLane: true }) !== 'mounted') return false;   // the optic on the sinkhole, where the order points (flow fixes, 2026-11-13)
       host.storyViews().active('gunship'); showOrder(root, 'NUKE THE ENTRANCE!', 'press 1-2-3 to cycle the weapons', 5000);
       return true;
     },
