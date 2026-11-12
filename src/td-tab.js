@@ -4991,7 +4991,7 @@ export function initTdTab(root) {
         wave,
         runGen: runContext.generation,
         heart: heartHP,
-        hulls: playerHP,
+        hulls: playerHP, hullDown: playerDown,   // hullDown: a lost hull's wreck and dash, before its deploy (--rover's hunted pages wait it out)
         biomass: eco.biomass, ledger: eco.ledger, board: buildBoard.state(), hudDim: hudDim.state(),   // the ledger by source, the build board (round 6, --ledger, --board), the HUD fade (--hud-dim)
         towers: towers.length,
         won: player.won,
