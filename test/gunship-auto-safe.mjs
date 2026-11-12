@@ -22,7 +22,7 @@ function rig(pileAt) {
 assert.equal(rig([0.01, 0.01]), 0, 'a pile beside the base is not nuked');
 assert.equal(rig([0.6, 0.6]), 1, 'the same pile far out is');
 // THE GUNS STAY UNDER THE SHIP'S SKY (2026-10-05: "shooting at seemingly nothing ... perhaps at enemies on the other side of the planet?")
-function guns(pileAt) {
+function guns(pileAt, units = () => []) {
   const fired = [], cs = 0.0133, ship = unit(Math.PI / 2, 0).map((v) => v * 1.3);
   const enemies = Array.from({ length: 10 }, (_, i) => ({ alive: true, pos: unit(pileAt + i * 0.001, 0) }));
   const G = {
@@ -31,12 +31,17 @@ function guns(pileAt) {
     onStation: () => true, mount() {}, enemies: () => enemies, cell: () => 0, select: () => true,
     optic: { muzzle: () => ship, flight() {} }, sfx() {}, fire: (g, aim) => fired.push(aim), step: (dt, held) => (held ? 1 : 0), landed: () => [], stepHeavy: () => -1,
   };
-  const auto = createGunshipAuto({ G, tune: { ...GUNSHIP_AUTO, rest: 0 }, onScreen: () => false, callout() {} });
+  const auto = createGunshipAuto({ G, tune: { ...GUNSHIP_AUTO, rest: 0 }, onScreen: () => false, callout() {}, units });
   for (let i = 0; i < 5; i++) auto.tick(0.05, false);
   return fired.length;
 }
 assert.ok(guns(Math.PI / 2 - 0.2) > 0, 'a pile under the ship is fired on');
 assert.equal(guns(-0.3), 0, 'a pile beyond reach (the far landers) is not');
+// NOT ON OUR OWN (2026-11-12, the --gunship-ff probe): a pile within the gun's blast + gunSafeCells of a friendly unit (the hull, Isao, the rover, a
+// companion: src/fx/auto-support.js gunshipUnits) is held off; the same pile with the unit a few cells away is fired on
+{ const at = Math.PI / 2 - 0.2, cs = 0.0133;
+  assert.equal(guns(at, () => [unit(at + 0.0045, 0)]), 0, 'a pile beside a friendly unit is not fired on');
+  assert.ok(guns(at, () => [unit(at + 0.0045 + 8 * cs, 0)]) > 0, 'the same pile with the unit eight cells off is'); }
 // THE NUKES ON THE ROAD (2026-10-23, arena-road spec decision 2): a road target takes an MK-9 every travel + reload with no pile in sight, never beside a friend
 // (nukeSafeCells + 2 clear of its blast), and a pile of at least nukePile / roadWeight bodies on screen still wins the pass
 function road({ at = [0.6, 0.6], pile = 0, friend = [0, 0] } = {}) {

@@ -66,6 +66,22 @@ Evidence:
 - node test/manual-landing.mjs, test/arrival.mjs, test/landing-hud.mjs: the CRASH rule and its strict lines, the fuel cut and the dry fall, the arrival's crash state, FLY IT AGAIN, no salvage, no talk.
 - scripts/browser-test.mjs --landing: results in docs/STATE.md under THE LANDING (2026-11-12 paragraph).
 
+## 2026-11-12 — The gunship's friendly fire on auto measured (--gunship-ff): nothing friendly takes damage; the rover, companions and mechs now kept clear like the hull
+
+change · accepted · 2026-11-12-the-gunship-s-friendly-fire-on-auto-measured-the-rover-and-companions-kept-clear
+
+The owner, 2026-11-12 (docs/DECISIONS.md): the gunship and SOL stay automated, "we need to make sure the gunship is not too aggressive with friendly fire", with the tank heading out beyond the walls escorting the rover. Measure first, fix only a clear bug or clear over-aggression.
+
+FROM THE CODE: the auto's rotary and Bofors rounds (src/fx/gunship-auto.js landGunshipRounds) damage only G.enemies(): no path reaches the hull, the rover, the companions, the mechs, the sentries or the walls. The hull is hurt only by enemy touches and SOL's burn (playerHit 'laser'); the rover has no health (hunters' bites eat its hold); the companions have no health (a life state). The MK-9 (executeStrike, blastCells 5.5) also destroys sentries (STRIKE_TUNE.breakTowers) and breaches walls in its radius; on auto it only drops a pile nukeSafeCells (3) beyond its blast from the heart, the base's anchors and walls and the hull. The guns kept blast + gunSafeCells (1.5) off the hull and Isao only. MEASURED (60 s wall each, sector 2, ?gunship=auto, the pass over the rover's ground): escorted, 443 rounds, none within its gun's radius of any friendly, closest rotary 1.82 cells off the hull and 1.89 off the rover, Bofors 3.29 / 3.4, 66 gunship kills; the rover alone (the hull parked under the Stalheart, 50 bodies kept up), 512 rounds, 6 of 38 Bofors rounds burst within their 2.2 cells of the rover (closest 0.7), no damage, 193 kills. No MK-9 fell in any run, no hull hit, no rover bite in those two. CHANGED: src/fx/auto-support.js gunshipUnits: the guns' kept-clear list (and the auto MK-9's friends) gains c.friendlies() (src/td-tab.js: the rover while away from home via roverGlue.prey(), the mech squad's and companions' contacts), put on the unit sphere; the margin stays GUNSHIP_AUTO.gunSafeCells / nukeSafeCells. AFTER: the rover alone, 595 rounds, 0 of 39 Bofors within radius (closest 3.34), rotary closest 2.21, 248 kills, one 100 kg bite got through; escorted unchanged (587 rounds, 0 within radius, 86 kills). The player's own seat is untouched.
+
+Alternatives: Changing nothing (no friendly takes damage): not taken; Bofors bursts on the rover read as fire on our own, which is the owner's worry.; A separate, larger margin for the rover: not needed; gunSafeCells already clears it by a cell.; Adding the sentries' own cells to the MK-9's friends: not done; sentries stand on anchors and wall cells already in the list, and no MK-9 fell in the probe. A call for the owner.
+
+Evidence:
+
+- --gunship-ff (new probe; debugger logpoints, no src instrumentation): before, escorted and FF_ESCORT=0 FF_ALIVE=50; after, both; the GUNSHIP FF lines quoted in the outcome.
+- test/gunship-auto-safe.mjs: a pile beside a friendly unit is not fired on, eight cells off it is; test/auto-support.mjs: gunshipUnits.
+- npm test (344 programs) and npm run check green.
+
 ## 2026-11-12 — The economy at 10x built: no start bank, the first wave's bodies as the first harvest, seepage, half the flagged ground at the break, the rover hunted and escorted, the sentry cap 6+2+2
 
 change · accepted · 2026-11-12-the-economy-at-10x-built-no-start-bank-seepage-the-rover-hunted-the-cap

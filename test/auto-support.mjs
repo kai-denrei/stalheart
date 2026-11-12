@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createAutoSupport } from '../src/fx/auto-support.js';
+import { createAutoSupport, gunshipUnits } from '../src/fx/auto-support.js';
 import { GUNSHIP_AUTO } from '../src/content/gunship.js';
 import { LASER_AUTO } from '../src/content/orbital-laser.js';
 // THE FIRE SUPPORT ON AUTO (src/fx/auto-support.js, out of the programme host in the refactor run): the envelope the automations open
@@ -15,4 +15,8 @@ story.gsManned = 3; assert.deepEqual(a.gunshipAuto(), { auto: true, manned: 3, f
 a.tick({ dt: 0.016 });   // no gunship rig, no camera, no Isao: nothing to fly, nothing to fire
 story.strike = { tick: () => false }; a.tick({ dt: 0.016 }); assert.equal(story.strike, null, 'a finished missile is let go');
 assert.deepEqual(log, []);
+// the points the gunship on auto keeps clear of (2026-11-12): the hull, Isao, and the friendlies (the rover, companions, mechs) put on the unit sphere
+{ const u = gunshipUnits([0, 1, 0], null, [[0, 2, 0], [3, 0, 4]]);
+  assert.deepEqual(u, [[0, 1, 0], [0, 1, 0], [0.6, 0, 0.8]], 'the hull and the friendlies on the sphere');
+  assert.deepEqual(gunshipUnits(null, undefined), [], 'nothing handed in, nothing kept clear of'); }
 console.log('Auto support: nukes, the tier, the alive budget and the swell the automations open, the harness reading, a finished missile let go.');
