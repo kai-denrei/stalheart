@@ -1399,7 +1399,8 @@ try{
  const {COLONY}=await import('../src/content/colony.js');
  const click=async(sel)=>{const r=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});if(!e)return null;e.scrollIntoView({block:'center'});const b=e.getBoundingClientRect();return {x:b.left+b.width/2,y:b.top+b.height/2,disabled:!!e.disabled};})()`);assert(r,`${sel} on the page`);assert(!r.disabled,`${sel} enabled`);
   for(const type of ['mouseMoved','mousePressed','mouseReleased'])await send('Input.dispatchMouseEvent',{type,x:r.x,y:r.y,button:'left',clickCount:1});await delay(150);};
- // PART A
+ // PART A (PART=B skips to the finished base: the stills, the drive and the catapult)
+ if(process.env.PART!=='B'){
  await go('colony-grid-grown',`index.html?sw=0&acceptance=1&cine=0&skip=sector-1#td`);await evaluate(SEEN_LOG);
  await until(`!!${T} && ${T}.state().sector?.n===1`,120000).catch(async()=>assert.fail(`sector 1 opens on the grown base (${JSON.stringify((await st()).sector)})`));mark('sector 1');
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
@@ -1436,6 +1437,7 @@ try{
  {const s=await st(),said=await evaluate('window.__seen');console.log(`  NW: reinforcements ${JSON.stringify({called:s.reinforcements.called,calledDay:s.reinforcements.calledDay,due:s.reinforcements.due})}; callouts ${JSON.stringify(said.callouts.slice(-4))}`);
   assert(said.callouts.some(x=>x.includes(COLONY.kinds.research.caption)),'its caption');}
  current='colony-grid-two-domes';await evaluate(`${T}.focusHeart()`);await delay(1500);await finish();
+ }
  // PART B
  await go('colony-grid-city',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online&x=1&fps=1#td`);await evaluate(SEEN_LOG);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await until(`${T}.state().sector.n===4`,60000);await evaluate(`${T}.sectorQuiet(true)`);await delay(4000);
@@ -1446,8 +1448,10 @@ try{
  const perf=async(tag)=>{const v=[];for(let k=0;k<10;k++){await delay(700);const p=await evaluate(`(()=>{const p=${T}.state().performance;return p&&{calls:p.calls,triangles:p.triangles,frameMs:p.frameMs}})()`);if(p)v.push(p);}const med=(k)=>{const x=v.map(p=>p[k]).filter(y=>y!=null).sort((a,b)=>a-b);return x.length?+x[x.length>>1].toFixed(1):null;};console.log(`  DRAW CALLS ${tag}: median ${med('calls')} calls, ${med('triangles')} triangles, ${med('frameMs')} ms frame (${v.length} samples)`);};
  await perf('base camera');
  const home=(await st()).storyHome;
- await evaluate(`${T}.showcase.ground(${home},70,1)`);await delay(3000);await perf('from above');current='colony-grid-top';await finish();
- await evaluate(`${T}.showcase.ground(${home},16,20)`);await delay(3000);current='colony-grid-three-quarter';await finish();
+ await evaluate(`${T}.showcase.ground(${home},70,1)`);await delay(3000);await perf('from above (the dome-look\'s and the base-look\'s camera)');
+ await evaluate(`${T}.showcase.ground(${home},30,1)`);await delay(3000);current='colony-grid-top';await finish();
+ await evaluate(`${T}.showcase.ground(${home},13,-17)`);await delay(3000);current='colony-grid-three-quarter';await finish();   // from the mouth's side, the gate behind the eye
+ await evaluate(`${T}.showcase.ground(${home},9,13)`);await delay(3000);current='colony-grid-three-quarter-back';await finish();
  // THE HULL THROUGH THE COURTS: frame metres to a lattice cell off dome-e's holder (the dome-look's frame), a route clear of the buildings, real keys
  const domes=await evaluate(`JSON.stringify(['dome-e'].map(id=>${T}.showcase.footprint(id)?.at??null))`).then(JSON.parse);
  const [ex,ey,ez]=domes[0],th=Math.acos(Math.min(1,ey/Math.hypot(ex,ey,ez))),R=70.2/th,yaw=Math.atan2(-ez,ex),cy=Math.cos(yaw),sy=Math.sin(yaw);
@@ -1456,14 +1460,18 @@ try{
  const cellAt=async(x,z)=>evaluate(`(()=>{const T=${T},u=${JSON.stringify(unit(x,z))},n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}return best;})()`);
  await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
  const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
- const legs=[['under the SW-S bridge',-35.1,70.2],['SOLAR SERVICES',-15,45],['LAUNCH',-15,-40],['CARGO',12,-40],['FABRICATION',15,45]],path=[];
+ const legs=[['under the SW-S bridge',-35.1,70.2],['SOLAR SERVICES',-15,45],['LAUNCH',-18,-30],['CARGO',14,-28],['FABRICATION',15,45]],path=[];   // each court's open ground off its pieces (the first run's LAUNCH point hugged the ARC-01's rail)
  for(const [name,x,z] of legs){
   const to=await cellAt(x,z),from=await evaluate(`${T}.showcase.drive().cur`),route=(await evaluate(`${T}.showcase.route(${from},${to},true)`)).map(r=>r.ci);
   assert(route.length>=1,`a route to ${name}`);let turning=null,best=-1,a=Date.now(),reached=false;await evaluate(`${T}.showcase.aimHull(${route[Math.min(1,route.length-1)]})`);await K('keyDown','w','KeyW',87);
-  while(Date.now()-a<240000){const d=await evaluate(`${T}.showcase.drive()`),i=route.indexOf(d.cur);if(i>best)best=i;path.push(frameOf(d.pos));if(d.cur===to||best>=route.length-1){reached=true;break;}
-   const next=route[Math.min(route.length-1,Math.max(best,i)+1)],b=await evaluate(`${T}.showcase.bearing(${next})`),want=b>0.12?'a':b<-0.12?'d':null;
+  let gain=Date.now(),backing=0;
+  while(Date.now()-a<240000){const d=await evaluate(`${T}.showcase.drive()`),i=route.indexOf(d.cur);if(i>best){best=i;gain=Date.now();}path.push(frameOf(d.pos));if(d.cur===to||best>=route.length-1){reached=true;break;}
+   // a driver, as a player is: no progress for 3 s, it backs out for 1.5 s with the steer reversed, then drives on
+   if(!backing&&Date.now()-gain>3000){backing=15;await K('keyUp','w','KeyW',87);await K('keyDown','s','KeyS',83);}
+   if(backing){backing--;if(!backing){await K('keyUp','s','KeyS',83);await K('keyDown','w','KeyW',87);gain=Date.now();}}
+   const next=route[Math.min(route.length-1,Math.max(best,i)+1)],b=await evaluate(`${T}.showcase.bearing(${next})`),fw=!backing,want=b>0.12?(fw?'a':'d'):b<-0.12?(fw?'d':'a'):null;
    if(want!==turning){if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);if(want)await K('keyDown',want,want==='a'?'KeyA':'KeyD',want==='a'?65:68);turning=want;}await delay(100);}
-  if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);await K('keyUp','w','KeyW',87);await delay(300);
+  if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);await K('keyUp','w','KeyW',87);await K('keyUp','s','KeyS',83);await delay(300);
   const at=frameOf((await evaluate(`${T}.showcase.drive()`)).pos);console.log(`  the hull drove to ${name}: ${reached?'reached':'stopped'} at (${at[0].toFixed(1)}, ${at[1].toFixed(1)}), ${route.length} cells, ${((Date.now()-a)/1000).toFixed(1)} s`);
   assert(reached,`the hull reaches ${name} (${best+1} of ${route.length} cells)`);
  }
