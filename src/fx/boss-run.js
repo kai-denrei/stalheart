@@ -303,7 +303,7 @@ export function createBossRun(c) {
   // seatWait) starts from the press (game time stands still under the card)
   function handOver() {
     card ??= c.choiceCard ?? createChoiceCard(c.root); cardUp = true; taken = false; c.pause?.(true);
-    card.show({ title: ARENA_HANDOVER.title, lines: brief('arena_force')?.lines ?? [], hint: [...ARENA_KING.hint, c.mobile?.() ? ARENA_HANDOVER.hintTouch : ARENA_HANDOVER.hint], a: ARENA_HANDOVER.take })   /* THE KING's two actions over the seat's controls (2026-11-12 night) */.then(() => {
+    card.show({ title: ARENA_HANDOVER.title, lines: brief('arena_force')?.lines ?? [], hint: [...ARENA_KING.hint, c.mobile?.() ? ARENA_KING.controlsTouch : ARENA_KING.controls], a: ARENA_HANDOVER.take })   /* THE KING's two actions over the seat's controls (2026-11-12 night) */.then(() => {
       if (!on || !cardUp) return;   // the run ended under the card
       cardUp = false; taken = true; c.pause?.(false); forcedAt = c.t(); retryAt = -9;
     });
@@ -421,7 +421,7 @@ export function createBossRun(c) {
     if (!on || !def) return [];
     const h = hunters(), b = bossRecord();
     if (b) { const m = phase === 'boss' ? c.mark?.() : null;   // THE KING (2026-11-12), and the called nuke's countdown under it while one is marked or falling
-      return [{ id: 'boss', name: ARENA_KING.name, hp: Math.max(0, b.hp), max: def.boss.boss.hp, broken: false, quiet: true }, ...(m?.left != null ? [{ id: 'nuke', name: `${ARENA_KING.labels.nuke} ${Math.ceil(m.left)} S`, hp: m.left, max: ARENA_KING.nuke.countdown, broken: false, quiet: true }] : [])]; }
+      return [{ id: 'boss', name: ARENA_KING.name, hp: Math.max(0, b.hp), max: def.boss.boss.hp, broken: false, quiet: true }, ...(m?.left != null ? [{ id: 'nuke', name: ARENA_KING.labels.nuke, hp: m.left, max: ARENA_KING.nuke.countdown, broken: false, quiet: true, clock: true }] : [])]; }
     if (phase === 'beacon') return [{ id: 'boss', name: 'TREMOR · FAR OUT', hp: 1, max: 1, broken: false, quiet: true }];
     if (!bossSeen && !wavesOf().length) return [{ id: 'boss', name: bossName(), hp: def.boss.boss.hp, max: def.boss.boss.hp, broken: false, quiet: true }];   // no wave (note 4, 2026-10-19): her row, whole, while she climbs out
     if (!bossSeen) return [{ id: 'boss', name: `WAVE · ${bossName().split(' ')[0]}`, hp: h.wave, max: wavesOf().reduce((a, w) => a + w.count, 0), broken: false, quiet: true }];

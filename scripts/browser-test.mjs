@@ -2553,7 +2553,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const s=await waitGame(60,(s)=>(s.boss.king?.mechs?.length??0)>0);console.log(`KING the Ridgebacks: ${s.boss.king?.mechs?.length??0} at game +${(s.boss.t-g0).toFixed(1)} s`);}
  // (1) THE AGGRO: a target and a tell within 40 s of game clock; the tell's screenshot
  const targets=new Set();let tellSeen=null;
- {let s;const g1=(await st()).boss.t;do{await delay(120);s=await st();const k=s.boss.king;if(k?.target)targets.add(k.target);if(k?.mode==='tell'&&!tellSeen){tellSeen={g:+(s.boss.t-g0).toFixed(1),target:k.target};current='king-tell';await finish();}}while(!tellSeen&&s.boss.t-g1<40&&wall()<CAP&&s.boss.phase==='boss');
+ {let s;const g1=(await st()).boss.t;do{await delay(120);s=await st();const k=s.boss.king;if(k?.target)targets.add(k.target);if(k?.mode==='tell'&&!tellSeen){tellSeen={g:+(s.boss.t-g0).toFixed(1),target:k.target};await evaluate(`${T}.seatAim(${JSON.stringify(s.boss.dist.at.boss)})`);await delay(400);current='king-tell';await finish();}   /* the optic turned onto it first */}while(!tellSeen&&s.boss.t-g1<40&&wall()<CAP&&s.boss.phase==='boss');
   console.log(`KING (1) aggro: targets ${JSON.stringify([...targets])}; the first tell ${JSON.stringify(tellSeen)}; log ${JSON.stringify((await st()).boss.king?.log?.charges)}`);}
  // (2) THE 40 MM STOPS IT AND TURNS IT: a shell 10 m to one side of it; the stagger, then the veer, measured as its displacement away from the burst
  let shellRes=null;
@@ -2573,7 +2573,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const k=b.king,mk=k?.mark,heavy=s.gunship.heavy?.phase;
   if(!mk&&heavy==='ready'&&b.dist.at.boss){const ok=await fire('heavy',b.dist.at.boss);if(ok)nukes.push({g:+(b.t-g0).toFixed(1),hp:+b.bossHp.toFixed(1)});}
   else if(mk?.point&&b.dist.at.boss&&b.t-lastHerd>=1){const off=sub(b.dist.at.boss,mk.point),d=Math.hypot(...off)/M;if(d>8){await fire('bofors',norm(add(b.dist.at.boss,norm(off),14*M)));herd++;lastHerd=b.t;}}
-  if(mk&&!markShot&&mk.left!=null&&mk.left<=5){markShot=true;current='king-marker';await finish();console.log(`  marker ${JSON.stringify(mk)} rows ${JSON.stringify(s.integrity?.gates)}`);}
+  if(mk&&!markShot&&mk.left!=null&&mk.left<=5){markShot=true;await evaluate(`${T}.seatAim(${JSON.stringify(mk.point)})`);await delay(400);current='king-marker';await finish();console.log(`  marker ${JSON.stringify(mk)} rows ${JSON.stringify(s.integrity?.gates)}`);}
   await delay(150);}
  const s9=await st(),L=s9.boss.king?.log??{},len=dead?dead.g:+(s9.boss.t-g0).toFixed(1);
  console.log(`KING (4) nukes marked ${JSON.stringify(nukes)}; landed ${JSON.stringify(L.nukes)}; herding shells ${herd}`);

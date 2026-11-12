@@ -291,7 +291,7 @@ function host(o = {}) {
   assert.equal(run.state().phase, 'boss'); assert.equal(run.state().card, true, 'the card is up as she rises'); assert.deepEqual(h.log.pause, [true], 'over the paused game');
   const shown = h.choiceCard.shown[0];
   assert.equal(shown.title, 'THE KING'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
-  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.deepEqual(shown.hint, [...ARENA_KING.hint, ARENA_HANDOVER.hint], 'THE KING\'s two actions, then the seat\'s controls (2026-11-12 night)');
+  assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.deepEqual(shown.hint, [...ARENA_KING.hint, ARENA_KING.controls], 'THE KING\'s two actions, then the seat\'s controls (2026-11-12 night)');
   assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aim, 'the seat footer\'s own aim text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimTouch);
   assert.match(shown.hint.at(-1), /move it to aim/); assert.match(shown.hint.at(-1), /Space or the button fires/); assert.match(shown.hint.join(' '), /40MM/); assert.match(shown.hint.join(' '), /mark/);
   assert.ok(!h.log.briefs.includes('arena_force'), 'the card says it, not the panel');
@@ -305,7 +305,7 @@ function host(o = {}) {
   // on a phone the hint is the seat's touch footer
   const h2 = host({ mobile: () => true }), run2 = createBossRun(h2); run2.begin(ARENA_SECTOR); h2.open = true; h2.now = 1; run2.tick(0.1);
   h2.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h2.now = 2; run2.tick(0.1);
-  assert.equal(h2.choiceCard.shown[0].hint.at(-1), ARENA_HANDOVER.hintTouch);
+  assert.equal(h2.choiceCard.shown[0].hint.at(-1), ARENA_KING.controlsTouch);
   run2.end('lost'); assert.equal(h2.choiceCard.disposed, true, 'the run ended under the card: it goes'); assert.equal(run2.state().card, false); }
 
 // THE MOTHER'S OWN TEMPER (owner, 2026-10-18, note 8c: "Nih Dairia should walk on the sinkhole once she is out ... more scare of 40mm. Gameplay = push her to a
@@ -520,7 +520,7 @@ const WITH_WAVES = { ...ARENA_SECTOR, waves: 3, bodies: [12, 6, 1], boss: { ...A
   assert.deepEqual(run.nukeCall().nuke, ARENA_KING.nuke, 'the gunner\'s MK-9 is called in the boss phase');
   mk = { ci: 3, point: u(-80, 0), left: 5.2, phase: 'painted' }; h.now += 0.1; run.tick(0.1);
   assert.equal(falls[falls.length - 1], 'away', 'the mech inside the marker walks out of it');
-  const nr = run.rows().find((r) => r.id === 'nuke'); assert.ok(nr && nr.name === `${ARENA_KING.labels.nuke} 6 S` && nr.max === ARENA_KING.nuke.countdown, `the countdown row (${JSON.stringify(run.rows())})`);
+  const nr = run.rows().find((r) => r.id === 'nuke'); assert.ok(nr && nr.name === ARENA_KING.labels.nuke && nr.clock === true && nr.hp === 5.2 && nr.max === ARENA_KING.nuke.countdown, `the countdown row (${JSON.stringify(run.rows())})`);
   mk = null; const hp0 = b.hp; run.landed('heavy', u(400, 0)); assert.equal(b.hp, hp0, 'a miss takes nothing'); assert.equal(run.king().log.nukes.at(-1).share, 0);
   run.landed('heavy', u(at[0], at[1])); assert.ok(Math.abs(hp0 - b.hp - ARENA_KING.nuke.share * 180) < 1e-6, `a nuke on it: ${ARENA_KING.nuke.share * 100} % of its points (${hp0 - b.hp})`);
   assert.ok(run.king().log.hp.nuke >= ARENA_KING.nuke.share * 180 - 1e-6, 'booked as the nuke\'s');

@@ -45,4 +45,7 @@ export const ARENA_KING = freeze({
     'Your shells hurt the mechs and the hull too: mind where they land.',
     'MK-9 (3): fire once to mark a spot; it lands 8 s later. Hold the King on the mark.',
   ],
+  // the seat's controls under them, for this fight (GUNSHIP_SEAT_HINT.aim's, with the MK-9 as a mark instead of paint-then-release)
+  controls: 'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 (mark a spot)',
+  controlsTouch: 'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: mark a spot',
 });
