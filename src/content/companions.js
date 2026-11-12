@@ -42,7 +42,13 @@ export const COMPANIONS = freeze({
       gaits: [{ clip: 'Feline_Walk_Cycle', mps: 0.5417, max: 1.1 }, { clip: 'Gallop_Cycle', mps: 6.111, max: 9 }] },
     { id: 'k9', name: 'RECKON K9', kind: 'canine', model: 'assets/models/reckon-k9/reckon_k9_d0_lod1.glb', far: 'assets/models/reckon-k9/reckon_k9_d0_lod2.glb',
       idle: 'Alert_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw', 'Jump'], top: 5.5, accel: 5, turn: 2.8, born: 'pet_born_k9',
-      gaits: [{ clip: 'Walk_Cycle', mps: 0.3571, max: 0.7 }, { clip: 'Run_Cycle', mps: 2.182, max: 2.7 }, { clip: 'Gallop_Cycle', mps: 3.1, max: 3.8 }, { clip: 'Sprint_Cycle', mps: 4.43, max: 7 }] },
+      gaits: [{ clip: 'Walk_Cycle', mps: 0.3571, max: 0.7 }, { clip: 'Run_Cycle', mps: 2.182, max: 2.7 }, { clip: 'Gallop_Cycle', mps: 3.1, max: 3.8 }, { clip: 'Sprint_Cycle', mps: 4.43, max: 7 }],
+      // ITS OWN PRINT (owner, 2026-11-12 evening: "dog recon beginning is cute but much too slow"; and the landing's "no cuts"): 7.2 s, not 15.5, and
+      // ONE wide angle at the game's lens (68 degrees: no zoom as the close-up hands to the dog's chase), a slow push on the bed and Isao over it
+      print: {
+        timeline: { arrive: 1, print: 4, skin: 0.8, wake: 1.4 },
+        angles: [{ from: 0, to: 7.2, eye: [[8, 3.4, 9], [6.2, 2.8, 7]], look: [[0, 1.6, 0], [0, 1, 0]], fov: 68 }],
+      } },
     // K0-TECH-01 (owner, 2026-11-05, round 6 note 1a: "the small feline"): 0.30 x 0.41 x 1.05 m, half C-07's height; the stalk is the slow creep,
     // a nimble top of 4.2 m/s (not C-07's 7) and a quick 14 m/s^2: the design's 3.2 and 7 left the hull 0.82 m from it in --companions' drive (the
     // hull 8 -> 27 m/s over 20 m), 4.2 is as fast as its gallop plays without sliding (2.69 m/s x the 1.6 rate clamp); its own wander band (its walk is

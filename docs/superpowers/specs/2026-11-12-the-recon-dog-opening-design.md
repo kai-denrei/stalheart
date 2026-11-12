@@ -61,6 +61,16 @@ ground. The pearls' cap then applies from the first fight (today from sector 1):
 knock.seconds 1.5, knock.push 4 m; home.cells 3; sprint the K9's top 5.5 m/s (a run home of 100 m takes about 18 s; the pack at ~2 m/s arrives
 about 30 s later, the time of the wall's and the Rotor's prints).
 
+**Revised 2026-11-12 evening** (owner's playtest: "dog recon beginning is cute but much too slow; we accellerate for now, maybe reduce to scouting two
+spots, much closer, rather than 3 far apart"; and on the landing: "focus on the rocket, no cuts, it opens, isao comes out"). `DOG_SCOUT` now: points
+**2** (the rock and the crystals one point, ROCK AND CRYSTALS; the biomass the lane's), cells **[5, 7]**, spread **50-80 degrees** (`spreadMax`),
+survey.seconds **1.5**, pay **150 kg** each (the economy's x10; unchanged, so the opening bank is 150 kg lower than with three), ring 6 m;
+contact unchanged (12 bodies, 6 hops beyond the gate), recall **40 s**; the seat's sprint **6.5 m/s** (`drive.sprint`; the K9's companion top
+stays 5.5), accel 7. RECKON K9's own print **7.2 s** on one wide angle at the game's lens (`COMPANIONS.units` k9 `print`; was 15.5 s over four
+cuts). The landers' tour no longer plays on this opening (section 4 below is superseded on that line): the landing's held shot hands to the
+K9's print and the print to the dog's chase without a cut (src/fx/arrival.js `hand`). Table rows 3-4 read two points, SURVEY x2; Isao's line
+on the first survey only ("Good rock, and crystals. I can print with that. One more mark."). Measured in `docs/STATE.md` (THE OPENING PACED UP).
+
 ## 4. What it replaces and what must keep working
 
 - THE SETTLING's settle clock and Isao's emergency Rotor line on the default opening (the Rotor is always Isao's now; THE FIRST ORDERS loses its

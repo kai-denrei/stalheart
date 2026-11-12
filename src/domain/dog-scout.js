@@ -15,8 +15,9 @@
 //   release(s)                         -> out of the seat (home): the companion's play has it again
 //   pickPoints(w, tune)                -> the survey cells in order, the last the lane's: w { centers, heart, cands [{ ci, hops }] (open floor
 //                                         the dog can walk to, with their walking hops from the heart), toward (a unit point: the lane's way out) };
-//                                         `points.count` cells `points.cells` hops out, at least `points.spread` degrees apart round the heart, the
-//                                         last the nearest to the lane's bearing; fewer when the ground does not hold them
+//                                         `points.count` cells `points.cells` hops out, at least `points.spread` degrees apart round the heart (and at
+//                                         most `points.spreadMax`, when given: the walk between two kept short), the last the nearest to the lane's
+//                                         bearing; fewer when the ground does not hold them
 //   contactCell(w, tune)              -> the cell the pack rises at: w { centers, cands [{ ci, hops }] (open floor off the clearing), gateHops,
 //                                         toward }: `contact.hops` hops beyond the gate, the nearest such cell to `toward` (the lane), or -1
 //   bearingAt(centers, from, to)       -> the bearing of `to` round `from` (radians) in a frame fixed at `from` (its tangent plane, +Y the reference)
@@ -79,7 +80,7 @@ const norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] 
 const chord = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 export function pickPoints({ centers, heart, cands, toward }, tune) {
-  const P = tune.points, [lo, hi] = P.cells, mid = (lo + hi) / 2, spread = P.spread * Math.PI / 180;
+  const P = tune.points, [lo, hi] = P.cells, mid = (lo + hi) / 2, spread = P.spread * Math.PI / 180, cap = P.spreadMax != null ? P.spreadMax * Math.PI / 180 : Math.PI * 2 / P.count;
   const ring = cands.filter((c) => c.hops >= lo && c.hops <= hi);
   if (!ring.length) return [];
   const bear = (ci) => bearingAt(centers, heart, ci);
@@ -88,14 +89,15 @@ export function pickPoints({ centers, heart, cands, toward }, tune) {
   const score = (c, b0) => Math.round(Math.abs(angleDiff(bear(c.ci), b0)) * 180 / Math.PI) * 100 + Math.abs(c.hops - mid) * 10 + (c.ci % 7) * 0.01;
   const last = ring.slice().sort((a, b) => score(a, laneB) - score(b, laneB))[0];
   const chosen = [last];
-  // the others spread round the heart: each the farthest in bearing from those chosen (and at least `spread` from each), the middle hops first
+  // the others spread round the heart: each the farthest in bearing from those chosen up to `cap` (and at least `spread` from each, at most
+  // `spreadMax` from the nearest), the middle hops first
   while (chosen.length < P.count) {
     let best = null, bs = -Infinity;
     for (const c of ring) {
       if (chosen.some((x) => x.ci === c.ci)) continue;
       const gap = Math.min(...chosen.map((x) => Math.abs(angleDiff(bear(c.ci), bear(x.ci)))));
-      if (gap < spread) continue;
-      const sc = Math.min(gap, Math.PI * 2 / P.count) * 100 - Math.abs(c.hops - mid) - (c.ci % 7) * 0.001;
+      if (gap < spread || (P.spreadMax != null && gap > cap)) continue;
+      const sc = Math.min(gap, cap) * 100 - Math.abs(c.hops - mid) - (c.ci % 7) * 0.001;
       if (sc > bs) { bs = sc; best = c; }
     }
     if (!best) break;

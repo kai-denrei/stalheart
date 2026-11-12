@@ -7,7 +7,8 @@
 //   host: camera, startShot, endShot, snapCamera
 //   createPrintCloseup(host, shot { id, lock, skipKey, hint, near, hintId }) -> { begin(rig), tick(dt), end(), active(), angle(), lens(), hint(), restore() }
 //   rig: { origin, x, up, z (world vectors; x, up, z unit), m (world units a metre), angles, size, dur (s), clock() (the scene's seconds), done()? (true:
-//         hold the last pose), onEnd()? (the cut over: its end, a skip or end()) }
+//         hold the last pose), onEnd()? (the cut over: its end, a skip or end()), easeIn? (s: the cut eases out of the camera where it stands, no
+//         cut in), hand? (s: at its end the camera holds where it is on a hold that yields, 'printHold', for the next shot to ease out of, no cut out) }
 //   framePoint(rig, p, out) -> the rig-metre point p in world units
 import * as THREE from '../../vendor/three.module.js';
 import { printCamera } from '../domain/pet-print.js';
@@ -23,7 +24,8 @@ export function createPrintCloseup(h, S) {
   function begin(r) {
     rig = r; angle = -1;
     const eye = new THREE.Vector3(), look = new THREE.Vector3(), m4 = new THREE.Matrix4();
-    h.startShot({ id: S.id, dur: r.dur, skippable: true, lockFor: S.lock, skipKey: S.skipKey, onEnd: () => { const was = rig; rig = null; hintOff(); lensOff(); was?.onEnd?.(); h.snapCamera(); }, poseAt(u, out) {
+    const from = r.easeIn > 0 ? { pos: h.camera.position, quat: h.camera.quaternion } : null;
+    h.startShot({ id: S.id, dur: r.dur, skippable: true, lockFor: S.lock, skipKey: S.skipKey, from, easeIn: r.easeIn ?? 0, onEnd: () => { const was = rig; rig = null; hintOff(); lensOff(); was?.onEnd?.(); if (was?.hand > 0) hold(was.hand); else h.snapCamera(); }, poseAt(u, out) {
       if (!rig || rig.done?.()) return;
       const cam = printCamera(rig.clock(), rig.angles, rig.size);
       framePoint(rig, cam.eye, eye); framePoint(rig, cam.look, look); m4.lookAt(eye, look, rig.up);
@@ -34,7 +36,12 @@ export function createPrintCloseup(h, S) {
     if (!rig) return;
     const t = rig.clock(), a = printCamera(t, rig.angles, rig.size).angle;
     lensOn(rig.angles[a].fov); if (t >= S.lock) hintOn();
-    if (a !== angle) { angle = a; if (dt > 0) h.snapCamera(); }
+    if (a !== angle) { const was = angle; angle = a; if (dt > 0 && was >= 0) h.snapCamera(); }   // a change of angle is a cut; the first is the shot's own start
+  }
+  // the camera held where the close-up left it, yielding (src/fx/camera-shot.js) to the next shot, which eases out of it; nothing taken: the game's camera glides in
+  function hold(seconds) {
+    const P = h.camera.position.clone(), Q = h.camera.quaternion.clone();
+    h.startShot({ id: 'printHold', dur: seconds, skippable: false, yields: true, poseAt: (u, out) => { out.pos.copy(P); out.quat.copy(Q); } });
   }
   return {
     begin, tick,

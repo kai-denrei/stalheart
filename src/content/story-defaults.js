@@ -45,16 +45,23 @@ export const SH02_WELL = Object.freeze({ bell: 2.0, floor: 19.0, rim: 23.5 });
 // well is not). `talk`: the cut to his face through a `fov` lens, held over all three of his lines
 // (the lines are src/isaobriefs.js `brief`). `wait`: seconds the arrival waits
 // for the rocket, its salvage, the foundry and Isao to load before it gives up and lets the opening run without it.
+// ONE SHOT FROM THE TOUCHDOWN (owner, 2026-11-12 evening: "isao landing, the camera focus jumps too many time; focus on the rocket, no cuts, it opens,
+// isao comes out"): the rail is the descent only (its last key the touchdown); from the touchdown, flown or automatic, `hold` frames the rocket
+// (src/fx/arrival.js holdAt): `look` the point it looks at (metres from the rocket's feet where it stands: up the hull, toward Isao's way out),
+// the eye `dist` [from, to] metres out and `up` [from, to] metres high, pushing in over `push` s, eased out of the touchdown's camera over `ease` s
+// (the lens to the game's own over the same), on the touchdown camera's side of the rocket kept within `side` degrees of its x axis (so Isao's
+// way out toward +z crosses the frame); `hand` s the closing hold of the dog's opening waits for the K9's print before the game's camera glides
+// in; `swap` the salvage swap off screen: the rocket's body a sphere `radius` m round `mid` m up, the swap once it is out of the frustum or under
+// `screen` of the frame's height, `maxS` s at most. Was until then: the rail on round the nose to his face (5.3 s), the cut to his face.
+// The door and Isao slower than the rail's (shock 0.4, door 0.3, isao 1.1, isaoHold 0.9 s): the held shot is there to watch them.
 export const STORY_ARRIVAL = Object.freeze({
-  landing: Object.freeze({ orbit: 0, descent: 2.6, startAltitude: 150, deployAltitude: 134, legsDeploy: 2.4, shock: 0.4, shockClip: 2, settle: 0, door: 0.3, doorClip: 1.8, isao: 1.1, isaoHold: 0.9, dustSeconds: 1.2 }),
+  landing: Object.freeze({ orbit: 0, descent: 2.6, startAltitude: 150, deployAltitude: 134, legsDeploy: 2.4, shock: 0.8, shockClip: 2, settle: 0, door: 0.5, doorClip: 1.8, isao: 1.5, isaoHold: 1.6, dustSeconds: 1.2 }),
   rail: Object.freeze([
     Object.freeze({ t: 0, pos: [70, 12, 70], look: [0, 105, 0], fov: 42 }),
-    Object.freeze({ t: 2.6, pos: [48, 10, 48], look: [0, 15, 0] }),
-    Object.freeze({ t: 3.4, pos: [30, 26, 26], look: [0, 28, 0] }),
-    Object.freeze({ t: 4.4, pos: [24, 44, 18], look: [0, 37, 3] }),   // over the nose, looking down: the ground behind him as he comes out
-    Object.freeze({ t: 4.85, pos: [23, 44, 22], look: [0, 33, 18], fov: 36 }),   // the lens closes on him as he flies clear and the rocket leaves the frame before the cut
-    Object.freeze({ t: 5.3, pos: [17, 36, 24], look: [0, 20, 35], fov: 30 }),
+    Object.freeze({ t: 2.6, pos: [48, 10, 48], look: [0, 15, 0] }),   // the touchdown: the held shot takes over from here
   ]),
+  hold: Object.freeze({ look: [0, 20, 10], dist: [54, 46], up: [8, 12], push: 16, ease: 2.5, side: 50, hand: 4,
+    swap: Object.freeze({ mid: 18, radius: 22, screen: 0.08, maxS: 60 }) }),
   isao: Object.freeze({ scale: 0.4, from: 15, rim: 39, arc: 4, clear: 35 }),
   talk: Object.freeze({ fov: 20, brief: 'arrival_talk' }),
   wait: 30,

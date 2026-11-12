@@ -62,6 +62,24 @@ const SEEN_LOG=`(()=>{if(window.__seen)return;const L=window.__seen={briefs:[],c
  const read=()=>{const tx=b&&!b.classList.contains('hidden')?b.innerText.replace(/\\s+/g,' ').trim():'';if(tx&&tx!==L.briefs.at(-1))L.briefs.push(tx);};
  if(b){read();new MutationObserver(read).observe(b,{subtree:true,childList:true,characterData:true,attributes:true});}
  if(c){for(const n of c.children)L.callouts.push(n.textContent);new MutationObserver((ms)=>{for(const m of ms)for(const n of m.addedNodes)L.callouts.push(n.textContent);}).observe(c,{childList:true});}})()`;
+// ONE MOVE, NO CUT (owner, 2026-11-12 evening: "isao landing, the camera focus jumps too many time; focus on the rocket, no cuts, it opens, isao comes
+// out"): the camera every frame in the page (window.__camLog: [ms, eye, line of sight, fov, shot, the arrival's phase, the held shot begun]); camCuts(L)
+// finds the cuts in a stretch of it: a frame whose eye or look point (60 m down the line of sight) or line of sight steps both further and faster
+// (per wall second) than 4x its two neighbours' steps, over 3 m or 8 degrees (an ease ramps, a stalled frame is long but not fast, a cut is a
+// lone spike), or over 25 m or 30 degrees at all; metres are 1/753 of the story planet's radius (STORY_SANITY cellSide / 10)
+const CAM_LOG=`(()=>{if(window.__camLog)return;const T=window.__stalheartTest,L=window.__camLog=[];(function f(){try{const s=T.seatState(),a=T.state().arrival,[x,y,z,w]=s.quat;
+ L.push([performance.now(),s.pos,[-2*(x*z+w*y),-2*(y*z-w*x),-(1-2*(x*x+y*y))],s.fov,s.shot||'',a?.phase||'',!!a?.hold]);}catch(e){}if(!window.__camStop)requestAnimationFrame(f);})();})()`;
+function camCuts(L,metre=1/753){
+ const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])/metre,look=(r)=>r[1].map((v,i)=>v+r[2][i]*60*metre),ang=(a,b)=>Math.acos(Math.max(-1,Math.min(1,(a[0]*b[0]+a[1]*b[1]+a[2]*b[2])/Math.hypot(...a)/Math.hypot(...b))))*180/Math.PI;
+ const st=L.map((r,i)=>{if(!i)return {eye:0,look:0,turn:0,dt:1};const dt=Math.max(1e-3,(r[0]-L[i-1][0])/1000);return {eye:d(r[1],L[i-1][1]),look:d(look(r),look(L[i-1])),turn:ang(r[2],L[i-1][2]),dt};});
+ const cuts=[],max={eye:0,look:0,turn:0};
+ for(let i=1;i<L.length;i++){const c=st[i],p=st[i-1],n=st[i+1]??st[i-1];let hit=false;
+  for(const [k,min,abs] of [['eye',3,25],['look',3,25],['turn',8,30]]){max[k]=Math.max(max[k],c[k]);
+   if(c[k]>abs||(c[k]>min&&c[k]>4*Math.max(p[k],n[k])&&c[k]/c.dt>4*Math.max(p[k]/p.dt,n[k]/n.dt)))hit=true;}
+  if(hit)cuts.push({ms:Math.round(L[i][0]-L[0][0]),from:L[i-1][4]||L[i-1][5],to:L[i][4]||L[i][5],eye:+c.eye.toFixed(1),look:+c.look.toFixed(1),turn:+c.turn.toFixed(1),dt:+c.dt.toFixed(3)});}
+ const shots=[];for(const r of L)if(shots.at(-1)!==r[4])shots.push(r[4]);
+ return {cuts,frames:L.length,seconds:L.length?+((L.at(-1)[0]-L[0][0])/1000).toFixed(1):0,maxEye:+max.eye.toFixed(1),maxLook:+max.look.toFixed(1),maxTurn:+max.turn.toFixed(1),shots};
+}
 async function finish(){
  writeFileSync(join(output,current+'.log'),consoleLines.join('\n')+'\n');
  writeFileSync(join(output,current+'-requests.json'),JSON.stringify(requests,null,2));
@@ -967,7 +985,10 @@ try{
  // THE ARRIVAL (owner, 2026-09-25: "bring back the landing, short and sweet but showing the landing. Isao comes out, close up on his
  // face; he's the narrator ... The state change from rocket intact to dismantled should happen off camera"). Every frame is logged in the
  // page from here: the shot, the arrival's phase, whether the intact rocket, its salvage and the foundry are shown, Isao, the panel's line
- await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__arrival=[];(function tick(){let a;try{const s=T.state();a=s.arrival;L.push([s.shot,a.phase,a.rocket,a.salvage,a.foundry,!!a.isao?.visible,document.querySelector('#td-brief:not(.hidden) #td-brief-line')?.textContent||null,a.t,a.talkT,s.story.phase]);}catch(e){L.push(['error',String(e)]);return;}if(a.phase!=='done')requestAnimationFrame(tick);else window.__arrivalDone=true;})();})()`);
+ // ONE SHOT FROM THE TOUCHDOWN (owner, 2026-11-12 evening: "focus on the rocket, no cuts, it opens, isao comes out"): the log runs on past the arrival's
+ // end until the swap to the salvage has happened (it waits off screen: a.hold.inView, the rocket's body in the frame), and the camera with it (CAM_LOG)
+ await evaluate(CAM_LOG);
+ await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__arrival=[],t0=performance.now();(function tick(){let a;try{const s=T.state();a=s.arrival;L.push([s.shot,a.phase,a.rocket,a.salvage,a.foundry,!!a.isao?.visible,document.querySelector('#td-brief:not(.hidden) #td-brief-line')?.textContent||null,a.t,a.talkT,s.story.phase,a.hold?.inView??null,a.hold?.swapped??null]);}catch(e){L.push(['error',String(e)]);return;}if(a.phase==='done')window.__arrivalDone=true;if(a.phase!=='done'||(!a.hold?.swapped&&performance.now()-t0<240000))requestAnimationFrame(tick);else window.__arrivalSwapped=true;})();})()`);
  await until('window.__stalheartTest.state().arrival.phase!=="waiting"',60000);await mark('the arrival begins: the SH02 comes down');
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.arrival.on,true,'a story start lands the SH02');assert.equal(s.story.phase,'landed','the beats wait for it');}
  await until('(a=>a.phase!=="landing"||a.t>=3.95)(window.__stalheartTest.state().arrival)',20000);
@@ -975,33 +996,38 @@ try{
   assert.equal(a.rocket,true,'the intact rocket is on screen');assert(a.salvage===false&&a.foundry===false,'no salvage and no foundry yet');assert.equal(a.altitude,0,'down');assert(a.isao.visible&&a.isao.face==='angry',`Isao comes out of the hatch, angry (${JSON.stringify(a.isao)})`);
   assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'none','the landing plays without the HUD');}
  current='grow-arrival';await finish();
- await until('window.__stalheartTest.state().arrival.phase!=="landing"',20000);await mark('the cut to his face');
+ await until('window.__stalheartTest.state().arrival.phase!=="landing"',20000);await mark('Isao clear: his lines on the same shot');
  await until('(a=>a.phase!=="talk"||a.talkT>=1.6)(window.__stalheartTest.state().arrival)',20000);
  {const s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;assert.equal(s.shot,'arrivalTalk');assert.equal(a.phase,'talk');
-  assert(a.eye[2]>0&&a.eye[2]<a.to[2],`the camera stands between Isao and the rocket, the rocket behind it (camera ${a.eye}, Isao ${a.to}, the rocket at 0)`);
-  assert(a.rocket===false&&a.salvage===true&&a.foundry===true,`the rocket is the salvage and the foundry now (${JSON.stringify(a)})`);assert(a.fov<30,`a long lens on his face (${a.fov})`);
-  assert.ok(['foundry','dog-print'].includes(s.story.phase),`the AFR-01 deployed on the cut (${s.story.phase}: the dog's print next since 2026-11-12)`);}
+  assert(a.fov>60,`no long lens on his face: the game's own on the held shot (${a.fov})`);
+  assert(a.rocket===true&&a.salvage===false&&a.hold?.inView===true,`the intact rocket in the frame, the swap waiting (${JSON.stringify({rocket:a.rocket,salvage:a.salvage,hold:a.hold})})`);
+  assert.ok(['foundry','dog-print'].includes(s.story.phase),`the AFR-01 deployed as he talks (${s.story.phase}: the dog's print next since 2026-11-12)`);}
  current='grow-arrival-talk';await finish();
- await until('window.__arrivalDone===true',20000);await mark('the arrival ends: back on the base');
+ await until('window.__arrivalDone===true',20000);await mark('the arrival ends: the hold, then the base');
  {const L=await evaluate('window.__arrival'),s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;
-  const land=L.filter(r=>r[0]==='arrival'),talk=L.filter(r=>r[0]==='arrivalTalk'),cut=L.findIndex(r=>r[0]==='arrivalTalk'),end=L.findIndex(r=>r[1]==='done');
+  const land=L.filter(r=>r[0]==='arrival'),talk=L.filter(r=>r[0]==='arrivalTalk'),end=L.findIndex(r=>r[1]==='done');
   assert(!L.some(r=>r[0]==='error'),`the log ran (${JSON.stringify(L.find(r=>r[0]==='error'))})`);assert(land.length>20&&talk.length>20,`both shots were on screen (${land.length} and ${talk.length} frames)`);
-  // THE SWAP IS NEVER ON SCREEN: every frame of the landing has the intact rocket and nothing of the recycling, every frame of the
-  // close-up has the salvage and the foundry and no rocket (behind its camera), and the change is on the cut itself
+  // THE SWAP IS NEVER ON SCREEN (2026-11-12 evening: no cut to hide it any more): every frame of the landing and the talk has the intact rocket and
+  // nothing of the recycling; the first frame with the salvage comes after a frame with the rocket's body out of the frame (or small in it)
   assert(land.every(r=>r[2]===true&&r[3]===false&&r[4]===false),`every frame of the landing shows the intact rocket and no salvage (${JSON.stringify(land.find(r=>!(r[2]===true&&r[3]===false&&r[4]===false)))})`);
-  assert(talk.every(r=>r[2]===false&&r[3]===true&&r[4]===true),'every frame of the close-up has the rocket recycled');
-  assert.equal(L[cut-1][0],'arrival','the swap is on the cut: the frame before the close-up is the landing');
+  assert(talk.every(r=>r[2]===true&&r[3]===false),'every frame of the talk still the intact rocket: the swap waits for the frame');
   assert(L.slice(L.findIndex(r=>r[0]==='arrival'),end).every(r=>r[0]==='arrival'||r[0]==='arrivalTalk'),'nothing between the two shots');
+  await until('window.__arrivalSwapped===true',250000).catch(()=>{});
+  {const L2=await evaluate('window.__arrival'),k=L2.findIndex(r=>r[3]===true);console.log(`  grow: the swap ${k<0?'not yet':`at frame ${k} of ${L2.length} (shot ${L2[k][0]||'-'}, the rocket in view on the frame before ${L2[k-1]?.[10]}, on the swap's own ${L2[k][10]})`}`);
+   assert.ok(k>0,'the salvage shown in the end');assert.equal(L2[k][10],false,'the swap\'s frame had the rocket out of the frame (or small in it)');}
   const lines=[...new Set(L.map(r=>r[6]).filter(Boolean))];
-  /* all three over his face (the owner's second playtest: "a close-up of Isao saying he'll cannibalize the rocket to get started with terraforming") */
+  /* all three over the held shot (the owner's second playtest: "Isao saying he'll cannibalize the rocket to get started with terraforming") */
   const onFace=[...new Set(talk.map(r=>r[6]).filter(Boolean))];
-  assert.deepEqual(onFace,['Rough landing!','So much to build!',"I'll cannibalize the rocket to get the terraforming started."],`his three lines over his face (${onFace})`);
-  assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.ok([null,'sitesTour'].includes(s.shot),`no shot or the landers' tour (2026-10-03) (${s.shot})`);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
+  assert.deepEqual(onFace,['Rough landing!','So much to build!',"I'll cannibalize the rocket to get the terraforming started."],`his three lines over the held shot (${onFace})`);
+  {const C=await evaluate('window.__camLog'),from=C.findIndex(r=>r[6]),to=C.findIndex((r,i)=>i>from&&r[5]==='done'),c=camCuts(C.slice(from,to+20));
+   console.log(`  grow: the camera from the touchdown: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
+   assert.deepEqual(c.cuts,[],'no cut from the touchdown to the arrival\'s end');await evaluate('window.__camStop=true');}
+  assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.ok([null,'arrivalHold'].includes(s.shot),`no shot or the closing hold (2026-11-12 evening; the landers' tour was 2026-10-03's) (${s.shot})`);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
   const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['rough_landing','so_much_to_build','foundry_deploy'])assert(!seen.includes(id),`the old landing line ${id} is not said over the arrival`);
-  console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s on his face (${talk.length} frames); lines ${lines.join(' / ')}`);}
+  console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s of his lines on the held shot (${talk.length} frames); lines ${lines.join(' / ')}`);}
  // THE PLAYER LOOKS AROUND (owner, 2026-09-30: "first beat, player should be in charge of something, a free camera"): the landing
  // hands over to the orbit camera, and no seat has glided in yet
- {const s=await evaluate('window.__stalheartTest.state()');assert.ok(s.view==='orbit'||s.shot==='sitesTour',`the landing ends on the free camera or the landers' tour (${s.view}, ${s.shot})`);assert.equal(s.glide.n,0);}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.ok(s.view==='orbit'||s.shot==='arrivalHold',`the landing ends on the free camera or its closing hold (${s.view}, ${s.shot})`);assert.equal(s.glide.n,0);}
  const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert(g0.programme.printed.every(x=>x==='gate'),`at most the gate by the landing's end: it prints from the deploy since 2026-11-08 (${g0.programme.printed})`);assert.equal(g0.programme.gate.built,g0.programme.printed.includes('gate'));const walls0=g0.wallCount,gate0=g0.programme.gate.built;assert.deepEqual(g0.bays,[],'the bays are not printed yet');
  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the opening is Isao coming out and building; no MÖRK is drawn or driven
  assert.equal(g0.hull.state,'held','no hull at the landing');assert.equal(g0.hull.visible,false,'the hull is not drawn');assert(g0.hull.door>=0,`the Stålheart has a door to roll the hull out of (${JSON.stringify(g0.hull)})`);
@@ -1649,7 +1675,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // and their pay; the last survey's pack beyond the gate; the dog home; the wall (the gate's print), Isao's Rotor, the tremor, the Rotor's seat; the
  // first wave cleared by the pilot's hands; the depot, Isao's flare and the rover's first trip home; THE FIRST ORDERS (no Rotor card); the Stålheart's
  // print begins after it; the Quiver's hard cores and sector 0 under its print. Every beat's story clock prints as DOG TIMELINE.
+ // PACED UP AND ONE MOVE (owner, 2026-11-12 evening, notes 1 and 2): two survey points (DOG_SCOUT.points.count), the K9's 7.2 s print; and the camera
+ // from the touchdown to the dog's seat is one move: the held shot on the rocket (the door, Isao out, his lines), the K9's print easing out of it,
+ // the chase easing out of the print, no cut (CAM_LOG, camCuts); stills dog-landing-door, dog-landing-talk on the held shot
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),dog=()=>evaluate(`${T}.dog.state()`),{DOG_SCOUT}=await import('../src/content/dog-scout.js');
+ const {makeLandingSequence}=await import('../src/domain/landing-sequence.js'),{STORY_ARRIVAL}=await import('../src/content/story-defaults.js'),STORY_ARRIVAL_T={isao:makeLandingSequence(STORY_ARRIVAL.landing).isaoAt};
  // THE BUDGET (the economy design 2.7, 2026-11-12): no start bank; the automatic landing's salvage (HARD's three barrels); the bank at each beat as DOG BUDGET
  const {LANDING_GAME}=await import('../src/content/landing-game.js'),SALV=LANDING_GAME.salvage.HARD,SALVAGE=SALV.sections*SALV.feedstockPerBarrel+SALV.bonus*SALV.feedstockPerBarrel,budget=[];
  const PH=`(()=>{const T=window.__stalheartTest,L=window.__ph=[];(function f(){try{const s=T.state().story;if(s&&(!L.length||L.at(-1)[0]!==s.phase))L.push([s.phase,s.clock]);}catch(e){}requestAnimationFrame(f);})();})()`;
@@ -1658,19 +1688,32 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const letGo=async()=>{for(const k of Object.keys(KEYS))await hold(k,false);};
  const marks=[],mark=async(what)=>{const s=await st();marks.push([what,s.story.clock]);console.log(`  dog: ${what} at story clock ${s.story.clock}`);};
  await go('dog-scout','index.html?sw=0&acceptance=1&cine=0&world=story&stage=1&grow=1&dog=1&first=1#td');
- await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);
+ await until(`!!${T}&&!!${T}.state().story`,90000);await evaluate(PH);await evaluate(SEEN_LOG);await evaluate(CAM_LOG);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
  const b0=(await st()).biomass;assert.equal(b0,0,`no start bank (${b0})`);budget.push(['landing',b0]);
+ // THE HELD SHOT (note 1): the door open and Isao climbing out, then his lines on the same framing (stills); the swap waits off screen
+ await until(`(a=>a.phase==='landing'&&a.t>=${STORY_ARRIVAL_T.isao}+${STORY_ARRIVAL.landing.isao})(${T}.state().arrival)`,120000).catch(async()=>assert.fail(`the held shot on the rocket (${JSON.stringify((await st()).arrival)})`));
+ {const a=(await st()).arrival;assert.ok(a.hold&&a.rocket===true&&a.isao?.visible,`the rocket held, Isao out of it (${JSON.stringify({hold:a.hold,rocket:a.rocket,isao:a.isao,t:a.t})})`);current='dog-landing-door';await finish();}
+ await until(`(a=>a.phase!=='landing'&&(a.phase!=='talk'||a.talkT>=1.2))(${T}.state().arrival)`,60000);
+ {const s=await st(),a=s.arrival;console.log(`  dog: the talk on the held shot: ${JSON.stringify({shot:s.shot,phase:a.phase,hold:a.hold,rocket:a.rocket,salvage:a.salvage,fov:a.fov})}`);
+  if(a.phase==='talk'){assert.equal(s.shot,'arrivalTalk');assert.ok(a.fov>60,`no long lens on his face (${a.fov})`);assert.equal(a.rocket,true,'the intact rocket still on screen: the swap waits');current='dog-landing-talk';await finish();}}
  await until(`${T}.state().story.phase==='dog-print'`,120000).catch(async()=>assert.fail(`the deploy into the dog's print (${JSON.stringify((await st()).story)})`));await mark('deploy: the dog\'s print asked');
+ {const s=await st();assert.notEqual(s.shot,'sitesTour','no landers\' tour on the dog\'s opening');}
  {const s=await st();assert.equal(s.towers,0,'no Rotor at the deploy');assert.equal(s.biomass,b0+SALVAGE,`the whole salvage at the deploy (${b0} -> ${s.biomass})`);budget.push(['salvage',s.biomass]);assert.equal(s.programme.printed.length,0,'nothing printed: no gate, no Stålheart');}
  await until(`!!${T}.state().companions?.print?.printing&&${T}.state().companions.print.printing.id==='k9'`,90000).catch(async()=>assert.fail(`Isao prints the K9 (${JSON.stringify((await st()).companions?.print)})`));await mark('the K9\'s print (close-up)');
- {const s=await st();assert.equal(s.shot,'petPrint','the print\'s close-up');}
+ {const s=await st();assert.equal(s.shot,'petPrint','the print\'s close-up');assert.equal(s.companions.print.printing.angle,0,'one angle');}
  await delay(1500);current='dog-print';await finish();
  await until(`${T}.state().story.phase==='scouting'`,120000).catch(async()=>assert.fail(`the K9 born, the scouting (${JSON.stringify((await st()).companions?.print)})`));await mark('scouting: the seat taken');
- const d0=await dog();console.log(`  dog: points ${JSON.stringify(d0.points)}, contact ${d0.contact}, life ${d0.life}`);
- assert.equal(d0.active,true,'the seat is the player\'s');assert.equal(d0.points.length,3,'three survey points');assert.equal((await st()).shot,'dogScout','the chase camera\'s shot');
- assert.equal(await evaluate(`document.querySelectorAll('.dog-scout-hud > div').length`),5,'three markers, the home marker and the line');
- await delay(1200);current='dog-seat';await finish();
+ const d0=await dog(),NP=DOG_SCOUT.points.count;console.log(`  dog: points ${JSON.stringify(d0.points)}, contact ${d0.contact}, life ${d0.life}`);
+ assert.equal(d0.active,true,'the seat is the player\'s');assert.equal(d0.points.length,NP,`${NP} survey points`);assert.equal((await st()).shot,'dogScout','the chase camera\'s shot');
+ assert.equal(await evaluate(`document.querySelectorAll('.dog-scout-hud > div').length`),NP+2,'a marker a point, the home marker and the line');
+ // ONE MOVE (note 1): from the touchdown's held shot to the chase settled behind the dog, no frame cuts
+ await delay((DOG_SCOUT.camera.easeIn+1)*1000);
+ {const L=await evaluate('window.__camLog'),from=L.findIndex(r=>r[6]),to=L.length,c=camCuts(L.slice(from,to));
+  console.log(`  dog: the camera from the touchdown to the seat: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
+  assert.ok(from>=0,'the held shot began');assert.deepEqual(c.cuts,[],'no cut from the touchdown to the dog\'s seat');
+  assert.ok(!c.shots.includes('sitesTour'),'no landers\' tour');for(const id of ['arrivalTalk','petPrint','dogScout'])assert.ok(c.shots.includes(id),`${id} on the way`);await evaluate('window.__camStop=true');}
+ current='dog-seat';await finish();
  // THE DRIVE: hold W (and Shift once facing the way), steer on the waypoint's bearing, stop in the ring until it is surveyed
  const drive=async(want,budget,label)=>{
   const t0=Date.now();let best=1e9,bestAt=Date.now();
@@ -1682,11 +1725,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    await delay(50);}
   await letGo();};
  const tDrive=Date.now();
- for(let n=1;n<=3;n++){
+ for(let n=1;n<=NP;n++){
   await drive(async(d)=>d.surveyed.length>=n,360000,`survey ${n}`);
   const d=await dog();await mark(`survey ${n} (${d.points[d.surveyed.at(-1)].kind})`);
  }
- const sv=await st();assert.equal(sv.biomass,b0+SALVAGE+3*DOG_SCOUT.survey.pay,`the three surveys paid ${DOG_SCOUT.survey.pay} kg each (bank ${sv.biomass})`);budget.push(['surveys',sv.biomass]);
+ const sv=await st();assert.equal(sv.biomass,b0+SALVAGE+NP*DOG_SCOUT.survey.pay,`the ${NP} surveys paid ${DOG_SCOUT.survey.pay} kg each (bank ${sv.biomass})`);budget.push(['surveys',sv.biomass]);
  assert.ok((await evaluate('document.body.innerText')).includes(`SURVEYED +${DOG_SCOUT.survey.pay} KG`),'the survey\'s toast');
  await until(`${T}.state().story.phase==='contact'`,10000).catch(async()=>assert.fail(`the last survey: the contact (${JSON.stringify((await st()).story)})`));
  {const s=await st();assert.equal(s.story.scout.pack,12,'the pack: twelve bodies');assert(s.story.said.includes('dog_contact'));}
@@ -1729,7 +1772,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await delay(1000);current='dog-sector-0';await finish();
  // THE SECOND ROTOR stands on the wall beside the first (measured 2026-11-12: 14 s after the card, during sector 0; the wait allows for it queuing behind the Stålheart's print)
  await until(`${T}.state().towers>=3`,300000).catch(async()=>assert.fail(`the second Rotor printed after the Stålheart (${JSON.stringify((await st()).programme)}, ${(await st()).towers} sentries)`));await mark('the second Rotor stands');
- console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
+ console.log(`DOG BUDGET ${JSON.stringify(budget)}`);console.log(`DOG TIMELINE ${JSON.stringify(marks)}`);
+ {const d=marks[0][1],seat=marks.find(m=>/Rotor\'s seat/.test(m[0]));console.log(`DOG FROM THE DEPLOY ${JSON.stringify(marks.map(([w,c])=>[w,+(c-d).toFixed(1)]))}`);if(seat)console.log(`  dog: the Rotor's seat ${(seat[1]-d).toFixed(1)} s of story clock after the deploy`);}console.log(`DOG PHASES ${JSON.stringify(await evaluate('window.__ph'))}`);
  } else if(args.includes('--settling')) {
  // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to
  // build first with limited building material, the Stalheart being non-negotiable ... Isao tells the player that we will need to scout for more
@@ -1953,9 +1997,16 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const toContact=async(what)=>{await until(`(L=>!L||L.phase==='done')(${L})||${A}.phase!=='landing'`,60000).catch(()=>why(what));await delay(400);return evaluate(A);};
  // a CRASH is the end of the flight and of the story: the contact (phase 'touched', never 'done') with the end card up
  const toCrash=async(what)=>{await until(`${L}?.phase==='touched'&&${A}.lost===true`,60000).catch(()=>why(what));await delay(400);return evaluate(A);};
- const toEnd=async(name)=>{await until(`${A}.phase==='talk'`,30000).catch(()=>why(`${name}: the talk`));const s=await st();
-  assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],`${name}: on the cut the rocket is the salvage and the AFR-01 (${JSON.stringify(s.arrival)})`);
+ // ONE SHOT FROM THE TOUCHDOWN (owner, 2026-11-12 evening: "focus on the rocket, no cuts"): at the talk the intact rocket still in the frame (the swap
+ // waits off screen), no long lens; with `cam` (the clean page) every frame from the touchdown to the arrival's end has no cut (camCuts) and a still
+ const toEnd=async(name,cam=false)=>{await until(`${A}.phase==='talk'`,30000).catch(()=>why(`${name}: the talk`));const s=await st();
+  assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.hold?.inView],[true,false,true],`${name}: at the talk the intact rocket held in the frame, the swap waiting (${JSON.stringify(s.arrival)})`);
+  assert.ok(s.arrival.fov>60,`${name}: no long lens on his face (${s.arrival.fov})`);
+  if(cam){await until(`${A}.talkT>=1.2`,10000).catch(()=>{});current=`${name}-talk`;await finish();current=name;}
   await until(`${A}.phase==='done'`,30000).catch(()=>why(`${name}: the talk ends`));const e=await st();assert.deepEqual(errors,[],`${name}: browser errors`);
+  if(cam){await delay(1500);const C=await evaluate('window.__camLog'),a=C.findIndex(r=>r[6]),c=camCuts(C.slice(a));await evaluate('window.__camStop=true');
+   console.log(`  ${name}: the camera from the flown touchdown: ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
+   assert.ok(a>=0,`${name}: the held shot began`);assert.deepEqual(c.cuts,[],`${name}: no cut from the touchdown to the arrival's end`);}
   assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,`${name}: the panel removed at the end`);return {s:e,said:await briefs()};};
  // the phases the clean flight passed through, once a frame in the page (2026-11-07, the final review: the flare was not asserted, so an
  // unaided clean flight would have passed): FLARE must be seen before the contact
@@ -1966,7 +2017,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const t0=Date.now(),{view:v0}=await toManual('landing-clean',true);
   // the entry's framing (~350 m, spec 14 A): the feet and the hull's top within +-0.9 NDC, the pad's centre within +-0.95
   {const inB=(p,b)=>Array.isArray(p)&&Math.abs(p[0])<=b&&Math.abs(p[1])<=b;assert.ok(inB(v0?.feet,0.9)&&inB(v0?.top,0.9)&&inB(v0?.pad,0.95),`the 350 m framing: the feet and the top within 0.9, the pad within 0.95 (${JSON.stringify(v0)})`);}
-  await evaluate(PHASES);await evaluate(VIEWS);await evaluate(PILOT);
+  await evaluate(PHASES);await evaluate(VIEWS);await evaluate(PILOT);await evaluate(CAM_LOG);
   const a=await toContact('the pilot to the contact'),g=a.landing;
   {const P=await evaluate('window.__landingPhases');console.log(`  clean: phases ${P.join(' > ')}`);const f=P.indexOf('flare'),end=P.findIndex(p=>p==='touched'||p==='done');
    assert.ok(f>=0&&(end<0||f<end),`the auto-lander's FLARE before the touch (${P.join(' > ')})`);}
@@ -1976,7 +2027,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.equal(g.grade,'CLEAN',`the scripted pilot lands CLEAN (${JSON.stringify(g)})`);assert.notEqual(g.reason,'skipped','flown, not skipped');assert.ok(g.landed&&Math.hypot(g.landed[0],g.landed[2])<14,`on the pad (${JSON.stringify(g.landed)})`);
   assert.match(await evaluate(`document.querySelector('#lh-verdict')?.textContent??''`),/CLEAN/,'the panel\'s verdict');assert.equal(a.talkBrief,'arrival_talk_clean');
   current='landing-verdict';await finish();
-  const {s,said}=await toEnd('landing-clean');console.log(`  clean: foundry ${JSON.stringify(s.story.foundry)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
+  const {s,said}=await toEnd('landing-clean',true);console.log(`  clean: foundry ${JSON.stringify(s.story.foundry)}, ${((Date.now()-t0)/1000).toFixed(0)} s`);
   assert.equal(s.story.foundry.sections,3,'all three sections');assert.ok(said.some(b=>/Textbook landing!/.test(b)),`the clean talk (${JSON.stringify(said.slice(-4))})`);}
  // the wreck page's signature: a real W is eaten under it, a real Esc ends it and only it
  {const t0=Date.now();await toManual('landing-wreck',async()=>{await eatenUnder('w');await tap('esc');await flightNext('a real Esc','landing-wreck');
@@ -3546,18 +3597,25 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // NO JUMP CUT INTO THE ROTOR (owner, 2026-10-04: "the view jump cuts twice to different views of the planet and it is jarring; expected
  // a) planet view, the beacons lit one by one, b) then the view deep dives directly towards the rotor, without cut"): every frame's
  // camera from the end of the close-up to the Rotor's optic; no frame may move the eye by more than `cut` x the planet's radius
+ // ONE SHOT FROM THE TOUCHDOWN (owner, 2026-11-12 evening: "focus on the rocket, no cuts"): on the dog's opening the landers' tour is gone; from the
+ // touchdown to the end of the closing hold no frame cuts (camCuts: the held shot, his lines, 'arrivalHold'); from the talk to the Rotor's optic the
+ // rule above (an acceptance page surveys at once, so the game's camera glides in after the hold, then the dive into the Rotor)
  const T='window.__stalheartTest',cut=0.06;
- await go('opening-cuts','index.html?sw=0&acceptance=1&world=story#td');   // THE RECON DOG (2026-11-12): the dog's opening, surveyed at once on an acceptance page (no close-up, no seat): the tour, then the dive into the Rotor
- await until(`!!${T}`,90000);
+ await go('opening-cuts','index.html?sw=0&acceptance=1&world=story#td');   // THE RECON DOG (2026-11-12): the dog's opening, surveyed at once on an acceptance page (no close-up, no seat): the hold, then the dive into the Rotor
+ await until(`!!${T}`,90000);await evaluate(CAM_LOG);
  await evaluate(`(()=>{const T=${T},L=window.__cam=[];(function f(){try{const s=T.seatState(),st=T.state();L.push([performance.now()/1000,s.pos,st.shot||"",s.view,s.seatKey||"",(st.programme?.colony?.beaconPulse||[]).filter(b=>b.lit).map(b=>b.id).join(",")]);}catch(e){}requestAnimationFrame(f);})();})()`);
  await until(`${T}.seatState().seatKey==="rotor"`,300000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);   // 300 s: the seat behind the wall's and the Rotor's prints
  const L=await evaluate('window.__cam'),d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
- const from=L.findIndex(r=>r[2]==='sitesTour');assert(from>=0,'the tour of the landers plays');
+ const from=L.findIndex(r=>r[2]==='arrivalTalk');assert(from>=0,'his lines on the held shot');assert(!L.some(r=>r[2]==='sitesTour'),'no landers\' tour on the dog\'s opening');assert(L.some(r=>r[2]==='arrivalHold'),'the closing hold');
+ {const W=await evaluate(`(()=>{const C=window.__camLog||[],a=C.findIndex(r=>r[6]),b=C.findLastIndex(r=>r[4]==='arrivalHold');window.__camStop=true;return {n:C.length,a,b,S:a>=0?C.slice(a,b+1):[]};})()`),c=camCuts(W.S);
+  console.log(`  cuts: the camera log ${W.n} frames, the hold from ${W.a} to ${W.b}`);assert.ok(c.frames>20,`the held shot logged (${W.n} frames, from ${W.a} to ${W.b})`);
+  console.log(`  cuts: the held shot ${c.frames} frames over ${c.seconds} s, shots ${c.shots.join(' > ')}, largest steps eye ${c.maxEye} m, look ${c.maxLook} m, turn ${c.maxTurn} deg; cuts ${JSON.stringify(c.cuts)}`);
+  if(!args.includes('--probe'))assert.deepEqual(c.cuts,[],'no cut from the touchdown to the end of the closing hold');}
  const jumps=[];for(let i=Math.max(1,from);i<L.length;i++){const m=d(L[i][1],L[i-1][1]);if(m>cut){jumps.push(`${(L[i][0]-L[from][0]).toFixed(2)} s ${L[i-1][2]||L[i-1][3]} -> ${L[i][2]||L[i][3]} ${m.toFixed(3)}`);if(args.includes('--probe'))for(let k=Math.max(0,i-4);k<Math.min(L.length,i+4);k++)console.log(`    ${(L[k][0]-L[from][0]).toFixed(3)} ${L[k][2]||'-'} ${L[k][3]} r=${Math.hypot(...L[k][1]).toFixed(4)} step=${k?d(L[k][1],L[k-1][1]).toFixed(4):0}`);}}
  const shots=[];for(let i=from;i<L.length;i++)if(!i||L[i][2]!==L[i-1][2]||L[i][3]!==L[i-1][3])shots.push(`${(L[i][0]-L[from][0]).toFixed(1)} s ${L[i][2]||'-'} / ${L[i][3]}`);
  const lit=[];for(let i=from;i<L.length;i++)for(const id of (L[i][5]||'').split(',').filter(Boolean))if(!lit.some(x=>x.id===id))lit.push({id,t:+(L[i][0]-L[from][0]).toFixed(1)});
- console.log(`  cuts: ${L.length-from} frames from the tour; shots ${shots.join(' | ')}`);console.log(`  cuts: beacons first lit ${JSON.stringify(lit)}`);console.log(`  cuts: jumps ${jumps.length?jumps.join(' ; '):'none'}`);
- if(!args.includes('--probe'))assert.deepEqual(jumps,[],'the camera never jumps from the tour to the Rotor');
+ console.log(`  cuts: ${L.length-from} frames from the talk; shots ${shots.join(' | ')}`);console.log(`  cuts: beacons first lit ${JSON.stringify(lit)}`);console.log(`  cuts: jumps ${jumps.length?jumps.join(' ; '):'none'}`);
+ if(!args.includes('--probe'))assert.deepEqual(jumps,[],'the camera never jumps from the talk to the Rotor');
  current='opening-cuts';await finish();
  } else if(args.includes('--round22')) {
  // THE OWNER'S NOTES OF 2026-10-05: every MK-9 is announced by Isao; the Needle stands on its pedestal; the Lancer fires at the body and

@@ -5,7 +5,7 @@
 // K9 a base companion from then). The seat reads the keys the tank's free drive reads (W A S D or the arrows, Shift the sprint, the double tap's
 // cruise; the phone's stick writes the same keys), steps the pure rules (src/domain/dog-scout.js), moves the K9's body (src/fx/companions.js
 // driven) over the lattice's open floor (the rock and the standing structures stop it at its radius), and holds the camera on a chase rig behind it
-// (a camera shot of its own, 'dogScout', live: the world runs under it). Three survey points ring the clearing (src/fx/site-ring.js) with a HUD
+// (a camera shot of its own, 'dogScout', live: the world runs under it). The survey points (DOG_SCOUT.points.count) ring the clearing (src/fx/site-ring.js) with a HUD
 // marker each (its kind and distance); standing in a ring `survey.seconds` surveys it (a toast, the pay, Isao's line on the first two); a body that
 // touches the dog knocks it down. An acceptance page that did not ask for the dog surveys at once and never takes the seat (a headless page would
 // stand at the first point for ever), as THE FIRST ORDERS pass by such a page.
@@ -20,7 +20,7 @@ import { createScout, drive, steer, surveyStep, allSurveyed, knock, stepKnock, r
 import { BLOCKED, bfsDist, bfsPath } from '../dungeon.js';
 import { makeSiteRing, disposeSiteRing } from './site-ring.js';
 
-const D = DOG_SCOUT, K9 = COMPANIONS.units.findIndex((u) => u.id === D.unit), TUNE = { ...D, top: COMPANIONS.units[K9]?.top ?? 5.5 };
+const D = DOG_SCOUT, K9 = COMPANIONS.units.findIndex((u) => u.id === D.unit), TUNE = { ...D, top: D.drive.sprint ?? COMPANIONS.units[K9]?.top ?? 5.5 };
 const chord = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 export function createDogScout(h) {
@@ -61,7 +61,7 @@ export function createDogScout(h) {
     out.quat.copy(tmpCam.quaternion);
   }
   function takeShot() {
-    h.startShot({ id: 'dogScout', dur: 1e6, skippable: false, poseAt: (u, out) => chase(out) });
+    h.startShot({ id: 'dogScout', dur: 1e6, skippable: false, poseAt: (u, out) => chase(out), from: { pos: h.camera.position, quat: h.camera.quaternion }, easeIn: D.camera.easeIn });   // out of the print's last frame, no cut (2026-11-12 evening)
     if (!lens) { lens = { near: h.camera.near }; h.camera.near = D.camera.near; h.camera.updateProjectionMatrix(); }
   }
   function dropLens() { if (!lens) return; h.camera.near = lens.near; h.camera.updateProjectionMatrix(); lens = null; }
@@ -176,7 +176,7 @@ export function createDogScout(h) {
       const cs = c(); if (!cs || K9 < 0) return true;
       if (cs.life(K9) !== 'unborn') return true;
       if (h.auto) return cs.birth(K9);
-      return !!h.petPrint?.()?.force(K9);
+      return !!h.petPrint?.()?.force(K9, { easeIn: D.camera.printEase, hand: D.camera.hand });   // one move: out of the landing's hold, into the chase
     },
     born: () => { const cs = c(); return !cs || K9 < 0 || cs.life(K9) === 'born'; },
     begin() {

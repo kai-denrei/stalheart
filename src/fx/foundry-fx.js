@@ -5,16 +5,19 @@
 // the section shrinking away when the scrap is accepted; a barrel at the
 // fill socket sliding to a rack. Pure presentation over the landmarks
 // story-base loaded; the host ticks it.
+// THE SWAP OFF SCREEN (2026-11-12 evening, the landing's one shot): `held()` true while the arrival keeps the intact rocket in its frame
+// (src/fx/arrival.js swapHeld): the deploy and every event after it wait in order, and go through the tick it turns false.
 import * as THREE from '../../vendor/three.module.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
 
-export function createFoundryFx(scene, base, { cellSide, metresPerCell = 10, tune = FOUNDRY_TUNE }) {
+export function createFoundryFx(scene, base, { cellSide, metresPerCell = 10, tune = FOUNDRY_TUNE, held = () => false }) {
   const metre = cellSide / metresPerCell;
   const arc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 12 }, () => new THREE.Vector3())), new THREE.LineBasicMaterial({ color: 0x6fd8ff, transparent: true, opacity: 0.95, depthWrite: false }));
   arc.visible = false; arc.renderOrder = 6; arc.frustumCulled = false; scene.add(arc);
   const barrelGeo = new THREE.CylinderGeometry(0.45 * metre, 0.45 * metre, 0.9 * metre, 12), barrelMat = new THREE.MeshLambertMaterial({ color: 0x3a4a55, emissive: 0x0a3a44 });
   const barrels = [], shrinking = [], rising = [];
   let arcOn = false, arcTarget = null, tip = null, loopAction = null, deployed = false;
+  const waiting = [];   // [ev, data] held while the rocket is on screen
   const a = new THREE.Vector3(), b = new THREE.Vector3();
   const rec = (id) => base()?.structure(id) ?? null;
   const node = (id, name) => { const r = rec(id); return r ? (r.near ?? r.far)?.getObjectByName(name) ?? null : null; };
@@ -24,8 +27,9 @@ export function createFoundryFx(scene, base, { cellSide, metresPerCell = 10, tun
     act.paused = false; act.enabled = true; act.reset(); act.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1); act.clampWhenFinished = !loop; act.timeScale = loop ? 1 : tune.rate ?? 1; act.play();
     return act;
   }
-  return {
+  const fx = {
     event(ev, data) {
+      if (waiting.length || held()) { waiting.push([ev, data]); return; }
       const b0 = base(); if (!b0) return;
       if (ev === 'deploy') {
         deployed = true; b0.conceal('sh02'); b0.reveal('sh02-salvage'); b0.reveal('foundry');
@@ -44,6 +48,7 @@ export function createFoundryFx(scene, base, { cellSide, metresPerCell = 10, tun
       } else if (ev === 'spent') { loopAction?.stop(); loopAction = null; }
     },
     tick(dt) {
+      if (waiting.length && !held()) for (const [ev, data] of waiting.splice(0)) fx.event(ev, data);
       for (const r of rising) { r.t = Math.min(1, r.t + dt / 1.2); const e = 1 - (1 - r.t) ** 3; r.holder.scale.setScalar(r.from + (r.to - r.from) * e); }
       for (let i = rising.length - 1; i >= 0; i--) if (rising[i].t >= 1) rising.splice(i, 1);
       for (const s of shrinking) { s.t = Math.min(1, s.t + dt); s.n.scale.setScalar(s.s * (1 - s.t)); if (s.t >= 1) s.n.visible = false; }
@@ -56,7 +61,8 @@ export function createFoundryFx(scene, base, { cellSide, metresPerCell = 10, tun
         pos.needsUpdate = true; arc.material.opacity = 0.6 + Math.random() * 0.4;
       }
     },
-    state: () => ({ deployed, barrels: barrels.length, arc: arc.visible }),
+    state: () => ({ deployed, barrels: barrels.length, arc: arc.visible, waiting: waiting.length }),
     dispose() { arc.removeFromParent(); arc.geometry.dispose(); arc.material.dispose(); for (const k of barrels) k.m.removeFromParent(); barrelGeo.dispose(); barrelMat.dispose(); },
   };
+  return fx;
 }

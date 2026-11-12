@@ -359,8 +359,8 @@ export const BRIEFS = {
   // taken; dog_survey_* on the first two surveys (src/fx/dog-scout.js); dog_contact the last survey's pack; dog_wall the dog home (the gate's
   // print); dog_rotor the Rotor printed after the wall; first_harvest Isao's flare on the first wave's bodies (the rover's first run)
   dog_print: { id: 'dog_print', face: 'focused', title: 'COMMS · ISAO', once: true, lines: ['First, eyes on the ground. I print a scout.'] },
-  dog_scout: { id: 'dog_scout', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Rock, crystals, biomass. Take the dog and look.', 'Three marks on your screen. Stand in each ring.'] },
-  dog_survey_first: { id: 'dog_survey_first', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['Good rock. I can print with that.'] },
+  dog_scout: { id: 'dog_scout', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Rock, crystals, biomass. Take the dog and look.', 'Two marks on your screen. Stand in each ring.'] },
+  dog_survey_first: { id: 'dog_survey_first', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['Good rock, and crystals. I can print with that. One more mark.'] },
   dog_survey_second: { id: 'dog_survey_second', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Crystals in the ground. One more mark.'] },
   dog_contact: { id: 'dog_contact', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['Movement. That is not rock.', 'Bring the dog home!'] },
   dog_wall: { id: 'dog_wall', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['They follow you. We need a wall.'] },
