@@ -13,6 +13,7 @@
 //   dropReady(cond)                   -> whether the drop starts now (round 3: the due day crossed, a seat/card/line clear; or THE ARENA's start, or forced)
 //   dropCentre({ adj, dist, from, hops, open }) -> the cell `hops` steps down the heart's field from the arena's cell (off the crater, toward the base)
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+import { closeupHold } from './closeup-gate.js';
 export const smooth = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 const lerp = (a, b, k) => a + (b - a) * k;
 
@@ -89,7 +90,7 @@ export function dropReady(c) {
   if (c.forced) return true;
   if (c.due === null || c.due === undefined || !c.alive || c.won) return false;
   if (c.arena) return true;
-  return c.day >= c.due && !c.seated && !c.card && !c.isaoBusy;
+  return c.day >= c.due && !closeupHold(c) && !c.card && !c.isaoBusy;   // THE CLOSE-UP GATE (2026-11-13): no longer mid-wave; the next lull
 }
 
 // the group's centre: from the arena's cell, `hops` steps each to an open neighbour with a smaller heart distance (the smallest; the lowest index among equals)

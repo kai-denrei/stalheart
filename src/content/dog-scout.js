@@ -42,7 +42,10 @@ export const DOG_SCOUT = freeze({
   home: { cells: 3 },
   drive: { sprint: 6.5, trot: 3.1, back: 1.2, accel: 7, turn: 2.8, turnFall: 6, radiusM: 0.7 },
   camera: { back: 8, up: 3.6, ahead: 6, lookUp: 0.8, ease: 0.25, near: 0.0008, easeIn: 2.4, printEase: 3.5, hand: 3 },
-  harvest: { kg: 150, piles: 5, maxS: 120, poured: 380 },   // poured: what the rover's first trip home brings (measured by --dog-scout 2026-11-13: 384 kg on the automatic landing's page, 380 CLEAN, 386 WRECK; 320-324 on 2026-11-12 runs): the bank ?skip=dog opens THE FIRST ORDERS with (STORY_CHAPTER_DOG)
+  // watch (flow fixes, 2026-11-13, docs/FLOW.md 3): at the flare the player leaves the Rotor's seat for a live shot of the rover's run (skippable, any
+  // key), `back` metres out beyond the rover from the base and `up` over it, looking `lookUp` metres over it; it ends as the rover is home; `order` the
+  // line on screen with it, `keys` under it
+  harvest: { kg: 150, piles: 5, maxS: 120, poured: 380, watch: { back: 16, up: 10, lookUp: 1, ease: 1.2, order: 'THE ROVER HAULS THE FIRST HARVEST', keys: 'the bodies are biomass · any key: back to the base' } },   // poured: the rover's first trip home (measured 380-386 kg, 2026-11-13): the bank ?skip=dog opens with
   words: {
     toast: (label, kg) => `${label} · SURVEYED +${kg} KG`,
     hint: 'RECKON K9 · W A S D DRIVE · SHIFT SPRINT',

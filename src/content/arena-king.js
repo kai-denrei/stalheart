@@ -5,6 +5,7 @@
 // night)". Pure data: the rules are src/domain/king-fight.js (they take this as `T`), the fight src/fx/boss/arena-fight.js, the run src/fx/boss-run.js.
 // Distances in metres on the arena's plane, times in seconds of game clock.
 import { BOSS_FIGHT } from './boss-fight.js';
+import { GUNSHIP_SEAT_HINT } from './gunship.js';
 
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object' && !Object.isFrozen(v)) freeze(v); return Object.freeze(o); };
 
@@ -46,6 +47,5 @@ export const ARENA_KING = freeze({
     'MK-9 (3): fire once to mark a spot; it lands 8 s later. Hold the King on the mark.',
   ],
   // the seat's controls under them, for this fight (GUNSHIP_SEAT_HINT.aim's, with the MK-9 as a mark instead of paint-then-release)
-  controls: 'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 (mark a spot)',
-  controlsTouch: 'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: mark a spot',
+  controls: GUNSHIP_SEAT_HINT.aimMark, controlsTouch: GUNSHIP_SEAT_HINT.aimMarkTouch,   // one text with the seat's footer in this fight (src/sentry-pilot.js)
 });

@@ -81,11 +81,17 @@
 #sentry-pilot output{display:block;white-space:pre-line;padding:10px 0}#sentry-pilot footer{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);white-space:normal;width:max-content;max-width:min(92vw,1100px);text-align:center;background:#10191de8;padding:9px}
 .pilot-cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:200}.pilot-map .pilot-cross{display:none}
 .sentry-pilot-mode #td-pad,.sentry-pilot-mode #td-throttle,.sentry-pilot-mode #td-coach,.sentry-pilot-mode #td-tut-banner{display:none!important}
-.sentry-pilot-mode #td-stats,.sentry-pilot-mode #td-tower,.sentry-pilot-mode #td-wave,.sentry-pilot-mode #td-launch,.sentry-pilot-mode .tc-util,.sentry-pilot-mode #td-brief,.sentry-pilot-mode #td-tut,.sentry-pilot-mode #td-hint,.sentry-pilot-mode #td-stick,.sentry-pilot-mode .tzone,.sentry-pilot-mode .tfire{display:none!important}
+.sentry-pilot-mode #td-stats,.sentry-pilot-mode #td-tower,.sentry-pilot-mode #td-wave,.sentry-pilot-mode #td-launch,.sentry-pilot-mode .tc-util,.sentry-pilot-mode #td-tut,.sentry-pilot-mode #td-hint,.sentry-pilot-mode #td-stick,.sentry-pilot-mode .tzone,.sentry-pilot-mode .tfire{display:none!important}
 .laser-seat #td-pad,.laser-seat #td-throttle,.laser-seat #td-coach,.laser-seat #td-tut-banner,.laser-seat #td-stats,.laser-seat #td-tower,.laser-seat #td-wave,.laser-seat #td-launch,.laser-seat .tc-util,.laser-seat #td-tut,.laser-seat #td-hint,.laser-seat #td-stick,.laser-seat .tzone,.laser-seat .tfire,.laser-seat #td-next,.laser-seat #td-sitrep{display:none!important}
 /* ISAO SPEAKS OVER THE SEAT (round 7, owner, 2026-11-05, note 5: "Isao's later comms about it happen while we control the satellite"): his card stands top right, clear of the scope's corner; the phone keeps its seat bare */
 .laser-seat #td-brief{left:auto;right:max(16px,env(safe-area-inset-right));top:58px;bottom:auto}
-body.mobile-shell .laser-seat #td-brief{display:none!important}
+/* ISAO IN EVERY SEAT (flow fixes, 2026-11-13, docs/FLOW.md 1: a seat hid his panel while the queue still spent his lines, so the first wave's, the
+   first harvest's and the three economy lines went unread from the Rotor's seat): a compact caption, no face and no foot, where the panel stands
+   (bottom left over the radar on a desktop, the phone's bottom band), clear of the reticle; it never takes a pointer, so a drag to aim is never a tap on it */
+.sentry-pilot-mode #td-brief,body.mobile-shell .laser-seat #td-brief{width:min(300px,calc(100vw - 24px));padding:5px 9px;gap:0;pointer-events:none;cursor:default;background:rgba(4,14,9,.78)}
+.sentry-pilot-mode #td-brief-face,.sentry-pilot-mode #td-brief-foot,.sentry-pilot-mode #td-brief-track,body.mobile-shell .laser-seat #td-brief-face,body.mobile-shell .laser-seat #td-brief-foot{display:none}
+@media (orientation: landscape){body.mobile-shell #tab-td.sentry-pilot-mode #td-brief{width:min(420px,calc(100vw - 220px))}}   /* the landscape band: right of the radar's corner (left 124), left of the fire pad; portrait keeps the full-width band over the strip */
+body.mobile-shell #tab-td.laser-seat #td-brief{top:auto}   /* the desktop's top-right card (top 58) under the phone's bottom anchor would stretch it */
 #tab-td.pilot-framing .pilot-cross,#tab-td.pilot-framing #story-scope .reticle{opacity:0}   /* the view follows a round in flight, away from the aim (src/core/round-framing.js) */
 .sentry-pilot-mode #td-perf{top:215px;left:14px}.sentry-pilot-mode #td-next{right:20px;left:auto;transform:none}
 /* --- the enemy study (#swarm): a crowd on the left of a readout that does

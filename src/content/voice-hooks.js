@@ -93,6 +93,9 @@ export const VOICE_SEQUENCE = Object.freeze({
 });
 
 // the player's picks (the Workshop's voice tab): src/storage.js key
+// RETIRED TAKES (flow fixes, 2026-11-13, docs/FLOW.md 9): recorded lines the game never picks, kept in the table and on disk (the generated file is
+// not edited). sentry_overload_01 says "more than ten auto-sentries" while the cap is 6 (+2, +2, src/content/sentries.js); its pair says no number
+export const VOICE_RETIRED = Object.freeze(['sentry_overload_01']);
 export const VOICE_STORE = 'td.voice';
 
 // every line as a lazy sound on the voice bus (src/audio.js prime): the story world's sound set carries them, the voice tab auditions them

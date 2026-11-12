@@ -292,7 +292,11 @@ function host(o = {}) {
   const shown = h.choiceCard.shown[0];
   assert.equal(shown.title, 'THE KING'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
   assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.deepEqual(shown.hint, [...ARENA_KING.hint, ARENA_KING.controls], 'THE KING\'s two actions, then the seat\'s controls (2026-11-12 night)');
-  assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aim, 'the seat footer\'s own aim text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimTouch);
+  assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aimMark, 'the seat footer\'s own mark text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimMarkTouch);
+  // THE KING TEACHES THE MARK (flow fixes, 2026-11-13): no word of paint-then-release on the card or in the fight's footer; the countdown is the fight's
+  { const { ARENA_KING } = await import('../src/content/arena-king.js');
+    for (const t of [ARENA_HANDOVER.hint, ARENA_HANDOVER.hintTouch, ARENA_KING.controls, ARENA_KING.controlsTouch, ...ARENA_KING.hint]) assert(!/paint|release/i.test(t), `no paint-then-release: ${t}`);
+    for (const t of [GUNSHIP_SEAT_HINT.aimMark, GUNSHIP_SEAT_HINT.aimMarkTouch]) assert(t.includes(`${ARENA_KING.nuke.countdown} s later`), 'the mark lands on the fight\'s countdown'); }
   assert.match(shown.hint.at(-1), /move it to aim/); assert.match(shown.hint.at(-1), /Space or the button fires/); assert.match(shown.hint.join(' '), /40MM/); assert.match(shown.hint.join(' '), /mark/);
   assert.ok(!h.log.briefs.includes('arena_force'), 'the card says it, not the panel');
   assert.equal(h.params().directive, 'lure', 'Isao has the hull as the lure');

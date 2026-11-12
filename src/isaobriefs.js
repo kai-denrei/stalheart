@@ -184,6 +184,11 @@ export const BRIEFS = {
     id: 'sinkhole_strike_again', face: 'determined', title: 'THE SINKHOLE',
     lines: ['Clear again, and the sinkhole is still breathing.', 'One strike from the gunship and the construction is safe.'],
   },
+  // SECTOR 0's OBJECTIVE (flow fixes, 2026-11-13, docs/FLOW.md 4: after TANK IS READY 72 s passed with no instruction): the tank's job while the Stålheart prints
+  construction_ram: {
+    id: 'construction_ram', face: 'determined', title: 'WHILE I PRINT', once: true,
+    lines: ['Run them down while I build the Stålheart. They cannot hurt the print.', 'Drive straight into them: the hull flattens the soft ones.'],
+  },
   sinkhole_sealed: {
     id: 'sinkhole_sealed', face: 'glee', title: 'SINKHOLE FILLED',
     lines: ['The sinkhole is filled. Nothing more is coming up through it.', 'Now I can print in peace.'],

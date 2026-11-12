@@ -110,7 +110,7 @@ export function createReinforcements(h) {
       // THE TIMER'S MEASURE (round 3): game seconds since the day counter crossed `due`, those of them a seat, a card or Isao's panel held it, and
       // at the drop's start the whole wait (lateBy - heldFor is the timer's own lateness: the models and the sounds)
       if (r && d >= r.due) sinceDue = sinceDue < 0 ? 0 : sinceDue + dt;
-      if (!dropReady(cond)) { if (sinceDue >= 0) heldFor += dt; waiting = -1; why = cond.shot ? 'shot' : !(cond.due !== null && d >= cond.due) ? 'due' : cond.seated ? 'seat' : cond.isaoBusy ? 'brief' : cond.card ? 'card' : 'held'; return; }
+      if (!dropReady(cond)) { if (sinceDue >= 0) heldFor += dt; waiting = -1; why = cond.shot ? 'shot' : !(cond.due !== null && d >= cond.due) ? 'due' : cond.seated ? 'seat' : cond.isaoBusy ? 'brief' : cond.card ? 'card' : cond.fighting && !cond.breathing ? 'fight' : 'held'; return; }
       drop.prepare();   // THE ARENA before the due day's preload: fetched now, the drop going once they land (or LOAD_WAIT on)
       waiting = waiting < 0 ? 0 : waiting + dt;
       if (!drop.ready() && !drop.failed()) { why = 'loading'; if (waiting < LOAD_WAIT) return; }

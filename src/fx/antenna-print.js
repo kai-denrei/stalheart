@@ -6,12 +6,13 @@
 // lowered near plane). The cut only frames it: the print itself is the step's own (the world runs under the cut, td-tab's live shots). No cut over
 // a manned seat or another shot, or with less than `latest` of the print left: the line alone then.
 //   host: camera, metres(), startShot, endShot, snapCamera, want(id) (Isao's line, waiting for his panel), print() (story.print or null),
-//         shotActive(), seated()
+//         shotActive(), seated(), sectorRun() (the close-up gate's live wave, src/domain/closeup-gate.js)
 //   createAntennaPrint(host) -> { tick(dt), force() (the harness: the cut now over the standing radar, its print replayed from the floor by this
 //         module through story.print.progress, the line asked; false without a plot or with a shot up), state(), restore() }
 import * as THREE from '../../vendor/three.module.js';
 import { BASE_PROGRAMME, ANTENNA_CLOSEUP } from '../content/base-programme.js';
 import { createPrintCloseup } from './print-closeup.js';
+import { closeupHold, fightOf } from '../domain/closeup-gate.js';
 
 const A = ANTENNA_CLOSEUP, STEP = BASE_PROGRAMME.find((s) => s.id === A.step);
 
@@ -42,7 +43,7 @@ export function createAntennaPrint(h) {
       if (st.k >= 1) { done = true; why = 'stood'; return; }   // printed already (a grown base, or a print it never saw start)
       if (!said) { said = true; h.want(STEP.brief); }
       if (st.k > A.latest) { done = true; why = 'late'; return; }
-      if (h.shotActive() || h.seated()) { why = h.seated() ? 'seat' : 'shot'; return; }
+      { const hold = closeupHold({ shot: h.shotActive(), seated: h.seated(), ...fightOf(h.sectorRun?.()) }); if (hold) { why = hold; return; } }   // THE CLOSE-UP GATE (2026-11-13): not over a live wave either
       done = true; begin(st.k);
     },
     force() {

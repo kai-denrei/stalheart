@@ -149,6 +149,7 @@ export function createGunshipRig(host) {
     loop: (name, o) => sfx.loop(name, o),
     // a call: no re-mark, and the mark is painted red on the ground in the optic for the whole countdown (the release's own paint covers only the fall)
     paintHeavy: (ci, o) => { const k = called(); if (k && gunship.heavyPaint != null) return false; const ok = paintHeavy(gunship, ci, guns(), o); if (ok && k) bag.optic.paint(host.graph().centers[ci], host.graph().normals[ci], guns().heavy.blastCells * host.cellSide(), k.nuke.countdown); return ok; },
+    called: () => !!called(),   // THE KING's fight calls the MK-9 onto a mark: the seat's footer says so (src/sentry-pilot.js)
     heavyDue: () => !!markNow()?.release,   // the called MK-9's release is due (the seat lets it go)
     callText: (hs) => { const k = called(); if (!k) return null; const left = hs.phase === 'painted' ? markNow()?.left : hs.left; return hs.phase === 'ready' ? 'ARMED · FIRE TO MARK THE SPOT' : left != null && ['painted', 'released', 'ignited'].includes(hs.phase) ? `${k.label} ${Math.ceil(left)} S` : null; },
     launchHeavy: (o) => { if (called() && !o?.auto && !markNow()?.release) return -1; const lc = launchHeavy(gunship, guns(), o); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05); the automated one is booked apart ({ auto: true })

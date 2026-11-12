@@ -2020,7 +2020,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.contact-card{display:none!important}</style>")');
  const hands=[],hand=async(what)=>{const c=await evaluate(`[+(performance.now()/1000).toFixed(1),+(${T}.state().shieldClock??0).toFixed(1),${T}.state().story?.clock??null]`);hands.push([...c,what]);console.log(`  flow hand: ${what} @ ${JSON.stringify(c)}`);};
  const pageErrors=[];const snap=async(name)=>{try{const sh=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(output,`flow-${tag}-${name}.png`),Buffer.from(sh.data,'base64'));}catch(e){}if(errors.length){pageErrors.push(...errors.map(e=>`${name}: ${String(e).slice(0,300)}`));errors.length=0;}};
- const t0=Date.now(),done=new Set(),since={};let lastSector=null,seatSince=null,nukeTried=false,lastCull=0,boardsSeen=0;
+ const t0=Date.now(),done=new Set(),since={},probe=[];let lastSector=null,seatSince=null,nukeTried=false,lastCull=0,boardsSeen=0;
  const once=(k)=>{if(done.has(k))return false;done.add(k);return true;};
  const wait=(k,ms)=>{since[k]??=Date.now();return Date.now()-since[k]>=ms;};
  while(Date.now()-t0<maxS*1000){
@@ -2044,21 +2044,25 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   else await evaluate('window.__stalheartPilotTest?.hold?.(false)').catch(()=>{});
   // sector 0's gunship seat: NUKE THE ENTRANCE
   if(s.seat==='gunship'&&s.beat==='construction'){seatSince??=Date.now();if(once('gs0'))await snap('sector-0-gunship');
-   if(!nukeTried&&s.nuke){nukeTried=true;await evaluate(`${T}.gunshipGun("heavy")`);await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(false)`);await delay(300);await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(false)`);await hand('MK-9 painted and released where the optic looks');}
+   if(once('gs0-where')){const w=await evaluate(`(()=>{const T=${T},g=T.state().gunship,w=T.probeWhere(),d=(a,b)=>T.cellsApart(a,b);return {aimCell:g.aimCell,lane:g.lane,...w,aimToSource:d(g.aimCell,w.source),aimToPlayer:d(g.aimCell,w.player),aimToIsao:d(g.aimCell,w.isao),aimToHeart:d(g.aimCell,w.heart),aimToGate:d(g.aimCell,w.gate),sourceToPlayer:d(w.source,w.player),sourceToIsao:d(w.source,w.isao),sourceToHeart:d(w.source,w.heart),hullHp:T.state().hulls};})()`);probe.push(['gs0-open',w]);console.log(`  flow probe: sector 0 seat opens ${JSON.stringify(w)}`);}
+   if(!nukeTried&&s.nuke){nukeTried=true;await evaluate(`${T}.gunshipGun("heavy")`);await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(false)`);await delay(300);await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(false)`);await hand('MK-9 painted and released where the optic looks');
+    {const hs=await evaluate(`${T}.state().gunship.heavy`);await delay(9000);const w=await evaluate(`(()=>{const T=${T},w=T.probeWhere(),ci=${hs?.ci??-1},d=(a,b)=>T.cellsApart(a,b);return {nukeCell:ci,...w,nukeToSource:d(ci,w.source),nukeToPlayer:d(ci,w.player),nukeToIsao:d(ci,w.isao),sealed:T.state().story?.construction?.sealed,hulls:T.state().hulls,isao:T.state().isao??null};})()`);probe.push(['gs0-nuke',hs,w]);console.log(`  flow probe: the MK-9 ${JSON.stringify(hs)} -> ${JSON.stringify(w)}`);}}
    if(!s.sealed&&Date.now()-seatSince>30000&&once('strike')){await evaluate(`${T}.breachStrike()`);await hand('breachStrike (the MK-9 did not seal it in 30 s)');}}
   // the sector: the ideal defender and the reference flagger
   if(s.sector?.phase==='fighting'&&Date.now()-lastCull>2000){lastCull=Date.now();await evaluate(`${T}.sectorCull(999,'tank')`);
    await evaluate(`(()=>{const r=${T}.rover?.state?.();if(r?.built&&r.mode==='idle'&&!r.queued&&r.field>0&&!r.flares.some(f=>f.id===r.order)){const c=${T}.rover.richest();if(c)${T}.rover.flareAt(c.cell);}})()`);}
+  // THE FLOW FIXES' PROBE (2026-11-13, docs/FLOW.md 2): what still lives at SECURE and while the debrief waits
+  if(s.sector?.phase==='secure'&&(once('sec'+s.sector.n)||wait('secp',8000))){delete since.secp;const c=await evaluate(`(()=>{const T=${T},b=T.bodyCensus(),q=T.queueCensus().filter(x=>!x.guard),h=b.filter(x=>!x.harmless);return {alive:b.length,hostile:h.length,harmless:b.length-h.length,emerging:h.filter(x=>x.emerging).length,breach:h.filter(x=>x.breach).length,near6:h.filter(x=>x.hops>=0&&x.hops<=6).length,minHops:h.reduce((m,x)=>x.hops>=0?Math.min(m,x.hops):m,999),types:[...new Set(h.map(x=>x.type))],hunts:[...new Set(h.map(x=>x.hunt))],queued:q.length,queuedHostile:q.filter(x=>!x.harmless&&x.spAlive).length,heart:T.state().heart};})()`);const clk=await evaluate(`${T}.state().shieldClock`);probe.push(['secure',s.sector.n,+clk.toFixed(1),c]);console.log(`  flow probe: sector ${s.sector.n} SECURE @${clk.toFixed(1)} ${JSON.stringify(c)}`);}
   if(s.sector?.phase==='lost'||s.sector?.phase==='lost-shown'){await hand(`sector ${s.sector.n} LOST`);break;}
   for(const [k,cond] of [['dog-print',s.beat==='dog-print'],['harvest',s.beat==='harvest'],['construction',s.beat==='construction'],['study-talk',s.beat==='study-talk'],['expedition',s.beat==='expedition']])if(cond&&once('snap-'+k)){await delay(800);await snap(k);}
   await delay(400);}
  if(Date.now()-t0>=maxS*1000)console.log(`FLOW STUCK: the wall cap ${maxS} s reached`);
  await evaluate('window.__stalheartPilotTest?.hold?.(false)').catch(()=>{});
  const F=await evaluate('window.__flow');
- writeFileSync(join(output,`flow-${tag}.json`),JSON.stringify({from,to,url,wallSeconds:Math.round((Date.now()-t0)/1000),rows:F.rows,texts:F.texts,ticks:F.ticks,hands,pageErrors},null,1));
+ writeFileSync(join(output,`flow-${tag}.json`),JSON.stringify({from,to,url,wallSeconds:Math.round((Date.now()-t0)/1000),rows:F.rows,texts:F.texts,ticks:F.ticks,hands,probe,pageErrors},null,1));
  console.log('FLOW TIMELINE (wall s, game clock, story clock, state, alive)');for(const r of F.rows)console.log('  '+JSON.stringify(r));
  console.log('FLOW TEXTS');for(const r of F.texts)console.log('  '+JSON.stringify(r));
- console.log(`FLOW HANDS ${JSON.stringify(hands)}`);console.log(`FLOW ERRORS ${JSON.stringify(pageErrors)}`);
+ console.log(`FLOW HANDS ${JSON.stringify(hands)}`);console.log(`FLOW PROBE ${JSON.stringify(probe)}`);console.log(`FLOW ERRORS ${JSON.stringify(pageErrors)}`);
  current='flow-'+tag+'-end';await snap('end');
  } else if(args.includes('--settling')) {
  // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle ... the player chooses what to

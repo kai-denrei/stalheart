@@ -81,6 +81,10 @@ export const GUNSHIP_GUN_ORDER = Object.freeze(['rotary', 'bofors', 'heavy']);
 export const GUNSHIP_SEAT_HINT = Object.freeze({
   aim: 'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 mini nuke (paint, then release: it drops two seconds before it burns)',
   aimTouch: 'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: paint, then release',
+  // THE CALLED NUKE's words (flow fixes, 2026-11-13, docs/FLOW.md 8): in THE KING's fight one press marks the spot and it lands 8 s later
+  // (src/content/arena-king.js nuke.countdown); the seat's footer and THE KING card say this, never paint-then-release
+  aimMark: 'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 (fire once to mark a spot: it lands 8 s later)',
+  aimMarkTouch: 'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: fire once to mark a spot, it lands 8 s later',
   leave: 'Esc frees the mouse, Esc again or 7: back to the tank', views: 'V the ship · T top view · P pause', leaveTouch: 'TANK leaves' });
 
 // THE GUNSHIP ON AUTO (owner, 2026-10-02: "in later rounds, lets have the Gunship also be on Auto mode, it learned what to do, does it by

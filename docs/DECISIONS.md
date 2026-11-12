@@ -336,6 +336,32 @@ companions beside the four Ridgebacks on the radar. A briefing card left open ho
 **Noticed, not this build's**: the HUD's bank shows unrounded kilos on these pages (13533.2764...kg); `--story-world` is red on the base a8839146
 at "spent cases fell from the Rotor in sentry control", as on this branch.
 
+## The flow fixes (2026-11-13 night), defaults built for the owner's review
+
+The audit `docs/FLOW.md` ranked eleven problems; the bugs are fixed on branch `flow-fixes` and the dead-time items were built as modest defaults.
+Each is one content number or one rule; overturn any with one line. Entry `2026-11-13-the-flow-fixes-isao-in-every-seat-secure-ends-the-sector-one-close-up-gate`.
+
+- **SECURE stands the field down** (FLOW 2). At SECURE every live body but the landers' nest guards becomes harmless (it cannot wear a gate, touch the
+  hull or hurt the heart; it still walks and can be rammed) and the debrief comes `SECTOR_TIMING.securePause` (3 s) + at most `secureHold` (5 s) later.
+  *Why:* SECURE was called with up to 20 stragglers (your 2026-10-16 call) or with any number once the sector stalled (sector 6: 90 alive, sector 7: 62,
+  one hop from the heart), and those lost the run after the win was shown. *Or:* SECURE only when the field is clear (the stall rule would then need a
+  new end), or the stood-down bodies burrow away instead of walking on.
+- **One close-up gate** (FLOW 6). No print close-up or the FEIDS-26 drop takes the camera while a weapon seat is manned or a sector is fighting outside
+  its breath; it waits for the lull. *Consequences:* a companion print's `patience` (150 s) no longer lets it cut into a fight; the drop can come later
+  than its due day (it waits for a breath or the sector's end). THE ARENA still drops at once. *Or:* cut, but only after a callout warns.
+- **The first harvest** (FLOW 3, 7a). The depot prints at `rotor-ready` (in the wait for the Rotor's seat) instead of after the clear; at the flare the
+  player leaves the Rotor's seat for a live shot following the rover (`DOG_SCOUT.harvest.watch`, any key skips) with THE ROVER HAULS THE FIRST HARVEST.
+  *Or:* a marker on the rover and the player free on the strip's views, or the first orders opened at the flare.
+- **Sector 0's objective** (FLOW 4, 7b). Isao's caption `construction_ram` as the tank is handed over: run them down while he prints. The seat now opens on
+  the sinkhole (FLOW 10), so a first MK-9 fills it and the field empties early. *Or:* end the mop-up early when the field is harmless; a written order.
+- **Sector 1's grace waits for the player** (FLOW 5, 7c). `SECTOR_TIMING.firstGrace` (90 s) is held while the hull is out on the errand (past
+  `firstAwayHops`, 20, and `firstAwayMargin`, 3 hops, beyond where it stood as the expedition began) or a shot, a screen or a pause holds the game (so
+  C-07's print close-up no longer eats it); a part home opens it at once as before; `firstCap` (240 s) opens it whatever. *Or:* open on a READY
+  button, the grace as the cap.
+- **Not built, recommendation only (FLOW 7): the first orders' unbought cards.** The landing pad, the foundry's work and the solar array are offered only
+  at THE FIRST ORDERS. Recommended: offer the unbought ones on the first build board at their first-orders price (one board slot each, below the
+  structures), so a WRECK opening that could afford only the array is not locked out of the pad for the run. Nothing later needs the pad today.
+
 ## O. Landing and opening
 
 - **O1 How forgiving the flown landing is.** Entry 300-400 m, sink 30-40 m/s, fuel 18-22 s; CLEAN needs sink under 2.5 m/s, drift under 1.5, tilt under 4 degrees. About half the seeds drift toward the mouth.

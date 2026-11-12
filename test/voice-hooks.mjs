@@ -56,6 +56,15 @@ for (const ev of VOICE_EVENTS.filter((e) => e !== 'mission')) ok(`the ${ev} even
   c = 1000; heard.length = 0; q.length = 0; v.reset(); v(sfx, 'sector_brief'); c += 1; v(sfx, 'sector_both');
   ok('the last stand waits for the line before it', q.length === 1 && (c = q[0][0], q.shift()[1](), heard.at(-1)[1] === 'isao_last_stand_01')); }
 
+// THE RETIRED TAKE (flow fixes, 2026-11-13): "more than ten auto-sentries" is never said (the cap is 6); its pair still is, and the file stays pinned
+{ const { createIsaoVoice } = await import('../src/fx/isao-voice.js');
+  const { VOICE_RETIRED } = await import('../src/content/voice-hooks.js');
+  ok('the ten take is retired', VOICE_RETIRED.includes('sentry_overload_01') && /ten auto-sentries/.test(ISAO_TRIGGERS.sentry_overload.lines.find((l) => l.id === 'sentry_overload_01')?.text ?? ''));
+  const ids = new Set(); let c = 0;
+  for (let i = 0; i < 40; i++) { const v = createIsaoVoice({ picks: () => ({ muted: false, off: new Set(), quiet: new Set() }), now: () => (c += 100), rand: () => (i % 10) / 10, later: () => {} });
+    ids.add(v({ say: () => ({}), play() {}, stop() {} }, '<div class="wave-num">NOT HERE</div><div class="wave-role">Isao keeps 6 sentries running: sell one to build another</div>')?.id ?? null); }
+  ok('the cap refused says only the take without a number', ids.has('sentry_overload_02') && !ids.has('sentry_overload_01')); }
+
 const lock = JSON.parse(readFileSync(new URL('../docs/isao-voice-audio.lock.json', import.meta.url), 'utf8'));
 const pinned = new Set(lock.files.map((f) => f.path)), defs = voiceSounds();
 ok('every line is a lazy sound with a pinned file', Object.values(defs).every((d) => d.lazy && pinned.has(d.file) && existsSync(new URL('../' + d.file, import.meta.url))));

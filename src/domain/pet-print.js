@@ -19,6 +19,7 @@ const smooth = (x) => { x = clamp(x); return x * x * (3 - 2 * x); };
 const lerp = (a, b, k) => a + (b - a) * k;
 const has = (list, id) => !!list && (typeof list.has === 'function' ? list.has(id) : Array.from(list).includes(id));
 
+import { closeupHold } from './closeup-gate.js';
 export const nextPrint = (order, born) => order.find((id) => !has(born, id)) ?? null;
 
 export function printGates(tr, w) {
@@ -35,7 +36,7 @@ export function printReady(c) {
   if (c.forced) return true;
   if (!c.gates || !c.alive || c.won || c.arena || c.seated || c.card || c.isaoBusy) return false;
   if (c.held < c.delay) return false;
-  return !c.fighting || c.breathing || c.held >= c.patience;
+  return !closeupHold(c);   // THE CLOSE-UP GATE (2026-11-13): a live wave holds it to the next lull; `patience` no longer lets a print cut into a fight
 }
 
 export const printEnd = (tl) => tl.arrive + tl.print + tl.skin + tl.wake;

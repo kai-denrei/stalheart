@@ -259,7 +259,7 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // with the tank"): the card over the paused game as the NIH-DAIRIA rises (src/fx/boss-run.js, src/fx/choice-card.js): this title, Isao's arena_force lines, the
 // seat's own controls (the seat footer's aim part, GUNSHIP_SEAT_HINT, src/sentry-pilot.js: the gunship flies its own track, the player aims and fires) and one button into the seat
 export const ARENA_HANDOVER = freeze({ title: 'THE KING',   /* THE KING, not the mother (owner, 2026-11-12: "larger than the others, Isao registers it as a male from the chatter, and infers that there must a queen below") */ take: 'TAKE THE GUN',
-  hint: GUNSHIP_SEAT_HINT.aim, hintTouch: GUNSHIP_SEAT_HINT.aimTouch });
+  hint: GUNSHIP_SEAT_HINT.aimMark, hintTouch: GUNSHIP_SEAT_HINT.aimMarkTouch });   // the called MK-9's words (flow fixes, 2026-11-13: the old paint-then-release text stood here)
 // decodedCap: seconds after boss_dead before arena_decoded clears a panel other lines keep busy and is shown (review, 2026-10-19: it waited on a free panel, and the
 // boss sector's debrief waits on it, up to STORY_CALM.maxHold, 120 s; src/fx/boss-run.js sayDecoded)
 export const ARENA = freeze({ farHops: 4, craterCells: 3, radiusCells: 14, seatCells: 14, reachCells: 8, seatWait: 45, seatAfter: 1, remind: 40, remindMax: 3, decodedCap: 20,
@@ -315,7 +315,7 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // firstGrace: the first sector's wait after the story is ready for it, unless a part comes home first (src/domain/sectors.js
 // firstSectorDue): the expedition Isao has just sent the tank on
 // `stall`: seconds a fighting sector may go without a kill, a wave or a breach opening before it moves itself on (2026-10-05)
-export const SECTOR_TIMING = freeze({ stragglers: 20, stall: 20, briefSeconds: 6,   /* stragglers: a sector is SECURE with up to this many bodies still alive (owner, 2026-10-16: "a sector could be closed while a few stragglers remain") */ staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90 });   // aliveBudget: the campaign board's clock guard (pulseFits); the story's sectors are sized by their shape (2026-10-15)
+export const SECTOR_TIMING = freeze({ stragglers: 20, stall: 20, briefSeconds: 6,   /* stragglers: a sector is SECURE with up to this many bodies still alive (owner, 2026-10-16: "a sector could be closed while a few stragglers remain") */ staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, secureHold: 5, firstAwayHops: 20, firstAwayMargin: 3, firstCap: 240,   /* the first grace held while the hull is out past the clearing (19 hops) and 3 hops beyond where it stood as the expedition began, opened at the cap whatever (flow fixes, 2026-11-13) */   /* secureHold (flow fixes, 2026-11-13): at most this many seconds after securePause the debrief comes, calm or not (the field is stood down at SECURE) */ lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90 });   // aliveBudget: the campaign board's clock guard (pulseFits); the story's sectors are sized by their shape (2026-10-15)
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

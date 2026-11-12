@@ -96,7 +96,8 @@ export function releaseWave(st, id, t) {
 // expedition phase begins; a sector opening behind it on the clock took the colony while the player did as told (the towers alone
 // hold sector 1 for about a minute, 2026-09-24-pacing-probe). So the first sector opens once a part is home or `grace` seconds after
 // the story was ready for it, whichever is first; a run that starts past the expedition (a jump, SKIP TUTORIAL) passes grace 0.
-export const firstSectorDue = ({ sinceReady, grace = 0, partsHome = 0 }) => partsHome > 0 || sinceReady >= grace;
+// `total`, `cap` (flow fixes, 2026-11-13): the grace counts only the seconds the player is home (the caller's), so a cap on the whole wait
+export const firstSectorDue = ({ sinceReady, grace = 0, partsHome = 0, total = 0, cap = Infinity }) => partsHome > 0 || sinceReady >= grace || total >= cap;
 
 // THE CLOCK'S ONE GUARD (2026-09-24): the next pulse arms only while the live bodies plus the bodies it would send fit the
 // budget. An empty field always takes the next pulse, so a pulse bigger than the budget can never stall a sector.
@@ -126,6 +127,18 @@ export function spendBreach(st, id, t) {
 
 // no breach open and none of the sector's enemies alive (guards at expedition sites are the caller's to leave out)
 export const isSecure = (st, aliveSectorEnemies, stragglers = 0) => st.breaches.every((b) => b.state !== 'open') && aliveSectorEnemies <= stragglers;   // stragglers: a few left alive do not hold a sector open (owner, 2026-10-16)
+// SECURE ENDS THE SECTOR (flow fixes, 2026-11-13, docs/FLOW.md 2: sector 6 held SECURE 123 s while the stragglers pushed the gate in, sector 7 was
+// LOST 102 s after it): at SECURE the run stands the field down (src/fx/sector-run.js standDown: what lives is harmless), so the debrief follows once
+// securePause has run and the player is calm, and `hold` seconds after that at most; a boss sector waits for Isao's lines over the King, up to maxHold
+export const secureDone = ({ left, engaged = false, boss = false, talking = false, hold = 0, maxHold = Infinity }) =>
+  (left <= 0 && !(boss ? talking : engaged)) || left <= -(boss ? maxHold : hold);
+// the bodies a SECURE stands down: every live one that is not a lander's nest guard, and the queue's entries likewise (they rise harmless)
+export function standDown(bodies, queue = []) {
+  let n = 0;
+  for (const e of bodies) if (e.alive && !e.guard && !e.harmless) { e.harmless = true; e.stoodDown = true; n += e.members || 1; }
+  for (const q of queue) if (!q.guard && !q.harmless) { q.harmless = true; n += q.squad || 1; }
+  return n;
+}
 
 export function summary(st) {
   const sum = (f) => st.breaches.reduce((s, b) => s + f(b), 0);

@@ -110,10 +110,12 @@ export const BASE_PROGRAMME = Object.freeze([
 // docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 2.C, 2.D): on the story's own start (the beats' `scout`) these steps lead Isao's
 // programme in this order with these `when`s (src/domain/build-programme.js openingSteps): the gate once the dog is home (`walled`), the depot after the
 // first wave's clear (`harvest`: the rover's first run, moved up from sector 1), the Stålheart once THE FIRST ORDERS have closed (the Quiver's beat follows the
-// card at once: `quiver-piloting`; at `orders` it was claimed in the frame the card opened). Chapters, SKIP TUTORIAL and the static stages keep BASE_PROGRAMME as it stands
+// card at once: `quiver-piloting`; at `orders` it was claimed in the frame the card opened). THE DEPOT EARLIER (flow fixes, 2026-11-13, docs/FLOW.md 3: the
+// first harvest stood 48 s, 24 of them on the depot's print after the clear): it prints at `rotor-ready`, in the wait for the Rotor's seat and the first wave, so the
+// rover can leave as the wave is cleared. Chapters, SKIP TUTORIAL and the static stages keep BASE_PROGRAMME as it stands
 export const OPENING_PROGRAMME = Object.freeze({
   order: Object.freeze(['gate', 'depot', 'stalheart']),
-  when: Object.freeze({ gate: Object.freeze({ phase: 'walled' }), depot: Object.freeze({ phase: 'harvest' }), stalheart: Object.freeze({ phase: 'quiver-piloting' }) }),
+  when: Object.freeze({ gate: Object.freeze({ phase: 'walled' }), depot: Object.freeze({ phase: 'rotor-ready' }), stalheart: Object.freeze({ phase: 'quiver-piloting' }) }),
 });
 
 // ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the
