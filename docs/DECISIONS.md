@@ -162,6 +162,54 @@ No friendly unit takes damage from the automated gunship: its rounds damage enem
 
 Calls: the gunship now leaves enemies right on a lone rover alone (one 100 kg bite got through); the automatic nuke can still destroy a sentry standing off a socket or wall cell; SOL's beam is the one automated weapon that damages the tank, and is not measured.
 
+### Built on 2026-11-12 night: the escort that matters, and bonded piles that hold
+
+Branch `escort-seep` (from e4e9cefb), commits ac8971e2 (the escort) and 3371ccd7 (the seepage), unpushed. Every number is content
+(`ROVER.disable`, `FIELD.seep` in `src/content/rover.js`); overturn any with one line.
+
+- **The rover disabled (call 3).** The **third jab** of a trip (an empty hold counts: the rover is attacked) disables it where it stands: it
+  does not drive, rake or retreat. The hunters keep biting, **one bite in 2 s** at most, the hold down to **a quarter of its capacity**
+  (1,500 kg) and no lower. **Only the tank** (the hull alive, the player's drive or Isao's) within **3 cells for 4 s** restarts it; the hold's
+  clock runs down as fast while the tank is away. Then it goes on with its trip as it was, the count at 0; a new trip counts afresh. Still
+  no hit points. *Why:* a bitten rover came home nearly full; now an unescorted rover waits and bleeds until the tank comes. *Or:* bites
+  end the trip (home at once with what is left).
+- **What the player is told.** The console reads `ROVER DISABLED · NEEDS THE TANK`, then `ROVER RESTARTING n %`; the callout says the same
+  and `ROVER RESTARTED`; Isao's `rover_disabled` once, a **caption only** (no recorded voice); a red ring on the ground round the rover at
+  the 3 cells, an amber arc filling while the tank holds; the radar marks the rover whenever it is away from home (olive), **blinking red
+  with a ring while disabled**. The first time the rover leaves the walls, the callout `ROVER BEYOND THE WALLS · THE HUNTERS GO FOR IT ·
+  ESCORT IT WITH THE TANK` (4.5 s). Inside the walls it is never hunted (unchanged).
+- **The break and a disabled rover.** The sector's end still brings the rover home with what is aboard (the floor at worst). *Or:* a rover
+  disabled at the break loses its load.
+- **Bonded piles hold (call 2).** A pile counts the bodies laid on it. Nothing seeps for **20 s after its first body** (a later body joins the
+  bond and does not renew the grace: on the first try it did, and a lane under a stream of kills never seeped); then a pile loses
+  **max(0.5, kg / 400) / min(bodies, 3)** kg a second: a lone kill at the floor (gone 12 s after its grace), a chain of three or more on one
+  cell at a third. A sector's seepage **stops at 25 %** of what was laid in it (the term closes at the break); a full field (400 piles) now
+  loses its **smallest** pile, not its oldest. *Why:* the owner's "bonds together well, otherwise it seeps". Tried first: bond 8, which
+  left sector 3 at 7 %. *Or:* bonding by neighbouring piles (not built: the field would have to know the lattice's distances every tick).
+
+Measured. *The escort* (`--rover`, 6,500 kg laid beyond the walls, five whites at the rake): unescorted, three bites (300 kg) and disabled
+with 4,110 kg aboard; 6 s later still there, 4,010 kg, moved 0.00 m; the hull put beside it restarted it 4.2 s later (10.6 s disabled); home
+with 5,814 kg (the first run: disabled at 5,418, restarted after 10.4 s, home with 5,455). Escorted: 0 bites, never disabled, home with
+6,000. Without the tank the hold would drain to 1,500 kg in about 80 s and stay out until the break. *The ledger* (`--ledger TO=3 BOARD=pick`,
+the ideal defender, the reference flagger, no escort):
+
+| Sector | Laid (kg) | Brought home | Seeped | Bank at the debrief |
+| --- | --- | --- | --- | --- |
+| 1, before / after | 11,296 / 11,296 | 1,794 / 275 | 390 / 138 (1 %) | 4,594 / 3,075 |
+| 2, before / after | 25,206 / 25,206 | 13,756 / 16,546 | 2,735 / 1,006 (4 %) | 17,000 / 18,271 |
+| 3, before / after | 69,756 / 69,939 | 22,112 / 26,401 | 42,768 / 11,663 (17 %) | 29,712 / 35,272 |
+
+Calls for the owner:
+
+1. **Sectors 1 and 2 seep little** (1 % and 4 %): their kills lie on a few lanes, piles of many bodies. The 15-30 % band holds only in
+   sector 3. If the early sectors should feel the loss, a lower bond or a higher floor (difficulty, deferred).
+2. **What lies on the ground grows**: 10.9k / 18.5k / 50.4k kg at the debriefs (the flagged half banks at the break, the rest stays). The
+   first-sector income swings with the trip's timing (home 275 kg this run; 3,595 and 3,574 in the two runs before it).
+3. **The ledger's rover was never disabled** (0 disables in three sectors): the ideal defender kills every body at once. The disabled stage is
+   proven by `--rover`, not by a played sector.
+4. **Disabled, the rover is bitten slowly in practice**: one bite came through in the 10.6 s it waited (two in the first run); once the
+   tank is out of sight the hunters thin round it. The 2 s limit binds only with more hunters on it.
+
 ## The arena fight (2026-11-12 night), for the owner's review
 
 The owner's direction: "we tune the aggro of the King so that it aims for the mechs and the tank, the player controls the gunship, and needs to time the
