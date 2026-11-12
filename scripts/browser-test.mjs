@@ -2413,7 +2413,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // tank"): the hand-over card over the paused game as she rises, Isao's lines and the seat's controls on it; no seat until the step presses TAKE THE GUN
  await until(`${T}.state().boss.card`,15000).catch(async()=>assert.fail(`THE MOTHER's card is up as she rises (${JSON.stringify((await st()).boss)})`));
  {const s=await st(),txt=await evaluate('document.querySelector(".choice-card")?.innerText||""');assert.equal(s.paused,true,'the game paused under the card');
-  assert.match(txt,/THE MOTHER/,`the card's title (${txt})`);assert.match(txt,/Bait is the only play/,'Isao\'s hand-over on it');assert.match(txt,/move it to aim/,'the seat\'s controls');assert.match(txt,/TAKE THE GUN/,'the one button');
+  assert.match(txt,/THE KING/,`the card's title (${txt})`);assert.match(txt,/Bait is the only play/,'Isao\'s hand-over on it');assert.match(txt,/move it to aim/,'the seat\'s controls');assert.match(txt,/TAKE THE GUN/,'the one button');
   await delay(3000);assert.equal((await st()).boss.seated,false,'no seat while the card is up');}
  current='boss-card';await finish();
  await evaluate('document.querySelector(".choice-card button[data-pick=a]")?.click()');await delay(400);

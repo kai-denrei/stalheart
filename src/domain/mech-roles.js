@@ -13,9 +13,21 @@
 //              no quarry: the plain as before, and a pair off it (left on her ring at her death) walks back onto it
 //   engageRing({ adj, open, quarry, hops, slack }) -> the cells hops +- slack open hops from `quarry`
 //   batteryDef(def, fire) -> a sentry's def as a mech carries it: its rate `fire.cadence` times, its range `fire.range` times (the def itself untouched)
+// THE KING'S FIGHT (owner, 2026-11-12 night: "the mechs should be more tactical too ... they keep their distance, spread, and fall back from a charge"):
+//   fleeStep({ cur, adj, open, centers, from }) -> the open neighbour (or cur) farthest from the point `from` by the chord: a fall back from the King or a marker
+//   'arena' with a quarry and `spread` (the other mechs' points) and `centers`: on the ring it takes the way farthest from the nearest of them, not a random one
 const pick = (cells, rand) => cells[Math.min(cells.length - 1, Math.floor(rand() * cells.length))];
 
 export const batteryDef = (def, fire) => (def && fire ? { ...def, rate: def.rate * (fire.cadence ?? 1), range: def.range * (fire.range ?? 1) } : def);
+
+const chord = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+export function fleeStep({ cur, adj, open, centers, from }) {
+  let best = cur, bd = chord(centers[cur], from);
+  for (const c of adj[cur]) { if (!open(c)) continue; const d = chord(centers[c], from); if (d > bd + 1e-12) { bd = d; best = c; } }
+  return best;
+}
+// of `cells`, the one whose nearest point in `spread` is farthest (ties: the first)
+const spreadPick = (cells, centers, spread) => { let best = cells[0], bd = -1; for (const c of cells) { const d = Math.min(...spread.map((p) => chord(centers[c], p))); if (d > bd + 1e-12) { bd = d; best = c; } } return best; };
 
 export function engageRing({ adj, open, quarry, hops, slack = 1 }) {
   const d = new Map([[quarry, 0]]), q = [quarry], ring = new Set();
@@ -45,12 +57,13 @@ export function huntStep({ cur, adj, open, targets, avoid = () => false, max = 4
   return -1;
 }
 
-export function nextCell({ role, cur, prev = -1, adj, open, rand, plain = null, dist = null, park = 0, targets = null, avoid = () => false, max = 40, quarry = -1, engage = 8 }) {
+export function nextCell({ role, cur, prev = -1, adj, open, rand, plain = null, dist = null, park = 0, targets = null, avoid = () => false, max = 40, quarry = -1, engage = 8, spread = null, centers = null }) {
   const ways = adj[cur].filter((c) => open(c) && !avoid(c));
   if (role === 'arena') {
     const zone = quarry >= 0 ? engageRing({ adj, open, quarry, hops: engage }) : plain;
     if (zone?.size && !zone.has(cur)) { const step = huntStep({ cur, adj, open, targets: zone, avoid, max }); if (step >= 0) return step; }   // to her ring, or back onto the plain
     const on = ways.filter((c) => zone?.has(c)), fwd = on.filter((c) => c !== prev);
+    if (quarry >= 0 && spread?.length && centers && fwd.length) return spreadPick(fwd, centers, spread);   // THE KING'S FIGHT: spread on her ring
     return fwd.length ? pick(fwd, rand) : on.length ? on[0] : cur;
   }
   if (role === 'base') {

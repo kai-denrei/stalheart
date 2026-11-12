@@ -162,6 +162,48 @@ No friendly unit takes damage from the automated gunship: its rounds damage enem
 
 Calls: the gunship now leaves enemies right on a lone rover alone (one 100 kg bite got through); the automatic nuke can still destroy a sentry standing off a socket or wall cell; SOL's beam is the one automated weapon that damages the tank, and is not measured.
 
+## The arena fight (2026-11-12 night), for the owner's review
+
+The owner's direction: "we tune the aggro of the King so that it aims for the mechs and the tank, the player controls the gunship, and needs to time the
+shells so they a) do not deal friendly fire damage and b) stop the King in its track and funnels it to a spot where a nuke is about to drop." Built on
+branch `arena-king`; every number below is `ARENA_KING` in `src/content/arena-king.js`, the rules `src/domain/king-fight.js`. Overturn any with one line.
+
+What was there: the "walker" diagnosis of 2026-10-23 no longer holds. Since `arena-lab-fight` (merged that day) the King's body owns its position and runs
+the lab's fear and temperament (`src/fx/boss/arena-fight.js`): it stalks the hull 45 m short, a 40 mm sends it wild (a 35 m erratic flight), an MK-9 stuns
+it 1.5 s; the mechs could not be hurt, the player's shells hurt no friendly, and the MK-9 was paint, release, 4.2 s fall, one nudge.
+
+- **Who it hunts.** The hull and every standing Ridgeback within 140 m of it. Score = distance, less 40 m for a mech that hit it in the last 4 s, less 40 m
+  for the hull (Isao is the bait); the lowest is the target, **held 6 s** (a dead or out-of-range target is dropped at once). *Why:* nearest alone ignores
+  who is shooting; attacker alone always picks a mech (their batteries never stop). *Or:* the hull only, as before.
+- **Stalk, tell, charge, recover.** It stalks 45 m short of the target (the lure's kite, unchanged); within 70 m, after 2 s of stalking, **the tell**: it
+  stops for 1.5 s, a red ring pulses under the target and under it, the callout names the target; then **the charge** at the target's point as it was when
+  the tell began, at 3x its chase speed, for at most 2.5 s; whatever stands within 22 m of its centre on the way is hit once (the hull a dent, a mech 5 of
+  12 points); then 2.5 s of **recover** backing off to 45 m. *Why:* the tell is the player's cue to shell it; a committed point lets a friend step out.
+- **The 40 mm stops it and turns it** (replacing the lab's wild flight in this fight only). A Bofors landing within its blast + 8 m of the body: a
+  **stagger** of 1.2 s (motion off; a tell or charge in progress is cancelled), each further one within the recovery x0.5 (1.2, 0.6, 0.3, then none until
+  it recovers at 0.35 steps a second), then a **veer**: 2.5 s toward a point 30 m from it straight away from the burst, then the hunt again. The veer never
+  wears off, so shells on one side still herd it when the stagger no longer stops it. The 25 mm keeps the lab's barrage flinch; the MK-9 its stun.
+- **The player's shells hurt friendlies in this fight** (the seat's rounds only; the automated gunship is off in this phase and never hurts friendlies). A
+  40 mm within its 22 m blast: a mech loses 1.5 points, the hull one dent; the 25 mm within its 4.5 m: a mech 0.5, the hull a dent; at most one hit per unit
+  per gun every 1.5 s (40 mm) / 3 s (25 mm), so a careless magazine costs a dent or two, not a hull. *Why:* the cost the owner asks for, without a stray
+  burst ending the run.
+- **The nuke is called onto a marked spot, by the player.** In the boss phase the MK-9's first press marks the cell (the paint) and starts an **8 s
+  countdown to impact**; the round is held 3.8 s and then released on its own (the 4.2 s fall); a second press does nothing, and **no nudge** in this
+  fight. *Why:* the owner's "a spot where a nuke is about to drop": the player chooses the spot and has to bring the King there and hold it with shells.
+  *Or:* Isao announces a spot (no choice for the player; rejected).
+- **A nuke on it takes 30 % of its 180 points** (54) when its centre is within the 55 m blast + 10 m; a miss takes nothing and costs the countdown and the 6 s
+  reload (about 14 s). No count limit. All other damage on the King is x0.1 (**armour**), so the shells and the mechs' fire are the minor share: three good
+  nukes and the chip end it. *Or:* a limited stock (three or four a fight).
+- **Friendlies clear the marker.** Isao's lure already keeps the hull 7 cells off a painted or falling MK-9; the mechs now walk out of its blast + 15 m. A
+  nuke on a friend: a mech 8 points, the hull two dents. Their retreat pulls the King along, so the player marks the spot between it and them.
+- **The mechs, more tactical** (rule-based, modest). 12 points each; at 0 a mech is **down for the run**: it sinks on its side and stops firing (a wreck).
+  While it is the King's target in a tell or charge it **falls back** away from the King at 0.4 cells a second (5x its walk); on the ring round the King it
+  prefers cells away from the other mech (**spread**). *Or:* a downed mech stands up after the fight.
+- **Lost.** The hull's existing rule (four dents a hull, the next hull from the base, the last one the run). The King with no target in range walks back to
+  the arena's centre.
+- **Readouts.** The strip's row reads THE KING and its points; while a nuke is marked a second row counts down to impact; the seat's MK-9 line reads
+  MARKED · IMPACT IN n S; the THE KING card adds the two actions (content, `ARENA_KING.hint`). Isao's recorded lines are unchanged.
+
 ## O. Landing and opening
 
 - **O1 How forgiving the flown landing is.** Entry 300-400 m, sink 30-40 m/s, fuel 18-22 s; CLEAN needs sink under 2.5 m/s, drift under 1.5, tilt under 4 degrees. About half the seeds drift toward the mouth.
