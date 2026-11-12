@@ -64,16 +64,26 @@ export class AddOutputPass extends OutputPass {
   }
   constructor() {
     super();
-    // THE LAST PASS NEVER SWAPS: the composer swaps its two targets after each pass that asks, and this is the only pass after the
-    // scene pass; one swap a frame would alternate the scene pass between the multisampled target with the depth buffer and the
-    // depthless one, so every other frame would draw with no depth test (the floor lattice through the rock, the 2026-11-06 sheet).
-    // The old two-pass tail swapped twice, which kept the parity by accident.
-    this.needsSwap = false;
+    // IT SWAPS, AND THE FRAME PUTS THE PARITY BACK (2026-11-12, the owner: "the thermal view of the gunship feels different than before"):
+    // a pass added after this one (the gunship's FLIR, src/fx/flir-pass.js) reads the composer's read buffer, so this pass must hand
+    // its picture over by swapping. With needsSwap false (2026-11-07) the FLIR read the scene pass's raw buffer: linear, no bloom, no
+    // tone mapping or sRGB transfer, a darker, harder picture. The scene pass's target is restored after every frame instead
+    // (settleSceneTarget below): one swap a frame no longer alternates it between the multisampled target with the depth buffer and the
+    // depthless one (the floor lattice through the rock, the 2026-11-06 sheet).
+    this.needsSwap = true;
     this.uniforms.tBloom = { value: null };
     this.material.dispose();
     this.material = new THREE.RawShaderMaterial({ name: 'AddOutputShader', uniforms: this.uniforms, vertexShader: OutputShader.vertexShader, fragmentShader: addOutputFragment() });
     this.fsQuad.material = this.material;
   }
+}
+
+// THE SCENE PASS ALWAYS STARTS ON renderTarget2 (the multisampled target with the depth buffer; renderTarget1 has neither): the
+// composer swaps after each pass that asks, so a frame with an odd count of swaps (the add alone, the add and a final pass that
+// renders to the screen, the probe's two-pass tail) is put back here after it, as the boss lab's seat composer does
+// (src/labs/boss/game-seat.js createPost)
+export function settleSceneTarget(composer) {
+  if (composer.readBuffer !== composer.renderTarget2) composer.swapBuffers();
 }
 
 // base + bloom, in linear space, before OutputPass converts: the OLD two-pass tail, kept only for the probe's 'separateAdd' split
@@ -233,7 +243,7 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
         // the PURE bloom, taken before UnrealBloomPass's additive blend
         addPass.uniforms.tBloom.value = oldAdd.uniforms.tBloom.value = tapMode === 'noAdd' ? blackTex : tapMode === 'addBright' ? bloom.renderTargetBright.texture : tapMode === 'addA' ? bloomComposer.readBuffer.texture : tapMode === 'addSelf' ? finalComposer.readBuffer.texture : bloom.renderTargetsHorizontal[0].texture;   // 'noAdd': the probe sees pass B alone; 'addBright' / 'addA': the high-pass or pass A added instead of the bloom
         if (tapMode === 'bloomOnlyOut') addPass.tDiffuseOverride = blackTex; else addPass.tDiffuseOverride = null;   // the probe: the add pass's own sampling of tBloom, alone
-        finalComposer.render();
+        finalComposer.render(); settleSceneTarget(finalComposer);
         if (tapMode === 'showAAfterB' || tapMode === 'showBloomAfterB') {   // the probe: pass A's buffer, or the bloom, copied to the screen AFTER pass B ran
           copyQuad.material.map = tapMode === 'showAAfterB' ? bloomComposer.readBuffer.texture : bloom.renderTargetsHorizontal[0].texture;
           renderer.setRenderTarget(null); copyQuad.render(renderer);
