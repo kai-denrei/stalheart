@@ -20,11 +20,18 @@
 //   ROVER.harvestRate  kg/s off a pile under the intake; unloadRate kg/s into the pearls
 //   ROVER.speed        m/s along its road; turn the on-the-spot turn's rate (rad/s), the author's mission.js 0.8
 //   ROVER.reach        cells (10 m) round the flare whose piles it takes
+//   ROVER.retreat      TOO MANY ENEMIES (owner, 2026-11-10): `bodies` live within `cells` (10 m) of the rover send it home with what it has; it goes
+//                      back out to a standing flare once that flare's ground is down to `clear` bodies (src/domain/rover-run.js)
+//   ROVER.gauge        THE FILL GAUGE over the rover (owner, 2026-11-10: "we need gauges for how full it is"; src/fx/rover.js): a bar `metres` wide
+//                      and `tall` high, `up` metres over the ground, the slurry's colour on a dark track, amber from `warn` of the hold, shown
+//                      whenever it is away from its pad or carries anything
 //   ROVER.price        the catalog's price of a second rover: no board card this round ("buildable, but not used for now")
 //   FIELD.decaySeconds a pile untouched this long rots (a sector's kills must be flagged within four minutes); maxPiles the instanced mesh's cap
 //   PEARLS             the three vessels standing with the depot, each `capacity` kg; the fourth is the build board's card (src/content/build-board.js)
 export const ROVER = Object.freeze({
   capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600,
+  retreat: Object.freeze({ bodies: 6, cells: 4, clear: 2 }),
+  gauge: Object.freeze({ metres: 7, tall: 0.9, up: 7.5, colour: '#9fc24a', warn: 0.9, warnColour: '#ffb43c', track: 'rgba(8,12,10,0.72)', edge: '#cfe6a0' }),
   model: 'assets/models/yushi-rover/yushirover_d0_lod1.glb', far: 'assets/models/yushi-rover/yushirover_d0_lod2.glb',
   // where it stands on the depot island (metres off the island's centre, the island's frame): its pad on the west half, facing the mouth (-Z);
   // the dock beside a pearl is the author's (mission.js: the rover's root 8 m -X and 3.9175 m -Z of the vessel's, facing pi), so its
@@ -40,12 +47,14 @@ export const PEARLS = Object.freeze({ count: 3, capacity: 12000, ids: Object.fre
 export const PILE_LOOK = Object.freeze({ colour: 0x71863c, metres: 0.32, maxMetres: 4.5, flat: 0.45 });
 // THE FLARE (the cave's look, below/src/flares.js, at the game's scale: a light, a halo, a core standing on the ground), amber like the cargo
 // pad (not the cave's red, not Isao's green); `seconds` it burns, at most `max` standing (a fourth replaces the oldest), each with the site
-// ring (src/fx/site-ring.js) at the rover's reach
+// ring (src/fx/site-ring.js) at the rover's reach.
+// THE FLARES RUN OUT (owner, 2026-11-10: "flares must run out"): the hull carries `stock`; F with none left drops nothing; the stock is whole again
+// when the hull stands on a repair spot (the Stålheart's gantry or the garage, src/content/tank.js HULL_REPAIR.spots)
 export const FLARE = Object.freeze({
-  seconds: 90, max: 3, colour: 0xffb43c, light: 2.4, lightMetres: 40, coreMetres: 0.5, haloMetres: 6, stickMetres: 1.6, pulse: 3.2,
+  seconds: 90, max: 3, stock: 4, colour: 0xffb43c, light: 2.4, lightMetres: 40, coreMetres: 0.5, haloMetres: 6, stickMetres: 1.6, pulse: 3.2,
 });
 // THE WORDS: the hull console's line, the HUD's field number, Isao's first hint (src/isaobriefs.js rover_flare), the toasts
 export const ROVER_WORDS = Object.freeze({
   rover: 'ROVER', field: 'FIELD', full: 'STORAGE FULL', flare: 'FLARE', dispatched: 'ROVER DISPATCHED', queued: 'ROVER · NEXT FLARE QUEUED',
-  noDepot: 'NO ROVER YET', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
+  noDepot: 'NO ROVER YET', flares: 'FLARES', noFlares: 'NO FLARES · RESTOCK AT BASE', restocked: 'FLARES RESTOCKED', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
 });

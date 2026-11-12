@@ -55,6 +55,9 @@ export function createSiteBeacons(scene, sites, { metres, color = 0xffb347, peri
     },
     // a site visited: its beacon goes
     drop(id) { const b = beams.get(id); if (!b) return; group.remove(b.holder); b.holder.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); }); beams.delete(id); },
+    // THE BEACON GOES QUIET ON ARRIVAL (owner, 2026-11-10: "once we arrive close to one of the beacons, it must stop beeping"): every beacon within
+    // `radius` (unit-sphere chord) of the point `p` is dropped for good; its site stays as it was (guarded, playable)
+    quiet(p, radius) { if (!p) return; for (const [id, b] of [...beams]) if (Math.hypot(b.n.x - p[0], b.n.y - p[1], b.n.z - p[2]) <= radius) this.drop(id); },
     ids: () => [...beams.keys()],
     // the harness: where each pulse comes from (on the model's top once it is in) and whether one is lit now
     state: () => [...beams.entries()].map(([id, b]) => ({ id, ci: b.ci, placed: b.placed, lit: b.holder.visible, height: +(b.holder.position.length() - 1).toFixed(4) })),

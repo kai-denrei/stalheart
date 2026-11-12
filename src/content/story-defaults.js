@@ -304,6 +304,8 @@ export const STORY_CHAPTER_END = Object.freeze({ id: 'sector-1', label: 'SECTOR 
 // to attack the tank") the nests' soft bodies x5 of the first count, phages among them; `aggro`: within that many nest radii the hull is chased
 // (src/domain/guard-aggro.js). A SMALL REED AT EACH NEST (owner, 2026-10-16: 'let's put a small Reed at each cargo spot too'): a guard entry with
 // `family` and `tier` is a creature tier (CREATURE_TIERS, src/content/creature-enemies.js), spawned in its kit by src/fx/expedition-glue.js
+// THE LANDERS' BEACONS (src/fx/site-beacons.js): `quietCells` the hull's distance (cells) at which a lander's beacon stops pulsing for good (owner, 2026-11-10)
+export const SITE_BEACONS = Object.freeze({ quietCells: 4 });
 export const STORY_EXPEDITIONS = Object.freeze({
   aggro: 3,
   clearBelow: 3,   // THE NEST IS CLEARED with fewer than this many guards left (owner, 2026-10-07: the first 'nest cleared' took 20 s+ as if an invisible enemy remained; 'the cargo becomes available once there are fewer than 3 enemies at a nest')

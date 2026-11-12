@@ -4556,7 +4556,7 @@ export function initTdTab(root) {
   // THE ROVER AND THE BIO-PEARLS (round 8 note 7, src/fx/rover-glue.js): kills lie on the ground, F's flare sends the rover, the pearls are the bank
   const roverGlue = createRoverGlue({
     scene, hullConsole, player, showBrief, showToast, updateHud, wire: () => (wire ? wireOpts : null), metres: () => metresToArc(1, cellSide), briefQ: () => briefs.queue(),
-    story: () => story, storyBase: () => storyBase, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode,
+    story: () => story, storyBase: () => storyBase, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, enemies: () => enemies, atBase: () => hullRepair.state().under,
   });
   // THE COLONY'S TICK (src/fx/colony-tick.js): the reel, the lapse, the perks, the pads, the boards, the beacons, the works
   const colonyTick = createColonyTick({
