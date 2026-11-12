@@ -2568,15 +2568,15 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  let ffRes=null;{const s=await st(),m=(s.boss.king?.mechs??[]).find(x=>!x.down);if(m){const hp0=m.hp,f0=s.boss.king.log.friendly.mech;await fire('bofors',m.pos);const s2=await waitGame(5,(x)=>(x.boss.king?.log?.friendly?.mech??0)>f0);const m2=s2.boss.king.mechs.find(x=>x.i===m.i);ffRes={mech:m.i,hp0,hp:m2?.hp,friendly:s2.boss.king.log.friendly};}}
  console.log(`KING (3) a 40 mm on a Ridgeback: ${JSON.stringify(ffRes)}`);
  // (4) THE NUKE LOOP: mark the MK-9 on it, hold it on the mark with 40 mm on its far side, until the impact; until it dies
- const nukes=[];let markShot=false,herd=0,dead=null,lastHerd=-9;
+ const nukes=[],mechNear={};let markShot=false,herd=0,dead=null,lastHerd=-9;
  while(wall()<CAP){const s=await st();const b=s.boss;if(!b.on||b.phase!=='boss'||b.bossHp==null){dead={g:+(b.t-g0).toFixed(1),phase:b.phase};break;}
-  const k=b.king,mk=k?.mark,heavy=s.gunship.heavy?.phase;
+  const k=b.king,mk=k?.mark,heavy=s.gunship.heavy?.phase;if(k?.target)targets.add(k.target);for(const m of k?.mechs??[])if(!m.down&&m.pos&&b.dist.at.boss)mechNear[m.i]=Math.min(mechNear[m.i]??Infinity,+(Math.hypot(...sub(m.pos,b.dist.at.boss))/M).toFixed(0));
   if(!mk&&heavy==='ready'&&b.dist.at.boss){const ok=await fire('heavy',b.dist.at.boss);if(ok)nukes.push({g:+(b.t-g0).toFixed(1),hp:+b.bossHp.toFixed(1)});}
   else if(mk?.point&&b.dist.at.boss&&b.t-lastHerd>=1){const off=sub(b.dist.at.boss,mk.point),d=Math.hypot(...off)/M;if(d>8){await fire('bofors',norm(add(b.dist.at.boss,norm(off),14*M)));herd++;lastHerd=b.t;}}
   if(mk&&!markShot&&mk.left!=null&&mk.left<=5){markShot=true;await evaluate(`${T}.seatAim(${JSON.stringify(mk.point)})`);await delay(400);current='king-marker';await finish();console.log(`  marker ${JSON.stringify(mk)} rows ${JSON.stringify(s.integrity?.gates)}`);}
   await delay(150);}
  const s9=await st(),L=s9.boss.king?.log??{},len=dead?dead.g:+(s9.boss.t-g0).toFixed(1);
- console.log(`KING (4) nukes marked ${JSON.stringify(nukes)}; landed ${JSON.stringify(L.nukes)}; herding shells ${herd}`);
+ console.log(`KING (4) nukes marked ${JSON.stringify(nukes)}; landed ${JSON.stringify(L.nukes)}; herding shells ${herd}; its targets over the fight ${JSON.stringify([...targets])}; each Ridgeback's nearest to it (m) ${JSON.stringify(mechNear)}`);
  console.log(`KING fight length: ${len} s of game clock from the seat${dead?` (dead: ${JSON.stringify(dead)})`:' (not dead in the cap)'}; ${wall().toFixed(0)} s of wall clock`);
  console.log(`KING its points by source: nukes ${(L.hp?.nuke??0).toFixed(1)}, everything else ${(L.hp?.other??0).toFixed(1)} of ${BOSS_FIGHT.health}`);
  console.log(`KING friendlies: charges that hit ${JSON.stringify(L.charges)}, the player's shells that hit ${JSON.stringify(L.friendly)}, mechs down ${JSON.stringify(L.downs)}, hulls ${hulls0} -> ${s9.hulls}; tells ${s9.boss.king?.tells}, charges ${s9.boss.king?.charges}, staggers ${s9.boss.king?.staggers}, veers ${s9.boss.king?.veers}`);
