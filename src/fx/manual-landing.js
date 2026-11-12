@@ -54,7 +54,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   // the first frame); `bellUp` the engines' centre up the hull in flight metres (SH02_WELL.bell in the model's metres times the holder's scale)
   let introT = null, bellUp = 0;
   const shotEye = new THREE.Vector3(), shotLook = new THREE.Vector3();
-  let pred = null, s = null, phase = 'idle', acc = 0, input = { legs: false }, harnessThrottle = null, held = { left: false, right: false, burn: false }, rate = { tilt: 0 }, touchTilt = 0, thrust = null, contact = null, legsHeard = false;
+  let pred = null, s = null, phase = 'idle', acc = 0, input = { legs: false }, harnessThrottle = null, held = { left: false, right: false, burn: false }, rate = { tilt: 0 }, touchTilt = 0, thrust = null, contact = null, legsHeard = false, fuelNote = 0;
   // the reticle: three fixed rings and the altitude ring, a line loop each, and the hard square, laid on the ground under the predicted point
   const ring = (color) => { const g = new THREE.BufferGeometry().setFromPoints(Array.from({ length: game.reticle.segments + 1 }, (_, i) => { const t = i / game.reticle.segments * Math.PI * 2; return new THREE.Vector3(Math.cos(t), 0, Math.sin(t)); })); return new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85, depthTest: false })); };
   const reticle = new THREE.Group(); reticle.name = 'LandingReticle'; reticle.renderOrder = 999;
@@ -139,6 +139,13 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
   }
   const island = () => flightToIsland([s.x, s.y, s.z], az), ground = () => { const [x, , z] = island(); return floorAt(x, z); };   // the rocket in island metres, the ground under it
   function reading() { return { altitude: Math.max(0, s.y), sink: Math.max(0, -s.vy), driftAlong: s.vx, driftAcross: s.vz, tilt: Math.abs(s.tilt), tw: game.vehicle.thrust * Math.max(s.throttle, s.throttle > 0 ? game.vehicle.minThrottle : 0) / game.sim.gravity, hStop: hStop(s, game), fuel: s.fuel, legs: s.legs, phase }; }
+  // THE FUEL's calls (owner, 2026-11-12, a generous limit): LOW FUEL once at fuel.lowSeconds, NO FUEL at zero (the model cuts the engines there,
+  // src/domain/manual-landing.js step), each once a flight, only while the player has the rocket (the flare spends none, a contact has its verdict)
+  function fuelCalls() {
+    if (phase !== 'manual' && phase !== 'override') return;
+    if (s.fuel <= 0 && fuelNote < 2) { fuelNote = 2; hud.annunciate('NO FUEL · ENGINES OUT', 'alarm'); sfx?.play('danger_alert', { dist: 0 }); }
+    else if (s.fuel <= game.fuel.lowSeconds && fuelNote < 1) { fuelNote = 1; hud.annunciate('LOW FUEL', 'alarm'); }
+  }
   function stopAll() { listen(false); hud.touch(false); held = { left: false, right: false, burn: false }; touchTilt = 0; if (thrust) { thrust.stop(0.4); thrust = null; } reticle.visible = false; padRing.visible = false; }
   const host = {
     hud,
@@ -151,7 +158,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       introT = intro ? 0 : null;
       { const placed = rocket.holder.userData.placed, unit = toWorld([0, 1, 0], new THREE.Vector3()).distanceTo(origin);   // the holder's scale in flight metres a model metre
         const scale = placed && unit > 0 ? new THREE.Vector3().setFromMatrixScale(placed).x / unit : 1.5; bellUp = SH02_WELL.bell * scale; }
-      s = createLanding(entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0; s.throttle = 1; s.set = 1;
+      s = createLanding(entry); s.legs = legs; s.legsDown = legs >= 1; legsHeard = legs > 0; fuelNote = 0; s.throttle = 1; s.set = 1;
       padRing.visible = true;
       phase = 'override'; acc = 0; contact = null; harnessThrottle = null; rate = { tilt: 0 }; touchTilt = 0; follow.set(s.x, s.y, s.z);
       hud.clear(); hud.show(true); hud.annunciate('AUTO-LAND FAULT · MANUAL OVERRIDE', 'alarm'); hud.set(reading()); listen(true);
@@ -179,14 +186,16 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
       follow.lerp(a.set(s.x, s.y, s.z), Math.min(1, dt / game.camera.lag));
       pred = predict();
       poseRocket(); plumesAt(); hud.set(reading());
+      fuelCalls();
       if (phase === 'touched') {
         // the ground's slope (the angle of its normal from the pad's up) and the tilt against the LOCAL normal along the drift axis (x,
         // spec 14): on the arrival's sphere that is s.tilt - atan2(x, R), the ground under a far wreck leaning away from the pad (2026-11-07);
         // the normal is the island's, turned into the flight frame for its component along the drift
         const g = ground(), ny = Math.max(-1, Math.min(1, g.normal[1])), slope = Math.acos(ny), nf = islandToFlight(g.normal, az);
         contact = verdict({ ...s, tilt: s.tilt - Math.atan2(nf[0], nf[1]) }, slope, Math.hypot(s.x, s.z) > game.pad.reach, game);
-        if (contact.grade === 'WRECK') sfx?.play('mech_landing_impact', { dist: 0 });
-        hud.verdict(contact); hud.annunciate(`LANDING · ${contact.grade}`, contact.grade === 'WRECK' ? 'alarm' : 'ok'); stopAll();
+        if (contact.grade === 'WRECK' || contact.grade === 'CRASH') sfx?.play('mech_landing_impact', { dist: 0 });
+        if (contact.grade === 'CRASH') for (const p of plumes) p.userData.setIntensity(0);   // a crash: the engines out on the wreck (the arrival ends the run, src/fx/arrival.js crash())
+        hud.verdict(contact); hud.annunciate(`LANDING · ${contact.grade}`, contact.grade === 'WRECK' || contact.grade === 'CRASH' ? 'alarm' : 'ok'); stopAll();
       } else { placeReticle(); sounds(dt); }
       return phase;
     },

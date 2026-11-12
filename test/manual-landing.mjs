@@ -131,6 +131,45 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
   assert.ok(Math.abs(f.vx) < 0.2 && Math.abs(f.tilt) < 0.02 && f.legsDown, 'drift and tilt killed, legs down');
   assert.equal(verdict(f, 0, false, T).grade, 'CLEAN', 'the auto-lander never crashes');
 }
+{ // THE CRASH (owner, 2026-11-12): a touchdown faster than crash.sink or tilted past crash.tiltDeg against the ground is a CRASH, a grade beyond WRECK
+  const base = { ...createLanding(entry), vy: -1, vz: 0, vx: 0.5, tilt: 0.02, legs: 1, legsDown: true };
+  const g = (o, slope = 0, off = false) => { const v = verdict({ ...base, ...o }, slope, off, T); return [v.grade, v.reason]; };
+  const K = T.crash, tiltLine = K.tiltDeg * Math.PI / 180;
+  assert.deepEqual([K.sink, K.tiltDeg], [15, 45], 'the starting values');
+  assert.deepEqual(g({ vy: -K.sink }), ['WRECK', 'sink'], 'exactly the crash line is still a WRECK (strict >)');
+  assert.deepEqual(g({ vy: -(K.sink + 0.01) }), ['CRASH', 'sink'], 'just over it is a CRASH');
+  assert.deepEqual(g({ vy: -33 }, 0, true), ['CRASH', 'sink'], 'the no-input fall, off the pad, is a CRASH, not an off-pad WRECK');
+  assert.deepEqual(g({ tilt: tiltLine }), ['WRECK', 'tilt'], 'exactly 45 degrees is a WRECK');
+  assert.deepEqual(g({ tilt: tiltLine + 0.01 }), ['CRASH', 'tilt'], 'past 45 degrees is a CRASH');
+  assert.deepEqual(g({ tilt: -(tiltLine + 0.01) }), ['CRASH', 'tilt'], 'on either side');
+  assert.deepEqual(g({ vy: -20, tilt: 0.2 }), ['CRASH', 'sink'], 'the axis further over its line names the reason (sink 20/15 over tilt 0.2/0.785)');
+  assert.deepEqual(g({ vy: -16, tilt: 1.2 }), ['CRASH', 'tilt'], 'and the tilt when it is');
+  assert.deepEqual(g({ vy: -20, legs: 0.2, legsDown: false }, 0.5, true), ['CRASH', 'sink'], 'a crash outranks legs, slope and off-pad');
+  assert.deepEqual(g({ vy: -8 }), ['WRECK', 'sink'], 'a hard stop that fails by a little is a WRECK, the game goes on');
+  assert.equal(verdict({ ...base, vy: -40 }, 0, false, { ...T, crash: undefined }).grade, 'WRECK', 'no crash tune, no CRASH: the tune is an argument');
+  // the ground the tilt is read against: the caller passes the tilt relative to the local ground; the rule reads what it is given
+  assert.equal(verdict({ ...base, tilt: 0.5 }, 0, false, T).grade, 'WRECK'); assert.equal(verdict({ ...base, tilt: 0.5 + 0.9 }, 0, false, T).grade, 'CRASH');
+  // and the whole fall: no input, no fuel burned, from the entry: a CRASH on the ground
+  const s = createLanding({ ...entry, altitude: 300, sink: 33, drift: 0, tilt: 0.1 }); for (let i = 0; i < 120 * 60 && !touched(s); i++) step(s, { throttle: 0, tiltRate: 0, legs: false }, DT, T);
+  assert.ok(touched(s)); assert.equal(verdict(s, 0, false, T).grade, 'CRASH', `no burn is a crash (${(-s.vy).toFixed(1)} m/s)`);
+}
+{ // THE FUEL (owner, 2026-11-12: a limit, but generous): full burn spends it a second a second; at zero the engines cut and the rocket falls, a CRASH
+  const s = createLanding({ ...entry, altitude: 1000, sink: 0, drift: 0, tilt: 0, fuelSeconds: 3 });
+  let t = 0, cutAt = null; for (; t < 10; t += DT) { step(s, { throttle: 1, tiltRate: 0, legs: false }, DT, T); if (s.fuel <= 0 && cutAt == null) cutAt = t; }
+  assert.equal(s.fuel, 0, 'spent'); assert.ok(cutAt > 2.8 && cutAt < 3.6, `empty near 3 s of burn at full (${cutAt?.toFixed(2)} s)`);
+  assert.equal(s.throttle, 0, 'the throttle reads zero when dry'); assert.equal(s.set, 0, 'and the set point is cleared: holding Space again does nothing');
+  const vy = s.vy; for (let i = 0; i < 60; i++) step(s, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
+  assert.ok(s.vy < vy - 1.5, 'a held burn on empty does not thrust: gravity wins (g 3.2 for 0.5 s)'); assert.equal(s.fuel, 0, 'no fuel from nowhere');
+  // dry at 100 m, falling: the fall past the crash line is a CRASH
+  const d = createLanding({ ...entry, altitude: 100, sink: 20, drift: 0, tilt: 0, fuelSeconds: 0 }); d.legs = 1; d.legsDown = true;
+  for (let i = 0; i < 120 * 30 && !touched(d); i++) step(d, { throttle: 1, tiltRate: 0, legs: false }, DT, T);
+  assert.equal(verdict(d, 0, false, T).grade, 'CRASH', 'out of fuel and falling: a CRASH');
+  // generous: a competent landing (the browser suite's scripted pilot, ported) spends about 6 of the seed's 18-22 s, with the 1.5 s override burn counted; the seeded range is the margin
+  assert.ok(T.entry.fuelSeconds[0] >= 18); assert.ok(T.fuel.lowSeconds > 0 && T.fuel.lowSeconds < T.entry.fuelSeconds[0]);
+}
+{ // the end card is inert without a document (a node page): the arrival's harness drives FLY IT AGAIN
+  const { createLandingLost } = await import('../src/fx/landing-lost.js'); const c = createLandingLost(null, {}); assert.equal(c.el, null); c.dispose();
+}
 console.log('manual-landing: rules ok');
 { // spec 14 B: one axis, the tilt about z toward +x; the drift is on x. A +0.3 tilt at full burn pushes +x along (sin t, cos t, 0), vz untouched
   const s = createLanding({ ...entry, sink: 0, drift: 0, tilt: 0.3 }); s.throttle = 1; s.fuel = 10;

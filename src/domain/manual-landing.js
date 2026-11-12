@@ -92,6 +92,13 @@ export function verdict(s, slope, offPad, tune) {
   if (!s.legsDown) { worst = 2; reason = 'legs'; }
   else if (Math.abs(slope) > V.slope) { worst = 2; reason = 'slope'; }
   else if (offPad) { worst = 2; reason = 'off-pad'; }
+  // a CRASH (owner, 2026-11-12) outranks every WRECK reason: a touchdown faster than crash.sink or with the hull past crash.tiltDeg against
+  // the local ground (the caller passes the tilt already read against it). The worse axis against its own line names the reason
+  const K = tune.crash;
+  if (K) {
+    const tiltLine = K.tiltDeg * Math.PI / 180;
+    if (sink > K.sink || tilt > tiltLine) return { grade: 'CRASH', reason: sink / K.sink >= tilt / tiltLine ? 'sink' : 'tilt', sink, drift, tilt };
+  }
   return { grade: ['CLEAN', 'HARD', 'WRECK'][worst], reason, sink, drift, tilt };
 }
 

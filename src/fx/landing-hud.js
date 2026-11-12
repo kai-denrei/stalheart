@@ -6,7 +6,7 @@ const ROWS = [['alt', 'ALT', 'm'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', '
 const INERT = { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, clear() {}, touch() {}, dispose() {} };
 export function createLandingHud(root, tune = LANDING_GAME) {
   if (!root || typeof document === 'undefined') return { ...INERT };
-  const hard = tune.verdict.hard, brake = tune.vehicle.thrust - tune.sim.gravity;   // m/s² a full burn takes off the sink
+  const hard = tune.verdict.hard, low = tune.fuel?.lowSeconds ?? 0, brake = tune.vehicle.thrust - tune.sim.gravity;   // m/s² a full burn takes off the sink
   // only the annunciator and the verdict are live regions (2026-11-07, the final review): the numbers change every frame and would chatter
   const el = document.createElement('div'); el.id = 'landing-hud'; el.hidden = true;
   const ann = document.createElement('div'); ann.id = 'lh-ann'; ann.className = 'lh-ann'; ann.setAttribute('aria-live', 'polite'); el.append(ann);
@@ -34,7 +34,8 @@ export function createLandingHud(root, tune = LANDING_GAME) {
       cells.tilt.textContent = num(r.tilt * 180 / Math.PI, 1); hot(cells.tilt, Math.abs(r.tilt) > hard.tilt);
       cells.tw.textContent = num(r.tw, 2); cells.stop.textContent = num(r.hStop); hot(cells.stop, r.hStop > r.altitude);
       // FUEL red when it cannot pay for a full stop: the seconds of full burn the sink needs, sink / (thrust - g) (2026-11-07, the final review)
-      cells.fuel.textContent = num(r.fuel); hot(cells.fuel, r.fuel < r.sink / brake);
+      // and at fuel.lowSeconds or under (owner, 2026-11-12: a generous limit, plainly called); EMPTY at zero
+      cells.fuel.textContent = r.fuel <= 0 ? 'EMPTY' : num(r.fuel); hot(cells.fuel, r.fuel < r.sink / brake || r.fuel <= low);
       legs.textContent = r.legs >= 1 ? 'LEGS DOWN' : r.legs > 0 ? `LEGS ${Math.round(r.legs * 100)}%` : 'LEGS UP'; legs.classList.toggle('ok', r.legs >= 1);
     },
     annunciate(text, kind = 'info') { ann.textContent = text; ann.className = `lh-ann ${kind}`; },

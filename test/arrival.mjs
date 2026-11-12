@@ -169,8 +169,36 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
     run(w, a, 30); assert.equal(a.state().talkBrief, 'arrival_talk', 'the plain talk'); assert.ok(w.log.some(([k, id]) => k === 'brief' && id === 'arrival_talk')); }
   { const { w, a, salvaged } = fly();
     for (let i = 0; i < 60 * 40 && a.state().phase === 'landing' && a.state().landing?.phase !== 'done'; i++) w.frame(1 / 60, a);
-    assert.equal(a.state().landing.grade, 'WRECK', `no input is a wreck (${JSON.stringify(a.state().landing)})`); assert.deepEqual(salvaged.map((x) => x.sections), [2], 'a flown contact sets the salvage'); }
+    assert.equal(a.state().landing.grade, 'CRASH', `no input is a CRASH, the total crash (${JSON.stringify(a.state().landing)})`); assert.deepEqual(salvaged, [], 'a crash pays no salvage'); }
 }
+// THE CRASH IS GAME OVER (owner, 2026-11-12): no input falls ~33 m/s into a CRASH; the run stops at the wreck (the arrival never finishes, no salvage,
+// no talk, the beats' Rotor never released), the flight shot is replaced by one nothing skips, Esc included; FLY IT AGAIN restarts the same entry
+{
+  const fly = () => {
+    const w = world(), salvaged = [], shots = []; w.beats.salvage = (x) => salvaged.push(x);
+    const start = w.api.startShot; w.api.startShot = (sh) => { shots.push(sh); start(sh); };
+    const a = createArrival({ on: true, base: w.base, beats: w.beats, site, metres: METRES, manual: true }); w.isao = true;
+    for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
+    for (let i = 0; i < 60 * 20 && !a.state().landing; i++) w.frame(1 / 60, a);
+    return { w, a, salvaged, shots };
+  };
+  const { w, a, salvaged, shots } = fly(), entryAlt = a.state().landing.altitude;
+  for (let i = 0; i < 60 * 40 && !a.state().lost; i++) w.frame(1 / 60, a);
+  const g = a.state().landing; assert.deepEqual([g.grade, g.reason], ['CRASH', 'sink'], `the crash names its reason (${JSON.stringify(g)})`); assert.ok(g.sink > LANDING_GAME.crash.sink, 'faster than the crash line');
+  assert.equal(a.state().lost, true); assert.equal(a.state().phase, 'landing', 'the arrival does not finish'); assert.deepEqual(salvaged, [], 'no salvage');
+  const lost = shots.at(-1); assert.deepEqual([lost.id, lost.skippable, lost.skipKey, lost.passKeys], ['arrivalLost', true, null, false], 'a shot that eats every key and cannot be skipped');
+  assert.ok(lost.lockFor > 1e6, 'its lock never ends: no key or tap skips it');
+  run(w, a, 60); assert.equal(a.state().phase, 'landing', 'a minute on: the story did not proceed'); assert.equal(w.beats.deploys(), 0, 'the foundry never deployed'); assert.equal(vis(w, 'sh02'), true, 'the wreck stands');
+  assert.ok(!w.log.some(([k, id]) => k === 'brief' && /^arrival_talk/.test(id)), 'no Isao talk'); assert.equal(a.landing('skip'), false, 'the harness skip is not a crash\'s way out');
+  assert.equal(a.landing('again'), true, 'FLY IT AGAIN');
+  const f = a.state().landing; assert.deepEqual([a.state().lost, f.phase, f.grade, f.throttle], [false, 'override', null, 1], `the flight restarted at its override (${JSON.stringify(f)})`);
+  assert.ok(Math.abs(f.altitude - entryAlt) < 5, `from its entry again (${f.altitude} against ${entryAlt})`); assert.equal(shots.at(-1).id, 'arrivalFlight', 'the flight shot is back'); assert.equal(a.landing('again'), false, 'nothing to retry in flight');
+  assert.equal(shots.at(-1).skipKey, 'Escape', 'and Esc skips a flight again');
+  for (let i = 0; i < 60 * 40 && !a.state().lost; i++) w.frame(1 / 60, a); assert.equal(a.state().landing.grade, 'CRASH', 'a second no-input flight crashes again');
+  // a skip is not a crash: Esc mid-flight is CLEAN · skipped as before (the tests above), and nothing of the card
+  const s = fly(); assert.equal(s.a.landing('skip'), true); run(s.w, s.a, 0.1); assert.equal(s.a.state().lost, false); assert.equal(s.a.state().landing.reason, 'skipped');
+}
+console.log('arrival: crash ok');
 // THE HAND-OVER IN MOTION (spec 14 C): a flown landing starts no orbit rail (the flight shot from start(), the rocket hidden until the override);
 // the flight waits for the sky disk's aim (never longer than override.aimWait), begins with the boosters lit, and the physics run through the
 // 1.5 s override at full throttle (the rocket sinking, the burn braking it, the arrival's clock held), then MANUAL

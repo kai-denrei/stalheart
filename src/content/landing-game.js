@@ -31,6 +31,15 @@ export const LANDING_GAME = Object.freeze({
     hard: Object.freeze({ sink: 6, drift: 4, tilt: 0.192 }),
     slope: 0.157,   // rad (9°): steeper ground under a foot is a wreck
   }),
+  // THE CRASH (owner, 2026-11-12: "flown landing, we need a fuel limit (but generous) and while a total CRASH is an option. Game over right
+  // away. the other options should be more limited start resources because less is salvageable."): a touchdown faster than `sink` m/s, or
+  // with the hull tilted past `tiltDeg` against the local ground, is a CRASH, a grade beyond WRECK: the run ends there (src/fx/landing-lost.js).
+  // Starting values, the owner's to tune: 15 m/s is 2.5x the WRECK line (6) and under half the no-input fall (~33 m/s), so a late burn that
+  // merely fails to stop is still a WRECK and only a descent that never braked is lost; 45 degrees is a hull on its side's way over.
+  crash: Object.freeze({ sink: 15, tiltDeg: 45, cardLock: 1 }),   // cardLock: s the end card takes no key or click after it shows (a Space still held at the contact)
+  // FUEL (same call, "a fuel limit (but generous)"): seconds of full burn, seeded in `entry.fuelSeconds`. `lowSeconds`: the panel's FUEL goes
+  // red and the annunciator reads LOW FUEL at or under it; at zero the engines cut (src/domain/manual-landing.js step) and it reads NO FUEL
+  fuel: Object.freeze({ lowSeconds: 6 }),
   pad: Object.freeze({ reach: 14 }),   // m from the island's centre a foot may land and still be on the pad (the landing island is 16 x 16)
   // the arrival's clock around the window: the approach is the arrival's own sequence from higher, the override at `overrideAt` s of it.
   // Changed 2026-11-07 (the owner's build): the sequence's eased descent cannot hand over a flyable state (at 4.2 s of 7 it was 144 m
