@@ -19,6 +19,11 @@
 //                                walls (the soft hunt's goal, src/fx/soft-hunt.js through src/fx/enemy-step.js), else null
 //   bite(e)                      a hunter's jab at its peak: ROVER.threat.bite kg off the hold (lost), ROVER UNDER ATTACK at most every threat.every s,
 //                                Isao's rover_bitten the first time
+//   radar()                      the radar's mark (src/fx/radar-scope.js): { pos, disabled } while the rover is away from home, else null
+//   THE ROVER DISABLED (2026-11-12 night, src/domain/rover-run.js tune.disable): the trip's third jab stops it where it stands (ROVER DISABLED · NEEDS
+//   THE TANK: the callout, the console, Isao's rover_disabled caption once, a red ring round it at ROVER.disable.cells, its mark on the radar
+//   blinking red); host.tank is the hull's distance in cells (the hull alive: the player's or Isao's drive, never the gunship), the ring filling
+//   while it holds there (RESTARTING n %), ROVER RESTARTED. THE FIRST SORTIE'S HINT: the first time it leaves the walls, ROVER_WORDS.escort
 //   test                         the acceptance harness's hands (window.__stalheartTest.rover): state(), flareAt(cell), collect(), fillPearls(), spend(kg)
 // THE SLAB UNDER THE ROVER: stream A of round 8 adds the story base's floorAt for things on slabs; until it lands, the depot island's own tangent
 // plane lifts the rover where it stands on that slab (liftAt below). The integrator may swap it for floorAt. Elsewhere it rides the sphere.
@@ -35,7 +40,7 @@
 //        ground (the tank's ground tests, td-tab hullGround), cellIndex(p) (the lattice cell under a unit point)
 import * as THREE from '../../vendor/three.module.js';
 import { createField } from '../domain/biomass-field.js';
-import { createRoverRun, dispatch, stepRover, roverWord, settleBreak, bite, roverCell } from '../domain/rover-run.js';
+import { createRoverRun, dispatch, stepRover, roverWord, settleBreak, bite, roverCell, restartShare } from '../domain/rover-run.js';
 import { createPearls } from '../domain/bio-pearls.js';
 import { hasPerk } from '../domain/build-programme.js';
 import { ROVER, FIELD, PEARLS, PILE_LOOK, FLARE, ROVER_WORDS } from '../content/rover.js';
@@ -123,6 +128,8 @@ export function createRoverGlue(h) {
     // into the pearl it docked at (the one with the most room when it arrived), the rest into the next
     deposit: (kg) => { const got = h.eco().deposit(kg); S.pearls.fillAt(S.dockAt ??= S.pearls.mostRoom(), got); return got; },
     live: (order) => !!S.flares?.alive(order.id),
+    // THE ROVER DISABLED: the hull's distance in cells from the drawn rover, null when the hull is down (only the tank restarts it)
+    tank: () => { const p = S.rover?.point(); return h.playerHP() > 0 && h.player.pos && p ? chord(h.player.pos, unitV(p)) / h.cellSide() : null; },
     // the live bodies within ROVER.retreat.cells of a lattice cell, or of the rover's own drawn point for null (src/domain/rover-run.js)
     threat: (cell) => {
       const p = cell == null ? S.rover?.point() : centers()[cell], list = h.enemies?.(); if (!p || !list) return 0;
@@ -152,7 +159,7 @@ export function createRoverGlue(h) {
   }
   function target() {
     const r = S.run;
-    const fill = r.cargo / ROVER.capacity, base = { fill, gauge: r.cargo > 0 || r.mode !== 'idle', harvesting: false, unloading: false, hoseTo: null };
+    const fill = r.cargo / ROVER.capacity, base = { fill, gauge: r.cargo > 0 || r.mode !== 'idle', harvesting: false, unloading: false, hoseTo: null, restart: r.disabled ? { share: restartShare(r), cells: ROVER.disable.cells, cellSide: h.cellSide() } : null };
     if (r.mode === 'unload' || r.mode === 'full') {
       const d = dock(S.dockAt ??= S.pearls.mostRoom()); if (!d) return { ...base, point: S.padPoint, heading: S.padHeading };
       return { ...base, point: d.point, heading: d.heading, unloading: r.mode === 'unload', hoseTo: S.pearlFx.socket(d.id, 'SOCKET_FILL') };
@@ -164,7 +171,7 @@ export function createRoverGlue(h) {
       return { ...base, point: unitV(here.point ?? centers()[r.cell]), heading: dir, road: true, spin: !!r.turn };
     }
     if (r.stuck) return { ...base, point: S.rover.point() ?? centers()[r.cell] };   // NO ROAD: held where it is drawn, not driven to its cell's centre
-    if (r.mode === 'harvest') return { ...base, point: centers()[r.cell], harvesting: r.pile !== null && r.cell === r.stand };   // raking from its stand (the pile's cell or the open one beside it)
+    if (r.mode === 'harvest') return { ...base, point: centers()[r.cell], harvesting: !r.disabled && r.pile !== null && r.cell === r.stand };   // raking from its stand (the pile's cell or the open one beside it)
     if (r.mode === 'idle' && r.cell === S.home) return { ...base, point: S.padPoint, heading: S.padHeading };
     return { ...base, point: centers()[r.cell] };
   }
@@ -173,8 +180,8 @@ export function createRoverGlue(h) {
     if (key !== S.hudKey && now - S.hudAt > 0.5) { S.hudKey = key; S.hudAt = now; h.updateHud?.(); }
   }
   function readouts(now) {
-    const r = S.run, word = roverWord(r), aboard = r.cargo > 0 ? ` ${kgText(r.cargo)}` : '';
-    h.hullConsole?.note?.(`${ROVER_WORDS.rover} · ${word}${aboard}${r.cargo > 0 ? ` / ${kgText(ROVER.capacity)} KG` : ''} · ${ROVER_WORDS.flares} ${S.stock}/${FLARE.stock}`, r.mode === 'full');
+    const r = S.run, word = roverWord(r), aboard = r.cargo > 0 ? ` ${kgText(r.cargo)}` : '', head = r.disabled ? `${ROVER_WORDS.rover} ${word}` : `${ROVER_WORDS.rover} · ${word}`;
+    h.hullConsole?.note?.(`${head}${aboard}${r.cargo > 0 ? ` / ${kgText(ROVER.capacity)} KG` : ''} · ${ROVER_WORDS.flares} ${S.stock}/${FLARE.stock}`, r.mode === 'full' || !!r.disabled);
     const quiet = !h.pilotMode() && !h.briefQ() && h.playerHP() > 0;
     if (!S.hinted && S.field.total() >= ROVER_WORDS.hintKg && quiet) { S.hinted = true; h.showBrief?.(ROVER_WORDS.hint); }
     if (!S.fullSaid && r.mode === 'full' && quiet) { S.fullSaid = true; h.showBrief?.(ROVER_WORDS.fullBrief); }
@@ -225,7 +232,10 @@ export function createRoverGlue(h) {
       if (eco.cap !== S.pearls.capacity()) eco.setCap(S.pearls.capacity());
       S.flares.tick(now);
       if (S.stock < FLARE.stock && h.playerHP() > 0 && h.atBase?.()) { S.stock = FLARE.stock; h.showToast?.(`<div class="wave-num">${ROVER_WORDS.restocked}</div>`, 1400); }   // the flares run out; whole again on a repair spot
+      const down = !!S.run.disabled;
       stepRover(S.run, dt, now, host);
+      if (down && !S.run.disabled) h.showToast?.(`<div class="wave-num">${ROVER_WORDS.restarted}</div>`, 1800);
+      if (!S.escortSaid && prey()) { S.escortSaid = true; h.showToast?.(`<div class="wave-num">${ROVER_WORDS.escort}</div>`, ROVER_WORDS.escortSeconds * 1000); }   // THE FIRST SORTIE'S HINT
       S.pearls.settle(eco.biomass);   // the economy's number is the truth: a spend comes out of the fullest pearl
       const tg = target(); tg.lift = liftAt(S.rover.point() ?? tg.point);
       S.rover.tick(dt, now, tg);
@@ -246,11 +256,19 @@ export function createRoverGlue(h) {
     prey,
     bite() {
       if (!live() || !S?.built) return 0;
-      const n = bite(S.run, ROVER.threat.bite, h.t()); if (!(n > 0)) return 0;
-      const now = h.t();
-      if (now - (S.attackedAt ?? -1e9) >= ROVER.threat.every) { S.attackedAt = now; h.showToast?.(`<div class="wave-num">${ROVER_WORDS.attacked}</div>`, 1800); }
+      const now = h.t(), was = !!S.run.disabled, n = bite(S.run, ROVER.threat.bite, now);
+      if (!was && S.run.disabled) {   // THE ROVER DISABLED: the callout every time, Isao's caption the first time
+        S.attackedAt = now; h.showToast?.(`<div class="wave-num">${ROVER_WORDS.disabled}</div>`, 2600);
+        if (!S.disabledSaid) { S.disabledSaid = true; S.bittenSaid = true; h.showBrief?.(ROVER_WORDS.disabledBrief); }
+      }
+      if (!(n > 0)) return 0;
+      if (now - (S.attackedAt ?? -1e9) >= ROVER.threat.every) { S.attackedAt = now; h.showToast?.(`<div class="wave-num">${S.run.disabled ? ROVER_WORDS.disabled : ROVER_WORDS.attacked}</div>`, 1800); }
       if (!S.bittenSaid) { S.bittenSaid = true; h.showBrief?.(ROVER_WORDS.bitten); }
       return n;
+    },
+    radar() {
+      if (!live() || !S?.built || S.story !== h.story() || (S.run.mode === 'idle' && S.run.cell === S.home) || S.run.mode === 'unload' || S.run.mode === 'full') return null;
+      const p = S.rover?.point(); return p ? { pos: unitV(p), disabled: !!S.run.disabled } : null;
     },
     hud: () => (fielded() && (S.built || S.field.total() > 0) ? ` <span class="hud-field">${ROVER_WORDS.field} ${kgText(S.field.total())} kg</span>` : ''),
     ground: () => (fielded() ? Math.round(S.field.total()) : 0),
@@ -259,7 +277,7 @@ export function createRoverGlue(h) {
         if (!S?.built) return { live: live(), built: false, field: fielded() ? Math.round(S.field.total()) : 0, piles: fielded() ? S.field.size() : 0, rotted: fielded() ? Math.round(S.field.rotted()) : 0, seeped: fielded() ? Math.round(S.field.seeped()) : 0 };
         const r = S.run;
         return { live: live(), built: true, mode: r.mode, word: roverWord(r), cargo: +r.cargo.toFixed(1), cell: r.cell, home: r.home, trips: r.trips, delivered: Math.round(r.delivered), harvested: Math.round(r.harvested),
-          order: r.order?.id ?? null, queued: r.queued?.id ?? null, path: r.path ? [...r.path] : null, k: r.k, stand: r.stand, stuck: r.stuck, wait: r.wait, note: r.note, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
+          disabled: !!r.disabled, jabs: r.jabs, disables: r.disables, restart: restartShare(r), here: roverCell(r), escortSaid: !!S.escortSaid, ring: S.rover.state().ring ?? null, order: r.order?.id ?? null, queued: r.queued?.id ?? null, path: r.path ? [...r.path] : null, k: r.k, stand: r.stand, stuck: r.stuck, wait: r.wait, note: r.note, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
           field: Math.round(S.field.total()), piles: S.field.size(), rotted: Math.round(S.field.rotted()), seeped: Math.round(S.field.seeped()), bitten: Math.round(r.bitten ?? 0), prey: !!prey(), drawn: S.piles.count(), pearls: S.pearls.list().map((v) => Math.round(v.stored)), cap: S.pearls.capacity(), bank: h.eco().biomass,
           flares: S.flares.live(), stock: S.stock, threat: host.threat(null), fled: r.fled, lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
       },

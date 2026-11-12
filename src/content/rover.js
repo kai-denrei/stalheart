@@ -42,6 +42,15 @@ export const ROVER = Object.freeze({
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the whites and yellows hunt it (src/domain/soft-hunt.js huntGoal) and each
   // jab's peak eats `bite` kg of its hold (lost; it has no hit points); the callout at most every `every` s, Isao's rover_bitten the first time
   threat: Object.freeze({ bite: 100, every: 15 }),
+  // THE ROVER DISABLED (2026-11-12 night: "leaning towards the tank doing sorties and protection missions of the yushi-rover"; src/domain/rover-run.js):
+  // the `bites`-th jab of a trip stops it where it stands; the hunters still bite, one in `every` s, the hold down to `floor` of its capacity; the
+  // tank within `cells` (10 m) of it for `seconds` restarts it (the ring round it at `cells`); the console's words. Not destroyable: no hit points
+  disable: Object.freeze({ bites: 3, every: 2, floor: 0.25, cells: 3, seconds: 4,
+    words: Object.freeze({ disabled: 'DISABLED · NEEDS THE TANK', restarting: 'RESTARTING' }) }),
+  // its restart ring on the ground (src/fx/rover.js: red at disable.cells, the amber arc filling) and its mark on the radar (src/fx/radar-scope.js:
+  // the slurry's olive while it is away from home, red and blinking `blink` times a second while disabled, a ring `ring` px round it)
+  ring: Object.freeze({ colour: 0xff4a3c, progress: 0xffb43c, points: 64, up: 0.4 }),
+  radar: Object.freeze({ colour: '#9fc24a', disabled: '#ff4a3c', size: 3, ring: 6, blink: 2 }),
   gauge: Object.freeze({ metres: 7, tall: 0.9, up: 7.5, colour: '#9fc24a', warn: 0.9, warnColour: '#ffb43c', track: 'rgba(8,12,10,0.72)', edge: '#cfe6a0' }),
   model: 'assets/models/yushi-rover/yushirover_d0_lod1.glb', far: 'assets/models/yushi-rover/yushirover_d0_lod2.glb',
   // where it stands on the depot island (metres off the island's centre, the island's frame): its pad on the west half, facing the mouth (-Z);
@@ -69,4 +78,7 @@ export const ROVER_WORDS = Object.freeze({
   rover: 'ROVER', field: 'FIELD', full: 'STORAGE FULL', flare: 'FLARE', dispatched: 'ROVER DISPATCHED', queued: 'ROVER · NEXT FLARE QUEUED',
   noDepot: 'NO ROVER YET', flares: 'FLARES', noFlares: 'NO FLARES · RESTOCK AT BASE', restocked: 'FLARES RESTOCKED', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
   attacked: 'ROVER UNDER ATTACK', bitten: 'rover_bitten',
+  // THE ROVER DISABLED (2026-11-12 night): the callouts, Isao's caption, the first sortie's hint (the first time it leaves the walls), the radar's mark
+  disabled: 'ROVER DISABLED · NEEDS THE TANK', restarted: 'ROVER RESTARTED', disabledBrief: 'rover_disabled',
+  escort: 'ROVER BEYOND THE WALLS · THE HUNTERS GO FOR IT · ESCORT IT WITH THE TANK', escortSeconds: 4.5,
 });

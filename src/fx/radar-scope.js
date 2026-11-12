@@ -7,6 +7,7 @@
 // full the instant the beam passes, decaying behind it, never dark.
 import * as THREE from '../../vendor/three.module.js';
 import { norm3 } from '../vec3.js';
+import { ROVER } from '../content/rover.js';
 import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor, proximitySectors, SENSOR_LEVELS, sensorColor } from '../radar.js';
 
 export function createRadarScope(host) {
@@ -14,7 +15,7 @@ export function createRadarScope(host) {
   // sensorDemo: relative positions a test injects (test/radar-scope.mjs) so the proximity arcs can be checked without a live
   // solid contact on the board; empty in play
   const sensorDemo = [];
-  let mechsDrawn = 0;   // the friendly mechs blipped last frame (state().radar.mechs, the --reinforcements check)
+  let mechsDrawn = 0, roverDrawn = null;   // the friendly mechs blipped last frame (state().radar.mechs, the --reinforcements check)
   function draw(t) {
     const graph = host.graph();
     if (!graph || !player.pos) return;
@@ -89,6 +90,14 @@ export function createRadarScope(host) {
       ctx.strokeStyle = '#4bd7e0'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(cx + q.x * R, cy + q.y * R, 3.5, 0, Math.PI * 2); ctx.stroke();
       ctx.globalAlpha = 1; mechsDrawn++;
+    }
+    // THE YUSHI ROVER (2026-11-12 night): away from home a friendly blip in the slurry's olive, always lit; DISABLED it blinks red with a ring round it
+    // (it waits for the tank: src/fx/rover-glue.js radar, ROVER.radar)
+    const rv = host.rover?.() ?? null; roverDrawn = rv ? (rv.disabled ? 'disabled' : 'out') : null;
+    if (rv) {
+      const RV = ROVER.radar, on = !rv.disabled || Math.floor(t * RV.blink * 2) % 2 === 0;
+      if (on) blip(rv.pos, rv.disabled ? RV.disabled : RV.colour, RV.size, true);
+      if (rv.disabled) { const q = radarProject(rv.pos, cpos, basis, range); ctx.strokeStyle = RV.disabled; ctx.lineWidth = 1.5; ctx.globalAlpha = on ? 1 : 0.5; ctx.beginPath(); ctx.arc(cx + q.x * R, cy + q.y * R, RV.ring, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
     }
     // enemies: THE contacts, phosphor green, heavies fatter
     for (const e of enemies) {
@@ -175,5 +184,5 @@ export function createRadarScope(host) {
       blip(player.pos, '#f2f8ff', 4, true);
     }
   }
-  return { draw, sensorDemo, state: () => ({ mechs: mechsDrawn }) };
+  return { draw, sensorDemo, state: () => ({ mechs: mechsDrawn, rover: roverDrawn }) };
 }

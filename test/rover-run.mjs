@@ -75,10 +75,39 @@ assert.equal(ROVER.breakShare, 0.5, 'the break banks half the flagged ground');
   assert.deepEqual(out, { cargo: 0, field: 0, kept: 0 }, 'nothing flagged, nothing banked: not automatic'); assert.equal(w.field.total(), 400); assert.equal(w.run.trips, 0); }
 assert.equal(roverWord(createRoverRun(ROVER, 0)), 'HOME');
 // THE ROVER BITTEN (the economy design 2.6, 2026-11-12): a jab takes up to ROVER.threat.bite off the hold, lost; never below empty; no hit points
-{ const r = createRoverRun(ROVER, 7); assert.equal(ROVER.threat.bite, 100); assert.equal(bite(r, 100), 0, 'an empty hold loses nothing'); r.cargo = 250;
+{ const r = createRoverRun({ ...ROVER, disable: null }, 7); assert.equal(ROVER.threat.bite, 100); assert.equal(bite(r, 100), 0, 'an empty hold loses nothing'); r.cargo = 250;
   assert.equal(bite(r, ROVER.threat.bite, 3), 100); assert.equal(bite(r, 100), 100); assert.equal(bite(r, 100), 50, 'what is left'); assert.equal(r.cargo, 0); assert.equal(r.bitten, 250);
   assert.equal(r.events.filter((e) => e.ev === 'bitten').length, 3); assert.equal(roverCell(r), 7, 'at home its cell is home'); }
-console.log('Rover run: a full trip, the hold full and back, the queue, STORAGE FULL and no road hold.');
+// THE ROVER DISABLED (2026-11-12 night): the trip's third jab stops it where it stands; disabled it is bitten one in `every` s down to the floor; only the
+// tank within `cells` for `seconds` restarts it (the hold's clock runs down while the tank is away); then it goes on with its trip; a new trip counts afresh
+{ assert.deepEqual([ROVER.disable.bites, ROVER.disable.every, ROVER.disable.floor, ROVER.disable.cells, ROVER.disable.seconds], [3, 2, 0.25, 3, 4], 'the content numbers');
+  const w = world({ capacity: 4000 }); let tank = null; w.host.tank = () => tank;
+  w.field.drop(20, 4000, 0); w.live.add('f1'); dispatch(w.run, { id: 'f1', cell: 20 });
+  w.step(Math.PI + 20.3); assert.equal(w.run.mode, 'harvest'); w.step(30); assert.ok(w.run.cargo > 2900, `raking: ${w.run.cargo}`);
+  assert.equal(bite(w.run, 100, w.now()), 100); assert.equal(bite(w.run, 100, w.now()), 100); assert.equal(w.run.disabled, null, 'two jabs: still going');
+  const c0 = w.run.cargo; assert.equal(bite(w.run, 100, w.now()), 100, 'the third bites too'); assert.ok(w.run.disabled, 'and disables it'); assert.equal(roverWord(w.run), 'DISABLED · NEEDS THE TANK');
+  assert.equal(w.run.events.at(-1).ev, 'disabled'); const c1 = w.run.cargo; assert.equal(c1, c0 - 100);
+  w.step(5); assert.equal(w.run.cargo, c1, 'disabled: it rakes no more'); assert.equal(w.run.mode, 'harvest', 'and stays where it is');
+  assert.equal(bite(w.run, 100, w.now()), 100, 'the first slowed bite, `every` s after'); assert.equal(bite(w.run, 100, w.now()), 0, 'one bite in `every` s at most');
+  for (let k = 0; k < 40; k++) { w.step(2.01); bite(w.run, 100, w.now()); }
+  assert.equal(w.run.cargo, 1000, `drained to the floor, a quarter of the hold (${w.run.cargo})`);
+  tank = 3.5; w.step(10); assert.ok(w.run.disabled, 'the tank 3.5 cells off does not restart it'); assert.equal(w.run.disabled.hold, 0);
+  tank = 2.5; w.step(2); assert.match(roverWord(w.run), /^RESTARTING (4\d|5[01]) %$/, roverWord(w.run)); tank = null; w.step(1); assert.ok(Math.abs(w.run.disabled.hold - 1) < 0.06, 'the hold runs down while the tank is away');
+  tank = 1; w.step(2.9); assert.ok(w.run.disabled, 'not yet'); w.step(0.2); assert.equal(w.run.disabled, null, 'restarted'); assert.equal(w.run.jabs, 0, 'the count at 0');
+  assert.ok(w.run.events.some((e) => e.ev === 'restarted')); assert.equal(w.run.disables, 1);
+  w.step(1); assert.ok(w.run.cargo > 1000, `it rakes again (${w.run.cargo})`);
+  w.step(60); assert.equal(w.run.mode, 'idle', 'home and unloaded'); assert.ok(w.pearls.list()[0].stored > 1000);
+  // a new trip counts afresh; a jab at an empty hold counts; a jab at home or idle does not
+  bite(w.run, 100, w.now()); assert.equal(w.run.jabs, 0, 'idle: no count'); w.field.drop(20, 500, w.now()); dispatch(w.run, { id: 'f1', cell: 20 }); w.step(0.1); assert.equal(w.run.mode, 'out');
+  assert.equal(bite(w.run, 100, w.now()), 0); assert.equal(w.run.jabs, 1, 'an empty hold jabbed counts'); const s0 = w.run.s; bite(w.run, 100, w.now()); bite(w.run, 100, w.now());
+  assert.ok(w.run.disabled, 'disabled on the way out'); w.step(3); assert.equal(w.run.s, s0, 'it does not drive'); }
+// THE BREAK clears a disabled rover: it starts the next sector at home with what it held
+{ const w = world({ capacity: 4000 }); w.host.tank = () => null; w.field.drop(20, 4000, 0); w.live.add('f1'); dispatch(w.run, { id: 'f1', cell: 20 });
+  w.step(Math.PI + 20.3 + 10); for (let k = 0; k < 3; k++) bite(w.run, 100, w.now()); assert.ok(w.run.disabled); const held = w.run.cargo;
+  const out = settleBreak(w.run, w.now(), { ...w.host, flares: [], room: () => 1e9 }); assert.equal(out.cargo, held, 'the hold banked'); assert.equal(w.run.disabled, null); assert.equal(w.run.mode, 'idle'); }
+// no tune.disable: never disabled (the rover of 2026-11-12)
+{ const r = createRoverRun({ ...ROVER, disable: null }, 7); r.mode = 'harvest'; r.cargo = 900; for (let k = 0; k < 6; k++) bite(r, 100, k); assert.equal(r.disabled, null); assert.equal(r.cargo, 300); }
+console.log('Rover run: a full trip, the hold full and back, the queue, STORAGE FULL and no road hold; disabled by the third jab, restarted only by the tank.');
 
 // TOO MANY ENEMIES (owner, 2026-11-10): six bodies round the rover send it home with what it has; a standing flare's order waits until its ground is clear
 { const w = world(); let bodies = 0; w.host.threat = () => bodies; w.run.tune = { ...w.run.tune, retreat: { bodies: 6, cells: 4, clear: 2 } };

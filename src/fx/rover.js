@@ -15,7 +15,10 @@
 //   so a far swap would stop the wheels mid-trip. One rover; the cost is one model.
 // Unit-sphere host coordinates (the floor at radius 1); `metres` scene units a metre.
 //   createRoverScene(scene, { metres, url, tune, hose, wire }) -> { tick(dt, now, target), state(), socket(name), ready(), dispose() }
-//     target: { point: [x,y,z] unit-sphere floor point, heading: [x,y,z] tangent or null, road (on the drawn road), spin (turning on the spot), lift: metres, harvesting, unloading, fill, gauge (the fill bar shown), hoseTo: [x,y,z] | null }
+//     target: { point: [x,y,z] unit-sphere floor point, heading: [x,y,z] tangent or null, road (on the drawn road), spin (turning on the spot), lift: metres, harvesting, unloading, fill, gauge (the fill bar shown), hoseTo: [x,y,z] | null,
+//               restart: { share 0..1, cells, cellSide } | null }
+//   THE RESTART RING (2026-11-12 night, the rover disabled: src/domain/rover-run.js): while `restart` stands, a red ring on the ground round it at
+//   `cells` (where the tank must hold) and an amber arc over it filling with the restart's share; tune.ring { colour, progress, points, up }
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture, setWireframe } from './model-fixture.js';
 import { createRoverController } from '../../assets/models/yushi-rover/runtime.js';
@@ -36,6 +39,24 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
   const hoseMat = new THREE.MeshStandardMaterial({ color: hose.colour, roughness: 0.6 }), hoseMesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 8, 1, true), hoseMat);
   hoseMesh.visible = false; hoseMesh.name = 'rover hose'; scene.add(hoseMesh);
   const Y = new THREE.Vector3(0, 1, 0);
+  const RG = tune.ring ?? null, ringN = RG?.points ?? 64, ringPos = new THREE.BufferAttribute(new Float32Array((ringN + 1) * 3), 3), ringGeo = new THREE.BufferGeometry().setAttribute('position', ringPos);
+  const ringMats = [new THREE.LineBasicMaterial({ color: RG?.colour ?? 0xff4a3c, transparent: true, opacity: 0.85, depthTest: false, fog: false }), new THREE.LineBasicMaterial({ color: RG?.progress ?? 0xffb43c, depthTest: false, fog: false })];
+  const ringBase = new THREE.Line(ringGeo, ringMats[0]), ringArc = new THREE.Line(ringGeo.clone(), ringMats[1]);
+  for (const l of [ringBase, ringArc]) { l.visible = false; l.renderOrder = 19; l.frustumCulled = false; scene.add(l); }
+  ringBase.name = 'rover restart ring'; ringArc.name = 'rover restart arc';
+  let ringShown = null;
+  // the ring's points round `c` (a unit vector) at `theta` (arc), `lift` scene units up; the arc draws the first share of them
+  function drawRing(c, theta, lift, share) {
+    const n = c.clone().normalize(), t1 = new THREE.Vector3().crossVectors(n, Math.abs(n.y) < 0.9 ? Y : new THREE.Vector3(1, 0, 0)).normalize(), t2 = new THREE.Vector3().crossVectors(n, t1);
+    for (let i = 0; i <= ringN; i++) {
+      const a = (i / ringN) * Math.PI * 2, d = t1.clone().multiplyScalar(Math.cos(a)).addScaledVector(t2, Math.sin(a));
+      const q = n.clone().multiplyScalar(Math.cos(theta)).addScaledVector(d, Math.sin(theta)).multiplyScalar(1 + lift);
+      ringPos.setXYZ(i, q.x, q.y, q.z);
+    }
+    ringPos.needsUpdate = true; ringArc.geometry.setAttribute('position', ringPos);
+    ringArc.geometry.setDrawRange(0, Math.max(0, Math.round(share * ringN) + (share > 0 ? 1 : 0)));
+    ringBase.visible = true; ringArc.visible = share > 0; ringShown = { share: +share.toFixed(2) };
+  }
   // THE FILL GAUGE (owner, 2026-11-10: "we need gauges for how full it is"): a bar over the rover facing the eye, redrawn when the fill moves 1 %
   const G = tune.gauge ?? null; let gauge = null, gaugeAt = -1;
   if (G && typeof document !== 'undefined') {
@@ -58,7 +79,7 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
   }
   return {
     tick(dt, now, target) {
-      if (!target?.point) { holder.visible = false; hoseMesh.visible = false; if (gauge) gauge.sprite.visible = false; return; }
+      if (!target?.point) { holder.visible = false; hoseMesh.visible = false; ringBase.visible = ringArc.visible = false; ringShown = null; if (gauge) gauge.sprite.visible = false; return; }
       holder.visible = true;
       const goal = v3(target.point).normalize();
       if (!at) { at = goal.clone(); fwd = target.heading ? v3(target.heading) : tangent(at, new THREE.Vector3(0, 0, -1)); }
@@ -94,12 +115,13 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
         if (a) { const mid = a.clone().add(b).multiplyScalar(0.5), d = b.clone().sub(a); hoseMesh.position.copy(mid); hoseMesh.quaternion.setFromUnitVectors(Y, d.clone().normalize()); hoseMesh.scale.set(hose.radius * metres, d.length(), hose.radius * metres); hoseMesh.visible = true; }
       } else hoseMesh.visible = false;
       if (gauge) { gauge.sprite.visible = !!target.gauge; if (target.gauge) { drawGauge(target.fill ?? 0); gauge.sprite.position.copy(at).normalize().multiplyScalar(1 + ((target.lift ?? 0) + G.up) * metres); gauge.sprite.scale.set(G.metres * metres, G.tall * metres, 1); } }
-      last = { gap: +gap.toFixed(2), spinning, moved: +move.toFixed(3), gauge: gauge ? { shown: gauge.sprite.visible, pct: gaugeAt } : null };
+      if (target.restart) drawRing(at, target.restart.cells * target.restart.cellSide, (RG?.up ?? 0.4) * metres, target.restart.share ?? 0); else { ringBase.visible = ringArc.visible = false; ringShown = null; }
+      last = { gap: +gap.toFixed(2), spinning, moved: +move.toFixed(3), gauge: gauge ? { shown: gauge.sprite.visible, pct: gaugeAt } : null, ring: ringShown };
     },
     state: () => ({ ready: !!ctl, error, visible: holder.visible, distance: +distance.toFixed(1), belt: +belt.toFixed(1), hose: hoseMesh.visible, point: at?.toArray() ?? null, ...(last ?? {}) }),
     point: () => at?.toArray() ?? null,
     forward: () => fwd?.toArray() ?? null,
     ready: () => !!ctl,
-    dispose() { if (gauge) { scene.remove(gauge.sprite); gauge.mat.dispose(); gauge.tex.dispose(); } scene.remove(holder); scene.remove(hoseMesh); hoseMesh.geometry.dispose(); hoseMat.dispose(); },
+    dispose() { if (gauge) { scene.remove(gauge.sprite); gauge.mat.dispose(); gauge.tex.dispose(); } for (const l of [ringBase, ringArc]) { scene.remove(l); l.geometry.dispose(); } ringMats.forEach((m) => m.dispose()); scene.remove(holder); scene.remove(hoseMesh); hoseMesh.geometry.dispose(); hoseMat.dispose(); },
   };
 }

@@ -25,12 +25,19 @@
 //                      HOME on the console), asking again every recheck, never jumping
 //   wait(run)          the way ahead is shut for now (a door still opening): it holds its place on the road
 //   at(path, s)        the index of the path's cell it stands on at `s` metres (the drawn road is not the cells' own spacing)
+// THE ROVER DISABLED (owner, 2026-11-12: "leaning towards the tank doing sorties and protection missions of the yushi-rover collecting biomass"):
+// tune.disable = { bites, every, floor, cells, seconds }. Every jab at it counts (bite(), an empty hold too: it is the rover that is attacked);
+// the `bites`-th on one trip disables it where it stands (run.disabled, DISABLED on the console): it neither drives, rakes nor retreats; the
+// hunters keep biting, one bite in `every` s at most, the hold down to `floor` of its capacity and no lower. It stays until the tank (only the
+// tank: host.tank() -> cells from the hull to the rover, null when the hull is down) stands within `cells` of it for `seconds` (RESTARTING, the
+// hold's clock running down again as fast while the tank is away); then it goes on with its trip as it was (out, rake or home), the count at 0.
+// A new trip starts the count at 0. No tune.disable: the rover of 2026-11-12 (bitten, never disabled).
 export const ROVER_MODES = Object.freeze(['idle', 'out', 'harvest', 'home', 'unload', 'full']);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createRoverRun(tune, home, heading = 0) {
   return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, k: 0, goal: null, stand: null, stuck: false, wait: false, recheck: 0, order: null, queued: null, pile: null, fled: null,
-    skip: new Set(), trips: 0, delivered: 0, harvested: 0, bitten: 0, note: '', events: [], rake: 0, pour: 0 };
+    skip: new Set(), trips: 0, delivered: 0, harvested: 0, bitten: 0, note: '', events: [], rake: 0, pour: 0, jabs: 0, disabled: null, disables: 0 };
 }
 
 const note = (run, now, ev, extra = {}) => { run.events.push({ t: +now.toFixed(2), ev, mode: run.mode, cargo: Math.round(run.cargo), ...extra }); if (run.events.length > 64) run.events.shift(); };
@@ -95,9 +102,18 @@ function goHome(run, now, host, why) {
   run.note = ''; setOff(run, path, host); note(run, now, 'home', { why, m: +run.length.toFixed(1) });
 }
 
+// disabled: the tank's hold on it, the restart when it has held long enough (true: it goes on this step)
+function restart(run, dt, now, host) {
+  const D = run.tune.disable, d = run.disabled, near = host.tank?.(run);
+  d.hold = near != null && near <= D.cells ? d.hold + dt : Math.max(0, d.hold - dt);
+  if (d.hold < D.seconds) return false;
+  run.disabled = null; run.jabs = 0; run.note = ''; run.recheck = 0; note(run, now, 'restarted', { after: +(now - d.at).toFixed(1) });
+  return true;
+}
 export function stepRover(run, dt, now, host) {
   const T = run.tune;
   if (!(dt > 0)) return run;
+  if (run.disabled && !restart(run, dt, now, host)) return run;
   if (run.mode === 'idle') {
     let order = null;
     if (run.queued && host.live(run.queued)) order = run.queued;
@@ -112,7 +128,7 @@ export function stepRover(run, dt, now, host) {
     const path = run.cell === order.cell ? [run.cell] : host.path(run.cell, order.cell, T.reach);
     if (!path) { run.note = 'NO ROAD'; run.order = null; note(run, now, 'no-road', { flare: order.id }); return run; }
     if (order !== run.order) run.skip.clear();   // the piles it could not reach are remembered per order
-    run.order = order; run.note = ''; run.fled = null; run.mode = 'out'; setOff(run, path, host); note(run, now, 'out', { flare: order.id, cell: order.cell, m: +run.length.toFixed(1) });
+    run.order = order; run.note = ''; run.fled = null; run.mode = 'out'; run.jabs = 0; setOff(run, path, host); note(run, now, 'out', { flare: order.id, cell: order.cell, m: +run.length.toFixed(1) });
     return run;
   }
   if ((run.mode === 'out' || run.mode === 'harvest') && hot(run, host, null, T.retreat?.bodies)) { retreat(run, now, host); return run; }
@@ -191,24 +207,38 @@ export function settleBreak(run, now, host) {
   }
   if (out.cargo + out.field > 0) run.trips++;
   out.kept = Math.round(run.cargo);
-  Object.assign(run, { mode: run.cargo > 0 ? 'full' : 'idle', cell: run.home, path: null, s: 0, length: 0, turn: null, k: 0, goal: null, stand: null, stuck: false, wait: false, order: null, queued: null, pile: null, rake: 0, pour: 0, note: '' });
+  Object.assign(run, { disabled: null, jabs: 0, mode: run.cargo > 0 ? 'full' : 'idle', cell: run.home, path: null, s: 0, length: 0, turn: null, k: 0, goal: null, stand: null, stuck: false, wait: false, order: null, queued: null, pile: null, rake: 0, pour: 0, note: '' });
   run.skip.clear();
   note(run, now, 'break', { banked: Math.round(out.cargo + out.field), kept: out.kept });
   return out;
 }
 
 // THE ROVER BITTEN (the economy design 2.6, 2026-11-12: "each jab's peak eats 100 kg from its hold (lost) ... No hit points; it cannot be destroyed"):
-// up to `kg` off the cargo, returned; run.bitten counts what was lost
+// up to `kg` off the cargo, returned; run.bitten counts what was lost. With tune.disable (above): the jab counted, the `bites`-th of the trip
+// disables it; disabled, one bite in disable.every s at most, never below disable.floor of the capacity
 export function bite(run, kg, now = 0) {
+  const D = run.tune.disable;
+  if (D && run.disabled) {
+    if (now - run.disabled.bitAt < D.every) return 0;
+    const n = Math.max(0, Math.min(run.cargo - D.floor * run.tune.capacity, kg));
+    if (!(n > 0)) return 0;
+    run.disabled.bitAt = now; run.cargo -= n; run.bitten = (run.bitten ?? 0) + n; note(run, now, 'bitten', { kg: Math.round(n), disabled: true });
+    return n;
+  }
   const n = Math.max(0, Math.min(run.cargo, kg));
-  if (!(n > 0)) return 0;
-  run.cargo -= n; run.bitten = (run.bitten ?? 0) + n; note(run, now, 'bitten', { kg: Math.round(n) });
+  if (n > 0) { run.cargo -= n; run.bitten = (run.bitten ?? 0) + n; note(run, now, 'bitten', { kg: Math.round(n) }); }
+  if (D && ['out', 'harvest', 'home'].includes(run.mode) && ++run.jabs >= D.bites) {
+    run.disabled = { at: now, hold: 0, bitAt: now }; run.disables = (run.disables ?? 0) + 1; run.note = ''; note(run, now, 'disabled', { jabs: run.jabs });
+  }
   return n;
 }
+// the restart's progress 0..1 while disabled (the ring round it, the console's RESTARTING n %), else null
+export const restartShare = (run) => (run.disabled && run.tune.disable ? Math.min(1, run.disabled.hold / run.tune.disable.seconds) : null);
 // the lattice cell it stands on, on its road or at a pile (the hunters' goal cell)
 export const roverCell = (run) => here(run);
 // what the readouts say: the mode's word and the kg aboard (the hull console's ROVER line)
 export function roverWord(run) {
+  if (run.disabled) { const W = run.tune.disable?.words ?? {}, k = restartShare(run); return k > 0 ? `${W.restarting ?? 'RESTARTING'} ${Math.floor(k * 100)} %` : W.disabled ?? 'DISABLED'; }
   if (run.mode === 'full') return 'STORAGE FULL';
   if (run.note) return run.note;
   return { idle: 'HOME', out: 'OUT', harvest: 'HARVEST', home: 'RETURNING', unload: 'UNLOADING' }[run.mode] ?? run.mode.toUpperCase();

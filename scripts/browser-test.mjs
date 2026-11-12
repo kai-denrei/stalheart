@@ -1605,6 +1605,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.equal(r.stock,3,`the flare came out of the stock of four (${r.stock})`);assert.equal(typeof r.threat,'number','the bodies round the rover are counted');}
  await until(`${T}.rover.state().mode!=='idle'`,2000).catch(async()=>assert.fail(`the rover leaves home within 2 s (why ${JSON.stringify(await evaluate(`${T}.rover.why(${rich.cell})`))}; ${JSON.stringify(await R())})`));
  console.log(`  left home in ${Date.now()-tw0} ms wall`);
+ // THE FIRST SORTIE'S HINT (2026-11-12 night): the first time the rover leaves the walls, the callout says it needs the tank (ROVER_WORDS.escort)
+ await until(`${T}.rover.state().escortSaid||${T}.rover.state().mode==='harvest'`,240000);
+ {const r=await R();console.log(`  the first sortie's hint: ${r.escortSaid?'said':'NOT said'} (prey ${r.prey}, mode ${r.mode})`);assert.equal(r.escortSaid,true,'the hint is said the first time the rover leaves the walls');}
  await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover reaches the flare (${JSON.stringify(await R())})`));
  const h0=await R();await delay(2500);const h1=await R();current='rover-harvest';await finish();
  console.log(`  harvest: cargo ${h0.cargo} -> ${h1.cargo} kg, field ${h0.field} -> ${h1.field} kg, belt ${h1.scene.belt} m`);
@@ -1655,6 +1658,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  // there, and when the rover rakes five whites rise beside it. Unescorted (the hull parked under the gantry) they ring the rover and each jab's peak eats
  // ROVER.threat.bite kg of its hold: ROVER UNDER ATTACK, Isao's rover_bitten, home under 4,500 kg. Escorted (the hull on the flare's cell) the hull
  // outranks the rover in the hunt and draws them off: home over 4,500 kg. Printed as ROVER HUNTED
+ // THE ROVER DISABLED (2026-11-12 night): unescorted, the third jab disables it: it stays put 6 s (the hold drained one bite in 2 s down to its floor, the
+ // console's ROVER DISABLED · NEEDS THE TANK, the radar's red mark, the ring round it, Isao's rover_disabled); the hull put beside it restarts it (RESTARTING,
+ // then ROVER RESTARTED) and it comes home. Escorted it is never disabled. Printed as ROVER DISABLED
  const hunted=async(escort)=>{
   await evaluate(`(()=>{const b=${T}.state().biomass;return ${T}.rover.spend(Math.max(0,b-5000));})()`);   // room in the pearls: the pages before left them near the cap
   await until(`${T}.rover.state().mode==='idle'`,120000).catch(async()=>assert.fail(`the rover home before the hunted run (${JSON.stringify(await R())})`));
@@ -1664,18 +1670,39 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const a0=await R();await evaluate(`${T}.rover.lay(${rich.cell},6500)`);await evaluate(`${T}.rover.flareAt(${rich.cell})`);
   await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover at the hunted ground (${JSON.stringify(await R())})`));
   const ring=await evaluate(`${T}.creatures.neighbours(${rich.cell})`);let made=0;for(let k=0;k<5;k++)made+=await evaluate(`${T}.creatures.spawnAt('amoeba',${(ring.length?ring:[rich.cell])[k%Math.max(1,ring.length)]})`);
+  let dis=null;
+  if(!escort){
+   await until(`(()=>{if(/ROVER UNDER ATTACK/.test(document.body.innerText))window.__attacked=true;return ${T}.rover.state().disabled||${T}.rover.state().trips>${a0.trips};})()`,240000).catch(async()=>assert.fail(`the hunters disable it (${JSON.stringify(await R())})`));
+   const d0=await R(),t0=d0.events.find(e=>e.ev==='disabled'&&e.t>=(a0.events.at(-1)?.t??0))?.t;assert.equal(d0.disabled,true,`the third jab disabled it (${d0.jabs} jabs, home ${d0.trips>a0.trips})`);
+   await until(`/ROVER DISABLED · NEEDS THE TANK/.test(document.body.innerText)`,3000).catch(async()=>assert.fail('the callout ROVER DISABLED · NEEDS THE TANK'));
+   await delay(6000);const d1=await R(),moved=Math.hypot(...d1.scene.point.map((v,i)=>v-d0.scene.point[i]))/(await evaluate(`${T}.rover.metres()`));
+   const con=await evaluate(`document.querySelector('.hc-rover')?.textContent`),radar=(await st()).radar?.rover;current='rover-disabled';await finish();
+   console.log(`  disabled at ${t0} s with ${d0.cargo} kg (${d0.mode}); 6 s on: ${d1.cargo} kg, moved ${moved.toFixed(2)} m, console "${con}", radar ${radar}, ring ${JSON.stringify(d1.ring)}, word ${d1.word}`);
+   assert.equal(d1.disabled,true,'it stays disabled without the tank');assert.equal(d1.mode,d0.mode,'its trip waits');assert.ok(moved<0.5,`it stays put (${moved.toFixed(2)} m)`);
+   assert.ok(d1.cargo<=d0.cargo&&d1.cargo>=ROVER.disable.floor*ROVER.capacity-1e-6||d0.cargo<ROVER.disable.floor*ROVER.capacity,`the hold drains, not below its floor (${d0.cargo} -> ${d1.cargo})`);
+   assert.match(con,/^ROVER DISABLED · NEEDS THE TANK/,'the console says so');assert.equal(radar,'disabled','the radar marks it');assert.ok(d1.ring&&d1.ring.share===0,`the ring round it, empty (${JSON.stringify(d1.ring)})`);
+   assert.ok((await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")')).includes('rover_disabled'),'Isao\'s rover_disabled');
+   // the tank's arrival: the hull on the open cell nearest the rover's own, held there; it restarts within its 4 s (and a little for the frames)
+   const at=await evaluate(`${T}.rover.openNear(${d1.here})`);await evaluate(`${T}.placeTank(${at})`);const w0=Date.now();
+   await until(`(()=>{const r=${T}.rover.state();if(r.restart>0)window.__restartAt=Math.max(window.__restartAt||0,r.restart);if(/ROVER RESTARTING/.test(document.querySelector('.hc-rover')?.textContent||''))window.__restartWord=true;if(r.ring?.share>0)window.__ringFill=true;return !r.disabled;})()`,30000).catch(async()=>assert.fail(`the tank beside it restarts it (${JSON.stringify(await R())})`));
+   const d2=await R(),t2=d2.events.find(e=>e.ev==='restarted')?.t;
+   console.log(`  the hull at cell ${at} (the rover at ${d1.here}): restarted in ${Date.now()-w0} ms wall, ${t2} s game (${(t2-t0).toFixed(1)} s disabled), RESTARTING seen ${await evaluate('!!window.__restartWord')}, ring filled ${await evaluate('!!window.__ringFill')}, ${d2.cargo} kg aboard`);
+   assert.ok(await evaluate('(window.__restartAt||0)>0'),'the restart filled');assert.equal(await evaluate('!!window.__restartWord'),true,'the console counts RESTARTING');assert.equal(await evaluate('!!window.__ringFill'),true,'the ring fills');
+   dis={at:t0,cargo:d0.cargo,drained:d1.cargo,restartedAt:t2,restartCargo:d2.cargo};
+  }
   await until(`(()=>{if(/ROVER UNDER ATTACK/.test(document.body.innerText))window.__attacked=true;return ${T}.rover.state().trips>${a0.trips};})()`,240000).catch(async()=>assert.fail(`the hunted trip home (${JSON.stringify(await R())})`));   // the toast lives 1.8 s: seen while it stands
-  const a1=await R(),hs=(await st()).softHunt??null,kg=a1.delivered-a0.delivered,bit=a1.bitten-(a0.bitten??0);
+  const a1=await R(),hs=(await st()).softHunt??null,kg=a1.delivered-a0.delivered,bit=a1.bitten-(a0.bitten??0),disables=a1.disables-(a0.disables??0);
+  if(dis)console.log(`ROVER DISABLED ${JSON.stringify({...dis,home:kg,bitten:bit,disables})}`);
   {const ac=a1.events.filter(e=>e.ev==='arrive').at(-1)?.cell??-1;console.log(`  the hunted ground ${rich.cell} ${JSON.stringify(await evaluate(`${T}.rover.cellWhy(${rich.cell})`))}, raked from ${ac} ${JSON.stringify(ac>=0?await evaluate(`${T}.rover.cellWhy(${ac})`):null)}`);}console.log(`ROVER HUNTED ${escort?'escorted':'unescorted'}: ${made} whites, home with ${kg} kg, ${bit} kg bitten off, hunt ${JSON.stringify(hs)}; the trip ${JSON.stringify(a1.events.filter(e=>e.t>=(a0.events.at(-1)?.t??0)).map(e=>[e.ev,e.t,e.cargo,e.why??'']))}`);
-  return {kg,bit};
+  return {kg,bit,disables};
  };
  // THE DESIGN'S 4,500 kg LINE (spec 4 step 4) is printed, not asserted: the rover rakes until its hold is full or the ground is bare, so a bitten trip on rich
  // ground still comes home full, only later; on these 6,500 kg the first run (2026-11-12) came home with 4,550 kg and 1,400 kg bitten off. The rule's own
  // guarantees are asserted: the bites, and the escort bringing home more of the same ground with fewer bites
  const H={};
- {const u=H.u=await hunted(false);assert.ok(u.bit>=ROVER.threat.bite,`unescorted, the hunters bite its hold (${u.bit} kg)`);console.log(`  the design's line: unescorted home ${u.kg<4500?'under':'OVER'} 4,500 kg (${u.kg})`);
+ {const u=H.u=await hunted(false);assert.ok(u.bit>=ROVER.threat.bite,`unescorted, the hunters bite its hold (${u.bit} kg)`);assert.ok(u.disables>=1,`unescorted, disabled (${u.disables})`);console.log(`  the design's line: unescorted home ${u.kg<4500?'under':'OVER'} 4,500 kg (${u.kg})`);
   assert.equal(await evaluate('!!window.__attacked'),true,'the callout ROVER UNDER ATTACK');assert.ok((await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")')).includes('rover_bitten'),'Isao\'s rover_bitten');current='rover-hunted';await finish();}
- {const e=await hunted(true);console.log(`  the design's line: escorted home ${e.kg>4500?'over':'UNDER'} 4,500 kg (${e.kg})`);assert.ok(e.kg>H.u.kg&&e.bit<H.u.bit,`escorted, more of the same ground home with fewer bites (${e.kg} kg, ${e.bit} bitten; unescorted ${H.u.kg}, ${H.u.bit})`);current='rover-escorted';await finish();}
+ {const e=await hunted(true);console.log(`  the design's line: escorted home ${e.kg>4500?'over':'UNDER'} 4,500 kg (${e.kg})`);assert.equal(e.disables,0,'escorted, never disabled');assert.ok(e.kg>H.u.kg&&e.bit<H.u.bit,`escorted, more of the same ground home with fewer bites (${e.kg} kg, ${e.bit} bitten; unescorted ${H.u.kg}, ${H.u.bit})`);current='rover-escorted';await finish();}
  // A WALL ACROSS THE ROAD MID-TRIP (2026-11-12): out to the first flare's ground again; 60 m on, the widest cell of the road ahead (most open neighbours) shut
  // (the glue's stand-in for a wall built there): it goes round by a new road (REROUTE) that never uses it, and gets there. NO ROAD: then, on the way home,
  // every open cell round the one it stands on shut: it holds where it is (NO ROAD HOME on the console, the drawn rover still), and goes on once they open
