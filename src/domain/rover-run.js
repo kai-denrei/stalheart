@@ -16,11 +16,20 @@
 // the live bodies within tune.retreat.cells of a cell, or of the rover itself for null. On its way out or at the rake with tune.retreat.bodies or
 // more round it, it turns for home with what it has (RETREATING); at home it holds a standing order (HOLDING · ENEMIES) until the flare's ground and
 // the ground it turned round on are down to tune.retreat.clear bodies. No host.threat or no tune.retreat: no such rule (the rover of round 8).
+// THE TANK'S GROUND (owner, 2026-11-12: "yushi-rover must have the same collision logic as the tank; walls, rocks, etc."): host.path routes over
+// the cells the tank may stand on (src/domain/drive-ground.js); host.path(from, to, within) ends on `to` when it is open, else on the nearest
+// open cell within `within` cells of it (tune.reach: a flare or a pile in a sinkhole's pad, on a wall or a rock is raked from its rim; the
+// cell it rakes from is `stand`, the path's last cell). Optional host hands, each absent in the rover of round 8:
+//   open(cell)         the cell still open: every `tune.recheck` s the road ahead is checked, and a cell gone (a wall, a building, a sinkhole)
+//                      sends it round by a new path to the same goal (REROUTE); no path and it holds where it stands (NO ROAD / NO ROAD
+//                      HOME on the console), asking again every recheck, never jumping
+//   wait(run)          the way ahead is shut for now (a door still opening): it holds its place on the road
+//   at(path, s)        the index of the path's cell it stands on at `s` metres (the drawn road is not the cells' own spacing)
 export const ROVER_MODES = Object.freeze(['idle', 'out', 'harvest', 'home', 'unload', 'full']);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createRoverRun(tune, home, heading = 0) {
-  return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null, fled: null,
+  return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, k: 0, goal: null, stand: null, stuck: false, wait: false, recheck: 0, order: null, queued: null, pile: null, fled: null,
     skip: new Set(), trips: 0, delivered: 0, harvested: 0, bitten: 0, note: '', events: [], rake: 0, pour: 0 };
 }
 
@@ -33,18 +42,20 @@ export function dispatch(run, flare) {
 }
 
 // set off along a path: the turn on the spot first, then the roll
-function setOff(run, path, host) {
-  run.path = path; run.s = 0; run.length = host.length(path);
+function setOff(run, path, host, goal = path.at(-1)) {
+  run.path = path; run.s = 0; run.k = 0; run.goal = goal; run.within = run.tune.reach; run.stuck = false; run.wait = false; run.length = host.length(path);
   const to = path.length > 1 ? host.bearing(path[0], path[1]) : run.heading, d = wrap(to - run.heading);
   run.turn = Math.abs(d) > 1e-3 && run.tune.turn > 0 ? { from: run.heading, to: run.heading + d, left: Math.abs(d) / run.tune.turn, total: Math.abs(d) / run.tune.turn } : null;
 }
 // one step along the path: true on arrival (the rover stands on the path's last cell)
 function roll(run, dt, host) {
-  if (!run.path) return true;
+  if (!run.path) return !run.stuck;
   if (run.turn) { run.turn.left -= dt; if (run.turn.left > 0) return false; run.heading = run.turn.to; dt = -run.turn.left; run.turn = null; }
+  run.wait = !!host.wait?.(run); if (run.wait) return false;   // a door ahead still opening: it holds its place
   run.s = Math.min(run.length, run.s + run.tune.speed * dt);
+  run.k = Math.min(run.path.length - 1, Math.max(0, host.at ? host.at(run.path, run.s) : Math.round(run.length > 0 ? (run.s / run.length) * (run.path.length - 1) : 0)));
   // the heading follows the segment it is on, so the turn at the end starts from where it really points
-  const k = Math.min(run.path.length - 2, Math.floor(run.length > 0 ? (run.s / run.length) * (run.path.length - 1) : 0));
+  const k = Math.min(run.path.length - 2, run.k);
   if (k >= 0) run.heading = host.bearing(run.path[k], run.path[k + 1]);
   if (run.s < run.length - 1e-9) return false;
   run.cell = run.path.at(-1); run.path = null;
@@ -53,7 +64,23 @@ function roll(run, dt, host) {
 // the lattice cell it stands on along its road (run.cell is the road's first cell until it arrives)
 function here(run) {
   if (!run.path || run.path.length < 2 || !(run.length > 0)) return run.cell;
-  return run.path[Math.min(run.path.length - 1, Math.round((run.s / run.length) * (run.path.length - 1)))];
+  return run.path[Math.min(run.path.length - 1, run.k)];
+}
+// THE ROAD AHEAD CUT (2026-11-12): a new path from where it stands to the same goal, or a hold where it stands (no jump)
+const NO_ROAD = new Set(['NO ROAD', 'NO ROAD HOME']);
+function reroute(run, now, host) {
+  const from = here(run), goal = run.goal ?? from;
+  run.cell = from; run.path = null; run.turn = null; run.s = 0; run.length = 0;
+  const path = from === goal ? [from] : host.path(from, goal, run.within ?? run.tune.reach);
+  if (!path) {
+    if (!run.stuck) { run.stuck = true; run.note = run.mode === 'home' ? 'NO ROAD HOME' : 'NO ROAD'; note(run, now, 'stuck', { goal }); }
+    return false;
+  }
+  const was = run.stuck; setOff(run, path, host, goal);
+  if (run.mode === 'harvest' && run.pile !== null) run.stand = path.at(-1);
+  if (NO_ROAD.has(run.note)) run.note = '';
+  note(run, now, was ? 'road' : 'reroute', { goal, cells: path.length });
+  return true;
 }
 const HOLD = 'HOLDING · ENEMIES', RETREAT = 'RETREATING';
 const hot = (run, host, cell, n) => !!run.tune.retreat && typeof host.threat === 'function' && host.threat(cell) >= n;
@@ -63,9 +90,9 @@ function retreat(run, now, host) {
 }
 function goHome(run, now, host, why) {
   const path = run.cell === run.home ? [run.home] : host.path(run.cell, run.home);
-  run.mode = 'home'; run.pile = null;
-  if (!path) { run.note = 'NO ROAD HOME'; run.path = null; note(run, now, 'stuck'); return; }
-  run.note = ''; setOff(run, path, host); note(run, now, 'home', { why });
+  run.mode = 'home'; run.pile = null; run.stand = null;
+  if (!path) { run.note = 'NO ROAD HOME'; run.path = null; run.goal = run.home; run.stuck = true; run.recheck = run.tune.recheck ?? 1; note(run, now, 'stuck', { goal: run.home }); return; }
+  run.note = ''; setOff(run, path, host); note(run, now, 'home', { why, m: +run.length.toFixed(1) });
 }
 
 export function stepRover(run, dt, now, host) {
@@ -82,29 +109,37 @@ export function stepRover(run, dt, now, host) {
       if (run.note !== HOLD) { run.note = HOLD; note(run, now, 'hold', { flare: order.id }); }
       return run;
     }
-    const path = run.cell === order.cell ? [run.cell] : host.path(run.cell, order.cell);
+    const path = run.cell === order.cell ? [run.cell] : host.path(run.cell, order.cell, T.reach);
     if (!path) { run.note = 'NO ROAD'; run.order = null; note(run, now, 'no-road', { flare: order.id }); return run; }
     if (order !== run.order) run.skip.clear();   // the piles it could not reach are remembered per order
-    run.order = order; run.note = ''; run.fled = null; run.mode = 'out'; setOff(run, path, host); note(run, now, 'out', { flare: order.id, cell: order.cell });
+    run.order = order; run.note = ''; run.fled = null; run.mode = 'out'; setOff(run, path, host); note(run, now, 'out', { flare: order.id, cell: order.cell, m: +run.length.toFixed(1) });
     return run;
   }
   if ((run.mode === 'out' || run.mode === 'harvest') && hot(run, host, null, T.retreat?.bodies)) { retreat(run, now, host); return run; }
+  // the road ahead checked every recheck s (a wall, a building, a sinkhole across it: round by a new path); held without one, asked again
+  if ((run.path || run.stuck) && ['out', 'home', 'harvest'].includes(run.mode) && typeof host.open === 'function' && (run.recheck -= dt) <= 0) {
+    run.recheck = T.recheck ?? 1;
+    if (run.stuck || run.path.slice(run.k + 1).some((c) => !host.open(c))) reroute(run, now, host);
+  }
   if (run.mode === 'out') {
-    if (roll(run, dt, host)) { run.mode = 'harvest'; run.pile = null; note(run, now, 'arrive', { cell: run.cell }); }
+    if (run.stuck) { if (!host.live(run.order)) goHome(run, now, host, 'flare out'); return run; }   // no road to a flare that burnt out: home
+    if (roll(run, dt, host)) { run.mode = 'harvest'; run.pile = null; run.stand = null; note(run, now, 'arrive', { cell: run.cell }); }
     return run;
   }
   if (run.mode === 'harvest') {
     if (run.cargo >= T.capacity - 1e-6) { goHome(run, now, host, 'hold full'); return run; }
+    if (run.stuck && run.pile !== null) { run.skip.add(run.pile); run.pile = null; run.stand = null; run.stuck = false; run.note = ''; }   // cut off from that pile: the next
     if (run.path) { if (!roll(run, dt, host)) return run; }
+    if (run.stuck) return run;
     if (run.pile === null) {
       const piles = host.near(run.order?.cell ?? run.cell, T.reach).filter((p) => !run.skip.has(p.cell));
       if (!piles.length) { goHome(run, now, host, run.cargo > 0 ? 'ground bare' : 'nothing there'); return run; }
-      const p = piles[0], path = p.cell === run.cell ? null : host.path(run.cell, p.cell);
+      const p = piles[0], path = p.cell === run.cell ? null : host.path(run.cell, p.cell, T.reach);
       if (p.cell !== run.cell && !path) { run.skip.add(p.cell); return run; }
-      run.pile = p.cell;
-      if (path) { setOff(run, path, host); return run; }
+      run.pile = p.cell; run.stand = path ? path.at(-1) : run.cell;   // the open cell it rakes from: the pile's own, or the one beside it
+      if (path) { setOff(run, path, host, p.cell); return run; }
     }
-    if (run.cell !== run.pile) return run;
+    if (run.cell !== run.stand) return run;
     // WHOLE KILOS (the bank is an integer the HUD prints): the rake and the pour carry their fractions from step to step
     run.rake += T.harvestRate * dt;
     const ask = Math.min(Math.floor(run.rake), T.capacity - run.cargo);
@@ -115,7 +150,7 @@ export function stepRover(run, dt, now, host) {
     return run;
   }
   if (run.mode === 'home') {
-    if (!run.path && run.cell !== run.home) { goHome(run, now, host, 'retry'); return run; }
+    if (!run.path && run.cell !== run.home) { if (!run.stuck) goHome(run, now, host, 'retry'); return run; }   // held: the recheck asks again
     if (roll(run, dt, host)) { run.mode = run.cargo > 0 ? 'unload' : 'idle'; if (run.note === RETREAT) run.note = ''; note(run, now, run.cargo > 0 ? 'dock' : 'parked'); }
     return run;
   }
@@ -156,7 +191,7 @@ export function settleBreak(run, now, host) {
   }
   if (out.cargo + out.field > 0) run.trips++;
   out.kept = Math.round(run.cargo);
-  Object.assign(run, { mode: run.cargo > 0 ? 'full' : 'idle', cell: run.home, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null, rake: 0, pour: 0, note: '' });
+  Object.assign(run, { mode: run.cargo > 0 ? 'full' : 'idle', cell: run.home, path: null, s: 0, length: 0, turn: null, k: 0, goal: null, stand: null, stuck: false, wait: false, order: null, queued: null, pile: null, rake: 0, pour: 0, note: '' });
   run.skip.clear();
   note(run, now, 'break', { banked: Math.round(out.cargo + out.field), kept: out.kept });
   return out;

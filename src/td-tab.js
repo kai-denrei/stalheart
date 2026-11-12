@@ -6,6 +6,7 @@ import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } 
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { applyScare } from './domain/impact-scare.js'; import { createWaveClock } from './domain/wave-clock.js';
+import { groundBlock } from './domain/drive-ground.js';   // THE TANK'S GROUND, the rover's too (2026-11-12)
 import { EXPLOSION_SCARE } from './content/explosions.js';
 import { createThermalHeat } from './fx/thermal-heat.js';
 import { isAutomated } from './domain/automation.js';
@@ -974,10 +975,11 @@ export function initTdTab(root) {
     return dist3(graph.centers[ci], graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.45;
   }
   let hullWhy = '';   // which test refused the last refused candidate (the corridor probe's trace; 2026-10-16)
+  // THE TANK'S GROUND (src/domain/drive-ground.js): rock, container, open sinkhole, the pad; the buildings and the spawn points for the rover's road
+  const hullGround = { rock: (ci) => dungeon.tags[ci] === BLOCKED, container: (ci) => containerBlocked(ci), breach: (p) => breachBlocked(p), pedestal: (p) => dist3(p, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3, solid: (p, pad) => storyBase?.solidAt(p, pad) ?? null, unit: (p) => unitBlocker(p) };
   function freeBlocked(cand) {
-    const ci = cellIndex(cand);
-    if (ci === -1 || dungeon.tags[ci] === BLOCKED || containerBlocked(ci)) return (hullWhy = ci === -1 ? 'off' : dungeon.tags[ci] === BLOCKED ? 'rock' : 'container'), true;
-    if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3 || breachBlocked(cand)) return (hullWhy = breachBlocked(cand) ? 'breach' : 'pedestal'), true;   // the pad, and any open sinkhole: no-go
+    const ci = cellIndex(cand), ground = groundBlock(cand, ci, hullGround);
+    if (ground) return (hullWhy = ground), true;   // the pad, and any open sinkhole: no-go
     // THE HULL'S OWN FOOTPRINT against the rock faces (operator, 2026-09-13): its centre, nose and tail; a move may not take it deeper
     // into a face than it already is (src/domain/hull-contact.js)
     const crowdedBy = berthed()
@@ -4561,7 +4563,8 @@ export function initTdTab(root) {
   // THE ROVER AND THE BIO-PEARLS (round 8 note 7, src/fx/rover-glue.js): kills lie on the ground, F's flare sends the rover, the pearls are the bank
   const roverGlue = createRoverGlue({
     scene, hullConsole, player, showBrief, showToast, updateHud, wire: () => (wire ? wireOpts : null), metres: () => metresToArc(1, cellSide), briefQ: () => briefs.queue(),
-    story: () => story, storyBase: () => storyBase, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, enemies: () => enemies, atBase: () => hullRepair.state().under,
+    story: () => story, storyBase: () => storyBase, graph: () => graph, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, enemies: () => enemies, atBase: () => hullRepair.state().under,
+    ground: hullGround, cellIndex: (p) => cellIndex(p),   // the tank's ground and the lattice lookup: the rover's road (2026-11-12)
   });
   // THE COLONY'S TICK (src/fx/colony-tick.js): the reel, the lapse, the perks, the pads, the boards, the beacons, the works
   const colonyTick = createColonyTick({

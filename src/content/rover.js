@@ -29,9 +29,15 @@
 //   FIELD.seep         SEEPAGE (owner, 2026-11-12; the economy design 2.6): a pile loses max(floor, kg x share) kg a second (src/domain/biomass-field.js);
 //                      it replaced the 240 s rot. maxPiles the instanced mesh's cap
 //   ROVER.breakShare   the share of the flagged piles the sector's end banks (the economy design 2.6: half; the rest stays on the ground)
+//   ROVER.recheck      s between looks at the road ahead (a wall, a building or a sinkhole across it sends it round; src/domain/rover-run.js)
+//   ROVER.road         THE TANK'S GROUND (owner, 2026-11-12: "yushi-rover must have the same collision logic as the tank; walls, rocks, etc."):
+//                      the cells it routes over are the tank's (src/domain/drive-ground.js), a building `pad` m out from a cell's centre;
+//                      the drawn road (src/domain/rover-road.js) keeps `half` m either side of its line clear (the wheels stand ~2.4 m out),
+//                      rounds its corners at up to `radius` m, tested every `step` m; it holds `ahead` m short of a door still opening
 //   PEARLS             the three vessels standing with the depot, each `capacity` kg; the fourth is the build board's card (src/content/build-board.js)
 export const ROVER = Object.freeze({
-  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600, breakShare: 0.5,
+  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600, breakShare: 0.5, recheck: 1,
+  road: Object.freeze({ pad: 2, half: 2.5, radius: 8, step: 2, ahead: 6 }),
   retreat: Object.freeze({ bodies: 6, cells: 4, clear: 2 }),
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the whites and yellows hunt it (src/domain/soft-hunt.js huntGoal) and each
   // jab's peak eats `bite` kg of its hold (lost; it has no hit points); the callout at most every `every` s, Isao's rover_bitten the first time

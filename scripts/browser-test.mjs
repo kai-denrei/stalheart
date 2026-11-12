@@ -1594,13 +1594,16 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`${T}.sectorQuiet(true)`);
  for(let k=0;k<30;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(500);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}   // (bodies still rising are culled once up) the ground clear: with more than two bodies round the flare the rover holds at home (ROVER.retreat, 2026-11-10)
  // the flare: the hull on the richest ground, F
- const rich=await evaluate(`${T}.rover.richest()`);await evaluate(`${T}.placeTank(${rich.cell})`);await delay(300);
+ // (on the open cell nearest the richest ground, since 2026-11-12: the richest ground lies in the sinkhole's pad, where the tank cannot stand)
+ const rich0=await evaluate(`${T}.rover.richest()`),rich={...rich0,cell:await evaluate(`${T}.rover.openNear(${rich0.cell})`)};console.log(`  the richest ground ${rich0.cell} ${JSON.stringify(await evaluate(`${T}.rover.cellWhy(${rich0.cell})`))}, flagged from ${rich.cell}`);
+ await evaluate(`${T}.placeTank(${rich.cell})`);await delay(300);
+ await evaluate(`${T}.rover.track(true)`);   // THE TANK'S GROUND (owner, 2026-11-12): the drawn rover sampled every frame from here to the end of the suite
  await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);
  const tw0=Date.now();
  {const r=await R();console.log(`  F at cell ${r.hull} (richest ${rich.cell}, ${rich.kg} kg within reach): flares ${JSON.stringify(r.flares.map(f=>[f.id,f.cell]))}`);
   assert.equal(r.flares.length,1,'one flare standing');assert.equal(r.flares[0].cell,r.hull,'the flare under the hull');
   assert.equal(r.stock,3,`the flare came out of the stock of four (${r.stock})`);assert.equal(typeof r.threat,'number','the bodies round the rover are counted');}
- await until(`${T}.rover.state().mode!=='idle'`,2000).catch(async()=>assert.fail(`the rover leaves home within 2 s (${JSON.stringify(await R())})`));
+ await until(`${T}.rover.state().mode!=='idle'`,2000).catch(async()=>assert.fail(`the rover leaves home within 2 s (why ${JSON.stringify(await evaluate(`${T}.rover.why(${rich.cell})`))}; ${JSON.stringify(await R())})`));
  console.log(`  left home in ${Date.now()-tw0} ms wall`);
  await until(`${T}.rover.state().mode==='harvest'`,240000).catch(async()=>assert.fail(`the rover reaches the flare (${JSON.stringify(await R())})`));
  const h0=await R();await delay(2500);const h1=await R();current='rover-harvest';await finish();
@@ -1613,8 +1616,13 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.ok(u1.mode==='idle'||u1.scene.hose,'the hose runs while it unloads');
  await until(`${T}.rover.state().trips>=1`,60000).catch(async()=>assert.fail(`the rover unloads (${JSON.stringify(await R())})`));
  const r2=await R(),ev=Object.fromEntries(r2.events.map(e=>[e.ev,e]));
- const trip={out:ev.out?.t,arrive:ev.arrive?.t,home:ev.home?.t,dock:ev.dock?.t,unloaded:ev.unloaded?.t,kg:r2.delivered,path:h0.length};
+ const trip={out:ev.out?.t,arrive:ev.arrive?.t,home:ev.home?.t,dock:ev.dock?.t,unloaded:ev.unloaded?.t,kg:r2.delivered,path:ev.out?.m??h0.length,back:ev.home?.m};   // path: the road out's metres (the drawn road's since 2026-11-12), back the road home's
  console.log(`ROVER TRIP ${JSON.stringify(trip)} (out -> arrive ${(trip.arrive-trip.out).toFixed(1)} s, harvest ${(trip.home-trip.arrive).toFixed(1)} s, back ${(trip.dock-trip.home).toFixed(1)} s, unload ${(trip.unloaded-trip.dock).toFixed(1)} s; bank ${u0.bank} -> ${r2.bank}, pearls ${r2.pearls.join(' / ')})`);
+ // THE TANK'S GROUND (owner, 2026-11-12: "yushi-rover must have the same collision logic as the tank; walls, rocks, etc."): every frame of the trip, the drawn
+ // rover's point on the tank's own ground (src/domain/drive-ground.js: no rock or wall cell, no building solid to the hull, no open sinkhole, the pad),
+ // never inside a door's span while it is shut; `edge` (a wheel side 2.5 m out on blocked ground) is printed, not asserted
+ {const g=await evaluate(`${T}.rover.tracked()`);console.log(`ROVER GROUND trip ${JSON.stringify(g)}`);
+  assert.ok(g.n>100,`the trip sampled (${g.n} frames)`);assert.equal(g.blocked,0,`the drawn rover never on blocked ground (${JSON.stringify(g.bad)})`);assert.equal(g.gate,0,'never inside a shut door');}
  assert.ok(r2.delivered>0&&r2.delivered<=ROVER.capacity,`it brought a load home (${r2.delivered} kg)`);
  assert.ok(r2.bank-s1.biomass>=r2.delivered-1,`the bank rose by the cargo (${s1.biomass} -> ${r2.bank}, ${r2.delivered} kg)`);assert.equal(r2.pearls.reduce((a,b)=>a+b,0),r2.bank,'the pearls hold the bank');
  assert.ok(r2.pearlFx.fitted>=PEARLS.count&&!r2.pearlFx.errors.length,`the pearls' fill shader fitted (${JSON.stringify(r2.pearlFx)})`);
@@ -1658,7 +1666,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const ring=await evaluate(`${T}.creatures.neighbours(${rich.cell})`);let made=0;for(let k=0;k<5;k++)made+=await evaluate(`${T}.creatures.spawnAt('amoeba',${(ring.length?ring:[rich.cell])[k%Math.max(1,ring.length)]})`);
   await until(`(()=>{if(/ROVER UNDER ATTACK/.test(document.body.innerText))window.__attacked=true;return ${T}.rover.state().trips>${a0.trips};})()`,240000).catch(async()=>assert.fail(`the hunted trip home (${JSON.stringify(await R())})`));   // the toast lives 1.8 s: seen while it stands
   const a1=await R(),hs=(await st()).softHunt??null,kg=a1.delivered-a0.delivered,bit=a1.bitten-(a0.bitten??0);
-  console.log(`ROVER HUNTED ${escort?'escorted':'unescorted'}: ${made} whites, home with ${kg} kg, ${bit} kg bitten off, hunt ${JSON.stringify(hs)}; the trip ${JSON.stringify(a1.events.filter(e=>e.t>=(a0.events.at(-1)?.t??0)).map(e=>[e.ev,e.t,e.cargo,e.why??'']))}`);
+  {const ac=a1.events.filter(e=>e.ev==='arrive').at(-1)?.cell??-1;console.log(`  the hunted ground ${rich.cell} ${JSON.stringify(await evaluate(`${T}.rover.cellWhy(${rich.cell})`))}, raked from ${ac} ${JSON.stringify(ac>=0?await evaluate(`${T}.rover.cellWhy(${ac})`):null)}`);}console.log(`ROVER HUNTED ${escort?'escorted':'unescorted'}: ${made} whites, home with ${kg} kg, ${bit} kg bitten off, hunt ${JSON.stringify(hs)}; the trip ${JSON.stringify(a1.events.filter(e=>e.t>=(a0.events.at(-1)?.t??0)).map(e=>[e.ev,e.t,e.cargo,e.why??'']))}`);
   return {kg,bit};
  };
  // THE DESIGN'S 4,500 kg LINE (spec 4 step 4) is printed, not asserted: the rover rakes until its hold is full or the ground is bare, so a bitten trip on rich
@@ -1668,6 +1676,29 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const u=H.u=await hunted(false);assert.ok(u.bit>=ROVER.threat.bite,`unescorted, the hunters bite its hold (${u.bit} kg)`);console.log(`  the design's line: unescorted home ${u.kg<4500?'under':'OVER'} 4,500 kg (${u.kg})`);
   assert.equal(await evaluate('!!window.__attacked'),true,'the callout ROVER UNDER ATTACK');assert.ok((await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")')).includes('rover_bitten'),'Isao\'s rover_bitten');current='rover-hunted';await finish();}
  {const e=await hunted(true);console.log(`  the design's line: escorted home ${e.kg>4500?'over':'UNDER'} 4,500 kg (${e.kg})`);assert.ok(e.kg>H.u.kg&&e.bit<H.u.bit,`escorted, more of the same ground home with fewer bites (${e.kg} kg, ${e.bit} bitten; unescorted ${H.u.kg}, ${H.u.bit})`);current='rover-escorted';await finish();}
+ // A WALL ACROSS THE ROAD MID-TRIP (2026-11-12): out to the first flare's ground again; 60 m on, the widest cell of the road ahead (most open neighbours) shut
+ // (the glue's stand-in for a wall built there): it goes round by a new road (REROUTE) that never uses it, and gets there. NO ROAD: then, on the way home,
+ // every open cell round the one it stands on shut: it holds where it is (NO ROAD HOME on the console, the drawn rover still), and goes on once they open
+ {await until(`${T}.rover.state().mode==='idle'`,120000).catch(async()=>assert.fail(`the rover home before the wall page (${JSON.stringify(await R())})`));
+  await evaluate(`${T}.sectorQuiet(true)`);for(let k=0;k<20;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(300);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
+  await evaluate(`${T}.parkHull('stalheart')`);await evaluate(`${T}.rover.lay(${rich.cell},2000)`);await evaluate(`${T}.rover.flareAt(${rich.cell})`);
+  await until(`${T}.rover.state().mode==='out'&&${T}.rover.state().s>60`,120000).catch(async()=>assert.fail(`out on the road (${JSON.stringify(await R())})`));
+  const w0=await R(),ahead=w0.path.slice(w0.k+3,w0.k+20);let shut=[ahead[0]],wide=-1;for(const c of ahead){const n=(await evaluate(`${T}.rover.ring(${c})`)).length;if(n>wide){wide=n;shut=[c];}}
+  await evaluate(`${T}.rover.close(${JSON.stringify(shut)})`);
+  await until(`${T}.rover.state().events.some(e=>(e.ev==='reroute'||e.ev==='stuck')&&e.t>${w0.events.at(-1)?.t??0})`,10000).catch(async()=>assert.fail(`a new road round the shut cell (${JSON.stringify(await R())})`));
+  const w1=await R();console.log(`ROVER REROUTE cell ${shut} (${wide} open round it) shut at s ${w0.s} of ${w0.length} m; ${w1.stuck?'NO ROAD (held)':`new road ${w1.length} m over ${w1.path.length} cells`} (${w1.word})`);
+  assert.equal(w1.stuck,false,'there is a way round');assert.ok(w1.path.every(c=>!shut.includes(c)),'the new road never uses the shut cell');
+  await until(`(()=>{const r=${T}.rover.state();if(r.path&&${JSON.stringify(shut)}.includes(r.path[r.k]))window.__usedShut=true;return r.mode==='harvest';})()`,120000).catch(async()=>assert.fail(`round to the flare (${JSON.stringify(await R())})`));
+  assert.equal(await evaluate('!!window.__usedShut'),false,'it never stood on the shut cell');await evaluate(`${T}.rover.reopen()`);current='rover-reroute';await finish();
+  await until(`${T}.rover.state().mode==='home'&&${T}.rover.state().s>40`,120000).catch(async()=>assert.fail(`on the road home (${JSON.stringify(await R())})`));
+  const n0=await R(),here=n0.path[n0.k],ring=await evaluate(`${T}.rover.ring(${here})`);await evaluate(`${T}.rover.close(${JSON.stringify(ring)})`);
+  await until(`${T}.rover.state().stuck`,10000).catch(async()=>assert.fail(`no road: held (${JSON.stringify(await R())})`));
+  const p0=(await R()).scene.point;await delay(3000);const n1=await R(),moved=Math.hypot(...n1.scene.point.map((v,i)=>v-p0[i]))/(await evaluate(`${T}.rover.metres()`));
+  console.log(`ROVER NO ROAD at cell ${here} (${ring.length} round it shut): ${n1.word}, moved ${moved.toFixed(2)} m in 3 s, cell ${n1.cell}`);
+  assert.equal(n1.word,'NO ROAD HOME','the console says so');assert.equal(n1.mode,'home');assert.ok(moved<0.5,`held, no jump (${moved.toFixed(2)} m)`);
+  await evaluate(`${T}.rover.reopen()`);await until(`!${T}.rover.state().stuck&&!!${T}.rover.state().path`,10000).catch(async()=>assert.fail(`the way open: on again (${JSON.stringify(await R())})`));
+  await until(`${T}.rover.state().events.some(e=>e.ev==='dock'&&e.t>${n1.events.at(-1)?.t??0})`,120000).catch(async()=>assert.fail(`home (${JSON.stringify(await R())})`));current='rover-no-road';await finish();}
+ {const g=await evaluate(`${T}.rover.tracked()`);console.log(`ROVER GROUND suite ${JSON.stringify(g)}`);assert.equal(g.blocked,0,`over the whole suite the drawn rover never on blocked ground (${JSON.stringify(g.bad)})`);assert.equal(g.gate,0,'never inside a shut door');}
  } else if(args.includes('--dog-scout')) {
  // THE RECON DOG (owner, 2026-11-10, note 2; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1, 5): the story's own start with the
  // dog's seat asked for (&dog=1: an acceptance page surveys at once otherwise) and the first orders' card (&first=1). The landing; Isao prints RECKON K9
