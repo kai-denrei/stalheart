@@ -413,6 +413,9 @@ at "spent cases fell from the Rotor in sentry control", as on this branch.
 - **N2 Endless play.** What does a generated sector teach that the one before did not?
 - **N3 Rescued, sacrifice, lost.** Rescued and sacrifice play the same ending.
 - **N4 The poem at the final brief.** Its place and wording.
+- **N5 The ending's three parts (proposal 2026-11-13).** `docs/superpowers/specs/2026-11-13-the-ending-proposal.md`: the Queen fights
+  back with one charge (flares as the King's 40 mm), her death shown on the surface; the finished base walked as the recon dog, left by
+  the ARC-01 launch; new planets from a catalogue of baked, checked seeds, planet 1 staying seed 7. Twelve one-line questions at its end.
 
 ## X. Across the game
 

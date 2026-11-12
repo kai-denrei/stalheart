@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-11-13-the-ending-proposal-queen-walk-new-planet",
+  "date": "2026-11-13",
+  "type": "decision",
+  "status": "proposed",
+  "title": "The ending proposed in three parts: the Queen fights back, the finished base walked as the recon dog, new planets from a catalogue of baked seeds",
+  "context": "Owner, 2026-11-12: \"ending will be Queen dead and Dyson sphere finished. ability to run around the finished base and observe, then start over on another procedurally generated planet. tbd.\" The same day: THE KING (a male, so a Queen below), \"all the elements should be there already\", the dome city printed by the KIDOU, \"first we want the flow of stages\". docs/FLOW.md (2026-11-13) found the Queen as a fight, the walk and a new planet missing; NEW RUN reloads the page. A design agent wrote the proposal from the code, documents only.",
+  "outcome": "PROPOSED, nothing built: docs/superpowers/specs/2026-11-13-the-ending-proposal.md. (1) The Queen: options 1A her death staged (the charge as today, a wake-up tell), 1B she fights back with one charge (the King's tell-and-charge from src/domain/king-fight.js; a flare as the 40 mm's stagger and veer), 1C the King's fight underground (she tears free, three charges as the called nukes, herded by flares); recommended 1B, with a surface proof for every option (the arena's hole caves in, the swarm goes to the dead grey, QUEEN · DEAD; the whole of her death on phones). (2) The finished base: ending order Queen, rise, diorama and constellation, campaign card with WALK THE COLONY, the walk, the launch; walked as the recon dog's seat in a free mode (2A; the tank 2B and Isao's drone view 2C weighed), the orbital ring full, plates on the domes, a new THE LOG page (landing grade, build order, losses), ended by the ARC-01 launch in the LAUNCH court with 'Ready for the next one?'. (3) A new planet: today ?seed= changes the run's dice, not the planet (STORY_RECIPE seed 7, baked); the terrain, gate mouth, arena, back mouth, canyon and breaches follow a seed, the base, landing sites, cave, sectors, enemies and colours do not; recommended 3B, a catalogue of 4-6 checked, baked seeds with a name and a palette row each, planet 1 always seed 7, ?planet=N as a page load, nothing carried over but the number and a logbook. Build order: surface proof, the log, the walk, the launch (game only), the catalogue, then 1B in the cave repo. Twelve one-line questions for the owner.",
+  "alternatives": [
+    "1C first (the full fight underground): deferred; it replaces the cave's search and climb with an arena and the Queen's soft body at full clock is not measured.",
+    "The space elevator as the exit: kept for later; not imported, large.",
+    "A live seed per run (3A): rejected for now; about 5 s of main-thread load and a seed can lack a gate or back mouth.",
+    "The Stålheart carried to the next planet: rejected for now; it reshapes the whole opening."
+  ],
+  "evidence": [
+    "Read: below/src/mission.js (FUSE 100, 15 flares, MAX_HP 12, closeToQueen 70 m, arming 3 s), below/src/queen-motion.js (her target circles her own body on a 0.2 clock), below/src/nursery.js (16 tethers, an egg every 8 s), below/BELOW.lock.json (55fbce5).",
+    "Read: src/domain/king-fight.js (pure, no imports: pickTarget, stepKing, shellHit, friendlyHits, nukeCall, nukeShare), src/content/arena-king.js.",
+    "Read: src/fx/ending-host.js, finale-diorama.js, orbital-finale.js, descent-host.js, dog-scout.js, isao-worker.js (drone view by hand, the board's VICTORY LAP), colony-lapse.js, moment-reel.js, src/core/run-recap.js.",
+    "Read: src/content/story-defaults.js STORY_RECIPE and STORY_SANITY, src/platform/story-world.js (the story world always builds from STORY_RECIPE), src/td-tab.js ?seed= override, entry 2026-09-12-planet-bake (live build 8.8 s Node, about 5 s Chrome; bake 0.8 s)."
+  ],
+  "supersedes": []
+}
