@@ -258,7 +258,7 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // THE MOTHER (owner, 2026-10-19, third round, note 8a: "Arena fight; we lost the scene explaining that we need to manually control the gunship while Isao plays Lure
 // with the tank"): the card over the paused game as the NIH-DAIRIA rises (src/fx/boss-run.js, src/fx/choice-card.js): this title, Isao's arena_force lines, the
 // seat's own controls (the seat footer's aim part, GUNSHIP_SEAT_HINT, src/sentry-pilot.js: the gunship flies its own track, the player aims and fires) and one button into the seat
-export const ARENA_HANDOVER = freeze({ title: 'THE MOTHER', take: 'TAKE THE GUN',
+export const ARENA_HANDOVER = freeze({ title: 'THE KING',   /* THE KING, not the mother (owner, 2026-11-12: "larger than the others, Isao registers it as a male from the chatter, and infers that there must a queen below") */ take: 'TAKE THE GUN',
   hint: GUNSHIP_SEAT_HINT.aim, hintTouch: GUNSHIP_SEAT_HINT.aimTouch });
 // decodedCap: seconds after boss_dead before arena_decoded clears a panel other lines keep busy and is shown (review, 2026-10-19: it waited on a free panel, and the
 // boss sector's debrief waits on it, up to STORY_CALM.maxHold, 120 s; src/fx/boss-run.js sayDecoded)

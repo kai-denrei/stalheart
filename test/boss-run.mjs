@@ -289,7 +289,7 @@ function host(o = {}) {
   h.enemies.push({ alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }); h.now = 2; run.tick(0.1);
   assert.equal(run.state().phase, 'boss'); assert.equal(run.state().card, true, 'the card is up as she rises'); assert.deepEqual(h.log.pause, [true], 'over the paused game');
   const shown = h.choiceCard.shown[0];
-  assert.equal(shown.title, 'THE MOTHER'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
+  assert.equal(shown.title, 'THE KING'); assert.deepEqual(shown.lines, BRIEFS.arena_force.lines, 'Isao\'s hand-over lines on the card');
   assert.equal(shown.a, 'TAKE THE GUN'); assert.equal(shown.b, undefined, 'one button'); assert.equal(shown.hint, ARENA_HANDOVER.hint);
   assert.equal(ARENA_HANDOVER.hint, GUNSHIP_SEAT_HINT.aim, 'the seat footer\'s own aim text, not a copy'); assert.equal(ARENA_HANDOVER.hintTouch, GUNSHIP_SEAT_HINT.aimTouch);
   assert.match(shown.hint, /move it to aim/); assert.match(shown.hint, /Space or the button fires/); assert.match(shown.hint, /MK-9/);
@@ -330,7 +330,7 @@ function host(o = {}) {
 // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in. Isao : 'I have decoded some of their messages'.
 // 'They have a Nest and a Queen down there'. 'Someone must go there'. 'I am a poet and a builder, not a warrior'"): boss_dead the frame she dies, arena_decoded
 // held for the panel's first free frame after it (the panel keeps one beat pending), once; end('secure') without the death seen says both; a lost run neither
-{ assert.deepEqual(BRIEFS.arena_decoded.lines, ['I have decoded some of their messages.', 'They have a nest and a Queen down there.', 'Someone must go there.', 'I am a poet and a builder, not a warrior.']);
+{ assert.deepEqual(BRIEFS.arena_decoded.lines, ['I have decoded some of their chatter. That one was a male: their King.', 'A King means a Queen. She is down there, in the nest.', 'Someone must go there.', 'I am a poet and a builder, not a warrior.']);
   assert.equal(BRIEFS.arena_decoded.face, 'focused');
   let busy = true, cleared = 0, pilot = false, left = 0; const h = host({ briefing: () => busy, clearBriefs: () => { cleared++; }, pilotMode: () => pilot, storyViews: () => ({ now: () => (pilot ? 'gunship' : 'tank') }), leavePilot: () => { pilot = false; left++; } }), run = createBossRun(h); run.begin(ARENA_SECTOR); h.open = true; h.now = 1; run.tick(0.1);
   const b = { alive: true, hunter: true, tier: 'huge', hp: 180, pos: [0, 0, 1] }; h.enemies.push(b); h.now = 2; run.tick(0.1); await h.choiceCard.take(); await null;

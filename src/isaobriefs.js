@@ -511,20 +511,20 @@ export const BRIEFS = {
   arena_road: { id: 'arena_road', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['Let me clear a path for you.'] },   // the first burn ahead of the hull on the drive out (ARENA.road); the owner's words (2026-10-19, note 7b: "Isao voice : 'let me clear a path for you'")
   arena_drive: { id: 'arena_drive', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['Fine. I\'ll drive. Keep your eyes on the tremor.'] },   // the hull never came out: after ARENA.remindMax reminders he takes it there (2026-10-18)
   arena_open: { id: 'arena_open', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['There it goes. Small ones first.', 'Keep the hull moving and keep shooting. The gunship is on you.'] },
-  arena_force: { id: 'arena_force', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave. That is the nest\'s mother. Too big for the shells, and it must never reach the base.', 'Bait is the only play, and I am the better driver. I take the hull. You take the gun.'] },
+  arena_force: { id: 'arena_force', face: 'surprised', title: 'COMMS · ISAO', once: false, lines: ['That is not a wave. It is larger than all the others. Too big for the shells, and it must never reach the base.', 'Bait is the only play, and I am the better driver. I take the hull. You take the gun.'] },
   arena_lure: { id: 'arena_lure', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['I\'ll take it for a drive. Keep your rounds off the hull.'] },
   boss_hit_me: { id: 'boss_hit_me', face: 'worried', title: 'COMMS · ISAO', once: false, lines: ['It has a hold of the hull!'] },
   boss_dead: { id: 'boss_dead', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['Target down. I need a car wash.'] },
   // THE NEST AND THE QUEEN (owner, 2026-10-19, third round, note 9: "message between end of Nih Dairia and going in. Isao : 'I have decoded some of their messages'.
   // 'They have a Nest and a Queen down there'. 'Someone must go there'. 'I am a poet and a builder, not a warrior'"): after boss_dead, on the panel's first free
   // frame (src/fx/boss-run.js); descent_back's "I finally decoded their language" is the end of the same thread
-  arena_decoded: { id: 'arena_decoded', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['I have decoded some of their messages.', 'They have a nest and a Queen down there.', 'Someone must go there.', 'I am a poet and a builder, not a warrior.'] },
+  arena_decoded: { id: 'arena_decoded', face: 'focused', title: 'COMMS · ISAO', once: false, lines: ['I have decoded some of their chatter. That one was a male: their King.', 'A King means a Queen. She is down there, in the nest.', 'Someone must go there.', 'I am a poet and a builder, not a warrior.'] },
   // THE DESCENT (owner, 2026-10-15; captions until he records them: ~/Dev/seiyu_voice section 17): the brief as the cave opens, the decoding joke on
   // his return, the same as his last transmission on a sacrifice
   // the brief ties the cave to the arena (owner, 2026-10-18: "we identify this far away large sinkhole, the exact same one from the Arena, as the
   // entrance of the Cave"); his own words as the second and third lines: "The Tank is too big, not fit for subterranean", "I will do it! Though I do
   // not know the way", "I will take the bomb to their Queen"
-  descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['That sinkhole out at the arena, the one the mother came out of: it is the way down to the nest.', 'The tank is too big. Not fit for subterranean.', 'I will do it, though I do not know the way. I will take the bomb to their Queen.'] },
+  descent_brief: { id: 'descent_brief', face: 'determined', title: 'COMMS · ISAO', once: false, lines: ['That sinkhole out at the arena, the one the King came out of: it is the way down to the nest.', 'The tank is too big. Not fit for subterranean.', 'I will do it, though I do not know the way. I will take the bomb to their Queen.'] },
   descent_back: { id: 'descent_back', face: 'glee', title: 'COMMS · ISAO', once: false, lines: ['I finally decoded their language. From what the Queen said when I set the charge in her nest: "My nest. You, out."', 'And then words that seem to mean... excrement.'] },
   descent_last: { id: 'descent_last', face: 'focused', title: 'LAST TRANSMISSION · ISAO', once: false, lines: ['I decoded their language. The Queen said: "My nest. You, out." And then words that seem to mean... excrement.', '...'] },
   // DAY 42 (owner, 2026-10-18): comic relief at the first lull on or after day 42, Isao's disco ball on the Stålheart's arm (src/fx/disco-party.js)

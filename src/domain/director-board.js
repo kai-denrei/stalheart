@@ -38,7 +38,7 @@ export function whenText(w = {}) {
   if (w.phase) out.push(`beat '${w.phase}' reached`);
   if (w.sector) out.push(`from sector ${w.sector}`);
   if (w.perk) out.push(`perk '${w.perk}' standing`);
-  if (w.boss) out.push('THE ARENA\'s mother dead');
+  if (w.boss) out.push('THE ARENA\'s King dead');
   if (w.days) out.push(`${w.days} days after the print before`);
   if (w.back === 'held') out.push('once the back mouth is held (THE BACK DOOR)');
   if (w.manned) out.push(`after ${w.manned} manned SOL-82 passes`);
