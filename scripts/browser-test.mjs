@@ -1475,7 +1475,10 @@ try{
   const at=frameOf((await evaluate(`${T}.showcase.drive()`)).pos);console.log(`  the hull drove to ${name}: ${reached?'reached':'stopped'} at (${at[0].toFixed(1)}, ${at[1].toFixed(1)}), ${route.length} cells, ${((Date.now()-a)/1000).toFixed(1)} s`);
   assert(reached,`the hull reaches ${name} (${best+1} of ${route.length} cells)`);
  }
- {const under=path.filter(([x,z])=>Math.abs(z-70.2)<2.2&&x>-45.1&&x<-25.1);console.log(`  under the SW-S bridge: ${under.length} samples`);assert(under.length>0,'the hull passed under the back-row bridge');}
+ // the deck runs along z 70.2 from x -62 to -8, its middle columns at x -45.1 and -25.1: a pair of samples either side of its line, between them
+ {const cross=path.slice(1).map((q,k)=>[path[k],q]).filter(([p,q])=>(p[1]-70.2)*(q[1]-70.2)<=0&&Math.max(p[0],q[0])>-62&&Math.min(p[0],q[0])<-8);
+  console.log(`  under the SW-S bridge: ${cross.length} crossing(s) ${JSON.stringify(cross.map(([p,q])=>[p.map(v=>+v.toFixed(1)),q.map(v=>+v.toFixed(1))]))}; the drive started at (${path[0].map(v=>v.toFixed(1))})`);
+  assert(cross.length>0,'the hull passed under the back-row bridge');}
  // (c) THE CATAPULT: two manned passes, then the ARC-01 prints in the LAUNCH court, its caption, SOL-88 launched and flying on its own
  for(let k=1;k<=2;k++){
   await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);
