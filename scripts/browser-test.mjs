@@ -2939,7 +2939,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   for(const k of ['feids_reentry','mech_reentry_woosh','mech_landing_impact'])assert.ok((s.sounds?.[k]??0)>=(k==='feids_reentry'?2:4),`${k} asked (${s.sounds?.[k]})`);}
  await until(`${T}.state().shot!=='${REINFORCEMENTS.shot.id}'`,8000).catch(async()=>assert.fail(`the camera released after the drop (${(await st()).shot})`));
  {const s=await st(),r=R(s);console.log(`  reinforcements: camera released (shot ${s.shot}); mechs ${JSON.stringify(r.mechs)}; radar friendlies drawn ${s.radar?.mechs}`);
-  assert.equal(s.radar?.mechs,4,'the four on the radar as friendlies (round 3, note 2)');}
+  // the scope draws the companions as friendlies too (2026-10-27); on the grid's finished base the default city's BIOSPHERE dome pays the farm perk, so
+  // K0-TECH is born there and blips beside the four (2026-11-12 night)
+  const born=(s.companions?.units??[]).filter(u=>u.life&&u.life!=='unborn').length;console.log(`  companions born ${born}`);
+  assert.equal(s.radar?.mechs,4+born,'the four on the radar as friendlies (round 3, note 2), beside the companions born');}
  current='reinforce-landed';await finish();
  // THE FOUR AFTER THE DROP (decisions 3 and 4): four mechs in their roles, sixteen sentry records at the top tier; 30 game seconds on, the base mech nearer the
  // heart, the hunter moved, the arena pair still on the plain; who fired
