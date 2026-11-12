@@ -47,7 +47,7 @@ export function makeStoryBeats({
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
   arrival = false,          // the landing plays in the game (src/fx/arrival.js): `landed` waits for its deploy(api)
   foundryCut = null,        // a tutorial chapter's start: the rocket sections the AFR-01 has already cut (src/content/story-defaults.js STORY_CHAPTERS)
-  scout = null,             // THE RECON DOG (2026-11-12): on an arrival from `landed` with no `settle`, { contact: { bodies, spread, stagger, pace, recall }, harvestMax } (src/content/dog-scout.js); null: the opening without the dog
+  scout = null,             // THE RECON DOG (2026-11-12): on an arrival from `landed` with no `settle`, { contact: { bodies, spread, stagger, pace, recall }, harvestMax, lines } (src/content/dog-scout.js; lines: Isao's exposition after the harvest's flare, through api.want); null: the opening without the dog
   settle = null,            // THE SETTLING (owner, 2026-11-08; spec docs/superpowers/specs/2026-11-08-the-settling-design.md): on an arrival from `landed`, seconds from the deploy before the first contact; the Rotor is the player's to order (the first orders), ordered by Isao at the settle's end if nobody did; null: the opening as before
 }) {
   const gated = gate >= 0 && fodder >= 0;
@@ -166,7 +166,7 @@ export function makeStoryBeats({
       // first trip home (or harvestMax s) brings THE FIRST ORDERS; the Quiver's beat waits for the card to close
       else if (phase === 'harvest') {
         const H = api.harvest?.() ?? null;
-        if (H && !flared && H.ready()) { H.flare(); flared = true; api.brief?.('first_harvest'); said.add('first_harvest'); }
+        if (H && !flared && H.ready()) { H.flare(); flared = true; api.brief?.('first_harvest'); said.add('first_harvest'); for (const id of scout.lines ?? []) { api.want?.(id); said.add(id); } }   // the exposition (2026-11-12): no bank, biomass bonds, it seeps
         if (!H || (flared && H.done()) || clock - at >= scout.harvestMax) enter('orders');
       } else if (phase === 'orders' && !ordersDone) { const O = api.orders?.() ?? null; if (!O || O.done()) { ordersDone = true; at = clock; } }
       else if ((phase === 'cleared' || (phase === 'orders' && ordersDone)) && quiver && quiverSocket >= 0 && gated && clock - at >= quiver.delay) {

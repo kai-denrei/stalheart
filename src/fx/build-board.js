@@ -33,6 +33,13 @@ export function createBuildBoard(c) {
     const taken = [...c.towers().map((t) => t.ci), ...c.orders.filter((o) => o.kind === 'tower').map((o) => o.ci)];
     return emptiestLaneSite({ candidates: Object.keys(s.socketToward ?? {}).map(Number).filter((ci) => !c.placeError(ci)), doors, taken, centers: g.centers, cellSide: c.cellSide() });
   }
+  // THE SECOND ROTOR'S CELL (the economy design 2.7, 2026-11-12): the gate's two sockets are the Rotor's and the Quiver's (Isao prints the Quiver there
+  // after the card), so the second Rotor goes on the free wall cell nearest the first Rotor's socket, off both sockets (-1: none free)
+  function secondSite(rotorCell) {
+    const s = c.story(), g = c.graph(); if (!s || !g || rotorCell < 0) return -1;
+    const sockets = new Set(Object.keys(s.socketToward ?? {}).map(Number)), p = g.centers[rotorCell], d = (ci) => Math.hypot(...g.centers[ci].map((v, k) => v - p[k]));
+    return (s.wallCells ?? []).filter((ci) => !sockets.has(ci) && !c.placeError(ci)).sort((a, b) => d(a) - d(b))[0] ?? -1;
+  }
   // the standing sentries Isao could upgrade, weakest first (the lowest level, then the cheapest step)
   const weakest = () => c.towers().filter((t) => !c.orders.some((o) => o.ci === t.ci)).map((t) => ({ t, cost: upgradeCost(t.def, t.tier) })).filter((x) => x.cost !== null).sort((a, b) => a.t.tier - b.t.tier || a.cost - b.cost)
     .slice(0, 2).map(({ t, cost }) => ({ ci: t.ci, name: t.def.name, tier: t.tier, cost }));
@@ -44,7 +51,7 @@ export function createBuildBoard(c) {
     const sentries = c.sentryKeys().map((k) => TOWER_BY_KEY[k]).filter(Boolean).map((d) => ({ key: d.key, name: d.name, cost: d.cost }));
     return { w: { steps: pg.steps, done: pg.done, bought: pg.bought ?? new Set(), ctx: { phase: s.beats?.phase?.() ?? null, sector: n, back: s.backOpen ? 'held' : null, manned: c.manned(), standing: s.stands },   // standing: `when.stand` (2026-11-07)
       bank: bank(), sentryRoom: site() >= 0, sentries, upgrades: weakest(), hull: c.hull(), shield: c.shield(), pets: pets(),
-      rotor: TOWER_BY_KEY.rotor ? { key: 'rotor', name: TOWER_BY_KEY.rotor.name, cost: TOWER_BY_KEY.rotor.cost } : null, rotorCell, rotorBuilt: c.towers().some((t) => t.ci === rotorCell), rotorPending: c.orders.some((o) => o.ci === rotorCell) } };
+      rotor: TOWER_BY_KEY.rotor ? { key: 'rotor', name: TOWER_BY_KEY.rotor.name, cost: TOWER_BY_KEY.rotor.cost } : null, rotorCell, rotorBuilt: c.towers().some((t) => t.ci === rotorCell), rotorPending: c.orders.some((o) => o.ci === rotorCell), secondCell: n === 'first' ? secondSite(rotorCell) : -1 } };
   }
   const div = (cls, text, tag = 'div') => { const el = document.createElement(tag); el.className = cls; if (text != null) el.textContent = text; return el; };
   function render() {

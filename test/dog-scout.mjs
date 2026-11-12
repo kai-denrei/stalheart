@@ -18,7 +18,7 @@ const T = { ...DOG_SCOUT, top: K9.top };
 
 // the tune: the spec's numbers (section 3)
 assert.equal(DOG_SCOUT.points.count, 3); assert.deepEqual(DOG_SCOUT.points.cells, [8, 12]); assert.equal(DOG_SCOUT.points.spread, 60);
-assert.equal(DOG_SCOUT.survey.seconds, 2); assert.equal(DOG_SCOUT.survey.pay, 30); assert.equal(DOG_SCOUT.survey.ringM, 6);
+assert.equal(DOG_SCOUT.survey.seconds, 2); assert.equal(DOG_SCOUT.survey.pay, 150); assert.equal(DOG_SCOUT.survey.ringM, 6);
 assert.deepEqual(DOG_SCOUT.contact.bodies.map((b) => [b.type, b.count]), [['amoeba', 8], ['ghost', 4]], 'twelve: eight whites, four yellows');
 assert.equal(DOG_SCOUT.contact.hops, 6); assert.equal(DOG_SCOUT.knock.seconds, 1.5); assert.equal(DOG_SCOUT.knock.pushM, 4); assert.equal(DOG_SCOUT.home.cells, 3);
 assert.equal(K9.top, 5.5, 'the sprint is the K9\'s own top');

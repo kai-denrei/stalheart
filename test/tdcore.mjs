@@ -47,7 +47,7 @@ useRoster(2);
 console.log('towers:');
 check('8 towers', TOWERS.length === 8);
 check('keys unique + lookup', new Set(TOWERS.map((t) => t.key)).size === 8
-  && TOWER_BY_KEY.lancer.cost === 130);
+  && TOWER_BY_KEY.lancer.cost === 1300);   // x10 (the economy design, 2026-11-12)
 check('Heptapod is the capstone cost', Math.max(...TOWERS.map((t) => t.cost)) === TOWER_BY_KEY.heptapod.cost);
 // TEMPO MOVED, the assertion did not. projSpeed lives in sentryfx.js now —
 // towers.js keeps what a weapon does, sentryfx.js how it looks — so this reads
@@ -58,9 +58,9 @@ check('every projectile tower has its own tempo',
     .every((t) => shotOf(t).projSpeed > 0)
   && shotOf(TOWER_BY_KEY.lancer).projSpeed > shotOf(TOWER_BY_KEY.rotor).projSpeed
   && shotOf(TOWER_BY_KEY.mortar).projSpeed < shotOf(TOWER_BY_KEY.quiver).projSpeed);
-check('upgrade costs HK-exact (70%/120%, then maxed)',
-  upgradeCost(TOWER_BY_KEY.rotor, 0) === 31
-  && upgradeCost(TOWER_BY_KEY.rotor, 1) === 54
+check('upgrade costs 80%/150%, then maxed (the economy design 2.5, 2026-11-12)',
+  upgradeCost(TOWER_BY_KEY.rotor, 0) === 360
+  && upgradeCost(TOWER_BY_KEY.rotor, 1) === 675
   && upgradeCost(TOWER_BY_KEY.rotor, MAX_TIER) === null);
 {
   const t0 = effectiveStats(TOWER_BY_KEY.rotor, 0);
@@ -151,7 +151,7 @@ console.log('economy:');
   const eco2 = makeEconomy({ startBiomass: 50 });
   check('spend guards affordability',
     eco2.spend(60) === false && eco2.spend(50) === true && eco2.biomass === 0);
-  check('sell refund = 75% of spent', sellRefund(100) === 75);
+  check('sell refund = 60% of spent (the economy design 2.5)', sellRefund(100) === 60);
   check('wave-clear bonus grows', waveClearBonus(5) === 40 && waveClearBonus(1) === 24);
   check('early-call bonus caps', earlyCallBonus(120) === 40 && earlyCallBonus(12) === 12);
 }

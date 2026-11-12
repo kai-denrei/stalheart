@@ -7,7 +7,8 @@
 //         dearest the bank can buy (tune.sentryKinds), when the book has room; (iii) an upgrade of the weakest standing sentry; (iv) the hull:
 //         its dents mended, a spare hull, the shield rack full; (v) a companion with an `offer`, from its sector; then, still short of six, the
 //         other sentry kinds and the next weakest sentry's upgrade (w.upgrades, weakest first). A short pool shows what it has.
-//   firstOffers(w, tune) -> the first orders' pool (2026-11-08): the Rotor on w.rotorCell at the radial's price unless it stands or is on the book, then the steps marked `first` not standing and not bought at tune.first.structures' prices
+//   firstOffers(w, tune) -> the first orders' pool (2026-11-08): the Rotor on w.rotorCell at the radial's price unless it stands or is on the book (then, 2026-11-12,
+//     the SECOND ROTOR on w.secondCell when there is one), then the steps marked `first` not standing and not bought at tune.first.structures' prices
 //   pickable(offers, picked, id, bank) -> can `id` join the picks: affordable after the others picked are paid, and picks below tune.picks
 //   toggle(offers, picked, id, bank, max) -> the new picks (a refused pick leaves them as they were)
 //   jumpBought(steps, sector) -> the board steps a jump to `sector` stands in for having bought (the history a skipped run implies)
@@ -51,6 +52,9 @@ export function boardOffers(w, tune) {
 export function firstOffers(w, tune) {
   const out = [];
   if (w.rotor && (w.rotorCell ?? -1) >= 0 && !w.rotorBuilt && !w.rotorPending) out.push({ id: `sentry:${w.rotor.key}`, kind: 'sentry', key: w.rotor.key, site: w.rotorCell, label: String(w.rotor.name).toUpperCase(), price: w.rotor.cost, effect: tune.first.words.rotor });
+  // THE SECOND ROTOR (the economy design 2.7, 2026-11-12): the dog's opening has Isao's Rotor standing at the card, so the card offers a second one on
+  // the wall (w.secondCell: the free wall cell nearest the Rotor's socket, src/fx/build-board.js) at the radial's price
+  else if (w.rotor && (w.rotorBuilt || w.rotorPending) && (w.secondCell ?? -1) >= 0 && tune.first.words.second) out.push({ id: `sentry:${w.rotor.key}`, kind: 'sentry', key: w.rotor.key, site: w.secondCell, label: tune.first.words.second, price: w.rotor.cost, effect: tune.first.words.secondEffect ?? '' });
   for (const s of (w.steps ?? []).filter((s) => s.first && !w.done.has(s.id) && !w.bought.has(s.id) && tune.first.structures[s.id])) out.push({ id: `build:${s.id}`, kind: 'structure', step: s.id, label: String(s.label).toUpperCase(), price: tune.first.structures[s.id].price, effect: tune.first.structures[s.id].effect });
   return out.slice(0, tune.offers);
 }

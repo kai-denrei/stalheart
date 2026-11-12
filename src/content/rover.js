@@ -26,11 +26,16 @@
 //                      and `tall` high, `up` metres over the ground, the slurry's colour on a dark track, amber from `warn` of the hold, shown
 //                      whenever it is away from its pad or carries anything
 //   ROVER.price        the catalog's price of a second rover: no board card this round ("buildable, but not used for now")
-//   FIELD.decaySeconds a pile untouched this long rots (a sector's kills must be flagged within four minutes); maxPiles the instanced mesh's cap
+//   FIELD.seep         SEEPAGE (owner, 2026-11-12; the economy design 2.6): a pile loses max(floor, kg x share) kg a second (src/domain/biomass-field.js);
+//                      it replaced the 240 s rot. maxPiles the instanced mesh's cap
+//   ROVER.breakShare   the share of the flagged piles the sector's end banks (the economy design 2.6: half; the rest stays on the ground)
 //   PEARLS             the three vessels standing with the depot, each `capacity` kg; the fourth is the build board's card (src/content/build-board.js)
 export const ROVER = Object.freeze({
-  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600,
+  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600, breakShare: 0.5,
   retreat: Object.freeze({ bodies: 6, cells: 4, clear: 2 }),
+  // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the whites and yellows hunt it (src/domain/soft-hunt.js huntGoal) and each
+  // jab's peak eats `bite` kg of its hold (lost; it has no hit points); the callout at most every `every` s, Isao's rover_bitten the first time
+  threat: Object.freeze({ bite: 100, every: 15 }),
   gauge: Object.freeze({ metres: 7, tall: 0.9, up: 7.5, colour: '#9fc24a', warn: 0.9, warnColour: '#ffb43c', track: 'rgba(8,12,10,0.72)', edge: '#cfe6a0' }),
   model: 'assets/models/yushi-rover/yushirover_d0_lod1.glb', far: 'assets/models/yushi-rover/yushirover_d0_lod2.glb',
   // where it stands on the depot island (metres off the island's centre, the island's frame): its pad on the west half, facing the mouth (-Z);
@@ -40,7 +45,7 @@ export const ROVER = Object.freeze({
   // the scene: the hose drawn while it unloads (the author's viewer supplies a flexible hose; ours is one olive tube), the slurry's colour
   hose: Object.freeze({ colour: 0x71863c, radius: 0.12 }),
 });
-export const FIELD = Object.freeze({ decaySeconds: 240, maxPiles: 400 });
+export const FIELD = Object.freeze({ seep: Object.freeze({ floor: 0.5, share: 1 / 400 }), maxPiles: 400 });
 export const PEARLS = Object.freeze({ count: 3, capacity: 12000, ids: Object.freeze(['pearl-a', 'pearl-b', 'pearl-c', 'pearl-d']) });
 // THE PILES (src/fx/biomass-piles.js): an olive blob (the author's slurry colour, yushi045 runtime.js yushiOlive) on the ground where the body fell,
 // its radius `metres` x the cube root of its kg (a 100 kg pile 1.5 m across, 2,000 kg 4 m), at most `maxMetres`, squashed to `flat` of its width
@@ -57,4 +62,5 @@ export const FLARE = Object.freeze({
 export const ROVER_WORDS = Object.freeze({
   rover: 'ROVER', field: 'FIELD', full: 'STORAGE FULL', flare: 'FLARE', dispatched: 'ROVER DISPATCHED', queued: 'ROVER · NEXT FLARE QUEUED',
   noDepot: 'NO ROVER YET', flares: 'FLARES', noFlares: 'NO FLARES · RESTOCK AT BASE', restocked: 'FLARES RESTOCKED', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
+  attacked: 'ROVER UNDER ATTACK', bitten: 'rover_bitten',
 });

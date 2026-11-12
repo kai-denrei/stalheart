@@ -8,7 +8,7 @@ export const FOUNDRY_TUNE = Object.freeze({
   // its length are read in clip seconds, so at 1.6 the first barrel lands 9.4 s into the cycle instead of 15
   rate: 1.6,
   cycleSeconds: 24,          // s between the starts of later cycles (owner, 2026-09-14)
-  feedstockPerBarrel: 60,    // biomass a barrel is worth: the Rotor's cost and change
+  feedstockPerBarrel: 600,   // biomass a barrel is worth (x10 on 2026-11-12, the economy design 2.1: 60 -> 600, a Rotor and change)
   // the sections the arm consumes, in order; the landing unit stays as the pad
   sections: Object.freeze(['SH02_SALVAGE_SECTION_01_TANK', 'SH02_SALVAGE_SECTION_02_CAPSULE', 'SH02_SALVAGE_SECTION_03_ISAO_MODULE']),
   targets: Object.freeze(['SOCKET_SALVAGE_TARGET_01', 'SOCKET_SALVAGE_TARGET_02', 'SOCKET_SALVAGE_TARGET_03']),

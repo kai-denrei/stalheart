@@ -275,7 +275,7 @@ export const STORY_HANDOVER = Object.freeze({ from: 'settled', defendStage: 8 })
 // ALL starts the regular ramp on the finished base; ?skip=defence&sector=N opens further on, at the door from SECTOR_DOOR.earliest), `parts` the
 // two expeditions taken as though they came home — the Relay and the Mortar — and `biomass` enough for a few towers
 // before the first wave lands. `brief` is Isao's two lines on arrival (src/isaobriefs.js).
-export const STORY_SKIP = Object.freeze({ stage: 8, phase: 'expedition', sector: 1, biomass: 450, brief: 'skip_defence', parts: Object.freeze(['rocket-a', 'rocket-b']) });
+export const STORY_SKIP = Object.freeze({ stage: 8, phase: 'expedition', sector: 1, biomass: 2000, brief: 'skip_defence', parts: Object.freeze(['rocket-a', 'rocket-b']) });
 
 // THE TUTORIAL IN CHAPTERS (owner, 2026-09-25: "Skip tutorial should have 2 options. 1) Showing 1/x in tutorial, where we are, skip
 // to next phase. 2) skip entire tutorial. it will make it easier to troubleshoot the tutorial and more user-friendly"). The opening

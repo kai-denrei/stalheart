@@ -29,7 +29,7 @@ export const DOG_SCOUT = freeze({
     { id: 'crystals', label: 'CRYSTALS', colour: 0x9fdcff },
     { id: 'biomass', label: 'BIOMASS', colour: 0x9fc24a },
   ] },
-  survey: { seconds: 2, pay: 30, ringM: 6 },
+  survey: { seconds: 2, pay: 150, ringM: 6 },
   contact: { bodies: [{ type: 'amoeba', count: 8 }, { type: 'ghost', count: 4 }], hops: 6, spread: 0.8, stagger: 0.25, pace: 1, recall: 60 },
   knock: { touchM: 1.6, seconds: 1.5, pushM: 4, graceS: 1, clip: 'Roll_Over' },
   home: { cells: 3 },
@@ -43,5 +43,9 @@ export const DOG_SCOUT = freeze({
     home: 'BRING THE DOG HOME',
     homeMark: 'HOME',
     lines: ['dog_survey_first', 'dog_survey_second'],   // Isao on the first two surveys (src/isaobriefs.js)
+    // THE EXPOSITION (owner, 2026-11-12: "we establish with exposition that Isao and Stalheart require local resources to build, and that Biomass actually
+    // works GREAT ... and that biomass bonds together well, otherwise it seeps into the ground and some is lost"; the economy design 2.7): after the first
+    // harvest's flare, each waiting for the panel (src/domain/story-beats.js `harvest`)
+    exposition: ['no_bank', 'biomass_bonds', 'biomass_seeps'],
   },
 });

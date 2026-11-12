@@ -66,6 +66,24 @@ Evidence:
 - node test/manual-landing.mjs, test/arrival.mjs, test/landing-hud.mjs: the CRASH rule and its strict lines, the fuel cut and the dry fall, the arrival's crash state, FLY IT AGAIN, no salvage, no talk.
 - scripts/browser-test.mjs --landing: results in docs/STATE.md under THE LANDING (2026-11-12 paragraph).
 
+## 2026-11-12 — The economy at 10x built: no start bank, the first wave's bodies as the first harvest, seepage, half the flagged ground at the break, the rover hunted and escorted, the sentry cap 6+2+2
+
+change · accepted · 2026-11-12-the-economy-at-10x-built-no-start-bank-seepage-the-rover-hunted-the-cap
+
+The owner, 2026-11-12: "remove the start bank for now ... biomass bonds together well, otherwise it seeps into the ground and some is lost"; "leaning towards the tank doing sorties and protection missions of the yushi-rover collecting biomass"; and on the design agent's calls: "sounds good about the economy. let's raise prices 10x not 20x, we will tune the difficulty later, first we want the flow of stages." Spec docs/superpowers/specs/2026-11-12-economy-and-escort-design.md (sections 2-4). Branch economy-10x from 4ddc7b26.
+
+Built in the spec's stages, one commit each (8dd12400 A, e81fdc8f B, 72bf6374 C, fb301ad9 D; fixes 7a4c23f9 whole kilos off a seeping pile, 7f978744 and its follow-up: bodies hunting the hull do not count toward the rover's retreat). A: STORY_START_BIOMASS 0 on every story page (the TD tab and the simulator keep 170); sentries 450-2,600; upgrades 0.8x/1.5x; refund 60 %; salvage 600/480 a barrel; the foundry's barrel and pay-back 600; held pay x10; the farm 400; STORY_SKIP 2,000; survey 150; the first orders 600/400/1,200 and a SECOND ROTOR 450 on the free wall cell nearest the Rotor's socket; the board's index [1, 2, 4, 4.5, 5]; Isao's no_bank, biomass_bonds, biomass_seeps after first_harvest. B: the field from the story's first frame (kills on the ground from the first kill), seepage max(0.5, kg/400) kg/s for the 240 s rot, the first harvest on the richest ground (seeded 150 kg only on a bare field), settleBreak banking half each flagged pile. C: huntGoal hull/rover/gate (the hull's bias over both), rings and jabs round the rover beyond the walls, each jab's peak 100 kg off its hold, ROVER UNDER ATTACK every 15 s at most, rover_bitten. D: sentryCap 6, +2 fabrication (dome-e / assembly), +2 logistics (dome-ne, dome-se / armory), max 10. Measured: the opening's bank 0 -> 1,800 (salvage) -> 2,250 (surveys) -> 2,573 at the first orders (the first harvest poured 323 kg of 432 laid) -> 1,723 after the second Rotor and the foundry's work; --ledger S1-S3 banked 4,594 / 17,000 / 29,712 at the debriefs from 1,794 / 13,756 / 22,112 brought home of 11,296 / 25,206 / 69,756 laid (43 % seeped, 61 % in sector 3), the cheapest sentry affordable 100 % of the fighting: on the ideal defender the prices do not bind (the tuning the owner deferred).
+
+Alternatives: The second Rotor on the gate's other socket (the design's words): that socket is the Quiver's, which Isao prints after the card; taken: the nearest free wall cell.; The break's other half lost: taken, it stays on the ground and keeps seeping.; Asserting the design's 4,500 kg line for a bitten trip: printed instead; the rover rakes until full or bare, so on rich ground bites cost time and ground, not the load.; BASE_PERKS.sentryCap: the numbers live in STORY_SENTRIES beside the old cap.; The retreat counting every body near the rover (the design's words): the escort's own hunters then sent the rover home with 53 kg; taken, bodies hunting the hull are left out.
+
+Evidence:
+
+- --dog-scout PASS 7 (DOG BUDGET [landing 0, salvage 1800, surveys 2250, wave cleared 2250 / 432 laid, field at the flare 354, poured 323, card 2573, after the card 1723]).
+- --ledger TO=3 BOARD=pick (artifacts/browser/ledger.json on the snapshot): the rows quoted in the outcome; boards before S2 at 4,594 and S3 at 17,000.
+- --landing PASS 14, --chapters PASS 8, --skip-tutorial PASS 11, --board PASS 2, --story-world PASS 31, --grow PASS 16 (the D snapshot).
+- --rover PASS 5 on HEAD's source: unescorted 800 kg bitten, home with 5,113 kg of 6,500 laid (600-1,500 kg bitten and 4,438-5,342 home over five runs); escorted 0 bitten, home with 5,950.
+- npm test and npm run check green at every commit.
+
 ## 2026-11-12 — The design agent's calls: the economy made to bind, the rover escorted by the tank, the colony re-laid round a plaza for the mobile Stålheart
 
 decision · proposed · 2026-11-12-the-design-agent-s-calls-economy-escort-colony

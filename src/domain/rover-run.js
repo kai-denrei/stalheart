@@ -21,7 +21,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createRoverRun(tune, home, heading = 0) {
   return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null, fled: null,
-    skip: new Set(), trips: 0, delivered: 0, harvested: 0, note: '', events: [], rake: 0, pour: 0 };
+    skip: new Set(), trips: 0, delivered: 0, harvested: 0, bitten: 0, note: '', events: [], rake: 0, pour: 0 };
 }
 
 const note = (run, now, ev, extra = {}) => { run.events.push({ t: +now.toFixed(2), ev, mode: run.mode, cargo: Math.round(run.cargo), ...extra }); if (run.events.length > 64) run.events.shift(); };
@@ -141,6 +141,8 @@ export function stepRover(run, dt, now, host) {
 // ground and keep rotting: the owner's "it is not automatic anymore" stands, the field must have been flagged. Cargo that does not fit stays aboard
 // (the rover waits home, STORAGE FULL); a pile that does not fit stays on the ground. The rover starts the next sector at home, its orders gone
 // (the caller clears the flares). host: { flares: [{ id, cell }], near(cell, reach), take(cell, kg), deposit(kg) -> fitted, room() -> kg that still fit }
+// HALF THE FLAGGED GROUND (the economy design 2.6, 2026-11-12: "banking it all for free made the trip, and the escort, pointless at every sector's
+// end"): a flagged pile banks tune.breakShare of its kg (1 when unset, the rule of round 8); the rest stays on the ground, still seeping
 // -> { cargo, field, kept }: kg banked from the hold, from the flagged piles, and left aboard
 export function settleBreak(run, now, host) {
   const T = run.tune, out = { cargo: 0, field: 0, kept: 0 };
@@ -148,7 +150,7 @@ export function settleBreak(run, now, host) {
   const seen = new Set();
   for (const f of host.flares ?? []) for (const p of host.near(f.cell, T.reach)) {
     if (seen.has(p.cell)) continue; seen.add(p.cell);
-    const ask = Math.floor(Math.min(p.kg, host.room())); if (ask < 1) continue;
+    const ask = Math.floor(Math.min(p.kg * (T.breakShare ?? 1), host.room())); if (ask < 1) continue;
     const n = host.take(p.cell, ask), got = Math.max(0, host.deposit(n));
     run.harvested += n; run.delivered += got; out.field += got;
   }
@@ -160,6 +162,16 @@ export function settleBreak(run, now, host) {
   return out;
 }
 
+// THE ROVER BITTEN (the economy design 2.6, 2026-11-12: "each jab's peak eats 100 kg from its hold (lost) ... No hit points; it cannot be destroyed"):
+// up to `kg` off the cargo, returned; run.bitten counts what was lost
+export function bite(run, kg, now = 0) {
+  const n = Math.max(0, Math.min(run.cargo, kg));
+  if (!(n > 0)) return 0;
+  run.cargo -= n; run.bitten = (run.bitten ?? 0) + n; note(run, now, 'bitten', { kg: Math.round(n) });
+  return n;
+}
+// the lattice cell it stands on, on its road or at a pile (the hunters' goal cell)
+export const roverCell = (run) => here(run);
 // what the readouts say: the mode's word and the kg aboard (the hull console's ROVER line)
 export function roverWord(run) {
   if (run.mode === 'full') return 'STORAGE FULL';

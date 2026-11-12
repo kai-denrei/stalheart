@@ -21,7 +21,8 @@ export const STREAK_STEP = 0.05;
 // capped at 5, or 7.5x bounty on a chain. Cap 5 -> 3 and premium 1.5 -> 1.25
 // bring that ceiling to 3.75x. Measured again after the change; see DEVLOG.
 export const STREAK_CAP = 3;
-export const REFUND_FRACTION = 0.75;
+// 60 % since the economy design of 2026-11-12 (2.5; was 75 %): selling is a way out, not a free swap
+export const REFUND_FRACTION = 0.6;
 
 // operator ruling: ramming pays a premium — personal risk towers never take
 export const RAM_PREMIUM = 1.25;

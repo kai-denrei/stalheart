@@ -69,7 +69,7 @@ function storyApiOf(c) {
 // THE RECYCLER'S WORK PAYS (2026-11-08, THE SETTLING): the foundry step standing grants its `pays`, and no other step grants anything
 {
   const { api, log } = controller({ at: 'stalheart' });
-  api.printed(step('foundry')); assert.deepEqual(log.filter((l) => l[0] === 'grant'), [['grant', 60]], 'one more barrel\'s worth');
+  api.printed(step('foundry')); assert.deepEqual(log.filter((l) => l[0] === 'grant'), [['grant', 600]], 'one more barrel\'s worth');
   log.length = 0; api.printed(step('landing')); assert.deepEqual(log.filter((l) => l[0] === 'grant'), [], 'the pad pays nothing');
   { const r = controller({ at: 'stalheart' }); r.api.printed(step('foundry'), { replay: true }); assert.deepEqual(r.log.filter((l) => l[0] === 'grant'), [], 'a chapter\'s replayed print grants nothing (its start pays the salvage itself)'); }
 }

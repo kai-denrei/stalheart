@@ -34,13 +34,13 @@ function beatsWith(salvage) {
   const grants = [];
   const b = makeStoryBeats({ foundry: FOUNDRY_TUNE, arrival: true, settle: 120 });
   const api = { grant: (n) => grants.push(n), foundry() {}, brief() {}, order: () => true, cost: () => STOCK, built: () => false, pending: () => false };
-  b.salvage({ sections: 3, feedstockPerBarrel: 60, bonus: 1 }); b.deploy(api);
-  assert.deepEqual(grants, [240], 'CLEAN: three sections and the bonus barrel, granted at once');
+  b.salvage({ sections: 3, feedstockPerBarrel: 600, bonus: 1 }); b.deploy(api);
+  assert.deepEqual(grants, [2400], 'CLEAN: three sections and the bonus barrel, granted at once (x10, 2026-11-12)');
   for (let i = 0; i < 900; i++) b.tick(0.1, api);
-  assert.deepEqual(grants, [240], 'the barrels the AFR-01 cuts grant nothing more');
-  const w = makeStoryBeats({ foundry: FOUNDRY_TUNE, arrival: true, settle: 120 }); const wg = []; w.salvage({ sections: 2, feedstockPerBarrel: 48, bonus: 0 }); w.deploy({ ...api, grant: (n) => wg.push(n) });
-  assert.deepEqual(wg, [96], 'a WRECK: two sections of 48');
+  assert.deepEqual(grants, [2400], 'the barrels the AFR-01 cuts grant nothing more');
+  const w = makeStoryBeats({ foundry: FOUNDRY_TUNE, arrival: true, settle: 120 }); const wg = []; w.salvage({ sections: 2, feedstockPerBarrel: 480, bonus: 0 }); w.deploy({ ...api, grant: (n) => wg.push(n) });
+  assert.deepEqual(wg, [960], 'a WRECK: two sections of 480');
   const a = makeStoryBeats({ foundry: FOUNDRY_TUNE, arrival: true, settle: 120 }); const ag = []; a.deploy({ ...api, grant: (n) => ag.push(n) });
-  assert.deepEqual(ag, [180], 'an automatic landing: the tune\'s three barrels');
+  assert.deepEqual(ag, [1800], 'an automatic landing: the tune\'s three barrels');
 }
 console.log('story-beats-salvage: ok');

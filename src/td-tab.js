@@ -36,7 +36,7 @@ import { createMissilePool, launchDart, advanceDart } from './missiles.js';
 import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
 import { CONTENT } from './content/runtime.js';
 import { preloadSentryTerraformer, makeSentryTerraformer } from './terraformer.js';
-import { GAME_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable } from './campaign.js';
+import { GAME_START_BIOMASS, STORY_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable } from './campaign.js';
 import { record } from './diagnostics.js';
 import { storage as localStorage } from './storage.js';
 // td-tab.js — the game controller: one closure (initTdTab) that owns the world, the frame loop and the wiring between them. The
@@ -97,7 +97,7 @@ import { wallCushion as cushionWalls, breachBlocked as craterBlocked, CRATER_PAD
 import {TOWERS, TOWER_BY_KEY, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER} from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js'; import { createBuildBoard } from './fx/build-board.js'; import { createFirstOrders } from './fx/first-orders.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull, sentryCap } from './domain/sentry-cap.js'; import { createCalloutSides } from './domain/callout-side.js'; 
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js'; import { createAmmoOrbs } from './fx/ammo-orbs.js';
 import {makeTankFeel, landTankFeel, applyTankHealth} from './tankfeel.js';
@@ -2350,8 +2350,8 @@ export function initTdTab(root) {
     campaignReset();
     if (assistant) { scene.remove(assistant.obj); disposeObj(assistant.obj); assistant = null; }
     for (const o of orders) o.worker = null;
-    // opening biomass: exactly a Rapid (70kg) + a Slow (100kg) — your first plan
-    eco = makeEconomy({ startBiomass: GAME_START_BIOMASS });
+    // opening biomass: the campaign's 170 kg; the story's none (2026-11-12, src/domain/campaign.js STORY_START_BIOMASS)
+    eco = makeEconomy({ startBiomass: storyMode ? STORY_START_BIOMASS : GAME_START_BIOMASS });
     score.reset();
     // THE OPENING GARRISON (sim batch: the heart pays half its total in waves 1-3, before any kit exists). Not pre-built behind the heart
     // (operator, 2026-09-02: nothing the player has is built by nobody): Isao flies out and prints these like any order, still free (the
@@ -2613,6 +2613,7 @@ export function initTdTab(root) {
     rubble: (o) => emergeBlobs.rubble(o),   // the boss breaks the surface: the drop's rock chunks from the lip, no blob (2026-10-23)
     hullKmh: () => hullConsole.kmh(),   // a Reed is rammable by a hull fast enough (2026-10-16)
     payKill: (b, o, ci) => roverGlue.payKill(b, o, ci),   // a ram's pay on the ground for the rover (round 8 note 7)
+    rover: () => roverGlue.prey(), bite: (e) => roverGlue.bite(e),   // the rover hunted beyond the walls, each jab off its hold (2026-11-12)
     disposeObj,
     gameBreaches,
     spawnQueue,
@@ -3237,7 +3238,7 @@ export function initTdTab(root) {
       return story ? STORY_SENTRIES.rock : 'towers need HIGH GROUND';
     }
     if (towerByCell.has(ci)) return 'occupied';
-    if (story && sentryBookFull({ towers: towers.length, orders, ci, cap: STORY_SENTRIES.cap })) return STORY_SENTRIES.full;
+    if (story) { const cap = sentryCap(story.programme?.done, STORY_SENTRIES); if (sentryBookFull({ towers: towers.length, orders, ci, cap })) return STORY_SENTRIES.fullAt(cap); }   // 6, +2 +2 with the colony (2026-11-12)
     if (story && STORY_SENTRIES.buildCells != null && chord(graph.centers[ci], graph.centers[dungeon.heart]) > STORY_SENTRIES.buildCells * cellSide) return STORY_SENTRIES.far;
     if (!graph.adj[ci].some((nb) => dungeon.tags[nb] !== BLOCKED)) {
       return story ? STORY_SENTRIES.deep : 'beyond the frontier';
@@ -4512,7 +4513,7 @@ export function initTdTab(root) {
     enemies: () => enemies.filter((e) => e.alive && !e.guard).length + spawnQueue.filter((q) => !q.guard).length,   // the site guards are not the beats' business
     creatures: (q, side, wave) => creatureEnemies.replace(q, side, wave),   // a sector wave's share of ?creatures, the Pearl set's build-up (src/fx/creature-enemies.js)
     spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard || o?.here ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
-    brief: (id) => showBrief(id),
+    brief: (id) => showBrief(id), want: (id) => briefs.want(id),   /* want: a line that waits for a busy panel (the first harvest's exposition, 2026-11-12) */
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
     // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
     breach: (ci, o) => { const obj = buildPortalObj(ci, o?.radius ?? 1); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; obj.userData.keep = !!o?.keep; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
@@ -4671,7 +4672,7 @@ export function initTdTab(root) {
     hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
     shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base), spriteShot, towerLook: () => params.towerLook });
   const firstOrders = createFirstOrders({ board: buildBoard, story: () => story, touring: () => storyApi.touring(), pause: (v) => { paused = !!v; }, brief: (id) => briefs.want(id), acceptance: flags.acceptance === '1', wanted: storyQuery.first });   // THE FIRST ORDERS (2026-11-08, THE SETTLING; src/fx/first-orders.js); want: the scouting line waits for a busy panel (--settling saw showBrief's one-deep slot drop it behind the Stålheart's lines)
-  const firstHarvest = createFirstHarvest({ rover: () => roverGlue.test.state(), lay: (ci, kg) => roverGlue.lay(ci, kg), flareAt: (ci) => roverGlue.test.flareAt(ci), story: () => story, graph: () => graph, dungeon: () => dungeon });   // THE FIRST HARVEST on the dog's opening (2026-11-12; src/fx/first-harvest.js)
+  const firstHarvest = createFirstHarvest({ rover: () => roverGlue.test.state(), lay: (ci, kg) => roverGlue.lay(ci, kg), flareAt: (ci) => roverGlue.test.flareAt(ci), richest: () => roverGlue.test.richest(), story: () => story, graph: () => graph, dungeon: () => dungeon });   // THE FIRST HARVEST on the dog's opening (2026-11-12; src/fx/first-harvest.js)
   // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
   const endingHost = createEndingHost({
     storyBase: () => storyBase,
