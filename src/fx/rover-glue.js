@@ -79,7 +79,7 @@ export function createRoverGlue(h) {
     threat: (cell) => {
       const p = cell == null ? S.rover?.point() : centers()[cell], list = h.enemies?.(); if (!p || !list) return 0;
       const r = ROVER.retreat.cells * h.cellSide(); let n = 0;
-      for (const e of list) if (e.alive && e.pos && chord(e.pos, p) <= r) n++;
+      for (const e of list) if (e.alive && !e.guard && e.pos && chord(e.pos, p) <= r) n++;   // not a lander's nest guards: they stand where they are
       return n;
     },
   };
@@ -181,7 +181,7 @@ export function createRoverGlue(h) {
         return { live: live(), built: true, mode: r.mode, word: roverWord(r), cargo: +r.cargo.toFixed(1), cell: r.cell, home: r.home, trips: r.trips, delivered: Math.round(r.delivered), harvested: Math.round(r.harvested),
           order: r.order?.id ?? null, queued: r.queued?.id ?? null, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
           field: Math.round(S.field.total()), piles: S.field.size(), rotted: Math.round(S.field.rotted()), drawn: S.piles.count(), pearls: S.pearls.list().map((v) => Math.round(v.stored)), cap: S.pearls.capacity(), bank: h.eco().biomass,
-          flares: S.flares.live(), stock: S.stock, threat: host.threat(null), lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
+          flares: S.flares.live(), stock: S.stock, threat: host.threat(null), fled: r.fled, lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
       },
       // a flare at a lattice cell, as F drops one under the hull (the suite's and the ledger's flagging hand)
       flareAt: (cell) => { if (!S?.built) return null; const f = S.flares.drop(centers()[cell], cell, h.t()); dispatch(S.run, { id: f.id, cell }); return f; },

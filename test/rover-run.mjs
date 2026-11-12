@@ -82,6 +82,9 @@ console.log('Rover run: a full trip, the hold full and back, the queue, STORAGE 
   bodies = 2; w.step(0.1); assert.equal(w.run.mode, 'out', 'clear: back out for the rest'); assert.equal(roverWord(w.run), 'OUT');
   // on the road out, half way: it turns round from where it is, not from the road's first cell
   w.step(Math.PI + 10); bodies = 9; w.step(0.05); assert.equal(w.run.mode, 'home'); assert.ok(w.run.cell >= 8 && w.run.cell <= 12, `turned round mid-road at cell ${w.run.cell}`);
+  // home from a road retreat: the flare's ground may be clear, the ground it turned round on must be too (no yo-yo)
+  { const fled = w.run.fled; assert.ok(fled >= 8 && fled <= 12); w.host.threat = (c) => (c === fled || c == null ? 9 : 0); w.step(Math.PI + 12); assert.equal(w.run.mode, 'idle'); assert.equal(roverWord(w.run), 'HOLDING · ENEMIES', 'the road is still held');
+    w.host.threat = () => 0; w.step(0.1); assert.equal(w.run.mode, 'out', 'the road clear: out again'); assert.equal(w.run.fled, null); }
   // a queued order is held too, and goes once clear
   const q = world(); let n = 9; q.host.threat = () => n; q.run.tune = { ...q.run.tune, retreat: { bodies: 6, cells: 4, clear: 2 } };
   q.field.drop(5, 100, 0); q.live.add('f2'); dispatch(q.run, { id: 'f2', cell: 5 }); q.step(1); assert.equal(q.run.mode, 'idle'); assert.equal(q.run.queued?.id, 'f2', 'the order kept');

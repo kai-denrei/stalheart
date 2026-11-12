@@ -1568,7 +1568,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.equal(s1.biomass-b0,cat(s1.ledger)-cat(L0),`the bank moved only by credits that are not kills (${b0} -> ${s1.biomass})`);assert.equal(r1.drawn,r1.piles,'every pile drawn');
  {const hud=await evaluate(`document.querySelector('.hud-field')?.textContent??''`);assert.match(hud,/^FIELD [\d,]+ kg$/,`the HUD's field number (${hud})`);}
  await evaluate(`${T}.sectorQuiet(true)`);
- await evaluate(`${T}.sectorCull(999,'tank')`);await delay(400);   // the ground clear: with more than two bodies round the flare the rover holds at home (ROVER.retreat, 2026-11-10)
+ for(let k=0;k<30;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(500);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}   // (bodies still rising are culled once up) the ground clear: with more than two bodies round the flare the rover holds at home (ROVER.retreat, 2026-11-10)
  // the flare: the hull on the richest ground, F
  const rich=await evaluate(`${T}.rover.richest()`);await evaluate(`${T}.placeTank(${rich.cell})`);await delay(300);
  await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);
@@ -1596,7 +1596,13 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  assert.ok(r2.pearlFx.fitted>=PEARLS.count&&!r2.pearlFx.errors.length,`the pearls' fill shader fitted (${JSON.stringify(r2.pearlFx)})`);
  // A PEARL AT CAPACITY HOLDS THE ROVER: the pearls filled to the cap, the standing flare sends it back for the rest; home, STORAGE FULL, the load kept aboard
  await evaluate(`${T}.rover.fillPearls()`);
- if(!(await R()).flares.length){const c=(await evaluate(`${T}.rover.richest()`)).cell;await evaluate(`${T}.rover.flareAt(${c})`);}
+ if((await R()).field<500){   // the first trip left the cleared ground bare: more kills for the second (the ground cleared again, ROVER.retreat)
+  await evaluate(`${T}.sectorQuiet(false)`);
+  for(const t0=Date.now();Date.now()-t0<240000;){if((await st()).sector?.phase==='fighting')await evaluate(`${T}.sectorCull(999,'tank')`);if((await R()).field>=1000)break;await delay(500);}
+  await evaluate(`${T}.sectorQuiet(true)`);
+  for(let k=0;k<30;k++){await evaluate(`${T}.sectorCull(999,'tank')`);await delay(500);if((await evaluate(`${T}.aliveBodies().filter(b=>!b.guard).length`))===0)break;}
+ }
+ if(!(await R()).flares.length||(await R()).mode==='idle'){const c=(await evaluate(`${T}.rover.richest()`)).cell;await evaluate(`${T}.rover.flareAt(${c})`);}
  await until(`${T}.rover.state().mode==='full'`,300000).catch(async()=>assert.fail(`a full bank holds the rover at home (${JSON.stringify(await R())})`));
  const f0=await R();await delay(3000);const f1=await R();
  console.log(`  STORAGE FULL: bank ${f1.bank} / ${f1.cap}, aboard ${f1.cargo} kg, console "${await evaluate(`document.querySelector('.hc-rover')?.textContent`)}"`);

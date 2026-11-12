@@ -14,13 +14,13 @@
 //   take(cell, kg) -> kg taken, deposit(kg) -> kg that fitted, live(order) -> the order's flare still stands
 // TOO MANY ENEMIES (owner, 2026-11-10: "it must go back to base if too full, or if they are too many enemies"): host.threat(cell | null) counts
 // the live bodies within tune.retreat.cells of a cell, or of the rover itself for null. On its way out or at the rake with tune.retreat.bodies or
-// more round it, it turns for home with what it has (RETREATING); at home it holds a standing order (HOLDING · ENEMIES) until the flare's ground is
-// down to tune.retreat.clear bodies. No host.threat or no tune.retreat: no such rule (the rover of round 8).
+// more round it, it turns for home with what it has (RETREATING); at home it holds a standing order (HOLDING · ENEMIES) until the flare's ground and
+// the ground it turned round on are down to tune.retreat.clear bodies. No host.threat or no tune.retreat: no such rule (the rover of round 8).
 export const ROVER_MODES = Object.freeze(['idle', 'out', 'harvest', 'home', 'unload', 'full']);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createRoverRun(tune, home, heading = 0) {
-  return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null,
+  return { tune, home, cell: home, heading, mode: 'idle', cargo: 0, path: null, s: 0, length: 0, turn: null, order: null, queued: null, pile: null, fled: null,
     skip: new Set(), trips: 0, delivered: 0, harvested: 0, note: '', events: [], rake: 0, pour: 0 };
 }
 
@@ -58,7 +58,7 @@ function here(run) {
 const HOLD = 'HOLDING · ENEMIES', RETREAT = 'RETREATING';
 const hot = (run, host, cell, n) => !!run.tune.retreat && typeof host.threat === 'function' && host.threat(cell) >= n;
 function retreat(run, now, host) {
-  run.cell = here(run); run.path = null; goHome(run, now, host, 'enemies');
+  run.cell = here(run); run.path = null; run.fled = run.cell; goHome(run, now, host, 'enemies');   // `fled`: where it turned round; that ground must clear too before it goes back out (no yo-yo on a held road)
   if (run.mode === 'home' && run.path) run.note = RETREAT;
 }
 function goHome(run, now, host, why) {
@@ -76,8 +76,8 @@ export function stepRover(run, dt, now, host) {
     if (run.queued && host.live(run.queued)) order = run.queued;
     else if (run.order && host.live(run.order) && host.near(run.order.cell, T.reach).some((p) => !run.skip.has(p.cell))) order = run.order;   // a standing flare over piles it can reach: back for the rest
     run.queued = null;
-    if (!order) { run.order = null; if (run.note === HOLD) run.note = ''; return run; }
-    if (hot(run, host, order.cell, (T.retreat?.clear ?? 0) + 1)) {   // the flare's ground is not clear yet: the order stands, the rover waits
+    if (!order) { run.order = null; run.fled = null; if (run.note === HOLD) run.note = ''; return run; }
+    if (hot(run, host, order.cell, (T.retreat?.clear ?? 0) + 1) || (run.fled != null && hot(run, host, run.fled, (T.retreat?.clear ?? 0) + 1))) {   // the flare's ground is not clear yet: the order stands, the rover waits
       if (order !== run.order) run.queued = order;
       if (run.note !== HOLD) { run.note = HOLD; note(run, now, 'hold', { flare: order.id }); }
       return run;
@@ -85,7 +85,7 @@ export function stepRover(run, dt, now, host) {
     const path = run.cell === order.cell ? [run.cell] : host.path(run.cell, order.cell);
     if (!path) { run.note = 'NO ROAD'; run.order = null; note(run, now, 'no-road', { flare: order.id }); return run; }
     if (order !== run.order) run.skip.clear();   // the piles it could not reach are remembered per order
-    run.order = order; run.note = ''; run.mode = 'out'; setOff(run, path, host); note(run, now, 'out', { flare: order.id, cell: order.cell });
+    run.order = order; run.note = ''; run.fled = null; run.mode = 'out'; setOff(run, path, host); note(run, now, 'out', { flare: order.id, cell: order.cell });
     return run;
   }
   if ((run.mode === 'out' || run.mode === 'harvest') && hot(run, host, null, T.retreat?.bodies)) { retreat(run, now, host); return run; }
