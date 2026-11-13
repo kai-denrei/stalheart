@@ -1471,7 +1471,16 @@ try{
  {const s=await st();assert(s.programme.bought.includes('dome-se')&&s.programme.kinds.se==='logistics','SE bought as LOGISTICS');assert(bank0-s.biomass>=COLONY.kinds.logistics.price-1,`paid (${bank0} -> ${s.biomass})`);}
  assert.equal(await evaluate(`${T}.board.dome('nw','research')`),true,'NW bought as RESEARCH');
  // (a) LOGISTICS: the gantry prints SE, the caption, the pad at its foot refills the rack and restocks the flares
+ // KIDOU'S JOBS (owner, 2026-11-13: "the bigger ones are his, as long as they fit inside"): SE's print (k) stays 0 while KIDOU drives, begins only
+ // with its tool within KIDOU_BAY.near of the cell, and the harness says KIDOU printed it
+ {const {KIDOU_BAY}=await import('../src/content/dome-city.js');let early=null,seen=null;
+  await until(`(()=>{const g=${T}.state().programme.colony?.gantry;return g&&g.step==='dome-se'&&g.phase==='print';})()`,300000).catch(async()=>assert.fail(`KIDOU at SE (${JSON.stringify((await st()).programme.colony?.gantry)})`));
+  seen=(await st()).programme.colony.gantry;console.log(`  KIDOU over SE: ${JSON.stringify(seen)}`);assert(seen.reach<=KIDOU_BAY.near,`SE's print began within reach (${seen.reach} m)`);
+  await until(`(p=>p.print?.step==='dome-se'&&p.print.k>=0.4)(${T}.state().programme)`,300000).catch(()=>{});
+  {const at=await evaluate(`${T}.showcase.footprint('dome-se')?.at??null`);if(at){const ci=await evaluate(`(()=>{const T=${T},a=${JSON.stringify(at)},l=Math.hypot(...a),u=a.map(v=>v/l),n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}return best;})()`);await evaluate(`${T}.showcase.ground(${ci},6,7)`);}}
+  await delay(1500);console.log(`  mid-print: ${JSON.stringify((await st()).programme.print)}`);current='colony-grid-kidou-printing';await finish();await evaluate(`${T}.focusHeart()`);}
  await until(`${T}.state().programme.printed.includes('dome-se')`,900000).catch(async()=>assert.fail(`SE printed (${JSON.stringify(await P())})`));mark('SE stands');
+ {const g=(await st()).programme.colony?.gantry;console.log(`  printed by: ${JSON.stringify(g?.printedBy)}`);assert(/^kidou/.test(g?.printedBy?.['dome-se']?.by),`KIDOU printed SE (${JSON.stringify(g?.printedBy)})`);}
  {const s=await st(),p=s.programme,said=await evaluate('window.__seen');console.log(`  SE: perks ${p.perks}; pad ${JSON.stringify(p.colony.pad)} cell ${p.colony.cell}; callouts ${JSON.stringify(said.callouts.slice(-4))}`);
   assert(p.perks.includes('armory'),'the LOGISTICS dome\'s perk');assert(said.callouts.some(x=>x.includes(COLONY.kinds.logistics.caption)),`its caption (${JSON.stringify(said.callouts)})`);}
  await until(`(${T}.state().programme.colony.pad||{}).standing`,10000).catch(async()=>assert.fail(`the pad stands (${JSON.stringify((await P()).colony)})`));
