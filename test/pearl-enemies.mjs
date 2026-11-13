@@ -4,7 +4,7 @@
 // bent onto the planet as the shader bends the shell, the family (pools, identity, the squad, the cloak, the death) and the switch (dress).
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { PEARL_TIERS, PEARL_MEMBRANE, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, WHITE_RUSH, PEARL_GAIT, PEARL_WAVES } from '../src/content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_MEMBRANE, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, WHITE_RUSH, PEARL_GAIT, PEARL_WAVES, PEARL_GLIDERS, PEARL_POOL_OF } from '../src/content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
 import { BESTIARY_STAGE } from '../src/content/bestiary.js';
 import { stageSet } from '../src/fx/bestiary-stage.js';
@@ -38,13 +38,29 @@ assert.deepEqual([sky.seekCount, sky.cycleDuration, sky.transferAcceleration, sk
 for (const t of PEARL_TIERS) for (const k of ['seekCount', 'cycleDuration', 'transferAcceleration', 'reach']) assert.equal(t.values[k], sky[k], `${t.id}: ${k} is Sky's`);
 for (let k = 1; k < 8; k++) assert(PEARL_TIERS[k].labR0 > PEARL_TIERS[k - 1].labR0 && (k === 1 || PEARL_TIERS[k].values.aggression > PEARL_TIERS[k - 1].values.aggression), 'the ladder grows');   // past the ivory: its 2.4 is the owner's (2026-11-02, "more aggressive")
 for (const t of PEARL_TIERS) assert(t.values.aggression >= 1.3 && t.values.aggression <= 2.5, `${t.id}: a slight variation round Sky's 1.7 (${t.values.aggression}; the set ran .35 to 4)`);
-const skinOf = Object.values(PEARL_BODY.scale); assert(Math.min(...skinOf) >= 0.6 && Math.max(...skinOf) <= 1.2 && PEARL_BODY.scale.blue === 0.8, 'the sizes a slight ladder round Sky\'s 0.8');
+const skinOf = PEARL_TIERS.map((t) => PEARL_BODY.scale[t.id]);   // the tiers' (a glider's pool is its own size, below) assert(Math.min(...skinOf) >= 0.6 && Math.max(...skinOf) <= 1.2 && PEARL_BODY.scale.blue === 0.8, 'the sizes a slight ladder round Sky\'s 0.8');
 for (let k = 1; k < 8; k++) assert(PEARL_BODY.scale[PEARL_TIERS[k].id] > PEARL_BODY.scale[PEARL_TIERS[k - 1].id], 'the sizes grow with the ladder');
 // round 5 (owner, 2026-11-05, note 8: the ladder back): every tier still x1.08 and hopping; the white at the audit's ceiling, 1.2 radii a second, on its own
 // stride and stage shares; the rest under the yellow's metres (`mps`, test/pearl-motion.mjs orders them)
-for (const [id, p] of Object.entries(PEARL_PACE)) assert.deepEqual([p.speed, p.radii, p.glide, p.reach, p.hop], [1.08, id === 'white' ? 1.2 * WHITE_RUSH : PEARL_TIERS.find((t) => t.id === id).cored ? 0.9 : 1, false, undefined, id === 'white' ? 3.6 : undefined], `${id}: walks as Sky (x1.08, hopping; the white 1.2 x WHITE_RUSH radii a second (owner, 2026-11-13: "try making the white basic enemies 2x faster") on a 3.6-radius stride, the yellow and the blue 1, the cored 0.9)`);
+for (const [id, p] of Object.entries(PEARL_PACE)) if (!PEARL_GLIDERS[id]) assert.deepEqual([p.speed, p.radii, p.glide, p.reach, p.hop], [1.08, id === 'white' ? 1.2 * WHITE_RUSH : PEARL_TIERS.find((t) => t.id === id).cored ? 0.9 : 1, false, undefined, id === 'white' ? 3.6 : undefined], `${id}: walks as Sky (x1.08, hopping; the white 1.2 x WHITE_RUSH radii a second (owner, 2026-11-13: "try making the white basic enemies 2x faster") on a 3.6-radius stride, the yellow and the blue 1, the cored 0.9)`);
 for (const id of ['blue', 'orange', 'green', 'purple', 'brown', 'black']) assert(PEARL_PACE[id].mps > 0 && PEARL_PACE[id].mps < 1.65, `${id}: under the yellow's metres (${PEARL_PACE[id].mps})`);
 assert(Object.isFrozen(PEARL_TIERS) && Object.isFrozen(PEARL_TIERS[2].values));
+// THE MOTES (owner, 2026-11-13: "Keep the whites as they are, and introduce an even smaller category of whites that glide at 2x or 3x"): the mote is an
+// ivory (PEARL_OF white) in a pool of its own, smaller than the white, gliding at PEARL_GLIDERS.rush x the amoeba's ground speed, weaker, and the white
+// exactly as it was (1.2 x WHITE_RUSH radii, hopping)
+{
+  const g = PEARL_GLIDERS.mote, bodies = pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY, pools: PEARL_POOL_OF });
+  assert.equal(PEARL_OF.mote, 'white'); assert.equal(PEARL_POOL_OF.mote, 'mote'); assert.equal(bodies.mote.pool, 'mote'); assert.equal(bodies.amoeba.pool, 'white');
+  assert(g.scale < PEARL_BODY.scale.white && g.scale >= 0.4, `the mote smaller than the white (${g.scale} < ${PEARL_BODY.scale.white})`);
+  assert.equal(ENEMY_SPEC.mote.size, ENEMY_SPEC.amoeba.size, 'the amoeba\'s record size: its radii cap is the amoeba\'s walk x rush');
+  assert(g.rush >= 2 && g.rush <= 3, `2x-3x (${g.rush})`);
+  const m = bodies.mote.r0 * PEARL_PACE.mote.radii, w = bodies.amoeba.r0 * PEARL_PACE.white.radii;
+  assert(Math.abs(m / w - g.rush) < 0.02, `the mote's cap ${m.toFixed(2)} m/s = rush x the amoeba's ${w.toFixed(2)} m/s`);
+  assert.equal(PEARL_PACE.mote.glide, true); assert.equal(PEARL_PACE.white.glide, false); assert.equal(PEARL_PACE.white.radii, 1.2 * WHITE_RUSH, 'the white as it was');
+  assert(PEARL_PACE.mote.hp < PEARL_PACE.white.hp && ENEMY_SPEC.mote.bounty < ENEMY_SPEC.amoeba.bounty, 'weaker and cheaper than the white');
+  assert(PEARL_FOLLOW.capacity.mote > 0, 'its own pool\'s capacity');
+  console.log(`PASS the mote: scale ${g.scale}, r0 ${bodies.mote.r0} m, cap ${m.toFixed(2)} m/s against the amoeba's ${w.toFixed(2)} (x${(m / w).toFixed(2)}), gliding, hp x${PEARL_PACE.mote.hp}`);
+}
 console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived values');
 
 // ---- the cored read (owner, 2026-10-18, round two note 4: "the core is slightly colored but the membrane is almost opaque white, it is confusing") ----
@@ -126,12 +142,12 @@ for (const [type, id] of Object.entries(PEARL_OF)) {
   assert.equal(ENEMY_SPEC[type].rammable, !tier[id].cored, `${type}: its ram verdict (${ENEMY_SPEC[type].rammable}) is its ${id} body's (${tier[id].cored ? 'cored' : 'soft'})`);
 }
 assert.equal(new Set(Object.values(PEARL_OF)).size, 8, 'every tier draws some type');
-const bodies = pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY });
+const bodies = pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY, pools: PEARL_POOL_OF });
 assert.deepEqual(bodies, PEARL_BODIES);
 for (const [type, b] of Object.entries(bodies)) {
-  close(b.r0, ENEMY_SPEC[type].size * 5.6 * (type === 'knot' ? 1.5 : 1) * (PEARL_BODY.scale[b.tier] ?? 1), 1e-3, `${type}: r0 = size x 5.6 m${type === 'knot' ? ' x 1.5' : ''} x the tier's scale`);
+  close(b.r0, ENEMY_SPEC[type].size * 5.6 * (type === 'knot' ? 1.5 : 1) * (PEARL_BODY.scale[b.pool] ?? 1), 1e-3, `${type}: r0 = size x 5.6 m${type === 'knot' ? ' x 1.5' : ''} x its pool's scale (its tier's, a glider's own)`);
   assert.equal(b.rammable, !b.cored);
-  const s = pearlSpec(type), slow = PEARL_PACE[b.tier];
+  const s = pearlSpec(type), slow = PEARL_PACE[b.pool];   // its pool's pace (its tier's; a glider's own, 2026-11-13)
   // round four (owner, 2026-10-13: "slower and organic feeling is a must"): every tier is paced, its walk capped at its PEARL_PACE radii of its body a
   // second at the sector's pace (and never faster than its own), the bursts and the jink off; every other key is the game's own
   const cap = Math.min(slow.radii * b.r0, slow.mps ?? Infinity) / (PEARL_GAIT.sectorPace * 10), want = Math.min(ENEMY_SPEC[type].speed * slow.speed, cap);   // and the tier's metres (round 5, note 8)
@@ -148,7 +164,7 @@ for (const [type, b] of Object.entries(bodies)) {
   assert.equal(s.body, 'pearl'); assert.equal(s.pearl, b.tier);
 }
 assert.equal(pearlSpec('jelly'), null);
-assert.deepEqual(Object.keys(PEARL_PACE).sort(), ['black', 'blue', 'brown', 'green', 'orange', 'purple', 'white', 'yellow']);
+assert.deepEqual(Object.keys(PEARL_PACE).sort(), ['black', 'blue', 'brown', 'green', 'mote', 'orange', 'purple', 'white', 'yellow']);   // the eight tiers and the mote's pool (2026-11-13)
 assert.equal(ENEMY_SPEC.amoeba.speed, 1.5, 'the dot-cloud game\'s own spec is untouched by the Pearl pacing (1.5 since round 5, note 8: the dot ladder, src/enemyspec.js)');
 console.log('PASS the mapping: every type of the wave programme, the ram verdict = the body, r0 = size x 5.6 (the knot x 1.5), the spec kept whole but the pace (round four: every tier at most its radii a second, no bursts, no jink)');
 

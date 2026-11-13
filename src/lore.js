@@ -350,6 +350,19 @@ export const LORE = {
       + 'green-white glow, pseudopods gripping tile edges, wet '
       + 'subsurface scattering, biological horror realism, 8k',
   },
+  // the mote (owner, 2026-11-13: "an even smaller category of whites that glide at 2x or 3x")
+  mote: {
+    name: 'THE MOTE',
+    tag: 'ivory · glider',
+    body: 'A pale bead of membrane no wider than a hull plate, with no '
+      + 'legs worth the name: it skates the lattice on its own film, two '
+      + 'and a half times the pace of the amoebas it runs ahead of. One '
+      + 'shell is too many for it. A crowd of them is how the first wave '
+      + 'arrives before the first wave does.',
+    visual: 'small pale translucent bead organisms skating fast over a stone '
+      + 'grid, smooth ivory membranes with no limbs, faint motion streaks, '
+      + 'swarming ahead of larger amoebas, biological realism, 8k',
+  },
   jellyfish: {
     name: 'THE JELLYFISH',
     tag: 'wave 5 · pulse drifter',

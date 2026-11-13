@@ -125,7 +125,7 @@ console.log('PASS the shell: the bent ground unbent exactly, the game\'s blast o
   for (const m of mix) close(t.filter((x) => x === m.type).length / 1000, m.share, 0.06, `${m.type} near its share`);
   assert.deepEqual(seatTypes(1000, 'mix', { mix }), t, 'deterministic');
   const white = seatTypes(10, 'white');
-  assert.deepEqual([...new Set(white)].sort(), ['amoeba', 'phage'], 'a tier draws its own types in turn');
+  assert.deepEqual([...new Set(white)].sort(), ['amoeba', 'mote', 'phage'], 'a tier draws its own types in turn (the mote, 2026-11-13: an ivory in its own gliding pool)');
   for (const id of PEARL_TIERS.map((x) => x.id)) assert(seatTypes(4, id).every((x) => PEARL_OF[x] === id), `${id}: its own types`);
 }
 console.log('PASS the types: a tier\'s own in turn, the mix the canyon again\'s shares by tier (a cored tier among them)');

@@ -56,10 +56,11 @@ export const CHAIN_NOTE = freeze({
 // `isao` his lines, dry, slightly humorous, a science-fiction reference here and there, not overdone. A creature's `label` is its card's
 // tier line and `swatch` its colour in the list.
 export const ENTRIES = freeze([
-  { id: 'white', name: 'CUTIS-SOFT IVORY', kind: 'tier', types: ['amoeba', 'phage'], stage: true, isao: [
+  { id: 'white', name: 'CUTIS-SOFT IVORY', kind: 'tier', types: ['amoeba', 'phage', 'mote'], stage: true, isao: [
     'Small, soft, and in no hurry to be anything else. They come in numbers because one of them is not an argument.',
     'The amoeba hunts whatever opened the ground. The phage crawls. Both go under the treads with a sound I have stopped finding funny.',
     'If you see one, you are looking at the wrong one.',
+    'The motes are the small ones that skate. No legs worth the name, twice the hurry. They arrive first and they die first.',   // the mote (owner, 2026-11-13)
     'Kill them close together: the dying membranes cross-link and the mass stays up where the treads can take it. Keep the chain going.',
   ], chain: true },
   { id: 'yellow', name: 'CUTIS-SOFT LEMON', kind: 'tier', types: ['ghost', 'scoutufo'], stage: true, isao: [

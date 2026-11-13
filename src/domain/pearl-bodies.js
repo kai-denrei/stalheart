@@ -10,13 +10,14 @@
 //   pearlWait     round four: the record's pace factor while its body is `lag` metres behind it (the body leads; the record waits for it)
 //   pearlCatch    round four: how much a lagging body's hop is hurried (a pace divisor, 1 .. 1 + catchUp)
 
-// `spec` ENEMY_SPEC, `of` PEARL_OF, `tiers` PEARL_TIERS, `body` PEARL_BODY -> { [type]: { type, tier, r0, cored, rammable } } for every mapped type the spec knows
-export function pearlBodies({ spec, of, tiers, body }) {
+// `spec` ENEMY_SPEC, `of` PEARL_OF, `tiers` PEARL_TIERS, `body` PEARL_BODY, `pools` PEARL_POOL_OF (a glider's own pool, 2026-11-13) -> { [type]: { type, tier,
+// pool, r0, cored, rammable } } for every mapped type the spec knows; `pool` the swarm that draws it (its tier's unless `pools` names one), its size the pool's
+export function pearlBodies({ spec, of, tiers, body, pools = null }) {
   const byId = Object.fromEntries(tiers.map((t) => [t.id, t])), out = {};
   for (const [type, id] of Object.entries(of)) {
-    const s = spec[type], t = byId[id];
+    const s = spec[type], t = byId[id], pool = pools?.[type] ?? id;
     if (!s || !t) continue;
-    out[type] = { type, tier: id, r0: +(s.size * body.metresPerSize * (s.boss ? body.boss : 1) * (body.scale?.[id] ?? 1)).toFixed(3), cored: t.cored, rammable: !!s.rammable };   // the tier's size (PEARL_BODY.scale by tier, 2026-10-16)
+    out[type] = { type, tier: id, pool, r0: +(s.size * body.metresPerSize * (s.boss ? body.boss : 1) * (body.scale?.[pool] ?? body.scale?.[id] ?? 1)).toFixed(3), cored: t.cored, rammable: !!s.rammable };   // the tier's size (PEARL_BODY.scale by tier, 2026-10-16)
   }
   return out;
 }

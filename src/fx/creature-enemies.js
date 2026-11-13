@@ -37,7 +37,7 @@ import { createReedFamily } from './creature-reed.js';
 import { createCreatureProbe } from './creature-probe.js';
 import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
-import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_OF, PEARL_POOL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../content/pearl-enemies.js';
 import { pearlBodies, pearlSpeed, pearlBuildUp } from '../domain/pearl-bodies.js';
 import { createHullContact, onUnitSphere } from './hull-contact.js';
 import { SQUADS } from '../content/sectors.js';
@@ -46,12 +46,12 @@ const FAMILIES = Object.freeze({ cutis: createCutisFamily, reed: createReedFamil
 const SPECS = new Map();
 // THE PEARL SET: each mapped type's body (tier, r0) and its spec (its type's own ENEMY_SPEC with the body's family, `pearl` its tier; the first waves'
 // tiers paced by PEARL_PACE: the owner's "much slower, a slow controlled threat", their walk slowed and their bursts off)
-export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY }));
+export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY, pools: PEARL_POOL_OF }));
 // round four: every tier paced, its walk capped at PEARL_PACE's `radii` body radii a second (src/domain/pearl-bodies.js pearlSpeed), its bursts and jink off
 const paced = (s, p, b) => (p ? { ...s, hp: s.hp * (p.hp ?? 1), heartDmg: (s.heartDmg ?? 1) * (p.heart ?? 1), speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, metres: p.mps, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
   ...(typeof p.erratic === 'boolean' ? { erratic: p.erratic } : {}), ...(typeof p.jink === 'boolean' ? { jink: p.jink } : {}) } : s);   // the tier's bursts, on or off
 // round four (owner: "white and yellow, should feel very easy to run over"): `lightRam` on a tier PEARL_IMPACT.tiers rams by its body (no run-over drag)
-export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier, ...(PEARL_IMPACT.tiers?.[b.tier]?.ram ? { lightRam: true } : {}) })])));
+export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.pool] ?? PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier, pool: b.pool, ...(PEARL_IMPACT.tiers?.[b.tier]?.ram ? { lightRam: true } : {}) })])));
 export const pearlSpec = (type) => PEARL_SPECS[type] ?? null;
 // a tier's spec: the family's ENEMY_SPEC entry with the tier's hit points, speed, size and bounty (a queue entry carries it)
 export function tierSpec(family, tier) {
@@ -284,7 +284,7 @@ export function createCreatureEnemies(host) {
     full(entry) {
       if (!pearl || !entry || entry.undressed) return false;
       const spec = entry.spec?.body ? entry.spec : PEARL_SPECS[entry.type]; if (spec?.body !== 'pearl') return false;
-      return make().room('pearl', spec.pearl) < Math.max(1, entry.squad || 1);
+      return make().room('pearl', spec.pool ?? spec.pearl) < Math.max(1, entry.squad || 1);   // a glider's own pool (PEARL_POOL_OF)
     },
     dress(entry) {
       if (!pearl || !entry || entry.spec?.body || !PEARL_SPECS[entry.type]) return entry;

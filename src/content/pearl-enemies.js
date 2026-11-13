@@ -100,7 +100,7 @@ export const PEARL_TIERS = freeze(ROWS.map(([id, name, skin, core, labR0, seekCo
 // WHICH TIER DRAWS WHICH TYPE (the spec's table): every type of the wave programme, by its belt. The jelly (shelved, a mesh boss) and the creature
 // families (cutis, reed) are not mapped.
 export const PEARL_OF = freeze({
-  amoeba: 'white', phage: 'white',
+  amoeba: 'white', phage: 'white', mote: 'white',   // the mote: an ivory that glides (PEARL_GLIDERS, below)
   ghost: 'yellow', scoutufo: 'yellow',
   saucer: 'blue', jellyfish: 'blue', gslime: 'blue',
   drifter: 'orange',
@@ -120,8 +120,18 @@ export const PEARL_OF = freeze({
 // THE SKY MODEL (2026-10-30): slight variations round Sky's 0.8 in the set's own order (the belt ladder: orange under blue, as tiers.ts sizes them; were white 0.4, yellow 0.6, blue 0.8, orange 1.12, green 1.12, purple 1.2, brown 1.2, black 1.3; black's 1.3 the corridor's bound: at 1.45 a knot's membrane ran 2.5 m into a 10 m corridor's rock, test/body-footprint.mjs)
 // 2026-11-02 (owner, round 4, note 1: the ivory "more aggressive, more numerous, faster"): white 0.6 -> 0.65, the faster ivory's metres a second at
 // Sky's 1 radius (test/pearl-motion.mjs: a walk past 1 radius a second pops, and so does 0.7); with SOFT_HUNT.pace.white 1.6 and aggression 2.4
-export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: { white: 0.65, yellow: 0.7, orange: 0.75, blue: 0.8, green: 0.9, purple: 1.0, brown: 1.1, black: 1.2 } });
-export const pearlScaleOf = (tier) => PEARL_BODY.scale[tier] ?? 1;
+// THE MOTES (owner, 2026-11-13: "Keep the whites as they are, and introduce an even smaller category of whites that glide at 2x or 3x"): a type of
+// the ivory belt (PEARL_OF white: its skin, its belt, its bestiary entry, a kill on the white belt) drawn in a pool of its own, `pool`, so the kit can
+// glide it (src/fx/creature-pearl.js: no hop, the body slides onto its record's point, PEARL_GAIT.glideSeconds / glideSpread) while the whites hop on.
+// A hopping body is held to ~1.2 radii a second by the motion audit (test/pearl-motion.mjs: past it the hops pop, THE WHITES RUSH below), a gliding
+// one is not: it has no hop to pop. `scale` the body's size over its record's (the white's 0.65; 0.42 is the smallest that still reads as a body at
+// the base camera, a 1.2 m radius against the amoeba's 1.8), `rush` its ground speed in multiples of the drawn amoeba's (the white's own pace, 2.5
+// the owner's 2x-3x's middle), `hp` over the spec's (the white's 0.6: fodder, one hit of anything), `heart` its bite on the Stålheart (the ivory's tenth).
+// The glide was retired once (THE SKY MODEL, 2026-10-30: every tier on the gait, the blobs looked like slides); here it is one small type, not a tier.
+export const PEARL_GLIDERS = freeze({ mote: freeze({ pool: 'mote', of: 'white', scale: 0.42, rush: 2.5, hp: 0.4, heart: 0.1 }) });
+export const PEARL_POOL_OF = freeze(Object.fromEntries(Object.entries(PEARL_GLIDERS).map(([type, g]) => [type, g.pool])));   // type -> its pool (a glider's own; every other type its tier's)
+export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5, scale: freeze({ white: 0.65, yellow: 0.7, orange: 0.75, blue: 0.8, green: 0.9, purple: 1.0, brown: 1.1, black: 1.2, ...Object.fromEntries(Object.values(PEARL_GLIDERS).map((g) => [g.pool, g.scale])) }) });
+export const pearlScaleOf = (tier, type = null) => PEARL_BODY.scale[PEARL_POOL_OF[type]] ?? PEARL_BODY.scale[tier] ?? 1;   // a glider's own size (by its type), else its tier's
 
 // HOW A BODY KEEPS UP WITH ITS RECORD (src/domain/pearl-bodies.js; CREATURE_FOLLOW's catch-up and leash over these). The record walks at its type's speed
 // (11-23 m/s at the sector's pace) and the Pearl bodies are 2-7 m: the set's hop (2.5-6 s) would fall behind at once. So each body's hop cycle is scaled
@@ -162,7 +172,7 @@ export const PEARL_FOLLOW = freeze({
   thermal: freeze({ soft: 0.5, cored: 1, coredIntensity: 1.4 }),
   keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, leashHops: 1, separation: 0.5,
   squad: { gap: 1.1, stagger: 1.2 }, hubMargin: 0.03, reachStep: 0.15, opacityRef: 0.95,
-  capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
+  capacity: { white: 3000, mote: 1000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
   lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },
 });
 
@@ -226,7 +236,10 @@ export const PEARL_FOLLOW = freeze({
 export const WHITE_RUSH = 1.2;
 const LADDER = { white: { radii: 1.2 * WHITE_RUSH, rush: WHITE_RUSH, hop: 3.6, timing: { coil: 0.04, extend: 0.1, anchor: 0.02, transfer: 0.8, settle: 0.04 } }, yellow: { radii: 1 }, blue: { radii: 1, mps: 1.5 },
   orange: { radii: 0.9, mps: 1.4 }, green: { radii: 0.9, mps: 1.3 }, purple: { radii: 0.9, mps: 1.2 }, brown: { radii: 0.9, mps: 1.1 }, black: { radii: 0.9, mps: 1.0 } };
-export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1.08, ...LADDER[id], glide: false, hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, erratic: false, jink: false }])));
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1.08, ...LADDER[id], glide: false, hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, erratic: false, jink: false }]).concat(
+  // THE MOTES (PEARL_GLIDERS, above): a glider's pace by its pool, `glide` on; its cap in its own radii, the amoeba's walk (its belt's `radii` on the
+  // belt's size: the mote's type has the amoeba's record size, test/pearl-enemies.mjs) x its `rush`: 1.44 x 0.65 / 0.42 x 2.5 = 5.57 radii a second
+  Object.values(PEARL_GLIDERS).map((g) => [g.pool, { speed: 1.08, radii: LADDER[g.of].radii * (PEARL_BODY.scale[g.of] / g.scale) * g.rush, glide: true, hp: g.hp, heart: g.heart, erratic: false, jink: false }]))));
 
 // THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
 // tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a

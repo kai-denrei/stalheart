@@ -4583,7 +4583,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   }
   const where=await evaluate(`(()=>{const s=${T}.state();return {c:${C}.ahead(3),c2:${C}.ahead(2),tank:s.playerPosition,daylight:s.daylight};})()`);
   const ci=where.c>=0?where.c:where.c2;const cells=[ci,...(await evaluate(`${C}.neighbours(${ci})`)).slice(0,3)];
-  const plan=mode==='reed'?[['reed',4]]:[['amoeba',8],['ghost',6],['saucer',4],['barbed',2]];
+  const plan=mode==='reed'?[['reed',4]]:process.env.PLAN?process.env.PLAN.split(',').map(x=>{const [t,n]=x.split(':');return [t,+n||1];}):[['amoeba',8],['ghost',6],['saucer',4],['barbed',2]];   // PLAN=amoeba:8,mote:8 (the motes' look, 2026-11-13)
   await evaluate('window.__spawned=[]');
   for(const [type,n] of plan)for(let k=0;k<n;k++)await evaluate(`(()=>{const f=Array.prototype.filter;let a=null;Array.prototype.filter=function(...x){a??=this;return f.apply(this,x);};try{${C}.pearls();}finally{Array.prototype.filter=f;}const before=new Set(a);${C}.spawnAt(${JSON.stringify(type)},${cells[k%cells.length]}${type==='reed'?",{tier:'small'}":''});for(const e of a)if(!before.has(e))window.__spawned.push(e);return true;})()`);
   // the camera over the cells' centres (the records' spawn points, the same every run), from behind the hull
@@ -4592,11 +4592,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const pt=mode==='reed'?`(e=>${C}.view(e)?.point)`:`(e=>e.obj.userData.point?.())`,tierOf=mode==='reed'?`(e=>'reed')`:`(e=>e.spec.pearl)`;
   if(mode==='reed')await until(`window.__spawned.every(e=>${C}.view(e)?.made)`,60000);
   await delay(2500);
-  const killed=await evaluate(`(()=>{const pt=${pt},tierOf=${tierOf},by={};window.__mine=window.__spawned.filter(e=>e.alive&&pt(e));window.__dead=[];for(const e of window.__mine){const t=tierOf(e);by[t]=(by[t]||0)+1;if(by[t]%2===0)window.__dead.push({e,h:${C}.handle(e),ram:false});}
+  const killed=await evaluate(`(()=>{const pt=${pt},tierOf=${tierOf},by={};window.__mine=window.__spawned.filter(e=>e.alive&&pt(e));window.__dead=[];if(${process.env.KILL==='0'})return 0;for(const e of window.__mine){const t=tierOf(e);by[t]=(by[t]||0)+1;if(by[t]%2===0)window.__dead.push({e,h:${C}.handle(e),ram:false});}
    const w=window.__dead.find(d=>tierOf(d.e)==='white');if(w)w.ram=true;for(const d of window.__dead){d.p=(pt(d.e)??d.e.pos).slice();if(d.ram)${C}.ram(d.e);else ${C}.hurt(d.e,d.e.hp+99);}return window.__dead.length;})()`);
   const frames=[],t0=Date.now();
   for(let f=0;f<10;f++){
-   const info=await evaluate(`(()=>{const R=window.__r4,pt=${pt},tierOf=${tierOf};const live=window.__mine.filter(e=>e.alive).map(e=>{const p=pt(e);return p?{tier:tierOf(e),px:R.px(p),rp:R.rpx(p,${C}.view(e)?.radius??1)}:null;}).filter(Boolean);
+   const info=await evaluate(`(()=>{const R=window.__r4,pt=${pt},tierOf=${tierOf};const live=window.__mine.filter(e=>e.alive).map(e=>{const p=pt(e);return p?{tier:tierOf(e),type:e.type,px:R.px(p),rp:R.rpx(p,${C}.view(e)?.radius??1)}:null;}).filter(Boolean);
     const dead=window.__dead.map(d=>{const v=${C}.viewHandle(d.h);const p=v?.point??d.p;return {tier:tierOf(d.e),ram:d.ram,px:R.px(p),rp:R.rpx(p,v?.radius??1),tint:v?.tint,deflate:v?.deflate,opacity:v?.opacity,stagger:v?.stagger,active:v?.active};});return {live,dead,daylight:${T}.state().daylight};})()`);
    const name=`${tag}-f${f}`;await shotTo(name);frames.push({name,wall:Date.now()-t0,...info});await delay(f<4?150:500);
   }

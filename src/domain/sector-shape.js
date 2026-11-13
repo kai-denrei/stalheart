@@ -4,6 +4,7 @@
 // brings and nothing else. Pure: plans, counts and clocks in, counts and decisions out.
 //   sizeWave       a ladder plan at an exact count: `coreShare` of it cored bodies (the plan's cored types in their proportions, one of each
 //                  while that fits, none at share 0), the rest soft from its soft types; largest-remainder rounding, the plan's order
+//   shareOut       a share of one type's bodies traded for another's, the total kept (the motes, 2026-11-13)
 //   pulseBodies    a pulse sector's count for its k-th wave (the list's last entry repeats)
 //   flowWaves      a flow sector's waves planned per breach: its total over its breaches in bursts
 //   pulseDue       the breath: a sector's first pulse at once; then `pulse` seconds after the last release AND the field at or under `at` of the
@@ -36,6 +37,19 @@ export function sizeWave(entries, spec, { bodies, coreShare = 0 }) {
   const cc = apportion(cored, cores), sc = apportion(soft, n - cores);
   const count = new Map([...cored.map((e, i) => [e, cc[i]]), ...soft.map((e, i) => [e, sc[i]])]);
   return entries.map((e) => ({ type: e.type, count: count.get(e) ?? 0 })).filter((e) => e.count > 0);
+}
+
+// THE MOTES (owner, 2026-11-13: "introduce an even smaller category of whites that glide at 2x or 3x"): `share` of the `from` type's bodies in a sized
+// wave are traded for the `to` type (rounded, the wave's total kept), its entry put just before `from`'s so they leave the mouth first. Pure.
+export function shareOut(entries, { from, to, share = 0 } = {}) {
+  if (!(share > 0) || !entries?.length) return entries;
+  const out = [];
+  for (const e of entries) {
+    const k = e.type === from ? Math.min(e.count, Math.round(e.count * share)) : 0;
+    if (k > 0) out.push({ type: to, count: k });
+    if (e.count - k > 0) out.push(k > 0 ? { ...e, count: e.count - k } : e);
+  }
+  return out;
 }
 
 export const pulseBodies = (list, index) => (list?.length ? list[Math.max(0, Math.min(list.length - 1, Math.floor(index) || 0))] : 0);

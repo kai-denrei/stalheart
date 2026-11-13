@@ -236,7 +236,7 @@ export function createEnemyStep(host) {
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const tierKey = tierKeyOf({ type, tier: entry.tier }, PEARL_OF), tk = host.params.tune?.tier?.[tierKey], grow = (tk?.size ?? 1) * (entry.sizeMul ?? 1);   // the tune panel's knobs for this tier (src/fx/tune-knobs.js); an entry's own scale over it (THE ARENA's small Reeds x3, 2026-10-18, note 8b)
-      const size = spec.size * 0.7 * (spec.body === 'pearl' ? pearlScaleOf(PEARL_OF[type]) : 1) * grow;   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
+      const size = spec.size * 0.7 * (spec.body === 'pearl' ? pearlScaleOf(PEARL_OF[type], type) : 1) * grow;   // PEARL_BODY.scale: the record, the body, the reach and the box together (owner, 2026-10-16)
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
