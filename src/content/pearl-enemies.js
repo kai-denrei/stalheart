@@ -210,7 +210,16 @@ export const PEARL_FOLLOW = freeze({
 // at 1 on the old gait (a ten-run sweep: 8 against 21). The yellow keeps its 1.0 (1.65 m/s); the rest are under it in steps of 0.1 m/s, so a mixed column
 // draws apart a body's radius every 20-40 s. The radii a pace cannot reach (the onyx knot, 8 m, at 1 m/s walks 0.12 radii a second) hop at their cycle
 // and wait for their record. Measured before/after in the round-5 stream-A entry.
-const LADDER = { white: { radii: 1.2, hop: 3.6, timing: { coil: 0.08, extend: 0.17, anchor: 0.03, transfer: 0.62, settle: 0.1 } }, yellow: { radii: 1 }, blue: { radii: 1, mps: 1.5 },
+// THE WHITES RUSH (owner, 2026-11-13: "try making the white basic enemies 2x faster, we need some seemingly faster moving enemies."): WHITE_RUSH
+// multiplies the white's walk cap (1.2 radii a second x it), on a longer transfer still (`timing`: transfer 0.62 -> 0.8 of the cycle, the coil, extend
+// and settle shorter), so the faster hops spread their move over more of each cycle. The pop is a speed (0.25 radii in a 60 fps frame), and a hop's
+// peak speed is its mean over its transfer share x the ease's 1.875, so a hopping body cannot double its mean without doubling its peak: swept in the
+// follow audit's harness (.superpowers/scratch/sweep.mjs, 10 runs of 20 s, the drawn centre's path), white pops (centre + shape) by WHITE_RUSH:
+// old timing 1 -> 12 + 0, 1.3 -> 118 + 0, 1.6 -> 383 + 8 (3 runs), 2 -> 628 + 142 (3 runs); this timing 1.2 -> 0 + 0, 1.25 -> 2 + 6, 1.3 -> 5 + 7,
+// 1.5 -> 101 + 17, 2 -> 218 + 86 (transfer 0.86). 1.2 is the fastest pop-free: the drawn amoeba 2.27 -> 2.79 m/s (x1.23), 1.47 x the yellow (was 1.21).
+// Past it the white would have to glide (no hop) or take a gentler ease than the kit's transfer: the owner's call.
+export const WHITE_RUSH = 1.2;
+const LADDER = { white: { radii: 1.2 * WHITE_RUSH, rush: WHITE_RUSH, hop: 3.6, timing: { coil: 0.04, extend: 0.1, anchor: 0.02, transfer: 0.8, settle: 0.04 } }, yellow: { radii: 1 }, blue: { radii: 1, mps: 1.5 },
   orange: { radii: 0.9, mps: 1.4 }, green: { radii: 0.9, mps: 1.3 }, purple: { radii: 0.9, mps: 1.2 }, brown: { radii: 0.9, mps: 1.1 }, black: { radii: 0.9, mps: 1.0 } };
 export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1.08, ...LADDER[id], glide: false, hp: id === 'white' ? 0.6 : id === 'yellow' ? 0.7 : id === 'blue' ? 0.85 : id === 'black' ? 1.8 : 1, heart: id === 'white' ? 0.1 : 1, erratic: false, jink: false }])));
 

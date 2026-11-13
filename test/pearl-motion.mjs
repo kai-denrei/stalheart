@@ -73,9 +73,10 @@ console.log('PASS the heading turned through the coil (the stalks keep their wor
 // ---- the paced records, the wait, the catch-up ----
 {
   for (const [type, b] of Object.entries(PEARL_BODIES)) {
+    // THE WHITES RUSH (owner, 2026-11-13): the white's ceiling is 1.2 x WHITE_RUSH on its 0.8 transfer; the follow audit below holds its pops at 0
     const s = pearlSpec(type), radii = s.speed * PEARL_GAIT.sectorPace * 10 / b.r0;
     if (PEARL_PACE[b.tier].glide) assert(radii > 1.2, `${type} glides past the gait's ceiling (${radii.toFixed(2)} radii a second)`);   // a blob is not held (2026-10-16)
-    else assert(radii <= PEARL_PACE[b.tier].radii + 1e-9 && radii <= 1.2, `${type} walks ${radii.toFixed(2)} radii a second`);
+    else assert(radii <= PEARL_PACE[b.tier].radii + 1e-9 && radii <= 1.2 * (PEARL_PACE[b.tier].rush ?? 1) + 1e-9, `${type} walks ${radii.toFixed(2)} radii a second`);
     assert.equal(s.erratic, false); assert.equal(s.jink, false);
   }
   assert.equal(pearlSpeed({ speed: 1, r0: 2, sectorPace: 1.5, metresPerCell: 10 }), 1, 'no cap without radii');
@@ -218,7 +219,12 @@ function follow(gait, secs = 12, per = 3) {
     assert.equal(m.pops, 0, `${id}: no centre pop (${JSON.stringify(m)})`); assert.equal(m.shapePops, 0, `${id}: no shape pop (${JSON.stringify(m)})`);
     if (PEARL_PACE[id].glide) { assert.equal(m.hops, 0, `${id}: a gliding blob hops never (${m.hops})`); continue; }   // the blobs (2026-10-16): no hops, no pops
     assert(m.frames > 300 && m.hops > 3, `${id}: watched (${m.frames} frames, ${m.hops} hops)`);
-    assert(m.speed[1] < 9 && m.accel[0] < 80 && m.jerk[0] < 3000, `${id}: slow and smooth (speed p95 ${m.speed[1]} r/s, accel p95 ${m.accel[0]}, jerk p95 ${m.jerk[0]})`);
+    // THE WHITES RUSH (owner, 2026-11-13: "try making the white basic enemies 2x faster"): the pop above is untouched; the smoothness bounds of a rushed
+    // tier scale as a hop compressed in time does at the same stride (accel x rush^2, jerk x rush^3; WHITE_RUSH 1.2: 115 / 5184). Measured white: accel p95
+    // 51.2 -> 80.0, jerk p95 1820 -> 4743 (the shorter coil and settle), speed p95 8.19 -> 7.96, worst 14.95 -> 13.33 radii a second, 0 pops before and after
+    const rush = PEARL_PACE[id].rush ?? 1;
+    if (process.env.MOTION_AUDIT) console.log(id, JSON.stringify({ pops: m.pops, shapePops: m.shapePops, speed: m.speed, accel: m.accel, jerk: m.jerk, cycle: m.cycle }));
+    assert(m.speed[1] < 9 && m.accel[0] < 80 * rush ** 2 && m.jerk[0] < 3000 * rush ** 3, `${id}: slow and smooth (speed p95 ${m.speed[1]} r/s, accel p95 ${m.accel[0]}, jerk p95 ${m.jerk[0]})`);
     assert(m.cycle > 1.5 && m.moving > 0.45, `${id}: long hops, moving half the time (${m.cycle} s, ${m.moving})`);
     assert.equal(after.stats[id].replaced, 0, `${id}: never put back`);
     const b = before.motion[id]; assert(m.jerk[0] < b.jerk[0] / 5, `${id}: jerk p95 ${m.jerk[0]} against ${b.jerk[0]}`);
