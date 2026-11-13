@@ -3,7 +3,8 @@
 // a launcher with nothing to shoot forgets its lock, and a seated pilot's reticle is the target.
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { createTowerAim } from '../src/fx/tower-aim.js';
+import { createTowerAim, seatLock } from '../src/fx/tower-aim.js';
+import { STORY_QUIVER } from '../src/content/story-defaults.js';
 import { SENTRY_TUNE } from '../src/sentry.js';
 import { MISSILE_LAUNCH_ELEVATION } from '../src/content/missile-defaults.js';
 import { missileLimits, pickMissileTarget } from '../src/domain/missile-targeting.js';
@@ -120,5 +121,13 @@ const body = (id, x, z, y = 1) => ({ id, alive: true, pos: norm3([x, y, z]), spe
   const ahead = norm3([0, 1, 0.2]), withBody = { ...body(2, 0.2, 0), obj: { userData: { point: () => ahead } } };
   const tw = tower(); aimFor({ enemies: [withBody] }).aim(tw, 0.1);
   assert.ok(Math.abs(tw.aim) < 1e-6, `the head turns to the body's point, dead ahead, not the record's to starboard (${tw.aim.toFixed(3)})`);
+}
+// A BIT MORE CHALLENGE IN THE LOCK (owner, 2026-11-13): the seat holds for pilotLockTime, the launcher on its own keeps lockTime
+{
+  const M = STORY_QUIVER.missile;
+  assert.equal(seatLock(M).lockTime, M.pilotLockTime, 'the seat locks in its own hold');
+  assert.ok(M.pilotLockTime > M.lockTime, `the seat's hold longer than the automatic one (${M.pilotLockTime} vs ${M.lockTime})`);
+  assert.equal(seatLock(QUIVER), QUIVER, 'a config with no seat hold is the same config');
+  assert.ok(STORY_QUIVER.coneDeg < 14, `the lock box tighter than 14 degrees (${STORY_QUIVER.coneDeg})`);
 }
 console.log('Tower aim turns, elevates, lobs, locks and follows the pilot as the board always has; a seat has a servo and aims at the body.');

@@ -232,7 +232,7 @@ export function createScopeFeed(host) {
         zoom: host.pilot().state.zoom,
         box: innerHeight / 2 * (host.story()?.quiverCone ?? 0) / Math.tan(camera.fov * Math.PI / 360),
         cone: Math.atan(host.story()?.quiverCone ?? 0) * 180 / Math.PI,
-        lockTime: cfg?.lockTime ?? 0,
+        lockTime: cfg?.pilotLockTime ?? cfg?.lockTime ?? 0,   // the seat's hold (2026-11-13)
         flight: towerSeekers.reduce((n, m) => n + (m.by === tw ? 1 : 0), 0),
         ready: !tw.obj.userData.loading && !tw.overheated,
         overheated: !!tw.overheated,
