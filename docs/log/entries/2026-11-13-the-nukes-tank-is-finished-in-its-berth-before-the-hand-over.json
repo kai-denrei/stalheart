@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-11-13-the-nukes-tank-is-finished-in-its-berth-before-the-hand-over",
+  "date": "2026-11-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The nuke's tank is finished in its berth before the hand-over: the hull's wire fills in for 12 s, the camera on it, then the seat",
+  "context": "Owner, 2026-11-13: \"the tank; we should see it being finished under the Stalheart before we get to ride it\". On the default opening the first hull is handed over on the lane tankAfterNuke s after the first MK-9 blast (src/fx/hull-issue.js early, TANK IS READY): it simply appeared, already out on the lane, and the seat moved to it. Skip paths (SKIP TUTORIAL, ?skip=..., stage/story links) issue the hull whole at once (createHullIssue held false: state 'out'); the Stålheart's own door roll-out (held -> rolling, the --grow walk) only runs when no nuke handed the hull over first.",
+  "outcome": "A 'finishing' state between held and early (src/fx/hull-issue.js): the hull is parked at its berth's start (deployStart, the deploy set down, not driven), drawn as the print beam's wire (src/fx/hull-finish.js: a clone of the hull through tower-print's printGhost, cut by the climbing plane; the solid's children only hidden, its materials never touched), progress = elapsed story clock / HULL_FINISH.seconds (src/domain/hull-finish.js finishProgress). On the first tick the close-up gate is clear (src/domain/closeup-gate.js: a running shot or a live sector wave holds it) the player leaves the gunship's seat and a live shot 'hullFinish' eases to the deploy's berth framing for the rest of HULL_FINISH.look s. Isao says his recorded 'The Stalheart builds the Tanks. Don't crash them.' (stalheart_begins_05, matched by its text) and the order strip reads THE TANK IS BEING FINISHED. At progress 1 the wire goes and the old hand-over runs unchanged (TANK IS READY, the seat). Knobs: HULL_FINISH { seconds 12, look 12, colour 0xbfe6ff, opacity 0.85 } in src/content/tank.js. td-tab +1 line (the host's three getters) and 'hullFinish' in the live-shot list.",
+  "alternatives": [
+    "Printing the hull under the Stålheart's door instead of at the nuke's lane berth: not done in the time box; on the default opening the Stålheart is itself still printing when the nuke hands the hull over, and the berth is the lane's (STORY_NUKE_TANK.berth).",
+    "A 6 s look and then the player back in the gunship's seat: rejected, re-seating the gunner is a second hand-over; out of the seat there is no other seat to hold the player while the hull is unfinished, so the look spans the print.",
+    "A new caption brief: not needed, a voiced line exists."
+  ],
+  "evidence": [
+    "--tank-finish (new: --round23's walk from ?skip=quiver without its hard-core distance assert, which is red on the base at 7.9 cells < 8, run 2026-11-13 09:24): first run (look 6 s, seat not left) passed: hull {state finishing, k 0.004, visible true, tankButton false, no TANK IS READY} after the blast, then {state early, k 1, seenBelow true, at 24.4, doneAt 38.4 game s, tankButton true, view third}; its screenshot showed the gunship's view, not the close-up: the gunship camera owns the frame while seated, hence leavePilot when the look starts.",
+    "--tank-finish second run (final source, look 12 s, the seat left as the look starts) passed: after the blast hull {state finishing, k 0.007, visible true, tankButton false}, shot hullFinish, gunship seat false; mid-finish k 0.358, shot hullFinish, view third (screenshot: the hull's wire alone at its berth, the Stålheart printing at 64 % behind); hand-over {state early, k 1, seenBelow true, at 24.2, doneAt 36.2 game s, tankButton true}. Headless: the framing is the deploy's berth pose, seen in the screenshot; not checked in a headed browser.",
+    "test/hull-issue.mjs: finishProgress/finishLookDue, finishing -> set 0.5 -> set 1, end, early; a host without the finish hooks hands over at once. test/director-board.mjs 62/62 with hullFinish on the board.",
+    "npm test (350 programs), npm run check, npm run architecture (td-tab 5,363 / 5,450), npm run build green at the final commit. --round23 itself stays red on the base before this point (hard cores 7.9 cells < 8)."
+  ],
+  "supersedes": []
+}

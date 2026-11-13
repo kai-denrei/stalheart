@@ -84,3 +84,10 @@ export const TANK_WALL = Object.freeze({ scrub: 2.5, align: 3.5, glance: Object.
 // more of the run-up (0.55 -> 0.8); `ahead` cells in front the hover glide turns a hull meeting rock within `glideAngle` of parallel toward
 // it at `glide` rad/s; a hit is head-on past `headOn` (0.45 -> 0.7: the glide takes the shallow ones)
 export const TANK_KICK = Object.freeze({ headOn: 0.7, seconds: 0.55, back: 0.18, along: 0.8, roll: 0.22, cool: 0.6, keep: 0.8, ahead: 0.9, glide: 4, glideAngle: 1.2 });
+// THE TANK FINISHED UNDER THE STÅLHEART (owner, 2026-11-13: "the tank; we should see it being finished under the Stalheart before we get to
+// ride it"): the first hull's print in its berth before the hand-over (src/domain/hull-finish.js, src/fx/hull-issue.js 'finishing').
+// seconds: the wire filling in, on the story clock; look: the camera on it from the start (the whole print: out of the gunship's seat
+// there is no other seat to hold the player while the hull is unfinished) (the print close-up's lull gate decides,
+// src/domain/closeup-gate.js); colour/opacity: the print beam's wire, as the sentries and structures print (src/fx/tower-print.js printGhost).
+// Skip paths (SKIP TUTORIAL, ?skip=..., stage/story links) issue the hull whole at once: no print.
+export const HULL_FINISH = Object.freeze({ seconds: 12, look: 12, colour: 0xbfe6ff, opacity: 0.85 });
