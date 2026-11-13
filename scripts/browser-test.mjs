@@ -3816,9 +3816,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert(g?.hungry,`KIDOU out at the hungry job (${JSON.stringify(g)}; hunger ${JSON.stringify(p.colony?.hunger)})`);assert(!p.bought.includes(g.hungry.step),'nothing bought');assert.equal(p.active,null,'nothing printing for real');
   mark(`KIDOU over ${g.hungry.step} at k ${g.hungry.k} of want ${g.hungry.want}`);
   {const said=(await evaluate('window.__seen')).callouts||[];console.log(`  the cue: ${JSON.stringify(said.filter(x=>/ NEEDS /.test(x)))}`);assert(said.some(x=>/ NEEDS .* KG/.test(x)),'the one-line cue: the job and the biomass it needs');}
-  await frameCell(g.hungry.step,6,7);
-  // the dome climbs at the print's own pace to the bank's share (headless runs the clock slow): the still once it stands there, or at 240 s
-  await until(`(h=>!!h&&h.k>=Math.min(h.want,0.42)-0.005)(${T}.state().programme.colony?.gantry?.hungry)`,240000).catch(()=>{});await delay(1500);const s2=await st();console.log(`  at the still: ${JSON.stringify(s2.programme.colony?.gantry?.hungry)}; rig ${JSON.stringify(s2.programme.colony?.gantry?.phase)}`);}
+  // the dome climbs at the print's own pace to the bank's share (headless runs the clock slow, and the framed still holds it): wait for it, then frame
+  await until(`(h=>{document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return !!h&&h.k>=Math.min(h.want,0.42)-0.005;})(${T}.state().programme.colony?.gantry?.hungry)`,240000).catch(()=>{});
+  mark(`the partial at k ${JSON.stringify((await st()).programme.colony?.gantry?.hungry)}`);
+  await frameCell(g.hungry.step,6,7);await delay(2500);const s2=await st();console.log(`  at the still: ${JSON.stringify(s2.programme.colony?.gantry?.hungry)}; rig ${JSON.stringify(s2.programme.colony?.gantry?.phase)}`);}
  current='hungry-build';await finish();
  } else if(args.includes('--dome-look')) {
  // THE DOME CITY, LOOKED AT (round 8 note 6, src/content/dome-city.js; no assertions but a page error): run it once with BASE=classic and once
