@@ -3769,10 +3769,10 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await until(`(g=>g.home||g.cell!=='${cell}')(${T}.state().programme.colony.gantry)`,300000).catch(async()=>assert.fail(`the gantry leaves ${cell} for home (${JSON.stringify(await G())})`));
   const L=(await evaluate('window.__gantryLog')).filter(x=>x.cell===cell),at=(ph)=>L.find(x=>x.phase===ph);
   console.log(`  ${cell}: ${L.map(x=>`${x.phase}@${x.wall}`).join(' ')}; at the cell ${JSON.stringify(at('print'))}`);
-  assert(at('out')&&at('print')&&at('back'),`the gantry went out, printed and turned home for ${cell} (${JSON.stringify(L)})`);
+  assert((at('out')||at('print')?.reach===0)&&at('print')&&at('back'),`the gantry went out (or already held over the cell: HUNGRY_BUILD), printed and turned home for ${cell} (${JSON.stringify(L)})`);
   const g=at('print');assert(Math.abs(g.x-stop[0])<0.05&&Math.abs(g.z-stop[1])<0.05,`straddling ${cell} at (${stop}) (${g.x}, ${g.z})`);
   assert(Math.abs(g.heading[0]-facing[0])<0.01&&Math.abs(g.heading[1]-facing[1])<0.01,`facing ${cell}, the tool over its centre (${g.heading})`);
-  mark(`dome-${cell} printed: out ${(at('print').wall-at('out').wall).toFixed(1)} s, print to the hand-over ${(at('back').wall-at('print').wall).toFixed(1)} s of page time`);
+  mark(`dome-${cell} printed: out ${at('out')?(at('print').wall-at('out').wall).toFixed(1)+' s':'already held'}, print to the hand-over ${(at('back').wall-at('print').wall).toFixed(1)} s of page time`);
  };
  await trip('nw',[-70.2,-67.6],true,[0,-1]);
  await until(`(${T}.state().storyLod||[]).find(l=>l.id==='dome-nw')?.visible===true`,30000).catch(async()=>assert.fail(`dome-nw shown (${JSON.stringify(domes(await st()))})`));
