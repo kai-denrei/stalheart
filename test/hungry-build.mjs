@@ -34,6 +34,8 @@ assert.equal(nextHungry(steps, { ...base, done: new Set(['b']), active: 'c' }).s
 assert.equal(nextHungry(steps, { ...base, holds: (s) => s.id !== 'b' }).step.id, 'c', 'one whose when does not hold waits');
 assert.equal(nextHungry(steps, { ...base, placed: (s) => s.id === 'd' }).step.id, 'd', 'one with no place on the plan is skipped');
 assert.equal(nextHungry(steps, { ...base, done: new Set(['b', 'c', 'd']) }), null, 'the programme finished: idle');
+assert.equal(nextHungry(steps, { ...base, prefer: (s) => !!s.gantry }).step.id, 'c', 'KIDOU first: its dome before an earlier board step');
+assert.equal(nextHungry(steps, { ...base, done: new Set(['c']), prefer: (s) => !!s.gantry }).step.id, 'b', 'no dome left: the programme\'s order');
 assert.equal(whoShows(steps[2], { ready: true }), 'kidou');
 assert.equal(whoShows(steps[2], { ready: false }), 'print', 'before KIDOU stands the fixed Stålheart shows it');
 assert.equal(whoShows(steps[1], { ready: true }), 'print', 'no road: the partial rises in place');

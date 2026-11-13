@@ -123,4 +123,6 @@ export const KIDOU_BAY = Object.freeze({
 // raises it, a starved bank holds it; it never reads finished (cap < 1) until it is bought and printed for real. `every` s between looks at the bank;
 // `rising` s after the last rise the beam still works at full, then it stalls (dim, slow); `cue` the one caption when the next job changes and the bank
 // is short ({label} and {kg} filled in), '' for none
-export const HUNGRY_BUILD = Object.freeze({ cap: 0.8, every: 0.5, rising: 2, cue: '{label} · NEEDS {kg} KG OF BIOMASS' });
+// `fromSector`: the first sector it shows in (the opening's tour and landing build their own steps); `kidouFirst`: once KIDOU stands its next dome is
+// the job shown before an earlier board step (a scoreboard or a garage would leave it parked)
+export const HUNGRY_BUILD = Object.freeze({ cap: 0.8, every: 0.5, rising: 2, fromSector: 1, kidouFirst: true, cue: '{label} · NEEDS {kg} KG OF BIOMASS' });

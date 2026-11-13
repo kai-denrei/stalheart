@@ -3793,6 +3793,33 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   for(const [cell,kind] of [['nw','research'],['sw','habitat'],['w','biosphere']])assert.equal(files(`dome-${cell}`),`assets/models/dome-colony/${kind}_d0_lod2.glb`,`${cell} wears the ${kind} dome`);}
  await frameCell('dome-w',9,11);await delay(2500);
  current='dome-print-end';await finish();
+ } else if(args.includes('--hungry-build')) {
+ // THE STÅLHEART IS ALWAYS BUILDING (owner, 2026-11-13: "whenever we are in the base, the Stalheart should be building something, even if unfinished...
+ // maybe partial structures... makes it feel like we need to feed it biomass."; src/domain/hungry-build.js): the grown base's sector 1, the swarm culled
+ // so the bank fills; the next unbought structure shows printed to the bank's share of its price (programme.colony.hunger), a dome with KIDOU held over it
+ // (gantry.hungry, phase 'hold'); nothing bought, nothing paid. A still of the partial with KIDOU over it (artifacts/browser/hungry-build.png)
+ const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),t0=Date.now(),mark=(w)=>console.log(`  HUNGRY ${w} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
+ const frameCell=async(id,a,b)=>{const at=await evaluate(`${T}.showcase.footprint(${JSON.stringify(id)})?.at??null`);if(!at)return -1;const ci=await evaluate(`(()=>{const T=${T},a=${JSON.stringify(at)},l=Math.hypot(...a),u=a.map(v=>v/l),n=T.showcase.cellsNear(T.state().storyHome,60);let best=-1,d=Infinity;for(const c of n.cells){const m=Math.hypot(...c.c),e=(c.c[0]/m-u[0])**2+(c.c[1]/m-u[1])**2+(c.c[2]/m-u[2])**2;if(e<d){d=e;best=c.ci;}}return best;})()`);await evaluate(`${T}.showcase.ground(${ci},${a},${b})`);return ci;};
+ await go('hungry-build',`index.html?sw=0&acceptance=1&cine=0&skip=sector-1#td`);await evaluate(SEEN_LOG);
+ await until(`!!${T} && ${T}.state().sector?.n===1`,120000).catch(async()=>assert.fail(`sector 1 opens on the grown base (${JSON.stringify((await st()).sector)})`));mark('sector 1');
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
+ {const s=await st(),p=s.programme;console.log(`  at the start: bank ${s.biomass}; done ${p.done.join(',')}; bought ${p.bought.join(',')}; hunger ${JSON.stringify(p.colony?.hunger)}; gantry ${JSON.stringify(p.colony?.gantry)}`);}
+ const seen=[];
+ await until(`(()=>{const s=${T}.state(),S=s.sector,g=s.programme.colony?.gantry;if(S.phase==='fighting')${T}.sectorCull(999,'tank');${T}.rover?.collect?.();document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();return !!(g&&g.phase==='hold'&&g.hungry&&g.hungry.k>0.02)||S.debriefOpen;})()`,400000).catch(async()=>{const s=await st();assert.fail(`KIDOU held over the hungry job (bank ${s.biomass}, hunger ${JSON.stringify(s.programme.colony?.hunger)}, gantry ${JSON.stringify(s.programme.colony?.gantry)})`);});
+ // the bank fills at the debrief: CONTINUE, the board SKIPPED (nothing bought), sector 2 held quiet, and KIDOU goes out to the dome it cannot pay for yet
+ if((await st()).sector.debriefOpen){mark('sector 1 held');await delay(1200);await evaluate(`document.querySelector('.sdb-acts [data-act=continue]').click()`);
+  await until(`${T}.state().board.open`,8000).catch(async()=>assert.fail(`CONTINUE opens the build board (${JSON.stringify((await st()).board)})`));
+  console.log(`  board: bank ${(await st()).board.bank}; skipped`);await evaluate(`${T}.board.skip()`);
+  await until(`!${T}.state().board.open && ${T}.state().sector.n===2`,15000).catch(async()=>assert.fail(`SKIP and sector 2 (${JSON.stringify((await st()).board)})`));await evaluate(`${T}.sectorQuiet(true)`);mark('sector 2, quiet');
+  await until(`(()=>{const g=${T}.state().programme.colony?.gantry;document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return !!(g&&g.phase==='hold'&&g.hungry&&g.hungry.k>0.02);})()`,400000).catch(async()=>{const s=await st();assert.fail(`KIDOU held over the hungry job after the board (bank ${s.biomass}, hunger ${JSON.stringify(s.programme.colony?.hunger)}, gantry ${JSON.stringify(s.programme.colony?.gantry)})`);});}
+ {const s=await st(),p=s.programme,g=p.colony?.gantry;console.log(`  hungry: bank ${s.biomass}; ${JSON.stringify(p.colony?.hunger)}; KIDOU ${JSON.stringify(g)}; bought ${p.bought.join(',')}; callouts ${JSON.stringify((await evaluate('window.__seen')).callouts?.slice(-4))}`);
+  assert(g?.hungry,`KIDOU out at the hungry job (${JSON.stringify(g)}; hunger ${JSON.stringify(p.colony?.hunger)})`);assert(!p.bought.includes(g.hungry.step),'nothing bought');assert.equal(p.active,null,'nothing printing for real');
+  mark(`KIDOU over ${g.hungry.step} at k ${g.hungry.k} of want ${g.hungry.want}`);
+  {const said=(await evaluate('window.__seen')).callouts||[];console.log(`  the cue: ${JSON.stringify(said.filter(x=>/ NEEDS /.test(x)))}`);assert(said.some(x=>/ NEEDS .* KG/.test(x)),'the one-line cue: the job and the biomass it needs');}
+  await frameCell(g.hungry.step,6,7);
+  // the dome climbs at the print's own pace to the bank's share (headless runs the clock slow): the still once it stands there, or at 240 s
+  await until(`(h=>!!h&&h.k>=Math.min(h.want,0.42)-0.005)(${T}.state().programme.colony?.gantry?.hungry)`,240000).catch(()=>{});await delay(1500);const s2=await st();console.log(`  at the still: ${JSON.stringify(s2.programme.colony?.gantry?.hungry)}; rig ${JSON.stringify(s2.programme.colony?.gantry?.phase)}`);}
+ current='hungry-build';await finish();
  } else if(args.includes('--dome-look')) {
  // THE DOME CITY, LOOKED AT (round 8 note 6, src/content/dome-city.js; no assertions but a page error): run it once with BASE=classic and once
  // with BASE=dome. The frame's cost on the base camera a skipped opening starts on (the perf readout's draw calls, triangles, frame and gpu ms,

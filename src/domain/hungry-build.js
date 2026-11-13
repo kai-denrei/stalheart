@@ -7,7 +7,9 @@
 //   priceOfStep(step, { structures, kinds, index }) -> the step's board price in kg (its card's base price, or its dome kind's, times the
 //     coming sector's index, rounded to 10 kg as the board does), or null when it has none (not a board step)
 //   nextHungry(steps, { done, bought, active, holds, price, placed }) -> { step, price } the first board step of the programme, in order, not
-//     standing, not bought, not printing, whose `when` would hold (holds(step)) and which has a place (placed(step)) and a price; or null
+//     standing, not bought, not printing, whose `when` would hold (holds(step)) and which has a place (placed(step)) and a price; or null.
+//     `prefer(step)`: the steps it picks first when one qualifies (the host: KIDOU's domes once it stands, so the mobile Stålheart is the one at
+//     work while a scoreboard or a garage waits behind; the first live run had the scoreboard next and KIDOU parked)
 //   whoShows(step, { ready }) -> 'kidou' (a gantry step once the Stålheart stands: KIDOU drives out and holds its tool over it) | 'print'
 //     (the partial rises in place on the fixed Stålheart's printer, no worker sent out)
 export function hungerOf(bank, price, cap = 0.8) {
@@ -22,14 +24,17 @@ export function priceOfStep(step, { structures = {}, kinds = {}, index = 1 } = {
   return Math.max(10, Math.round((base * index) / 10) * 10);
 }
 
-export function nextHungry(steps, { done, bought, active = null, holds = () => true, price, placed = () => true }) {
-  for (const s of steps) {
-    if (!s.board || done.has(s.id) || bought.has(s.id) || s.id === active) continue;
-    if (!holds(s) || !placed(s)) continue;
-    const p = price(s);
-    if (p > 0) return { step: s, price: p };
-  }
-  return null;
+export function nextHungry(steps, { done, bought, active = null, holds = () => true, price, placed = () => true, prefer = null }) {
+  const pick = (want) => {
+    for (const s of steps) {
+      if (!s.board || done.has(s.id) || bought.has(s.id) || s.id === active || (want && !want(s))) continue;
+      if (!holds(s) || !placed(s)) continue;
+      const p = price(s);
+      if (p > 0) return { step: s, price: p };
+    }
+    return null;
+  };
+  return (prefer && pick(prefer)) || pick(null);
 }
 
 export const whoShows = (step, { ready = false } = {}) => (step?.gantry && ready ? 'kidou' : 'print');

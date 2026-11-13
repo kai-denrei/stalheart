@@ -49,10 +49,10 @@ export function createProgrammeHost(c) {
   let lookAt = -Infinity, cued = null;
   const hunger = (s, pg, ctx, sector) => {
     const now = c.t(); if (now - lookAt < HUNGRY_BUILD.every && now >= lookAt) return; lookAt = now;
-    const ix = priceIndex(BUILD_BOARD, sector + 1), coming = { ...ctx, sector: sector + 1, waveActive: false };
-    const next = nextHungry(pg.steps, { done: pg.done, bought: pg.bought, active: pg.active, placed: (st) => s.print.cellOf(st) >= 0,
+    const ix = priceIndex(BUILD_BOARD, sector + 1), coming = { ...ctx, sector: sector + 1, waveActive: false }, ready = !!s.gantry && programmeHas(pg, 'stalheart');
+    const next = sector < HUNGRY_BUILD.fromSector ? null : nextHungry(pg.steps, { done: pg.done, bought: pg.bought, active: pg.active, placed: (st) => s.print.cellOf(st) >= 0, prefer: HUNGRY_BUILD.kidouFirst && ready ? (st) => !!st.gantry : null,
       holds: (st) => whenHolds({ ...(st.when ?? {}), idle: false, home: false }, coming), price: (st) => priceOfStep(st, { structures: BUILD_BOARD.structures, kinds: COLONY.kinds, index: ix }) });
-    const bank = c.bank?.() ?? 0, k = next ? hungerOf(bank, next.price, HUNGRY_BUILD.cap) : 0, who = next ? whoShows(next.step, { ready: !!s.gantry && programmeHas(pg, 'stalheart') }) : null;
+    const bank = c.bank?.() ?? 0, k = next ? hungerOf(bank, next.price, HUNGRY_BUILD.cap) : 0, who = next ? whoShows(next.step, { ready }) : null;
     s.gantry?.hunger?.(who === 'kidou' ? next.step : null, k, { progress: (st, kk) => s.print.partial?.(st, kk), rising: HUNGRY_BUILD.rising });
     const hp = s.hungryPrint, pid = who === 'print' ? next.step.id : null;
     if (hp && hp.step.id !== pid) { if (!pg.done.has(hp.step.id) && !pg.bought.has(hp.step.id) && pg.active !== hp.step.id) s.print.partial?.(hp.step, 0); s.hungryPrint = null; }
