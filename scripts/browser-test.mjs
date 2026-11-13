@@ -4582,13 +4582,13 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    results.push({tag,frames});await evaluate(`${T}.showcase.ram(false)`);continue;
   }
   const where=await evaluate(`(()=>{const s=${T}.state();return {c:${C}.ahead(3),c2:${C}.ahead(2),tank:s.playerPosition,daylight:s.daylight};})()`);
-  const ci=where.c>=0?where.c:where.c2;const cells=[ci,...(await evaluate(`${C}.neighbours(${ci})`)).slice(0,3)];
+  const ci=where.c>=0?where.c:where.c2>=0?where.c2:await evaluate(`${C}.ground().band.map(b=>b.cell)[0]??-1`);const cells=[ci,...(await evaluate(`${C}.neighbours(${ci})`)).slice(0,3)];
   const plan=mode==='reed'?[['reed',4]]:process.env.PLAN?process.env.PLAN.split(',').map(x=>{const [t,n]=x.split(':');return [t,+n||1];}):[['amoeba',8],['ghost',6],['saucer',4],['barbed',2]];   // PLAN=amoeba:8,mote:8 (the motes' look, 2026-11-13)
   await evaluate('window.__spawned=[]');
   for(const [type,n] of plan)for(let k=0;k<n;k++)await evaluate(`(()=>{const f=Array.prototype.filter;let a=null;Array.prototype.filter=function(...x){a??=this;return f.apply(this,x);};try{${C}.pearls();}finally{Array.prototype.filter=f;}const before=new Set(a);${C}.spawnAt(${JSON.stringify(type)},${cells[k%cells.length]}${type==='reed'?",{tier:'small'}":''});for(const e of a)if(!before.has(e))window.__spawned.push(e);return true;})()`);
   // the camera over the cells' centres (the records' spawn points, the same every run), from behind the hull
   const mid=await evaluate(`(()=>{const P=window.__spawned.map(e=>e.pos);return [0,1,2].map(k=>P.reduce((a,v)=>a+v[k],0)/P.length);})()`),tdir=mid.map((v,k)=>v-where.tank[k]);
-  await evaluate(`window.__r4.pose(${JSON.stringify(mid)},${JSON.stringify(tdir)},${mode==='reed'?'9,12':'14,18'})`);
+  await evaluate(`window.__r4.pose(${JSON.stringify(mid)},${JSON.stringify(tdir)},${process.env.POSE||(mode==='reed'?'9,12':'14,18')})`);
   const pt=mode==='reed'?`(e=>${C}.view(e)?.point)`:`(e=>e.obj.userData.point?.())`,tierOf=mode==='reed'?`(e=>'reed')`:`(e=>e.spec.pearl)`;
   if(mode==='reed')await until(`window.__spawned.every(e=>${C}.view(e)?.made)`,60000);
   await delay(2500);
