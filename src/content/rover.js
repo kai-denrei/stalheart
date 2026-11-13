@@ -38,8 +38,10 @@
 //                      the drawn road (src/domain/rover-road.js) keeps `half` m either side of its line clear (the wheels stand ~2.4 m out),
 //                      rounds its corners at up to `radius` m, tested every `step` m; it holds `ahead` m short of a door still opening
 //   PEARLS             the three vessels standing with the depot, each `capacity` kg; the fourth is the build board's card (src/content/build-board.js)
+// FASTER (owner, 2026-11-13: "yushi rover should move faster"): speed 16 -> 26 m/s (1.6x) and the on-the-spot turn 0.8 -> 1.3 rad/s in proportion;
+// the wheels and the belt follow the distance it actually rolls (src/fx/rover.js ctl.update distance), so they spin up with it
 export const ROVER = Object.freeze({
-  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600, breakShare: 0.5, recheck: 1,
+  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 26, turn: 1.3, reach: 3, price: 3600, breakShare: 0.5, recheck: 1,
   road: Object.freeze({ pad: 2, half: 2.5, radius: 8, step: 2, ahead: 6 }),
   retreat: Object.freeze({ bodies: 6, cells: 4, clear: 2 }),
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the whites and yellows hunt it (src/domain/soft-hunt.js huntGoal) and each
