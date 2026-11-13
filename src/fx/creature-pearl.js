@@ -420,7 +420,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   const hash01 = (n) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
   const paceOf = (h) => (h && !h.dead && gait && !pace?.[h.p.id]?.glide ? h.wait ?? 1 : 1);   // a gliding blob never holds its record back
   // THE THERMALS (owner, 2026-10-16): under the gunship's FLIR a cored tier's membrane and core run hot (a white emissive the pass reads as heat), a soft tier's
-  // stay cold; off again when the view leaves (the materials' own emissive put back).
+  // run warm (PEARL_FOLLOW.thermal.soft; cold, black on the dark ground, until round 13); off again when the view leaves (the materials' own emissive put back).
   // ONE WRITER (owner, 2026-11-05: "CUTIS-CORE AMETHYST ... a plain white mass with a hint of purple in the nest and the waves", fine in the Quiver's
   // seeker, which comes before the first seat). The base's heat (src/fx/thermal-heat.js, over this family's roots) wrote the same emissive, the
   // shader's uHeat, with its own saved copy: it ran first and warmed every membrane to .55, this function's lazy 'cold' snapshot took that warm value,
@@ -434,7 +434,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       if (!m?.emissive) continue;
       m.userData.ownHeat = true;
       m.userData.cold ??= { c: m.emissive.clone(), i: m.emissiveIntensity };
-      if (hot) { m.emissive.setRGB(cored ? 1 : 0, cored ? 1 : 0, cored ? 1 : 0); m.emissiveIntensity = cored ? 1.4 : 0; } else { m.emissive.copy(m.userData.cold.c); m.emissiveIntensity = m.userData.cold.i; }
+      if (hot) { const H = tune.thermal ?? { soft: 0, cored: 1, coredIntensity: 1.4 }, w = cored ? H.cored : H.soft; m.emissive.setRGB(w, w, w); m.emissiveIntensity = cored ? H.coredIntensity : w > 0 ? 1 : 0; } else { m.emissive.copy(m.userData.cold.c); m.emissiveIntensity = m.userData.cold.i; }   // a soft skin warm, not black (round 13, PEARL_FOLLOW.thermal)
     }
   }
   function thermal(on) {
@@ -601,7 +601,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       if (!slot) return { tier: h.p.id, type: h.type, slots: 0, dead: h.dead };
       const { p } = h, sw = p.swarm, i = slot.i, pos = sw.position(i), L = sw.life;
       return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], sink: sw.sink[i], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
-        stage: sw.getState(i), phase: sw.phase[i], reach: sw.params[i * 4], active: !!sw.active[i], dead: h.dead, hub: h.hub,
+        stage: sw.getState(i), phase: sw.phase[i], reach: sw.params[i * 4], active: !!sw.active[i], level: p.geo.levelOf[i], heat: p.geo.levels?.[Math.min(2, p.geo.levelOf[i])]?.material?.emissiveIntensity ?? null, dead: h.dead, hub: h.hub,
         stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, absorb: !!p.dying.get(i)?.st?.absorb, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, room: +sw.room[i].toFixed(3), sweepDamp: +sw.sweepDamp[i].toFixed(3), pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
     dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); p.backs?.dispose(); } pools.clear(); parent.remove(group); },
