@@ -259,6 +259,8 @@ export function createShowcaseHooks(host) {
     // spec names as its body family (a creature body is made only for a record whose spec says so), its size and its distance to the hull in cells
     // the game camera as the seat leaves it, and points through it (camera.project: x, y in -1..1 inside the frame, z the depth -1..1 between near and far)
     seatCam: (points = []) => ({ near: camera.near, far: camera.far, layers: camera.layers.mask, fov: camera.fov, zoom: camera.zoom, pts: points.map((p) => { const v = camera.position.clone().set(p[0], p[1], p[2]).project(camera); return [+v.x.toFixed(3), +v.y.toFixed(3), +v.z.toFixed(5)]; }) }),
+    impact: () => host.pilot()?.gunshipOptic?.()?.pos?.slice() ?? null,   // the optic's impact point (the HUD's IMPACT), world
+    cellNear: (p) => { const g = host.graph(); let best = -1, d = Infinity; g.centers.forEach((c, ci) => { const k = (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2; if (k < d) { d = k; best = ci; } }); return best; },
     guardRecords: (id) => enemies.filter((e) => e.alive && e.guard?.site === id),   // the live records themselves, for an in-page probe (--nest-guards, the gunship's view)
     guards: (id) => { const cs = host.cellSide(); return enemies.filter((e) => e.alive && e.guard?.site === id).map((e) => ({ type: e.type, tier: e.tier ?? null, tierKey: e.tierKey ?? null, body: e.spec?.body ?? null, size: e.size, hp: e.hp, cur: e.cur, cells: +(Math.hypot(e.pos[0] - player.pos[0], e.pos[1] - player.pos[1], e.pos[2] - player.pos[2]) / cs).toFixed(2), trail: e.guard.trail?.length ?? 0 })); },
 

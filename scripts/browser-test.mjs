@@ -4919,6 +4919,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    const inv=[-qx,-qy,-qz,qw],proj=(p)=>{const d=[p[0]-ss.pos[0],p[1]-ss.pos[1],p[2]-ss.pos[2]];const [a,b,c,w]=inv;const ix=w*d[0]+b*d[2]-c*d[1],iy=w*d[1]+c*d[0]-a*d[2],iz=w*d[2]+a*d[1]-b*d[0],iw=-a*d[0]-b*d[1]-c*d[2];const v=[ix*w+iw*-a+iy*-c-iz*-b,iy*w+iw*-b+iz*-a-ix*-c,iz*w+iw*-c+ix*-b-iy*-a];const t=Math.tan(ss.fov*Math.PI/360);return {x:+(v[0]/(-v[2]*t*ss.aspect)).toFixed(3),y:+(v[1]/(-v[2]*t)).toFixed(3),depth:+(-v[2]).toFixed(5)};};
    const sc=await evaluate(`${T}.showcase.seatCam(${JSON.stringify([cen,...ps])})`);console.log(`NEST GUARDS seat camera: ${JSON.stringify(sc)}`);
    console.log(`NEST GUARDS seat frame: ${JSON.stringify({map:ss.map,fov:ss.fov,camPos:ss.pos,aim:ss.aim,site:proj(cen),guards:ps.map(proj)})}`);}
+  // THE SITE AT THE RETICLE: the station shifted by the vector from the optic's impact to the site's centre, twice, 1.5 s for the ease each time
+  {const cen=(await evaluate(`${T}.showcase.probeSite("${gsite}")`)).centre;let tp=cen.slice();
+   for(let k=0;k<2;k++){const imp=await evaluate(`${T}.showcase.impact()`);if(!imp)break;tp=tp.map((v,i)=>v+cen[i]-imp[i]);const ci=await evaluate(`${T}.showcase.cellNear(${JSON.stringify(tp)})`);await evaluate(`${T}.showcase.track(${ci})`);await delay(1500);
+    const at=(await evaluate(`${T}.showcase.seatCam(${JSON.stringify([cen])})`)).pts[0];console.log(`NEST GUARDS station shift ${k}: impact ${JSON.stringify(imp.map(v=>+v.toFixed(5)))} -> track cell ${ci}; the site now at ${JSON.stringify(at)}`);
+    if(k===1)assert.ok(Math.hypot(at[0],at[1])<0.2,`the station shift puts the site at the reticle (NDC ${JSON.stringify(at)}; 0.04,-0.06 measured 2026-11-13, the guards then drawn bright at 37 of 41 projected centres outside the inset)`);}}
   // the guards' pixels in the main optic as the screenshot takes it (round 13: with yaw 0 they fell under the GROUND TRUTH inset, x 792-1427, y 475-835 of 1440x900)
   const shotPx=await evaluate(`(()=>{   const T=${T},ps=T.showcase.guardRecords("${gsite}").map(e=>e.pos.slice()),c=T.showcase.probeSite("${gsite}").centre,r=T.showcase.seatCam([c,...ps]).pts;
    return r.map(([x,y])=>[Math.round((x+1)/2*innerWidth),Math.round((1-y)/2*innerHeight)]);})()`);
