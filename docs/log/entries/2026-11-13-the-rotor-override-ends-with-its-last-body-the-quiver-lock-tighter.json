@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "2026-11-13-the-rotor-override-ends-with-its-last-body-the-quiver-lock-tighter",
+  "date": "2026-11-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Rotor's override ends with its last body in reach and lets the player go; the piloted Quiver's lock box and hold tighter",
+  "context": "Owner, 2026-11-13: \"after the Rotor manual override... which is over very soon, we stay in that view with nothing happening for dozens of seconds, with nothing to do; as soon as the last enemy is dead it should move on, without having to manually click next\" and \"quiver : a bit more challenge in aligning the reticles\". In src/domain/story-beats.js the first wave cleared only when api.enemies() was 0: every live non-guard body on the field plus the queue, including harmless stragglers and the dog's contact pack out of the Rotor's range or sight, which only die by walking to the heart. On the dog's opening the seat was let go only by the first harvest's watch shot (src/fx/first-harvest.js), which needs the depot standing, a rover scene point and no other shot; failing any, the player stayed in the Rotor's optic until the rover was home (the rover's run, about 51 s in the base run). The piloted Quiver locks on whatever sits inside the lock box (STORY_QUIVER.coneDeg 14 degrees half-angle) for missile.lockTime 0.6 s; the mrad gate is opened out of the way (1e4), off the box the lock starts over (missile-targeting.js), there is no magnetism.",
+  "outcome": "Note A: on the dog's opening (scouting only; the later sectors' seats, chapters, ?skip= and SKIP ALL untouched) the wave is done once nothing is left in the seat's reach (api.inReach: the queue plus alive non-guard bodies within the harness aimEnemy's range and line of sight) for STORY_OVERRIDE_DONE.emptyHold 1 s; release 1.5 s after the clear the beats call api.vacate (leavePilot: the camera eased back to the view before the seat) and the harvest's beat runs (flare and watch once the depot stands). Measured --dog-scout (harness defender, story clock): seat to clear 12.0 s base (66.17 -> 78.18) vs 7.8 s after (66.71 -> 74.49); the clear to the flare 1.9 s base, all in the seat, vs 6.2 s after, of which 1.5 s in the seat and about 4.5 s out of it while the depot finishes its print (it prints from rotor-ready, 14 s). Note B: STORY_QUIVER.coneDeg 14 -> 9 (about 36 % smaller); missile.pilotLockTime 0.8 s (was the shared 0.6, +33 %), read only by a piloted launcher (src/fx/tower-aim.js seatLock) and the scope's T-LOCK readout; missile.lockTime stays 0.6 for the Quiver firing on its own.",
+  "alternatives": [
+    "A kill count since the seat (fodderTotal kills ends it): fails when a lemon walks past unseen and miscounts pack kills.",
+    "Releasing the seat at the clear on every opening: the unscouted openings glide seat-to-seat from the Rotor into the Quiver, so it stays on the dog's opening.",
+    "Shortening the depot's print (base-programme depot seconds 14) to close the last 4.5 s: shared with the sector programme, left for the owner.",
+    "Raising the shared lockTime: would slow the automatic Quiver too."
+  ],
+  "evidence": [
+    "test/story-beats.mjs (new block): reach in play holds the fight, a flicker restarts the 1 s hold, the clear comes with stragglers alive, no vacate and no flare for 1.5 s, then one vacate; without overrideDone the old rule holds.",
+    "test/tower-aim.mjs: seatLock uses pilotLockTime, a config without it is unchanged, coneDeg under 14.",
+    "The box on the glass at the Quiver's zoom 3 (fov 20 degrees): its half-size is tan(coneDeg)/tan(10 deg) of the half-height, 1.41 (wider than the screen) at 14 degrees, 0.90 at 9 degrees: still near the whole optic, so 9 is a moderate first step.",
+    "--dog-scout green before and after (story clock): seat 66.17 / 66.71, the clear 78.18 / 74.49, the depot 79.93 / 80.45, the flare 80.1 / 80.64, THE FIRST ORDERS 131.58 / 134.28 (the rover's run, not a timer).",
+    "--quiver-frame (the harness aims dead centre, so it checks the lock and the round still work, not the tighter box): queued behind the other streams' runs when this entry was written; its result is in the round 13 report. npm test 350 programs, npm run check and npm run architecture green.",
+    "Not verified with a human hand in a browser: the harness aims at whatever is in reach, so the human stall (bodies out of sight walking to the heart) is inferred from the rule, not measured."
+  ],
+  "supersedes": []
+}

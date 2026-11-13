@@ -22,6 +22,9 @@
 // is the board's radian twin over live nodes, kept bit-for-bit as it was.)
 import * as THREE from '../../vendor/three.module.js';
 import { bodyAt, groundAt } from './lance-follow.js';
+// the seat's own hold (owner, 2026-11-13: "quiver : a bit more challenge in aligning the reticles"; src/content/story-defaults.js STORY_QUIVER):
+// a piloted launcher locks in `pilotLockTime` where its config has one; the same launcher firing on its own keeps `lockTime`
+export const seatLock = (config) => (config?.pilotLockTime ? { ...config, lockTime: config.pilotLockTime } : config);
 import { makeLock } from '../domain/lockon.js';
 import { stepMissileLock } from '../domain/missile-targeting.js';
 import { pickTarget } from '../towers.js';
@@ -52,7 +55,7 @@ export function createTowerAim(host) {
     if (!head || facing === undefined) {
       if (manual) {
         tw.aimErr=0;
-        if(config){if(!tw.lock)tw.lock=makeLock();stepMissileLock(tw.lock,dt,acquired,acquired?missileDistance(graph.centers[tw.ci],acquired.pos):Infinity,0,config);}
+        if(config){if(!tw.lock)tw.lock=makeLock();stepMissileLock(tw.lock,dt,acquired,acquired?missileDistance(graph.centers[tw.ci],acquired.pos):Infinity,0,seatLock(config));}
       }
       return;
     }
@@ -156,7 +159,7 @@ export function createTowerAim(host) {
     if (config) {
       if (!tw.lock) tw.lock = makeLock();
       stepMissileLock(tw.lock, dt, acquired,
-        acquired ? missileDistance(graph.centers[tw.ci], acquired.pos) : Infinity, tw.aimErr, config);
+        acquired ? missileDistance(graph.centers[tw.ci], acquired.pos) : Infinity, tw.aimErr, manual ? seatLock(config) : config);
     }
   };
 }

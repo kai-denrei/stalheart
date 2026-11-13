@@ -43,6 +43,7 @@ export function makeStoryBeats({
   laneCell = null,          // (hops) => the lane cell that many cells in from the sinkhole toward the gate, or -1: the quiet breach's head start (fodderEmerge.headStart)
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [], calmMax = Infinity,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed', rotorAuto = false,
+  overrideDone = null,      // the tutorial override's end on the dog's opening: { emptyHold, release } (src/content/story-defaults.js STORY_OVERRIDE_DONE); null: the clear waits for the field
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
   arrival = false,          // the landing plays in the game (src/fx/arrival.js): `landed` waits for its deploy(api)
@@ -78,7 +79,7 @@ export function makeStoryBeats({
   const settling = settle != null && arrival && startPhase === 'landed';
   const scouting = !settling && scout != null && ((arrival && startPhase === 'landed') || startPhase === 'orders'), salvaged = settling || scouting;   // the dog's opening grants the whole salvage at the deploy, as the settling did
   const early = arrival && gated && earlyBreach != null && !settling && !scouting;
-  let dogAsked = false, pack = 0, flared = false, ordersDone = false;   // the dog's beats: its print asked, the pack's bodies, Isao's harvest flare, the first orders closed
+  let dogAsked = false, pack = 0, flared = false, ordersDone = false, emptyAt = null, vacated = false;   // emptyAt: the override's reach empty since; vacated: its seat let go   // the dog's beats: its print asked, the pack's bodies, Isao's harvest flare, the first orders closed
   const dog = (api) => api.dog?.() ?? null;
   let emergency = false;   // Isao's own Rotor order at the settle's end (its cost granted once)
   const settleOver = () => released && clock - releasedAt >= settle;
@@ -160,11 +161,19 @@ export function makeStoryBeats({
         const kills = api.kills?.() ?? 0;
         if (kills >= commsKills && !said.has('alien_comms')) { api.brief?.('alien_comms'); said.add('alien_comms'); }
         if (kills >= harvestKills && !said.has('harvest_biomass')) { api.brief?.('harvest_biomass'); said.add('harvest_biomass'); }
-        if (spawned >= fodderTotal && api.enemies() === 0) { api.brief?.('wave_cleared'); api.unlock?.('views'); said.add('wave_cleared'); enter('cleared'); }
+        // AS SOON AS THE LAST ENEMY IS DEAD IT MOVES ON (owner, 2026-11-13: "after the Rotor manual override... we stay in that view with nothing
+        // happening for dozens of seconds ... as soon as the last enemy is dead it should move on, without having to manually click next"): on the
+        // dog's opening the wave is done when nothing is left in the seat's reach (range and sight, the queue counted) for `emptyHold` s; the
+        // stragglers out of it walk on, harmless, to the heart, which is what held the clear
+        const reach = scouting && overrideDone ? api.inReach?.() ?? -1 : -1;
+        emptyAt = reach === 0 ? emptyAt ?? clock : null;
+        if (spawned >= fodderTotal && (api.enemies() === 0 || (emptyAt !== null && clock - emptyAt >= overrideDone.emptyHold))) { api.brief?.('wave_cleared'); api.unlock?.('views'); said.add('wave_cleared'); enter('cleared'); }
       } else if (phase === 'cleared' && scouting) enter('harvest');
       // THE FIRST HARVEST (spec 1, beat 10): the depot prints at `harvest`; once it is live Isao's flare goes on the bodies at the gate, and the rover's
       // first trip home (or harvestMax s) brings THE FIRST ORDERS; the Quiver's beat waits for the card to close
+      else if (phase === 'harvest' && overrideDone && clock - at < overrideDone.release) { /* the last kill reads */ }
       else if (phase === 'harvest') {
+        if (overrideDone && !vacated) { vacated = true; api.vacate?.(); }   // the seat lets go: the camera back to where it was before the seat
         const H = api.harvest?.() ?? null;
         if (H && !flared && H.ready()) { H.flare(); flared = true; api.brief?.('first_harvest'); said.add('first_harvest'); for (const id of scout.lines ?? []) { api.want?.(id); said.add(id); } }   // the exposition (2026-11-12): no bank, biomass bonds, it seeps
         if (!H || (flared && H.done()) || clock - at >= scout.harvestMax) enter('orders');
