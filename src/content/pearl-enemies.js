@@ -155,6 +155,11 @@ export const pearlScaleOf = (tier) => PEARL_BODY.scale[tier] ?? 1;
 // CUTIS_LOD (src/fx/cutis-maku/geometry.js): the high hull only over `high` device pixels of radius and for at most `highCap` bodies a tier (eight tiers),
 // the lowest hull under `low`; bodies outside the view or below the horizon are not drawn.
 export const PEARL_FOLLOW = freeze({
+  // THE GUNSHIP SEES THE NEST (owner, 2026-11-13: "when in gunship mode; the enemies near the nest/rockets don't show up, the gunship view should reflect
+  // the reality on the ground"): under the gunship's FLIR a soft tier's skin ran at heat 0, black on the dark ground, so a nest of soft guards (62 of 65 at
+  // rocket-b) was drawn and not seen; a soft skin now runs warm (`soft`, the emissive's grey), a cored one still hot (`cored` white x `coredIntensity`), so the
+  // hard-cores still register more distinctly (owner, 2026-10-16) and no body is cold. src/fx/creature-pearl.js heatPool
+  thermal: freeze({ soft: 0.5, cored: 1, coredIntensity: 1.4 }),
   keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, leashHops: 1, separation: 0.5,
   squad: { gap: 1.1, stagger: 1.2 }, hubMargin: 0.03, reachStep: 0.15, opacityRef: 0.95,
   capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },

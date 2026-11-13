@@ -31,16 +31,17 @@ const coredSkin = new Set(PEARL_TIERS.filter((t) => t.cored).map((t) => t.id));
   const base = createThermalHeat(() => ({ warm: fam.roots(), hot: [] }), { every: 1e9 });
   base.set(true); fam.thermal(true);
   for (const m of cored) assert.equal(heatOf(m), 1, 'in the seat a cored tier\'s skin runs hot');
-  for (const m of soft) assert.equal(heatOf(m), 0, 'and a soft tier\'s stays cold');
+  const warm = PEARL_FOLLOW.thermal.soft; assert(warm > 0 && warm < PEARL_FOLLOW.thermal.cored, `a soft skin warm, cooler than a cored one (${warm})`);
+  for (const m of soft) assert.equal(heatOf(m), warm, 'and a soft tier\'s runs warm, never black (round 13: the nest seen from the gunship)');
   base.set(true);   // the base's slow re-apply (every second while the seat is on) must not take the family's skins to warm
   for (const m of cored) assert.equal(heatOf(m), 1, 'the base\'s re-apply leaves the hot skin hot');
-  for (const m of soft) assert.equal(heatOf(m), 0, 'and the cold skin cold');
+  for (const m of soft) assert.equal(heatOf(m), warm, 'and the warm skin warm');
   // a pool made while the seat is on (a tier's first body during the pass) takes the seat's state
   fam.add('rolling', { x: 20, z: 0, angle: 0, speed: 12 });
   const umber = membranes(fam).filter((m) => tierOf(m) === 'brown'); assert(umber.length, 'the umber pool was made');
   for (const m of umber) assert.equal(heatOf(m), 1, 'a cored pool made in the seat is hot');
   fam.add('ghost', { x: 30, z: 0, angle: 0, speed: 12 });
-  for (const m of membranes(fam).filter((m) => tierOf(m) === 'yellow')) assert.equal(heatOf(m), 0, 'a soft pool made in the seat is cold');
+  for (const m of membranes(fam).filter((m) => tierOf(m) === 'yellow')) assert.equal(heatOf(m), warm, 'a soft pool made in the seat is warm');
 
   // leaving the seat, in the game's order: the base's restore, then the family's
   base.set(false); fam.thermal(false);
@@ -51,4 +52,4 @@ const coredSkin = new Set(PEARL_TIERS.filter((t) => t.cored).map((t) => t.id));
   for (const m of membranes(fam)) assert.equal(heatOf(m), 0, 'a second seat leaves them cold too');
   base.dispose(); fam.dispose();
 }
-console.log('PASS Pearl thermal: one writer of the membranes\' heat, cored hot and soft cold in the seat, every skin cold again after it, a pool made in the seat takes its state');
+console.log('PASS Pearl thermal: one writer of the membranes\' heat, cored hot and soft warm in the seat, every skin cold again after it, a pool made in the seat takes its state');

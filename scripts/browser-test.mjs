@@ -4904,6 +4904,23 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.equal(reeds.length,want,`${id}: ${want} small Reed guard(s) up (${JSON.stringify(g[id].map(x=>x.type))})`);
   for(const r of reeds){assert.ok(r.tier==='small'||r.tierKey==='reed:small',`${id}: the Reed is the small tier (${JSON.stringify(r)})`);assert.equal(r.body,'reed',`${id}: the Reed's record names its family, so a Reed body is made for it (${JSON.stringify(r)})`);assert.ok(Number.isFinite(r.size)&&r.size>0,`${id}: the Reed has a size (${JSON.stringify(r)})`);}}
  current='nest-guards-up';await finish();
+ // THE GUNSHIP SEES THE NEST (owner, 2026-11-13: "when in gunship mode; the enemies near the nest/rockets don't show up, the gunship view should reflect
+ // the reality on the ground"): the gunship put over a site and the seat taken looking down; every guard record there is drawn in the seat's view: a Pearl
+ // body at a drawn level (not 3, culled) or, for a record left its dot cloud, a visible cloud
+ {const gsite=process.env.GSITE||'rocket-b',gcell=(await evaluate(`${T}.showcase.probeSite("${gsite}")`)).cell;
+  await evaluate(`${T}.showcase.track(${gcell})`);const seated=await evaluate(`${T}.showcase.gunship()`);await delay(1500);await evaluate(`${T}.showcase.aim(-1.45)`);await delay(4000);
+  await evaluate('document.querySelector("#controls-card [data-close], #controls-card button")?.click()');await delay(500);
+  const seen=await evaluate(`(()=>{const T=${T},v=T.creatures.view,recs=T.showcase.guardRecords("${gsite}"),o={seat:!!T.seatState().gunshipSeat,heat:{},records:recs.length,bodies:0,drawnBodies:0,culled:0,clouds:0,drawnClouds:0,levels:{},types:{}};
+   for(const e of recs){const b=v(e);o.types[e.type]=(o.types[e.type]||0)+1;if(b&&b.slot!=null){o.bodies++;o.levels[b.level]=(o.levels[b.level]||0)+1;if(b.level!==3)o.drawnBodies++;else o.culled++;const hk=(b.cored?'cored ':'soft ')+b.heat;o.heat[hk]=(o.heat[hk]||0)+1;}else{o.clouds++;let vis=!!e.obj;for(let n=e.obj;n;n=n.parent)if(!n.visible){vis=false;break;}if(vis)o.drawnClouds++;}}
+   o.drawn=o.drawnBodies+o.drawnClouds;return o;})()`);
+  console.log(`NEST GUARDS from the gunship's seat over ${gsite} (cell ${gcell}, seated ${seated}): ${JSON.stringify(seen)}`);
+  current='nest-guards-gunship';await finish();
+  assert.ok(seen.seat,'the gunship seat is taken');assert.ok(seen.records>0,`guards stand at ${gsite} (${seen.records})`);
+  assert.equal(seen.drawn,seen.records,`every guard at ${gsite} is drawn in the gunship's view (${JSON.stringify(seen)})`);
+  // drawn is not seen under the FLIR: a body whose membrane carries no heat is black on the dark ground (the soft tiers were left at 0, round 13)
+  const cold=Object.entries(seen.heat).filter(([k])=>!(+k.split(' ')[1]>0)).reduce((a,[,n])=>a+n,0);
+  assert.equal(cold,0,`no guard body at ${gsite} is cold (black) under the gunship's thermal view (${JSON.stringify(seen.heat)})`);
+  await evaluate(`${T}.showcase.leave()`);await delay(800);}
  // THE CHASE: the hull put down at a site's stand (inside the nest's aggro radii); the Reed comes for it like the soft bodies do
  const site=process.env.SITE||'rocket-b',stand=await evaluate(`${T}.cargoStand("site","${site}")`);assert.ok(stand>=0,`a stand cell for ${site}`);
  await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);   // the hull out of its bay first: a bay's roll-out owns the hull's place until it hands over
