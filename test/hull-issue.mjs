@@ -22,7 +22,7 @@ const issues = (h) => h.log.filter((l) => l[0] === 'issue');
   assert.equal(hull.held(), false); assert.equal(hull.issued(), true); assert.equal(hull.out(), false, 'still on screen');
   hull.tick(h.api); hull.tick(h.api); assert.equal(issues(h).length, 1, 'issued once');
   h.busy = false; hull.tick(h.api); assert.equal(hull.out(), true, 'out once the roll-out is off the screen');
-  assert.deepEqual(hull.state(), { state: 'out', issuedAt: 118.5, quiet: false, door: 7, waited: 0 });
+  assert.deepEqual(hull.state(), { state: 'out', issuedAt: 118.5, quiet: false, door: 7, waited: 0, finish: null });
   assert.equal(hull.door(), door); assert.equal(hull.lead, STORY_ROLLOUT.lead);
 }
 // A GUNNER IS NEVER EVICTED (2026-09-23): in the gunship's or SOL-82's seat the hull is set down quietly, and is out at once
@@ -100,3 +100,20 @@ const issues = (h) => h.log.filter((l) => l[0] === 'issue');
   s.shotRun.onEnd(); assert.deepEqual(log.slice(-2), [['view', 'third'], ['deployStart', 0]]);
 }
 console.log('Hull issue: held until the Stålheart stands, rolled out once (quietly under a gunner), out after; the door berth; the HUD readout; the controller\'s host.');
+// THE TANK FINISHED UNDER THE STÅLHEART (owner, 2026-11-13): with `finish` seconds the nuke's tank is printed in its berth first, the hand-over
+// (host.early: the seat, the order) only at progress 1; without the host's finish hooks (or finish 0) it is handed over at once, as before
+{
+  const { finishProgress, finishLookDue } = await import('../src/domain/hull-finish.js');
+  assert.equal(finishProgress(0, 14), 0); assert.equal(finishProgress(7, 14), 0.5); assert.equal(finishProgress(30, 14), 1); assert.equal(finishProgress(3, 0), 1, 'no seconds: whole');
+  assert.equal(finishLookDue({ elapsed: 1, look: 6, hold: null }), true); assert.equal(finishLookDue({ elapsed: 1, look: 6, hold: 'fight' }), false, 'the close-up gate holds it'); assert.equal(finishLookDue({ elapsed: 7, look: 6, hold: null }), false, 'too late for the look');
+  const log = [], h = { t: 100, api: null };
+  h.api = { now: () => h.t, stands: () => false, early: (b) => log.push(['early', b.ci]), finishBegin: (b) => log.push(['begin', b.ci]), finishSet: (k) => log.push(['set', k]), finishEnd: () => log.push(['end']) };
+  const hull = createHullIssue({ held: true, finish: 14 }), berth = { ci: 3 };
+  assert.equal(hull.early(h.api, berth), true);
+  assert.equal(hull.state().state, 'finishing'); assert.equal(hull.held(), false, 'drawn while it prints'); assert.deepEqual(log, [['begin', 3]]);
+  h.t = 107; hull.tick(h.api); assert.deepEqual(log.at(-1), ['set', 0.5]); assert.equal(log.some((l) => l[0] === 'early'), false, 'no seat while it prints');
+  h.t = 114; hull.tick(h.api); assert.deepEqual(log.slice(-3), [['set', 1], ['end'], ['early', 3]], 'whole, then handed over');
+  assert.equal(hull.state().state, 'early'); assert.deepEqual(hull.state().finish, { k: 1, seenBelow: true, at: 100, doneAt: 114 });
+  const plain = createHullIssue({ held: true, finish: 14 }), log2 = []; plain.early({ now: () => 0, early: () => log2.push('early') }, berth);
+  assert.deepEqual(log2, ['early'], 'a host without the finish hooks hands over at once'); assert.equal(plain.state().state, 'early');
+}

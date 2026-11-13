@@ -14,13 +14,22 @@
 //   host.fighting()    the player is in a sentry's optic on the Rotor's first wave (the beats' 'piloting'): the roll-out waits for its
 //                      clear, at most `firstWave` s after the Stålheart stands (2026-10-14: the Pearl set's slow gait brings that wave
 //                      to the Rotor late, and the roll-out took the seat mid-wave; the dot clouds' wave is long cleared by then)
-// States: held (no hull) -> rolling (issued, still on screen) -> out.
+// States: held (no hull) -> rolling (issued, still on screen) -> out; the nuke's tank: held -> finishing -> early -> out.
+// FINISHED UNDER THE STÅLHEART (owner, 2026-11-13: "the tank; we should see it being finished under the Stalheart before we get to ride it"):
+// with `finish` seconds the nuke's hand-over first parks the hull in its berth as a filling wire (host.finishBegin / finishSet / finishEnd,
+// src/domain/hull-finish.js, src/fx/hull-finish.js) and only at progress 1 runs host.early (the seat, the order).
 import { hasPerk as programmeHas } from '../domain/build-programme.js';
+import { finishProgress } from '../domain/hull-finish.js';
 import { berthIndexFor } from '../domain/berths.js';
 import { showOrder } from './order-callout.js';
+import { finishLookDue } from '../domain/hull-finish.js';
+import { closeupHold, fightOf } from '../domain/closeup-gate.js';
+import { HULL_FINISH } from '../content/tank.js';
+import { createHullFinishLook } from './hull-finish.js';
+import { isaoSpeak } from './isao-voice.js';
 
-export function createHullIssue({ held = false, perk = 'stalheart', door = null, lead = 1.6, firstWave = 0 } = {}) {
-  let state = held ? 'held' : 'out', issuedAt = null, quiet = null, stoodAt = null, waited = 0;
+export function createHullIssue({ held = false, perk = 'stalheart', door = null, lead = 1.6, firstWave = 0, finish = 0 } = {}) {
+  let state = held ? 'held' : 'out', issuedAt = null, quiet = null, stoodAt = null, waited = 0, fin = null;   // fin: { at, berth, k, seenBelow }
   return {
     lead,
     held: () => state === 'held',
@@ -29,9 +38,19 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
     door: () => door,
     // THE NUKE'S TANK (owner, 2026-10-05): issued before the Stålheart stands, on the lane; `out` (and the Stålheart's own line, and
     // its door as every berth) only once it does
-    early(host, berth) { if (state !== 'held' || !berth) return false; state = 'early'; issuedAt = host.now(); host.early(berth); return true; },
+    early(host, berth) {
+      if (state !== 'held' || !berth) return false;
+      if (finish > 0 && host.finishBegin) { state = 'finishing'; fin = { at: host.now(), berth, k: 0, seenBelow: false, doneAt: null }; host.finishBegin(berth); return true; }
+      state = 'early'; issuedAt = host.now(); host.early(berth); return true;
+    },
+    finishing: () => state === 'finishing',
     tick(host) {
-      if (state === 'early') { if (host.stands(perk)) { state = 'out'; host.stood(); } }
+      if (state === 'finishing') {
+        const el = host.now() - fin.at;
+        fin.k = finishProgress(el, finish); if (fin.k < 1) fin.seenBelow = true;
+        host.finishSet(fin.k, el);
+        if (fin.k >= 1) { host.finishEnd(); fin.doneAt = host.now(); state = 'early'; issuedAt = host.now(); host.early(fin.berth); }
+      } else if (state === 'early') { if (host.stands(perk)) { state = 'out'; host.stood(); } }
       else if (state === 'held') {
         if (!host.stands(perk)) return;
         stoodAt ??= host.now();
@@ -40,7 +59,7 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
         host.issue(quiet);
       } else if (state === 'rolling' && !host.busy()) state = 'out';
     },
-    state: () => ({ state, issuedAt, quiet, door: door ? door.ci : -1, waited: +waited.toFixed(1) }),
+    state: () => ({ state, issuedAt, quiet, door: door ? door.ci : -1, waited: +waited.toFixed(1), finish: fin ? { k: +fin.k.toFixed(3), seenBelow: fin.seenBelow, at: +fin.at.toFixed(1), doneAt: fin.doneAt } : null }),
   };
 }
 
@@ -54,6 +73,7 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
 //   shot), and the deploy starts when the shot ends.
 export function createHullHost(c) {
   const { laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot, deployFramePoseFor, camA, setView } = c;
+  const fin = { n: 0, look: null, shot: false };
   return {
     stands: (perk) => programmeHas(c.story().programme, perk),
     seated: () => !!(c.pilot()?.gunship || laserStation.seated()),
@@ -71,6 +91,30 @@ export function createHullHost(c) {
       setView('third');
       showOrder(c.hud ?? document.body, 'TANK IS READY, GET IN THERE!', '', 3500);
     },
+    // FINISHED UNDER THE STÅLHEART (owner, 2026-11-13): the hull parked at its berth's start, not driven (the deploy is set down at once), drawn as
+    // the print's wire; the camera on it for HULL_FINISH.look s through the close-up gate (a shot running or a live wave holds it; the gunship's
+    // seat does not: the hand-over takes the player out of it anyway, and the look leaves it as it starts), and Isao's recorded "The Stalheart builds the Tanks. Don't crash them."
+    finishBegin: (berth) => {
+      c.setBerths([berth, berth, berth]);
+      fin.n = berthIndexFor(c.playerHP());
+      c.setPlayerDown(false);
+      deployStart(fin.n); c.setDeploy(null);
+      fin.look?.end(); fin.look = c.hullMesh?.() ? createHullFinishLook(c.hullMesh(), HULL_FINISH) : null; fin.shot = false;
+      isaoSpeak('stalheart_begins', { text: 'The Stalheart builds the Tanks.  Don\'t crash them.' });
+      showOrder(c.hud ?? document.body, 'THE TANK IS BEING FINISHED', '', HULL_FINISH.seconds * 1000);
+    },
+    finishSet: (k, el) => {
+      fin.look?.set(k);
+      if (fin.shot || !finishLookDue({ elapsed: el, look: HULL_FINISH.look, hold: closeupHold({ shot: !!shotId(), ...fightOf(c.sectorRun?.()) }) })) return;
+      fin.shot = true;
+      leavePilot();   // the gunship's camera owns the frame while seated (measured: the close-up never showed under it); the hand-over took the seat anyway
+      const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, n = fin.n;
+      startShot({ id: 'hullFinish', dur: Math.max(1, HULL_FINISH.look - el), poseAt: (u, out) => {
+        const w = Math.min(1, u * 3), e = w * w * (3 - 2 * w);
+        deployFramePoseFor(n, camA); out.pos.lerpVectors(from.pos, camA.pos, e); out.quat.copy(from.quat).slerp(camA.quat, e);
+      } });
+    },
+    finishEnd: () => { fin.look?.end(); fin.look = null; if (shotId() === 'hullFinish') c.endShot?.(); },
     stood: () => { const d = c.story().hull.door(); if (d) c.setBerths([d, d, d]); showBrief('stalheart_stands'); },
     issue: (quiet) => {
       const d = c.story().hull.door();

@@ -4075,7 +4075,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`${T}.showcase.ground(${sock[0]},0.9,1.6)`);await delay(1800);current='round22-needle';await finish();
  await evaluate(`${T}.showcase.ground(${sock[1]},1.4,2.2)`);await delay(2500);current='round22-lancer';await finish();
  await evaluate(`${T}.showcase.ground(${T}.state().storyHome,1.2,2.6)`);await delay(2500);current='round22-dropoff';await finish();
- } else if(args.includes('--round23')) {
+ } else if(args.includes('--round23')||args.includes('--tank-finish')) {   // --tank-finish: the same walk to the nuke's tank without the hard cores' distance (red on the base since 2026-11, 7.9 cells), for the tank's finish (2026-11-13)
  // THE OWNER'S NOTES OF 2026-10-05 ("straight to the action"): the Quiver's two hard cores are up and in sight as its optic opens; the
  // second kill hands to the gunship's thermal seat, the MK-9 up, NUKE THE ENTRANCE over it; the first MK-9 blast hands over the hull
  // on the lane, nose to the blast
@@ -4087,7 +4087,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const qd=async()=>{const s=await st(),q=(s.towerCells||[]).find(([k])=>k==='quiver')?.[1];return evaluate(`${T}.showcase.foeDist(${q})`);},d0=await qd();
  await delay(1500);
  {const d=await qd();console.log(`  round23: nearest hard core ${d0} cells from the Quiver as it rises, ${d} after 1.5 s`);current='round23-quiver';await finish();
-  assert(d0>=8&&d0<=16,`the hard cores rise on the horizon: a long shot, not a wait (${d0} cells; 2026-10-05: on the ring, 6, they were too close)`);}
+  if(!args.includes('--tank-finish'))assert(d0>=8&&d0<=16,`the hard cores rise on the horizon: a long shot, not a wait (${d0} cells; 2026-10-05: on the ring, 6, they were too close)`);}
  await until(`(()=>{const s=${T}.state();if(s.story.phase!=="quiver-piloting")return true;const t=${P};if(t){t.aimEnemy();t.hold(true);}return false;})()`,90000).catch(async()=>assert.fail(`the Quiver kills both (${JSON.stringify((await st()).story)})`));
  await until(`${T}.state().gunship.seat===true`,5000).catch(async()=>assert.fail(`the second kill hands to the gunship's seat (${JSON.stringify((await st()).gunship)})`));
  {const s=await st();console.log(`  round23: phase ${s.story.phase}, gun ${s.gunship.gun}, order ${await evaluate('document.querySelector("#td-order")?.textContent')}`);
@@ -4097,6 +4097,11 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.state().gunship.heavy.phase==="released"||${T}.state().gunship.heavy.phase==="ignited"`,5000).catch(async()=>assert.fail(`the MK-9 is released (${JSON.stringify((await st()).gunship.heavy)})`));
  console.log(`  round23: MK-9 on cell ${(await st()).gunship.heavy.ci}, sinkhole ${await evaluate(`${T}.showcase.source()`)}`);
  await until(`${T}.state().story.said.includes("tank_ready")`,20000).catch(async()=>assert.fail(`the blast hands over the hull (${JSON.stringify((await st()).hull)})`));
+ // THE TANK FINISHED UNDER THE STÅLHEART (owner, 2026-11-13): the hull is seen as a filling print, out of the player's hands, before the seat; whole at the hand-over
+ {const s=await st();console.log(`  round23: the hull's finish ${JSON.stringify(s.hull)}, shot ${s.shot}, gunship seat ${s.gunship.seat}`);assert.equal(s.hull.state,'finishing','the hull is finished before it is handed over');assert(s.hull.finish&&s.hull.finish.k<1,`seen below 1 (${JSON.stringify(s.hull.finish)})`);assert.equal(s.hull.visible,true,'the print is drawn');assert.doesNotMatch(await evaluate('document.querySelector("#td-order")?.textContent||""'),/TANK IS READY/,'no seat offered while it prints');}
+ await until(`${T}.state().hull.finish?.k>=0.35||${T}.state().hull.state!=="finishing"`,240000);{const s=await st();console.log(`  round23: mid-finish k ${s.hull.finish?.k}, shot ${s.shot}, view ${s.view}`);}current='round23-hull-finish';await finish();
+ await until(`${T}.state().hull.state!=="finishing"`,400000).catch(async()=>assert.fail(`the print completes (${JSON.stringify((await st()).hull)})`));
+ {const s=await st();assert.equal(s.hull.finish.k,1,'whole at the hand-over');assert.equal(s.hull.finish.seenBelow,true,'it was seen unfinished first');}
  {const s=await st(),v=await evaluate(`${T}.seatState()`);console.log(`  round23: hull ${JSON.stringify(s.hull)}, view ${v.view}, seat ${v.seatKey}`);assert.equal(s.hull.state,'early');assert.equal(s.hull.visible,true,'the hull is drawn');assert.equal(s.gunship.seat,false,'out of the gunship');assert.equal(s.story.phase,'construction','the Stålheart still prints');assert.match(await evaluate('document.querySelector("#td-order")?.textContent||""'),/TANK IS READY, GET IN THERE!/);}
  await delay(1500);current='round23-tank';await finish();
  } else if(args.includes('--opening-probe')) {
