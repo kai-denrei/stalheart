@@ -87,3 +87,15 @@ export const ROVER_WORDS = Object.freeze({
   disabled: 'ROVER DISABLED · NEEDS THE TANK', restarted: 'ROVER RESTARTED', disabledBrief: 'rover_disabled',
   escort: 'ROVER BEYOND THE WALLS · THE HUNTERS GO FOR IT · ESCORT IT WITH THE TANK', escortSeconds: 4.5,
 });
+// THE ARRIVAL CARD (owner, 2026-11-13: "we should announced its arrival with a card showing the 3d model rotating and a brief explanation of what it
+// does"; src/fx/rover-card.js, the rule src/domain/rover-card.js): at the rover's first run out of home, the game paused, the rover's LOD1 turning
+// `spin` rad/s on a `size` px stage (the bestiary's tinted wireframe); its name, its lines (true to the rules: rover-run.js, the hunt, the disable)
+export const ROVER_CARD = Object.freeze({
+  name: 'YUSHI ROVER', tag: 'HARVESTER · NOW IN SERVICE',
+  lines: Object.freeze([
+    'Drop a FLARE (F) on the bodies: it drives out, rakes up the biomass, hauls it home.',
+    'Only what it brings back reaches the Bio-Pearls. That is the bank.',
+    'The hunters go for it. A crowd sends it home; three jabs stop it until the tank comes.',
+  ]),
+  dismiss: 'any key · click to continue', spin: 0.6, size: Object.freeze([320, 180]), colour: '#9fc24a',
+});

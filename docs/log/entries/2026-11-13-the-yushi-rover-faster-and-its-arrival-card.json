@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-11-13-the-yushi-rover-faster-and-its-arrival-card",
+  "date": "2026-11-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Yushi Rover drives 1.6x faster, and its first run out opens an arrival card with the model turning",
+  "context": "The owner, 2026-11-13: \"yushi rover should move faster. And we should announced its arrival with a card showing the 3d model rotating and a brief explanation of what it does.\"",
+  "outcome": "ROVER.speed 16 -> 26 m/s and ROVER.turn 0.8 -> 1.3 rad/s (src/content/rover.js, the owner's quote beside them). The wheels, the suspension and the belt follow the distance the drawn rover actually rolls (src/fx/rover.js ctl.update distance), and the drawn rover chases the run at 1.3x the run's speed, so the animation speeds up with no other change. THE ARRIVAL CARD: src/fx/rover-card.js (the card, its own small WebGL renderer on the card's canvas, the rover's LOD1 cloned with cloned geometry in the bestiary's tinted wireframe, turning ROVER_CARD.spin rad/s, rAF only while open and the page visible, renderer/geometry/materials disposed on close), src/domain/rover-card.js (cardWanted: a story page from its start; acceptance and ?skip= pages pass it by unless ?rovercard=1; cardDue: the rover's first run out, once, held over a live wave by the close-up gate's fight rule), the words ROVER_CARD in src/content/rover.js. It pauses the game like THE FIRST ORDERS and closes on any key, click or tap. Wired by one hook in src/fx/rover-glue.js tick (h.arrival.tick(mode !== 'idle')) and one argument in td-tab's createRoverGlue call (+1 line). On the dog's opening the first run out is the first harvest's flare, after the wave's clear, so the card opens before the watched run.",
+  "alternatives": [
+    "Reuse the build board's sprite rig (one frame to an <img>): rejected, the owner asked for the model rotating; a still would need re-shooting every frame.",
+    "Reuse the terminal's stage: it takes the game's renderer over the paused game; a card-sized renderer of its own is less coupling and is freed whole on close.",
+    "Hold the card for the close-up gate's 'shot' and 'seat' too: rejected, the first harvest's flare starts the watched-run shot in the same frame, so the card would never open there; only a live wave holds it."
+  ],
+  "evidence": [
+    "--rover (this branch, ?rovercard=1): the arrival card opened at the rover's first run out (left home 223 ms wall after F): YUSHI ROVER, 3 lines, 9,908 / 57,600 lit pixels read back off the card's canvas, 9 frames, 61 draw calls; closed: {open false, frames 24, disposed true, error null}, #rover-card gone. Screenshot .superpowers/scratch/rover-card.png.",
+    "--rover ROVER TRIP at 26 m/s: out 18.1 s over 401.7 m, harvest 13.4 s, back 19.0 s over 404.8 m, unload 5.3 s, 5,346 kg; ROVER GROUND 3,330 frames, 0 blocked. The base ad823d15 in .worktrees/integrate at 16 m/s: out 30.9 s over 441.2 m, harvest 13.3 s, back 32.1 s over 438.1 m, unload 5.3 s (0.070 s/m driving on the base vs 0.046 s/m here).",
+    "npm test 351 programs passed (test/rover-card.mjs new: cardWanted/cardDue and the words); npm run check passed; npm run architecture: td-tab 5,363 lines under 5,450.",
+    "Not verified in a browser: the card on the dog's opening (a non-acceptance page from the start); phone width (the card is min(380px, 100%) wide with a 16 px gutter by CSS, not screenshotted).",
+    "--rover RED on this branch at a later step, green on the base: after STORAGE FULL three F left the flare stock at 3 (the base: spent 0/4). The base itself passed whole (ad823d15 in .worktrees/integrate). This branch's rover-unload frame shows a companion print close-up (SPACE · SKIP) playing where the base's shows the tank: the shorter trip and/or the card's pause moved a close-up into the F presses. Cause not settled in the time box."
+  ],
+  "supersedes": []
+}
