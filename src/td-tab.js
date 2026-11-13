@@ -14,7 +14,7 @@ import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } fro
 import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js';
 import { unlockedTowers } from './domain/expeditions.js';
 import { createExpeditionsHost } from './fx/expedition-glue.js';
-import { createRoverGlue } from './fx/rover-glue.js';
+import { createRoverGlue } from './fx/rover-glue.js'; import { createRoverCard } from './fx/rover-card.js';
 import { CARGO_LOOK } from './content/cargo.js';
 import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, SHELL_WORDS, VERDICT_LOW, VERDICT_MID, VERDICT_HIGH } from './content/controller-copy.js';
 import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose, buy as programmeBuy } from './domain/build-programme.js';
@@ -4566,6 +4566,7 @@ export function initTdTab(root) {
   const roverGlue = createRoverGlue({
     scene, hullConsole, player, showBrief, showToast, updateHud, wire: () => (wire ? wireOpts : null), metres: () => metresToArc(1, cellSide), briefQ: () => briefs.queue(),
     story: () => story, storyBase: () => storyBase, graph: () => graph, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, enemies: () => enemies, atBase: () => hullRepair.state().under || !!(story?.armoryPad?.ring?.state().standing && story.armoryPad.ring.state().near),   /* the shells' pad restocks the flares too (2026-11-12 night) */
+    arrival: createRoverCard({ root, pause: (v) => { paused = !!v; }, search: location.search, sectorRun: () => sectorRun }),   // THE ARRIVAL CARD (owner, 2026-11-13; src/fx/rover-card.js)
     ground: hullGround, cellIndex: (p) => cellIndex(p),   // the tank's ground and the lattice lookup: the rover's road (2026-11-12)
   });
   // THE COLONY'S TICK (src/fx/colony-tick.js): the reel, the lapse, the perks, the pads, the boards, the beacons, the works

@@ -38,7 +38,7 @@
 // tank's own door test). test.track(on) samples its drawn point every frame against the same ground (the --rover suite's blocked-cell count).
 // hooks: scene, showBrief, showToast, updateHud, hullConsole, story(), storyBase(), graph(), cellSide(), metres(), t(), eco(), player,
 //        playerHP(), pilotMode(), briefQ(), wire(), enemies() (the live records: { alive, pos }), atBase() (the hull on a repair spot),
-//        ground (the tank's ground tests, td-tab hullGround), cellIndex(p) (the lattice cell under a unit point)
+//        ground (the tank's ground tests, td-tab hullGround), cellIndex(p) (the lattice cell under a unit point); arrival (the arrival card, src/fx/rover-card.js: tick(leftHome), state())
 import * as THREE from '../../vendor/three.module.js';
 import { createField } from '../domain/biomass-field.js';
 import { createRoverRun, dispatch, stepRover, roverWord, settleBreak, bite, roverCell, restartShare } from '../domain/rover-run.js';
@@ -236,6 +236,7 @@ export function createRoverGlue(h) {
       const down = !!S.run.disabled;
       stepRover(S.run, dt, now, host);
       if (down && !S.run.disabled) h.showToast?.(`<div class="wave-num">${ROVER_WORDS.restarted}</div>`, 1800);
+      h.arrival?.tick(S.run.mode !== 'idle');   // THE ARRIVAL CARD (owner, 2026-11-13): at its first run out (src/fx/rover-card.js)
       if (!S.escortSaid && prey()) { S.escortSaid = true; h.showToast?.(`<div class="wave-num">${ROVER_WORDS.escort}</div>`, ROVER_WORDS.escortSeconds * 1000); }   // THE FIRST SORTIE'S HINT
       S.pearls.settle(eco.biomass);   // the economy's number is the truth: a spend comes out of the fullest pearl
       const tg = target(); tg.lift = liftAt(S.rover.point() ?? tg.point);
@@ -279,7 +280,7 @@ export function createRoverGlue(h) {
         if (!S?.built) return { live: live(), built: false, field: fielded() ? Math.round(S.field.total()) : 0, piles: fielded() ? S.field.size() : 0, rotted: fielded() ? Math.round(S.field.rotted()) : 0, seeped: fielded() ? Math.round(S.field.seeped()) : 0 };
         const r = S.run;
         return { live: live(), built: true, mode: r.mode, word: roverWord(r), cargo: +r.cargo.toFixed(1), cell: r.cell, home: r.home, trips: r.trips, delivered: Math.round(r.delivered), harvested: Math.round(r.harvested),
-          disabled: !!r.disabled, jabs: r.jabs, disables: r.disables, restart: restartShare(r), here: roverCell(r), escortSaid: !!S.escortSaid, ring: S.rover.state().ring ?? null, order: r.order?.id ?? null, queued: r.queued?.id ?? null, path: r.path ? [...r.path] : null, k: r.k, stand: r.stand, stuck: r.stuck, wait: r.wait, note: r.note, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
+          disabled: !!r.disabled, jabs: r.jabs, disables: r.disables, restart: restartShare(r), here: roverCell(r), escortSaid: !!S.escortSaid, card: h.arrival?.state?.() ?? null, ring: S.rover.state().ring ?? null, order: r.order?.id ?? null, queued: r.queued?.id ?? null, path: r.path ? [...r.path] : null, k: r.k, stand: r.stand, stuck: r.stuck, wait: r.wait, note: r.note, s: +r.s.toFixed(1), length: +r.length.toFixed(1), turning: !!r.turn, events: r.events.slice(-24),
           field: Math.round(S.field.total()), piles: S.field.size(), rotted: Math.round(S.field.rotted()), seeped: Math.round(S.field.seeped()), bitten: Math.round(r.bitten ?? 0), prey: !!prey(), drawn: S.piles.count(), pearls: S.pearls.list().map((v) => Math.round(v.stored)), cap: S.pearls.capacity(), bank: h.eco().biomass,
           flares: S.flares.live(), stock: S.stock, seepWindow: S.lastWindow ?? null, threat: host.threat(null), fled: r.fled, lastBreak: S.lastBreak ?? null, scene: S.rover.state(), pearlFx: S.pearlFx.state(), lift: +liftAt(S.rover.point()).toFixed(3), dockAt: S.dockAt ?? null, hull: h.player.cur };
       },

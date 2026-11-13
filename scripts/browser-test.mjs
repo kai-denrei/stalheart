@@ -1717,7 +1717,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  const T='window.__stalheartTest',st=()=>evaluate(`${T}.state()`),R=()=>evaluate(`${T}.rover.state()`),{ROVER,PEARLS}=await import('../src/content/rover.js'),{STORY_EXPEDITIONS}=await import('../src/content/story-defaults.js');
  const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
  const hullAt=async()=>{const s=await st();return `the hull at cell ${s.playerCell}, ${s.hulls} hulls, ${s.hullRepair?.dents}/${s.hullRepair?.max} dents, sector ${s.sector?.phase}`;};   // where the hulls go (rover-red, 2026-11-13)
- await go('rover',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2#td`);
+ await go('rover',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&rovercard=1#td`);   // rovercard=1: the arrival card asked for (2026-11-13)
  await until(`!!${T} && ${T}.state().sector?.n===2`,120000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
  await until(`${T}.rover.state().built && ${T}.rover.state().scene.ready`,60000).catch(async()=>assert.fail(`the depot live and the rover loaded (${JSON.stringify(await R())})`));
@@ -1750,6 +1750,17 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.equal(r.stock,3,`the flare came out of the stock of four (${r.stock})`);assert.equal(typeof r.threat,'number','the bodies round the rover are counted');}
  await until(`${T}.rover.state().mode!=='idle'`,2000).catch(async()=>assert.fail(`the rover leaves home within 2 s (why ${JSON.stringify(await evaluate(`${T}.rover.why(${rich.cell})`))}; ${JSON.stringify(await R())})`));
  console.log(`  left home in ${Date.now()-tw0} ms wall`);
+ // THE ARRIVAL CARD (owner, 2026-11-13: "we should announced its arrival with a card showing the 3d model rotating"; src/fx/rover-card.js): at the
+ // rover's first run out the game pauses under the card; its own stage draws the rover (lit pixels read back off its canvas, the renderer's draw calls);
+ // a tap closes it, the stage disposed, the game unpaused; it never shows again in the run
+ await until(`${T}.rover.state().card?.open && ${T}.rover.state().card.frames>=3 && ${T}.rover.state().card.calls>0`,30000).catch(async()=>assert.fail(`the arrival card open with the rover drawn (${JSON.stringify((await R()).card)})`));
+ {const lit=await evaluate(`(()=>{const c=document.querySelector('#rover-card canvas');const k=document.createElement('canvas');k.width=c.width;k.height=c.height;const g=k.getContext('2d');g.drawImage(c,0,0);const d=g.getImageData(0,0,k.width,k.height).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i]+d[i+1]+d[i+2]>90)n++;return {n,of:k.width*k.height,name:document.querySelector('#rover-card h3')?.textContent,lines:document.querySelectorAll('#rover-card li').length};})()`);
+  const c=(await R()).card;console.log(`  the arrival card: ${lit.name}, ${lit.lines} lines, ${lit.n}/${lit.of} lit pixels, ${c.frames} frames, ${c.calls} draw calls`);
+  assert.equal(lit.name,'YUSHI ROVER');assert.ok(lit.lines>=2,'its lines');assert.ok(lit.n>200,`the model drawn on the card (${lit.n} lit pixels)`);
+  current='rover-card';await finish();}
+ await evaluate(`document.querySelector('#rover-card').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}))`);   // a tap closes it
+ await until(`!${T}.rover.state().card.open && ${T}.rover.state().card.disposed && !document.getElementById('rover-card')`,5000).catch(async()=>assert.fail(`a tap closes the card and disposes its stage (${JSON.stringify((await R()).card)})`));
+ console.log(`  the card closed and disposed: ${JSON.stringify((await R()).card)}`);
  // THE FIRST SORTIE'S HINT (2026-11-12 night): the first time the rover leaves the walls, the callout says it needs the tank (ROVER_WORDS.escort)
  await until(`${T}.rover.state().escortSaid||${T}.rover.state().mode==='harvest'`,240000);
  {const r=await R();console.log(`  the first sortie's hint: ${r.escortSaid?'said':'NOT said'} (prey ${r.prey}, mode ${r.mode})`);assert.equal(r.escortSaid,true,'the hint is said the first time the rover leaves the walls');}
@@ -1791,8 +1802,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`${T}.rover.spend(${PEARLS.capacity})`);
  await until(`${T}.rover.state().mode!=='full'`,20000).catch(async()=>assert.fail(`a spend lets it unload (${JSON.stringify(await R())})`));
  // THE FLARES RUN OUT (owner, 2026-11-10): three more F empty the stock, a fifth drops nothing; whole again on the repair spot
+ await until(`!${T}.state().shotId`,90000).catch(()=>{});   // a close-up (a companion's print) takes the keys while it plays: wait it out (rover-card, 2026-11-13: the faster trip moved one into these presses)
  for(let k=0;k<3;k++){await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);await delay(250);}
- const e0=await R();assert.equal(e0.stock,0,`the stock is spent (${e0.stock})`);const ids0=e0.flares.map(f=>f.id).join();
+ const e0=await R();assert.equal(e0.stock,0,`the stock is spent (${e0.stock}; open: ${await evaluate(`[...document.querySelectorAll('#gunship-briefing:not([hidden]),#sol82-briefing:not([hidden]),#rover-card,.msg:not(.hidden)')].map(e=>e.id||e.className).join()`)}; shot ${(await st()).shotId??null}, paused ${(await st()).paused??'?'})`);const ids0=e0.flares.map(f=>f.id).join();
  await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);await delay(300);
  const e1=await R();assert.equal(e1.stock,0);assert.equal(e1.flares.map(f=>f.id).join(),ids0,'F with none left drops nothing');
  assert.match(await evaluate(`document.body.innerText`),/NO FLARES/,'the toast says so');

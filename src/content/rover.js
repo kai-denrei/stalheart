@@ -38,8 +38,10 @@
 //                      the drawn road (src/domain/rover-road.js) keeps `half` m either side of its line clear (the wheels stand ~2.4 m out),
 //                      rounds its corners at up to `radius` m, tested every `step` m; it holds `ahead` m short of a door still opening
 //   PEARLS             the three vessels standing with the depot, each `capacity` kg; the fourth is the build board's card (src/content/build-board.js)
+// FASTER (owner, 2026-11-13: "yushi rover should move faster"): speed 16 -> 26 m/s (1.6x) and the on-the-spot turn 0.8 -> 1.3 rad/s in proportion;
+// the wheels and the belt follow the distance it actually rolls (src/fx/rover.js ctl.update distance), so they spin up with it
 export const ROVER = Object.freeze({
-  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 16, turn: 0.8, reach: 3, price: 3600, breakShare: 0.5, recheck: 1,
+  capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 26, turn: 1.3, reach: 3, price: 3600, breakShare: 0.5, recheck: 1,
   road: Object.freeze({ pad: 2, half: 2.5, radius: 8, step: 2, ahead: 6 }),
   retreat: Object.freeze({ bodies: 6, cells: 4, clear: 2 }),
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the whites and yellows hunt it (src/domain/soft-hunt.js huntGoal) and each
@@ -84,4 +86,16 @@ export const ROVER_WORDS = Object.freeze({
   // THE ROVER DISABLED (2026-11-12 night): the callouts, Isao's caption, the first sortie's hint (the first time it leaves the walls), the radar's mark
   disabled: 'ROVER DISABLED · NEEDS THE TANK', restarted: 'ROVER RESTARTED', disabledBrief: 'rover_disabled',
   escort: 'ROVER BEYOND THE WALLS · THE HUNTERS GO FOR IT · ESCORT IT WITH THE TANK', escortSeconds: 4.5,
+});
+// THE ARRIVAL CARD (owner, 2026-11-13: "we should announced its arrival with a card showing the 3d model rotating and a brief explanation of what it
+// does"; src/fx/rover-card.js, the rule src/domain/rover-card.js): at the rover's first run out of home, the game paused, the rover's LOD1 turning
+// `spin` rad/s on a `size` px stage (the bestiary's tinted wireframe); its name, its lines (true to the rules: rover-run.js, the hunt, the disable)
+export const ROVER_CARD = Object.freeze({
+  name: 'YUSHI ROVER', tag: 'HARVESTER · NOW IN SERVICE',
+  lines: Object.freeze([
+    'Drop a FLARE (F) on the bodies: it drives out, rakes up the biomass, hauls it home.',
+    'Only what it brings back reaches the Bio-Pearls. That is the bank.',
+    'The hunters go for it. A crowd sends it home; three jabs stop it until the tank comes.',
+  ]),
+  dismiss: 'any key · click to continue', spin: 0.6, size: Object.freeze([320, 180]), colour: '#9fc24a',
 });
