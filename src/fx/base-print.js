@@ -41,6 +41,14 @@ export function createBasePrint({ base, plan, placer }) {
   // the share of a step's time spent on its slabs (or on its gate) before its structures (or walls) rise
   // a door with no walls behind it takes the whole print; a structure with no slab (`frame`, 2026-11-07) rises from the print's first second
   const split = (step) => (step.gate ? (step.walls ? 0.35 : 1) : step.frame ? 0 : step.structures.length ? 0.3 : 1);
+  // the pieces of a step risen to k (a print's progress, or the hungry partial below)
+  function grown(step, k) {
+    const s = split(step), first = s > 0 ? clamp(k / s) : 1, second = s < 1 ? clamp((k - s) / (1 - s)) : 1;
+    for (const id of step.islands) base.growIsland(id, first);
+    if (step.gate) base.growGate(Math.min(0.999, first), gateOf(step)?.id ?? null);   // built only when the whole step stands: its walls block the swarm too
+    if (step.walls) { const n = plan.walls.length; plan.walls.forEach((w, i) => base.growWall(i, clamp(second * n - i))); }   // one after another
+    if (k > 0) for (const id of step.structures) base.grow(id, second);
+  }
   return {
     cellOf: (step) => plotOf(step)?.cell ?? -1,
     split,   // the share of a step's print its slabs (or its gate) take (the gantry's tool, src/fx/gantry-drive.js)
@@ -64,12 +72,12 @@ export function createBasePrint({ base, plan, placer }) {
     },
     progress(step, k) {
       at.step = step.id; at.k = k;
-      const s = split(step), first = s > 0 ? clamp(k / s) : 1, second = s < 1 ? clamp((k - s) / (1 - s)) : 1;
-      for (const id of step.islands) base.growIsland(id, first);
-      if (step.gate) base.growGate(Math.min(0.999, first), gateOf(step)?.id ?? null);   // built only when the whole step stands: its walls block the swarm too
-      if (step.walls) { const n = plan.walls.length; plan.walls.forEach((w, i) => base.growWall(i, clamp(second * n - i))); }   // one after another
-      if (k > 0) for (const id of step.structures) base.grow(id, second);
+      grown(step, k);
     },
+    // THE HUNGRY PARTIAL (owner, 2026-11-13: "the Stalheart should be building something, even if unfinished"; src/domain/hungry-build.js): the
+    // same rise as a print's progress, drawn for a step nobody has bought yet, without taking the print's own state (the harness's programme.print)
+    // (k 0 undoes it: its structures back to nothing, which a print's progress never asks)
+    partial: (step, k) => { grown(step, k); if (!(k > 0)) for (const id of step.structures) base.grow(id, 0); },
     finish(step) {
       at.step = step.id; at.k = 1;
       for (const id of step.islands) base.growIsland(id, 1);

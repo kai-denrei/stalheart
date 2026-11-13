@@ -186,7 +186,7 @@ function storyApiOf(c) {
   jobs[0].h.hand(jobs[0].st, 0.6);
   assert.deepEqual(orders.map((o) => [o.kind, o.step.id, o.head]), [['structure', 'dome-s', 0.6]], 'the mast handed to Isao where the gantry stopped');
   api.printed(jobs[0].st); orders.length = 0;
-  assert.ok(!log.some((l) => l[0] === 'callout'), 'a habitat has no caption'); assert.equal(pg.active, null);
+  assert.ok(!log.some((l) => l[0] === 'callout' && !/ NEEDS /.test(l[1])), 'a habitat has no caption'); assert.equal(pg.active, null);
   api.build(); assert.equal(jobs.length, 1, 'the gantry still out: SE waits (when.home)');
   home = true; api.build();
   assert.deepEqual(jobs.map((j) => j.st.id), ['dome-s', 'dome-se'], 'home again: SE');

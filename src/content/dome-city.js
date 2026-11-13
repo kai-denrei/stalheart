@@ -117,3 +117,10 @@ export const KIDOU_BAY = Object.freeze({
   small: Object.freeze({ span: 8, height: 4 }),
   near: 0.5,
 });
+// THE STÅLHEART IS ALWAYS BUILDING (owner, 2026-11-13: "whenever we are in the base, the Stalheart should be building something, even if unfinished...
+// maybe partial structures... makes it feel like we need to feed it biomass."; the rule src/domain/hungry-build.js, drawn by src/fx/programme-host.js
+// and src/fx/gantry-drive.js hunger). The next board structure the bank has not bought shows printed to `cap` x (bank / its price): feeding biomass
+// raises it, a starved bank holds it; it never reads finished (cap < 1) until it is bought and printed for real. `every` s between looks at the bank;
+// `rising` s after the last rise the beam still works at full, then it stalls (dim, slow); `cue` the one caption when the next job changes and the bank
+// is short ({label} and {kg} filled in), '' for none
+export const HUNGRY_BUILD = Object.freeze({ cap: 0.8, every: 0.5, rising: 2, cue: '{label} · NEEDS {kg} KG OF BIOMASS' });

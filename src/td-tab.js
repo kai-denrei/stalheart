@@ -4702,7 +4702,7 @@ export function initTdTab(root) {
   });
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, tankReady, the programme's part of the tick, repaired, printed
   const programme = createProgrammeHost({
-    orders, grant: (n) => eco.addBiomass(n, { category: 'grant' }),   /* a step's `pays` (the recycler's work, 2026-11-08) */
+    orders, grant: (n) => eco.addBiomass(n, { category: 'grant' }), bank: () => eco.biomass,   /* a step's `pays` (the recycler's work, 2026-11-08) */
     breachQueue,
     breachedCells,
     gunshipRig,

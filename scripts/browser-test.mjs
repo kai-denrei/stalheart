@@ -3737,8 +3737,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,.contact-card{display:none!important}</style>")');
  {const s=await st(),p=P(s),g=p.colony?.gantry;console.log(`  at the start: done ${p.done.join(',')}; gantry ${JSON.stringify(g)}; ${JSON.stringify(domes(s))}`);
   assert.equal(p.grow,true,'the grown base');assert.equal(domes(s).length,13,`the seven cells and six bridges are on the plan (${domes(s).length})`);
-  assert.deepEqual(domes(s).filter(d=>d.visible).map(d=>d.id),[],'no dome and no bridge stands at the start');
-  assert(g&&g.home&&Math.abs(g.x-4.5)<0.01&&Math.abs(g.z)<0.01,`the KIDOU parked on the plaza (${JSON.stringify(g)})`);
+  // the hungry partial (src/domain/hungry-build.js, 2026-11-13) is the next unbought dome shown to the bank's share, KIDOU over it: not a dome that stands
+  assert.deepEqual(domes(s).filter(d=>d.visible&&d.id!==g?.hungry?.step).map(d=>d.id),[],'no dome and no bridge stands at the start');
+  assert(g&&(g.hungry||g.home&&Math.abs(g.x-4.5)<0.01&&Math.abs(g.z)<0.01),`the KIDOU parked on the plaza, or out at the hungry job (${JSON.stringify(g)})`);
   const lod=(s.storyLod||[]).find(l=>l.id==='stalheart');assert.equal(lod?.files?.near,'assets/models/stalheart-kidou/stalheart_kidou_d0_lod1.glb','the Stålheart is the KIDOU with no flag');}
  await until(`(()=>{const S=${T}.state().sector;if(S.phase==='fighting')${T}.sectorCull(999,'tank');${T}.rover?.collect?.();document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();return S.debriefOpen;})()`,600000).catch(async()=>assert.fail(`sector 1 is held (${JSON.stringify((await st()).sector)})`));
  mark('sector 1 held');await delay(1200);
@@ -3784,7 +3785,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const s=await st(),p=P(s),pr=p.printed;console.log(`  printed ${pr.join(',')}; ${JSON.stringify(domes(s))}`);
   assert(pr.indexOf('dome-nw')<pr.indexOf('dome-sw')&&pr.indexOf('dome-sw')<pr.indexOf('dome-w')&&pr.indexOf('dome-w')<pr.indexOf('bridge-nw-w'),'NW, SW, W, then the bridges');
   await until(`['dome-nw','dome-sw','dome-w','bridge-nw-w','bridge-w-sw'].every(id=>(${T}.state().storyLod||[]).find(l=>l.id===id)?.visible)`,30000).catch(()=>{});
-  assert.deepEqual(domes(await st()).filter(d=>d.visible).map(d=>d.id).sort(),['bridge-nw-w','bridge-w-sw','dome-nw','dome-sw','dome-w'],'the west column and its two bridges stand, nothing else');
+  {const s2=await st(),hs=P(s2).colony?.gantry?.hungry?.step??P(s2).colony?.hunger?.step;console.log(`  the hungry job: ${JSON.stringify(P(s2).colony?.hunger)}; KIDOU ${JSON.stringify(P(s2).colony?.gantry?.hungry)}`);
+   assert.deepEqual(domes(s2).filter(d=>d.visible&&d.id!==hs).map(d=>d.id).sort(),['bridge-nw-w','bridge-w-sw','dome-nw','dome-sw','dome-w'],'the west column and its two bridges stand, nothing else (the hungry partial aside)');}
   const said=await evaluate('window.__seen.briefs');console.log(`  Isao: ${JSON.stringify(said.filter(b=>/DOME|BRIDGE/i.test(b)))}`);
   // each cell wears its kind's module (src/fx/story-base.js assign)
   const files=(id)=>(s.storyLod||[]).find(l=>l.id===id)?.files?.far;

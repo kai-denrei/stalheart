@@ -27,7 +27,11 @@ import { isaoSpeak } from './isao-voice.js';
 import * as THREE from '../../vendor/three.module.js';
 import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
 import { printerOf } from '../domain/kidou-jobs.js';
-import { KIDOU_BAY } from '../content/dome-city.js';
+import { KIDOU_BAY, HUNGRY_BUILD } from '../content/dome-city.js';
+import { hungerOf, priceOfStep, nextHungry, whoShows } from '../domain/hungry-build.js';
+import { whenHolds } from '../domain/build-programme.js';
+import { priceIndex } from '../domain/build-board.js';
+import { BUILD_BOARD } from '../content/build-board.js';
 // KIDOU'S JOBS (owner, 2026-11-13: "once the mobile Stalheart is ready, it should be moving around and creating things, like ISAO, the bigger ones
 // are his, as long as they fit inside."): a gantry step goes to KIDOU once the Stålheart stands and the rule (src/domain/kidou-jobs.js) does not
 // call it Isao's; a dome (its 20 m island, `metres` tall) is 'shared', KIDOU's to its tool's reach and Isao's beam above it
@@ -37,6 +41,26 @@ export function createProgrammeHost(c) {
   const { orders, breachQueue, breachedCells, gunshipRig, showBrief, spawnIsao, updateHud, rebuildAfterBreach, recomputePortalDist, adoptBays } = c;
   // a point (the placer's world) stands on lattice cell ci: ci is its nearest of ci and ci's neighbours, within one cell (patchLine's owns)
   const ownCell = (ci, p) => { const g = c.graph(), u = p.clone().normalize(), d = (k) => u.distanceTo(new THREE.Vector3(...g.centers[k])); return d(ci) < c.cellSide() && g.adj[ci].every((nb) => d(nb) >= d(ci)); };
+  // THE STÅLHEART IS ALWAYS BUILDING (owner, 2026-11-13: "whenever we are in the base, the Stalheart should be building something, even if unfinished...
+  // maybe partial structures... makes it feel like we need to feed it biomass."; the rule src/domain/hungry-build.js, the knobs HUNGRY_BUILD): when
+  // nothing is due, the next board structure nobody bought shows printed to the bank's share of its price. A gantry dome once the Stålheart stands is
+  // KIDOU's (src/fx/gantry-drive.js hunger: out to it, its tool held over it); anything else rises in place (src/fx/base-print.js partial), no
+  // worker sent. Nothing is paid: the real step still prints when bought, from where the partial stood. Looked at every HUNGRY_BUILD.every s
+  let lookAt = -Infinity, cued = null;
+  const hunger = (s, pg, ctx, sector) => {
+    const now = c.t(); if (now - lookAt < HUNGRY_BUILD.every && now >= lookAt) return; lookAt = now;
+    const ix = priceIndex(BUILD_BOARD, sector + 1), coming = { ...ctx, sector: sector + 1, waveActive: false };
+    const next = nextHungry(pg.steps, { done: pg.done, bought: pg.bought, active: pg.active, placed: (st) => s.print.cellOf(st) >= 0,
+      holds: (st) => whenHolds({ ...(st.when ?? {}), idle: false, home: false }, coming), price: (st) => priceOfStep(st, { structures: BUILD_BOARD.structures, kinds: COLONY.kinds, index: ix }) });
+    const bank = c.bank?.() ?? 0, k = next ? hungerOf(bank, next.price, HUNGRY_BUILD.cap) : 0, who = next ? whoShows(next.step, { ready: !!s.gantry && programmeHas(pg, 'stalheart') }) : null;
+    s.gantry?.hunger?.(who === 'kidou' ? next.step : null, k, { progress: (st, kk) => s.print.partial?.(st, kk), rising: HUNGRY_BUILD.rising });
+    const hp = s.hungryPrint, pid = who === 'print' ? next.step.id : null;
+    if (hp && hp.step.id !== pid) { if (!pg.done.has(hp.step.id) && !pg.bought.has(hp.step.id) && pg.active !== hp.step.id) s.print.partial?.(hp.step, 0); s.hungryPrint = null; }
+    if (pid && Math.abs((s.hungryPrint?.k ?? -1) - k) > 1e-3) { s.print.partial?.(next.step, k); s.hungryPrint = { step: next.step, k }; }
+    s.hunger = next ? { step: next.step.id, price: next.price, bank: Math.round(bank), k: +k.toFixed(3), who } : null;   // the harness's programme.hunger
+    // ONE LINE WHEN THE NEXT JOB CHANGES AND THE BANK IS SHORT: its name and the biomass it still needs
+    if ((next?.step.id ?? null) !== cued) { cued = next?.step.id ?? null; if (next && bank < next.price && HUNGRY_BUILD.cue && !c.pilotMode()) c.callout?.(HUNGRY_BUILD.cue.replace('{label}', String(next.step.label ?? next.step.id).toUpperCase()).replace('{kg}', Math.ceil(next.price - bank).toLocaleString('en-US')), 'co-victory-sub'); }
+  };
   const api = {
     // ISAO KEEPS BUILDING (src/content/base-programme.js, src/domain/build-programme.js): perks() and hasPerk(name) are what the
     // orbital laser, the shield station and the gunship meter consult
@@ -83,7 +107,7 @@ export function createProgrammeHost(c) {
       }
       // a static base holds nothing pending but the back door and the colony's steps (2026-10-01), so what is due is what prints
       const step = programmeDue(pg, ctx), ci = step ? c.story().print.cellOf(step) : -1;
-      if (ci < 0) return;
+      if (ci < 0) { hunger(s, pg, ctx, sector ?? 0); return; }
       programmeBegin(pg, step);
       // A DOME IS THE GANTRY'S (2026-11-12 night): it drives out and prints to its tool's reach; Isao's beam takes the mast from there (an order begun
       // where the gantry stopped, `head`), or the step stands when the tool reached the top
@@ -91,7 +115,7 @@ export function createProgrammeHost(c) {
         if (k >= 1) { api.printed(st); return; }
         orders.push({ kind: 'structure', ci, cost: 0, seconds: st.seconds, head: k, step: st, bed: c.story().print.bed(st) }); spawnIsao(); updateHud();
       } })) { if (!c.pilotMode() && !c.briefQ()) showBrief(step.brief); updateHud(); return; }
-      orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, head: c.story().chapter?.head[step.id] ?? 0, step, bed: c.story().print.bed(step) });   // head: a tutorial chapter's start finds this print under way
+      orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, head: c.story().chapter?.head[step.id] ?? (s.hungryPrint?.step.id === step.id ? s.hungryPrint.k : 0), step, bed: c.story().print.bed(step) });   // head: a tutorial chapter's start finds this print under way; a hungry partial is printed on from where it stood
       spawnIsao();
       if (!step.closeup && !c.pilotMode() && !c.briefQ()) showBrief(step.brief);   // his line as he starts, never over a manned seat or another line; a close-up step's over its cut (src/fx/antenna-print.js, round 4)
       updateHud();
