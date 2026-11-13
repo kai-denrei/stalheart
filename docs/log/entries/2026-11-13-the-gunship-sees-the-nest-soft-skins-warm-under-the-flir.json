@@ -14,7 +14,7 @@
   "evidence": [
     "--nest-guards before the fix: NEST GUARDS from the gunship's seat over rocket-b: records 65, bodies 64, drawnBodies 64, culled 0, levels {1:2, 2:62}, heat {cored 1.4: 2, soft 0: 62}; red on the new assertion (no guard body cold). Screenshot .superpowers/scratch/gunship-before.png (not committed).",
     "test/pearl-thermal.mjs updated: soft skins read uHeat 0.5 in the seat, cored 1, every skin back to 0 after the seat; passes.",
-    "--nest-guards after the fix: records 65, drawn 65, culled 0, heat (emissiveIntensity) {cored 1.4: 2, soft 1: 62} (the soft skins' emissive 0.5); passes nest-guards-up and nest-guards-gunship. Screenshot .superpowers/scratch/gunship-after.png: still no guard visible to the eye. npm test 350 passed, npm run check and npm run architecture pass (td-tab 5362, unchanged). The suite's last step (nest-guards-blobs: a breach wave's bodies get their blobs) was red after the fix: 0 of the wave's bodies with a blob; not yet compared with the base."
+    "--nest-guards after the fix: records 65, drawn 65, culled 0, heat (emissiveIntensity) {cored 1.4: 2, soft 1: 62} (the soft skins' emissive 0.5); passes nest-guards-up and nest-guards-gunship. Screenshot .superpowers/scratch/gunship-after.png: still no guard visible to the eye. npm test 350 passed, npm run check and npm run architecture pass (td-tab 5362, unchanged). The suite's last step (nest-guards-blobs: a breach wave's bodies get their blobs) was red after the fix: 0 of the wave's bodies with a blob; red on the base too (the integrate checkout, same assertion), not this change."
   ],
   "supersedes": []
 }
