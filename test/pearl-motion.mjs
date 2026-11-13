@@ -243,6 +243,16 @@ function follow(gait, secs = 12, per = 3) {
   assert(Math.abs(ratio / PEARL_GLIDERS.mote.rush - 1) < 0.1, `the mote's ground ${run.walk.mote.toFixed(2)} m/s = ${ratio.toFixed(2)} x the amoeba's ${run.walk.amoeba.toFixed(2)} (rush ${PEARL_GLIDERS.mote.rush})`);
   assert(drawn >= 2, `the drawn mote ${run.ground.mote.toFixed(2)} m/s = ${drawn.toFixed(2)} x the drawn amoeba's ${run.ground.amoeba.toFixed(2)}`);
   assert.equal(run.stats.mote.replaced, 0, 'the mote never put back');
+  // the glide's top speed (PEARL_GAIT.glideMax): a record put 30 m on in one frame (--pearl-story measured a mote's decaying catch-up popping) is slid to
+  {
+    const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT, pace: PEARL_PACE, gait: PEARL_GAIT });
+    const h = fam.add('mote', { x: 0, z: 0, angle: 0, speed: 6 }), dt = 1 / 60;
+    for (let k = 0; k < 30; k++) { fam.track(h, { x: 0, z: 0, ax: 1, az: 0, dt, speed: 6 }); fam.step(dt, null, 0); }
+    const a = fam.view(h).centre.slice(); fam.track(h, { x: 30, z: 0, ax: 31, az: 0, dt, speed: 6 }); fam.step(dt, null, 0);
+    const b = fam.view(h).centre, r = fam.view(h).radius, moved = Math.hypot(b[0] - a[0], b[1] - a[1]) / r / dt;
+    assert(moved <= PEARL_GAIT.glideMax + 1e-6 && moved > PEARL_GAIT.glideMax * 0.9, `a jumped record's mote slides at its top speed (${moved.toFixed(2)} radii a second, glideMax ${PEARL_GAIT.glideMax})`);
+    fam.dispose?.();
+  }
   if (process.env.MOTION_AUDIT) console.log('mote', JSON.stringify({ ground: run.ground, speed: m.speed, accel: m.accel, jerk: m.jerk }));
   console.log(`PASS the mote: glides with no pop (worst ${m.speed[2] ?? m.speed.at(-1)} radii a second drawn), its record ${run.walk.mote.toFixed(2)} m/s = ${ratio.toFixed(2)} x the amoeba's ${run.walk.amoeba.toFixed(2)}, drawn ${run.ground.mote.toFixed(2)} = ${drawn.toFixed(2)} x ${run.ground.amoeba.toFixed(2)}`);
 }

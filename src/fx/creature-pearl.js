@@ -266,7 +266,10 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         if (slot.gx != null) { slot.sx = (slot.sx ?? 0) + (sw.offset[k] - slot.gx); slot.sz = (slot.sz ?? 0) + (sw.offset[k + 2] - slot.gz); }
         const walked = slot.px == null ? 0 : Math.hypot(qx - slot.px, qz - slot.pz), keep = Math.exp(-walked / (gait?.glideShove ?? 6)); slot.px = qx; slot.pz = qz;
         slot.sx = (slot.sx ?? 0) * keep; slot.sz = (slot.sz ?? 0) * keep;
-        const f = dt > 0 ? 1 - Math.exp(-dt / (gait?.glideSeconds ?? 0.12)) : 1, gx = sw.offset[k] + (qx + slot.sx - sw.offset[k]) * f, gz = sw.offset[k + 2] + (qz + slot.sz - sw.offset[k + 2]) * f;
+        const f = dt > 0 ? 1 - Math.exp(-dt / (gait?.glideSeconds ?? 0.12)) : 1; let gx = sw.offset[k] + (qx + slot.sx - sw.offset[k]) * f, gz = sw.offset[k + 2] + (qz + slot.sz - sw.offset[k + 2]) * f;
+        // THE GLIDE'S TOP SPEED (the motes, 2026-11-13; gait.glideMax radii a second): a target that jumps (the record put onto its path, a turn at the lip)
+        // is slid to, never jumped to: --pearl-story's first mote run measured 6 centre pops in 8,664 frames (steps 0.3-0.5 radii, a decaying catch-up)
+        { const mx = gx - sw.offset[k], mz = gz - sw.offset[k + 2], ml = Math.hypot(mx, mz), cap = (gait?.glideMax ?? Infinity) * h.r * grow * dt; if (dt > 0 && ml > cap) { gx = sw.offset[k] + mx * cap / ml; gz = sw.offset[k + 2] + mz * cap / ml; } }
         sw.scale[i] = (h.r / c.r0) * grow; { const was = sw.placed[i]; sw.place(i, gx, gz, ang); sw.placed[i] = was; } sw.setTarget(i, sw.offset[k], sw.offset[k + 2]); sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; sw.life[i * 4 + 3] = tint;
         slot.gx = sw.offset[k]; slot.gz = sw.offset[k + 2];   // a glide's place is a move, not a re-placement: the motion audit (./pearl-motion.js) watches it (2026-11-13: it booked every glided frame as `replaced` and measured none)
         continue;
