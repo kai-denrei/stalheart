@@ -4913,6 +4913,16 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   const seen=await evaluate(`(()=>{const T=${T},v=T.creatures.view,recs=T.showcase.guardRecords("${gsite}"),o={seat:!!T.seatState().gunshipSeat,heat:{},records:recs.length,bodies:0,drawnBodies:0,culled:0,clouds:0,drawnClouds:0,levels:{},types:{}};
    for(const e of recs){const b=v(e);o.types[e.type]=(o.types[e.type]||0)+1;if(b&&b.slot!=null){o.bodies++;o.levels[b.level]=(o.levels[b.level]||0)+1;if(b.level!==3)o.drawnBodies++;else o.culled++;const hk=(b.cored?'cored ':'soft ')+b.heat;o.heat[hk]=(o.heat[hk]||0)+1;}else{o.clouds++;let vis=!!e.obj;for(let n=e.obj;n;n=n.parent)if(!n.visible){vis=false;break;}if(vis)o.drawnClouds++;}}
    o.drawn=o.drawnBodies+o.drawnClouds;return o;})()`);
+  // where the site and its guards fall in the seat's frame (the camera's pose from seatState, projected here)
+  {const ss=await evaluate(`${T}.seatState()`),cen=(await evaluate(`${T}.showcase.probeSite("${gsite}")`)).centre,ps=await evaluate(`${T}.showcase.guardRecords("${gsite}").slice(0,3).map(e=>e.pos.slice())`);
+   const [qx,qy,qz,qw]=ss.quat,rot=(v)=>{const ix=qw*v[0]+qy*v[2]-qz*v[1],iy=qw*v[1]+qz*v[0]-qx*v[2],iz=qw*v[2]+qx*v[1]-qy*v[0],iw=-qx*v[0]-qy*v[1]-qz*v[2];return [ix*qw+iw*-qx+iy*-qz-iz*-qy,iy*qw+iw*-qy+iz*-qx-ix*-qz,iz*qw+iw*-qz+ix*-qy-iy*-qx];};
+   const inv=[-qx,-qy,-qz,qw],proj=(p)=>{const d=[p[0]-ss.pos[0],p[1]-ss.pos[1],p[2]-ss.pos[2]];const [a,b,c,w]=inv;const ix=w*d[0]+b*d[2]-c*d[1],iy=w*d[1]+c*d[0]-a*d[2],iz=w*d[2]+a*d[1]-b*d[0],iw=-a*d[0]-b*d[1]-c*d[2];const v=[ix*w+iw*-a+iy*-c-iz*-b,iy*w+iw*-b+iz*-a-ix*-c,iz*w+iw*-c+ix*-b-iy*-a];const t=Math.tan(ss.fov*Math.PI/360);return {x:+(v[0]/(-v[2]*t*ss.aspect)).toFixed(3),y:+(v[1]/(-v[2]*t)).toFixed(3),depth:+(-v[2]).toFixed(5)};};
+   const sc=await evaluate(`${T}.showcase.seatCam(${JSON.stringify([cen,...ps])})`);console.log(`NEST GUARDS seat camera: ${JSON.stringify(sc)}`);
+   console.log(`NEST GUARDS seat frame: ${JSON.stringify({map:ss.map,fov:ss.fov,camPos:ss.pos,aim:ss.aim,site:proj(cen),guards:ps.map(proj)})}`);}
+  // the guards' pixels in the main optic as the screenshot takes it (round 13: with yaw 0 they fell under the GROUND TRUTH inset, x 792-1427, y 475-835 of 1440x900)
+  const shotPx=await evaluate(`(()=>{   const T=${T},ps=T.showcase.guardRecords("${gsite}").map(e=>e.pos.slice()),c=T.showcase.probeSite("${gsite}").centre,r=T.showcase.seatCam([c,...ps]).pts;
+   return r.map(([x,y])=>[Math.round((x+1)/2*innerWidth),Math.round((1-y)/2*innerHeight)]);})()`);
+  console.log(`NEST GUARDS screen pixels (site first): ${JSON.stringify(shotPx)}`);
   console.log(`NEST GUARDS from the gunship's seat over ${gsite} (cell ${gcell}, seated ${seated}): ${JSON.stringify(seen)}`);
   current='nest-guards-gunship';await finish();
   assert.ok(seen.seat,'the gunship seat is taken');assert.ok(seen.records>0,`guards stand at ${gsite} (${seen.records})`);
