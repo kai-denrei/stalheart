@@ -174,9 +174,9 @@ export function createShowcaseHooks(host) {
     // to. The pitch must be a real look DOWN or the optic's ray never strikes the ground, and a gun with no impact cell fires
     // nothing however hard the trigger is held (src/sentry-pilot.js gunshipTick: `impact = G.aim(...)`) — the seat opens on
     // whatever pitch it was left with, which on a page that has taken no seat is the horizon.
-    aim: (pitch = -1.2) => {
+    aim: (pitch = -1.2, yaw = 0) => {
       if (!host.pilot()?.gunship) return null;
-      host.pilot().state.yaw = 0;
+      host.pilot().state.yaw = yaw;
       host.pilot().state.pitch = Math.max(GUNSHIP_PLATFORM.pitchMin, Math.min(GUNSHIP_PLATFORM.pitchMax, pitch));
       return host.pilot().state.pitch;
     },
@@ -220,7 +220,7 @@ export function createShowcaseHooks(host) {
       const ring = new Set([player.cur]); for (const a of g.adj[player.cur]) { ring.add(a); for (const b of g.adj[a]) ring.add(b); }
       const nearCell = (p) => { let best = -1, bd = Infinity; for (const ci of ring) { const dd = d(p, g.centers[ci]); if (dd < bd) { bd = dd; best = ci; } } return best; };
       const ahead = [0.25, 0.5, 0.75, 1, 1.5].map((k) => { const p = norm3([0, 1, 2].map((i) => player.pos[i] + player.heading[i] * k * cs)), ci = nearCell(p); return { k, cell: ci, rock: ci >= 0 ? tags[ci] === BLOCKED : null, solid: sb?.solidAt(p) ?? null }; });
-      return { cell: c.cell, clear: c.clear, dist: d(player.pos, g.centers[c.cell]) / cs, reach: st.glue?.reachOf?.(id) ?? null, cur: player.cur, curSolid: sb?.solidAt(player.pos) ?? null, ahead };
+      return { cell: c.cell, centre: g.centers[c.cell].slice(), clear: c.clear, dist: d(player.pos, g.centers[c.cell]) / cs, reach: st.glue?.reachOf?.(id) ?? null, cur: player.cur, curSolid: sb?.solidAt(player.pos) ?? null, ahead };
     },
     aimHull: (ci) => { const n = norm3(player.pos), to = sub3(host.graph().centers[ci], player.pos), t = sub3(to, scale3(n, dot3(to, n))); if (Math.hypot(...t) > 1e-9) { player.heading = norm3(t); player.smoothDir = player.heading.slice(); } },
     bearing: (ci) => { const n = norm3(player.pos), h = player.heading, to = sub3(host.graph().centers[ci], player.pos), d = norm3(sub3(to, scale3(n, dot3(to, n)))); return Math.atan2(dot3(n, cross3(h, d)), dot3(h, d)); },
@@ -257,6 +257,8 @@ export function createShowcaseHooks(host) {
     drive: () => { const adj = host.graph().adj[player.cur].filter((nb) => host.dungeon().tags[nb] !== BLOCKED); return { pos: player.pos.slice(), heading: player.heading.slice(), cur: player.cur, open: adj.length, adj, block: host.hullBlock() }; },
     // THE NESTS' GUARDS (--nest-guards; owner, 2026-10-16: a small Reed at each cargo nest): every live guard of a site, its type and tier, what its
     // spec names as its body family (a creature body is made only for a record whose spec says so), its size and its distance to the hull in cells
+    // the game camera as the seat leaves it, and points through it (camera.project: x, y in -1..1 inside the frame, z the depth -1..1 between near and far)
+    seatCam: (points = []) => ({ near: camera.near, far: camera.far, layers: camera.layers.mask, fov: camera.fov, zoom: camera.zoom, pts: points.map((p) => { const v = camera.position.clone().set(p[0], p[1], p[2]).project(camera); return [+v.x.toFixed(3), +v.y.toFixed(3), +v.z.toFixed(5)]; }) }),
     guardRecords: (id) => enemies.filter((e) => e.alive && e.guard?.site === id),   // the live records themselves, for an in-page probe (--nest-guards, the gunship's view)
     guards: (id) => { const cs = host.cellSide(); return enemies.filter((e) => e.alive && e.guard?.site === id).map((e) => ({ type: e.type, tier: e.tier ?? null, tierKey: e.tierKey ?? null, body: e.spec?.body ?? null, size: e.size, hp: e.hp, cur: e.cur, cells: +(Math.hypot(e.pos[0] - player.pos[0], e.pos[1] - player.pos[1], e.pos[2] - player.pos[2]) / cs).toFixed(2), trail: e.guard.trail?.length ?? 0 })); },
 
