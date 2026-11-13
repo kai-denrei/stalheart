@@ -4819,7 +4819,7 @@ export function initTdTab(root) {
   },
   // THE EXPEDITIONS (src/fx/expedition-glue.js): expeditions, expeditionsBegin, expeditionStep
   createExpeditionsHost({
-    storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud,
+    storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud, releaseGuards: () => enemyStep.releaseGuards(),
     story: () => story, graph: () => graph, cellSide: () => cellSide, playerMesh: () => playerMesh, storyBase: () => storyBase, cellIndex: () => cellIndex, open: (ci) => dungeon.tags[ci] !== BLOCKED,
   }),
   // THE VIEW STRIP (src/fx/story-views.js): unlock

@@ -28,11 +28,15 @@ const h = {
   story: { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-b': { cell: 7, clear: 16 } }, home: 0 },
   centers: () => centers, solid: () => false, revealSite: () => {},
   spawn: (type, ci, o) => spawned.push({ type, ci, ...o }),
+  settle: () => settled.push(spawned.length),   // (2026-11-13) the queued nest put down at once, after the whole nest is queued
 };
+const settled = [];
 const glue = createExpeditionGlue(h);
 glue.openSite('rocket-b');
 const site = STORY_EXPEDITIONS.sites.find((s) => s.id === 'rocket-b');
 assert.equal(spawned.length, site.guards.reduce((a, g) => a + g.count, 0), 'every guard of the nest queued');
+assert.deepEqual(settled, [spawned.length], 'the glue settles the nest once, after its last guard is queued (owner, 2026-11-13: "They appeared out of nowhere iirc")');
+glue.openSite('rocket-b'); assert.deepEqual(settled, [spawned.length], 'an open site is not opened (nor settled) again');
 const reeds = spawned.filter((q) => q.type === 'reed');
 assert.equal(reeds.length, 1, 'one Reed queued');
 const q = reeds[0], t = CREATURE_TIERS.reed.small;

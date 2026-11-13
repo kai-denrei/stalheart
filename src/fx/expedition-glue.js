@@ -28,7 +28,7 @@ function toward(from, to) {
 // a point `metres` along a tangent, put back on the ground's radius
 const along = (origin, dir, dist) => { const o = v3(origin), r = o.length(); return o.addScaledVector(dir, dist).setLength(r); };
 
-// hooks: { story, scene, sfx, hasCue(key), cellSide, centers(), tankPos(), hull(), guardsLeft(id), spawn(type, cell, o), revealSite(id),
+// hooks: { story, scene, sfx, hasCue(key), cellSide, centers(), tankPos(), hull(), guardsLeft(id), spawn(type, cell, o), settle?() (the queued guards down at once), revealSite(id),
 //          landing() -> Object3D | null (the landing island's frame), brief(id), callout(text), toast(towerKey), look?,
 //          receive?({ point, normal, seconds, bed, done }) -> boolean (an order for Isao to fly to the crate and beam it; done() when he has) }
 export function createExpeditionGlue(h) {
@@ -142,6 +142,7 @@ export function createExpeditionGlue(h) {
       if (!cfg || !c || !reveal(ex(), id)) return;
       h.revealSite(id);
       for (const g of cfg.guards) for (let k = 0; k < g.count; k++) h.spawn(g.type ?? g.family, c.cell, { spread: 1.2, delay: k * 0.3, guard: { site: id, c: h.centers()[c.cell], r: h.cellSide * (c.clear / 10 + 2), avoid: h.solid }, ...(g.family ? { spec: tierSpec(g.family, g.tier), tier: g.tier } : {}) });   // avoid: never a cell under the lander itself (guard-aggro.js); a creature tier (the small Reed) in its own kit
+      h.settle?.();   // the nest down now, not when the queue next runs: a close-up freezes the enemy loop (owner, 2026-11-13: "They appeared out of nowhere iirc"; src/fx/enemy-step.js releaseGuards)
     },
     begin() { for (const s of STORY_EXPEDITIONS.sites) if (!s.reveal) glue.openSite(s.id); },
     // THE SKIP TUTORIAL ENTRY (owner, 2026-09-16): these parts came home before the player arrived. The rule says
@@ -257,7 +258,7 @@ export function createExpeditionsHost(c) {
       story: c.story(), scene, sfx, hasCue: (k) => !!(SOUNDS[k] || BREACH_SOUNDS[k] || STORY_SOUNDS[k]), cellSide: c.cellSide(),
       centers: () => c.graph().centers, tankPos: () => player.pos, hull: () => c.playerMesh(),
       guardsLeft: (id) => enemies.filter((e) => e.alive && e.guard?.site === id).length + spawnQueue.filter((q) => q.guard?.site === id).length >= STORY_EXPEDITIONS.clearBelow,   // the last stragglers do not hold the cargo (STORY_EXPEDITIONS.clearBelow)
-      spawn: (...a) => storyApi.spawn(...a), revealSite: (id) => c.storyBase()?.reveal(id), landing: () => c.storyBase()?.structure('foundry')?.holder ?? null,
+      spawn: (...a) => storyApi.spawn(...a), settle: () => c.releaseGuards?.(), revealSite: (id) => c.storyBase()?.reveal(id), landing: () => c.storyBase()?.structure('foundry')?.holder ?? null,
       brief: showBrief, callout: (text) => showCallout(text, 'co-cargo'), toast: showTowerToast,
       // ISAO RECEIVES THE PART: an order that yields to every other (stepWorker)
       open: (ci) => c.open?.(ci) ?? true, solid: (p) => !!c.storyBase()?.solidAt?.(p),   // open floor: the cargo drop-off pad sits on it; a building solid to the hull

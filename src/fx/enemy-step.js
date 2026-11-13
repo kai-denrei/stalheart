@@ -216,8 +216,16 @@ export function createEnemyStep(host) {
     host.updateHud();
   }
 
+  // A NEST'S GUARDS NEVER WAIT IN LINE (owner, 2026-11-13: "I suspect we are spawning the enemies at the rocket sites/nests/cargo later rather than already being
+  // there. They appeared out of nowhere iirc"): releaseSpawns' line stops at its first held or future entry, and a guard is pushed after whatever is queued (a later
+  // site opens on a delivery, mid-sector); a due guard goes down at once, wherever it stands. Also called the moment a site opens (src/fx/expedition-glue.js
+  // openSite), so a nest opened while the world is frozen under a close-up (the landing's arrivalTalk) stands before the shot ends, not all at once after it
+  function releaseGuards() {
+    for (let i = 0; i < host.spawnQueue.length; i++) { const g = host.spawnQueue[i]; if (!g.guard || g.at > host.spawnClock() || host.creatures?.()?.full?.(g)) continue; host.spawnQueue.splice(i--, 1); if (g.sp.alive) spawnOne(g); }
+  }
   function releaseSpawns(dtSeconds) {
     host.setSpawnClock(host.spawnClock() + (dtSeconds)); host.crowdGate.frame(host.enemies, dtSeconds > 0);
+    releaseGuards();
     while (host.spawnQueue.length && host.spawnQueue[0].at <= host.spawnClock()) {
       const entry = host.spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
       if (!sp.alive) continue;   // its gate died while it was queued
@@ -617,5 +625,5 @@ export function createEnemyStep(host) {
     host.disposeObj(e.obj);
     host.updateHud();
   }
-  return { clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, seedPortals, gateTakesShell, killPortal, armWave, spawnWave, releaseSpawns, spawnOne, updateEnemies, killCreature, softHunt: () => softHunt.state() };
+  return { clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, seedPortals, gateTakesShell, killPortal, armWave, spawnWave, releaseSpawns, releaseGuards, spawnOne, updateEnemies, killCreature, softHunt: () => softHunt.state() };
 }
