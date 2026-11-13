@@ -2179,7 +2179,7 @@ export function initTdTab(root) {
       + `<div class="hud-vitals">${hearts} <span class="hud-lbl">HEART</span>`
       + ` <span class="hp-you">♥${playerHP}</span>`
       + (storyMode && !story?.sectorN ? '</div>' : ` <span class="hp-ammo${ammo === 0 ? ' out' : ''}">✦${ammo}</span></div>`)
-      + `<div class="hud-res"><span class="hud-biomass">${eco.biomass}kg`
+      + `<div class="hud-res"><span class="hud-biomass">${fmt(Math.floor(eco.biomass))}kg`
       + `${storyMode && !story?.sectorN ? '' : ` ×${eco.multiplier().toFixed(2)}`}</span>${roverGlue.hud()}`   /* the story shows no campaign readouts before sector 1; FIELD n kg on the ground (round 8) */
       + `<span class="hud-wave">${storyMode ? '' : `WAVE <b>${wave}</b> · R${round}`}</span></div>`
       + (storyMode ? (sectorRun?.hudLine() ?? '') : `<div class="hud-obj">breaches ${spAlive}/${spawnPoints.length}`
