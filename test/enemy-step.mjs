@@ -127,3 +127,20 @@ print('Enemy step: the queue released on its clock, the walk, a kill and the boa
   }
   print('Enemy step: out of the hole, a record born past the lip, hidden for the climb, rising from the lip\'s wall with no step; the blob for a dot cloud only.');
 }
+
+// A NEST'S GUARDS NEVER WAIT IN LINE (owner, 2026-11-13: "I suspect we are spawning the enemies at the rocket sites/nests/cargo later rather than already being
+// there"): a guard entry pushed behind a wave's entries still in the future (or held at a breach still opening) goes down on the next frame; the wave keeps its clock
+{
+  const log = [], w = world(log), host = { ...w.fixed };
+  for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); }
+  const nest = { ci: 12, alive: true, obj: new THREE.Group() }, guard = { site: 'rocket-a', c: w.st.graph.centers[12], r: 0.1 };
+  host.spawnQueue.length = 0;
+  host.spawnQueue.push({ type: 'amoeba', sp: { ci: 20, alive: true, obj: new THREE.Object3D() }, at: 5 }, { type: 'amoeba', sp: { ci: 20, alive: true, obj: new THREE.Object3D() }, at: 6 });
+  for (let k = 0; k < 3; k++) host.spawnQueue.push({ type: 'amoeba', sp: nest, at: 0, spread: 1.2, guard });
+  const k = createEnemyStep(host);
+  k.updateEnemies(1 / 30, 1 / 30);
+  assert.equal(host.enemies.filter((e) => e.alive && e.guard?.site === 'rocket-a').length, 3, 'the three guards are down on the first frame, behind a wave due at 5 s');
+  assert.equal(host.spawnQueue.length, 2, 'the wave keeps its place and its clock');
+  assert.ok(host.spawnQueue.every((q) => !q.guard && q.at >= 5), 'only the wave waits');
+  print('Enemy step: a nest\'s guards go down at once, past a wave still waiting in the queue.');
+}

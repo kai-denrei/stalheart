@@ -4992,6 +4992,40 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   console.log(`NEST GUARDS the wave at breach ${cell}: ${bodies.length} bodies, ${bodies.filter(e=>e.blob).length} with a blob at the lip`);
   assert.ok(bodies.filter(e=>e.blob).length>=1,`the wave's bodies still get their blobs (${JSON.stringify(bodies.slice(0,8))})`);}
  current='nest-guards-blobs';await finish();
+ } else if(args.includes('--guards-present')) {
+ // THE NESTS ARE MANNED BEFORE ANYONE LOOKS (owner, 2026-11-13: "I suspect we are spawning the enemies at the rocket sites/nests/cargo later rather than already being
+ // there. They appeared out of nowhere iirc"; src/domain/story-beats.js `manned`): on a chapter page between the foundry and the study (?skip=dog at the orders,
+ // ?skip=quiver at the clear) the landers stand from the first frame (on the landing itself the nest was queued at the foundry's deploy and held under the
+ // arrivalTalk close-up, the enemy loop frozen, then put down all at once as the shot ended), and until 2026-11-13 their guards came only at the study beat. Here every first-wave site
+ // has its whole nest up within a few seconds of the page, each guard with its body made, none rising out of a hole, while the hull is nowhere near a site.
+ // A timeline of the guard counts, the queue, the beats' phase and the shot is printed per page (GPAGES=a,b overrides the pages)
+ const T='window.__stalheartTest',{STORY_EXPEDITIONS}=await import('../src/content/story-defaults.js');
+ const first=STORY_EXPEDITIONS.sites.filter(s=>!s.reveal),sites=first.map(s=>s.id),want=first.map(s=>s.guards.reduce((a,g)=>a+g.count,0));
+ const pages=(process.env.GPAGES||'opening,skip=dog,skip=quiver').split(',');   // 'opening': the story's own start, the landing
+ for(const q of pages){
+  await go('guards-present-'+q,`index.html?sw=0&acceptance=1&cine=0&world=story${q==='opening'?'':'&'+q}#td`);
+  await until(`!!${T}`,90000);
+  await evaluate(`(()=>{const T=${T},S=${JSON.stringify(sites)};const log=window.__gp=[];let last='',f=0;const t0=performance.now();
+   const tick=()=>{f++;try{const qq=T.queueCensus(),gi=qq.findIndex(x=>x.guard),alive=S.map(id=>T.showcase.guards(id).length),qg=qq.filter(x=>x.guard).length;
+    const s=f%10===1?(window.__gps=T.state()):window.__gps,ph=s.story?.phase??null,shot=s.shot??null;const k=alive.join(',')+'|'+qg+'|'+gi+'|'+ph+'|'+shot;
+    if(k!==last){last=k;log.push({f,t:Math.round(performance.now()-t0),phase:ph,shot,alive,queuedGuards:qg,firstGuardAt:gi,queue:qq.length});}}catch(e){log.push({f,err:String(e)});}
+    if(log.length<200&&f<20000)requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
+  const t0=Date.now();
+  await until(`${JSON.stringify(sites)}.every((id,k)=>${T}.showcase.guards(id).length>=${JSON.stringify(want)}[k])`,30000).catch(async()=>assert.fail(`${q}: every first-wave site's nest up within 30 s of the page (${JSON.stringify(await evaluate('window.__gp'))})`));
+  const up=(Date.now()-t0)/1000;await delay(500);
+  for(const r of await evaluate('window.__gp'))console.log(`GUARDS PRESENT ${q} `+JSON.stringify(r));
+  const seen=await evaluate(`(()=>{const T=${T},o={};for(const id of ${JSON.stringify(sites)}){const recs=T.showcase.guardRecords(id),ps=T.showcase.probeSite(id);
+   o[id]={records:recs.length,bodies:recs.filter(e=>{const b=T.creatures.view(e);return b&&b.slot!=null;}).length,risen:recs.filter(e=>!e.breachSource&&!e.blob).length,hullCells:ps?.dist??null,nest:ps?+(((ps.clear/10)+2)*${STORY_EXPEDITIONS.aggro}).toFixed(2):null};}
+   return {sites:o,hull:T.state().playerCell,phase:T.state().story?.phase};})()`);
+  console.log(`GUARDS PRESENT ${q}: all nests up ${up.toFixed(1)} s after the harness; ${JSON.stringify(seen)}`);
+  for(const [k,id] of sites.entries()){const o=seen.sites[id];
+   assert.equal(o.records,want[k],`${q} ${id}: the whole nest stands (${o.records} of ${want[k]})`);
+   assert.equal(o.risen,o.records,`${q} ${id}: no guard rises out of a hole or behind a blob (${JSON.stringify(o)})`);
+   assert.ok(o.bodies>=o.records-1,`${q} ${id}: each guard has its body made (${o.bodies} of ${o.records}; the small Reed's is its own family's)`);
+   assert.ok(!(seen.hull>=0)||!(o.hullCells<o.nest),`${q} ${id}: the hull is not at the site yet (${o.hullCells} cells, the nest's aggro reach ${o.nest})`);}
+  assert.ok(up<20,`${q}: the nests are up before the page has run 20 s (${up.toFixed(1)} s)`);
+  current='guards-present-'+q;await finish();
+ }
  } else if(args.includes('--arena-road')) {
  // THE ROAD SOL CUTS (owner, 2026-10-16: 'have SOL shoot ahead of it here and there to open the maze'; ARENA.road, src/domain/arena.js roadAhead,
  // src/fx/boss-run.js, td-tab's solRoad): on the arena's drive out, every ARENA.road.every seconds the first rock within ARENA.road.ahead cells on the hull's

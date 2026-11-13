@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { makeStoryBeats } from '../src/domain/story-beats.js';
+import { STORY_PHASES } from '../src/domain/automation.js';
 // a fake game: records everything; a tower stands N seconds after the order; fodder reaches the gate M seconds after the first spawn
 function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
   const log = []; let orderedAt = null, clock = 0, alive = 0, firstSpawn = null, killed = 0, sealed = false;
@@ -184,7 +185,8 @@ console.log('story-beats: the arrival holds the landing and deploys on its cut')
   assert.ok(!g.log.some((l) => l[0] === 'brief' && (l[1] === 'rough_landing' || l[1] === 'so_much_to_build')), 'no landing faces on a late start');
 }
 {
-  // A LATER JUMP STILL: starting at 'settled' the sites are already behind the player, so nothing opens them again
+  // A LATER JUMP STILL: starting at 'settled' the landers already stand in the world, so their nests are manned on the first tick, once (owner,
+  // 2026-11-13: "They appeared out of nowhere iirc": until then a 'settled' start opened them only at the study beat, in front of the player)
   const g = fakeGame();
   const unlocks = [];
   let begun = 0;
@@ -192,8 +194,10 @@ console.log('story-beats: the arrival holds the landing and deploys on its cut')
   g.api.expeditionsBegin = () => { begun++; };
   const beats = makeStoryBeats({ socket: 1, startPhase: 'settled' });
   assert.equal(beats.phase(), 'settled');
-  for (let k = 0; k < 6; k++) beats.tick(0.5, g.api);
-  assert.equal(begun, 0, `a late start at 'settled' must not reopen the expedition sites, got ${begun}`);
+  beats.tick(0.5, g.api);
+  assert.equal(begun, 1, `a late start at 'settled' mans the nests on its first tick, got ${begun}`);
+  for (let k = 0; k < 5; k++) beats.tick(0.5, g.api);
+  assert.equal(begun, 1, `and only once before the study beat, got ${begun}`);
   assert.deepEqual(unlocks, ['views'], 'the views strip is still offered once');
   assert.equal(beats.phase(), 'settled', 'nothing moves it back');
 }
@@ -249,10 +253,21 @@ console.log('story-beats: the arrival holds the landing and deploys on its cut')
   let iterations = 0;
   while (beats.phase() !== 'expedition' && iterations < limit) { beats.tick(0.1, g.api); iterations++; }
   assert.equal(beats.phase(), 'expedition', `expected 'expedition' within ${limit} bounded extra ticks, stuck at '${beats.phase()}'`);
-  // (2026-10-03) the nests open at the landing too: once there and once on the expedition beat, which the glue makes idempotent
-  assert.equal(calls.filter((c) => c === 'begin').length, 2, `expeditionsBegin runs at the landing and on the expedition beat, got ${JSON.stringify(calls)}`);
-  assert.equal(calls[0], 'begin', 'the first at the landing, before the sites are shown');
-  assert.deepEqual(calls.slice(1), ['sites', 'begin'], `on the expedition beat the sites are marked before the expeditions begin again, got ${JSON.stringify(calls)}`);
+  // (2026-10-03) the nests open at the landing too; (2026-11-13) and on the first tick before that: three calls, which the glue makes idempotent
+  assert.equal(calls.filter((c) => c === 'begin').length, 3, `expeditionsBegin runs on the first tick, at the landing and on the expedition beat, got ${JSON.stringify(calls)}`);
+  assert.deepEqual(calls.slice(0, 2), ['begin', 'begin'], 'the first two at the start and the landing, before the sites are shown');
+  assert.deepEqual(calls.slice(2), ['sites', 'begin'], `on the expedition beat the sites are marked before the expeditions begin again, got ${JSON.stringify(calls)}`);
+}
+
+// THE NESTS ARE MANNED BEFORE ANYONE LOOKS (owner, 2026-11-13: "I suspect we are spawning the enemies at the rocket sites/nests/cargo later rather than already
+// being there"): from every start phase, the landing's included and an arrival still holding it, expeditionsBegin runs on the beats' very first tick
+for (const startPhase of STORY_PHASES) for (const arrival of [false, true]) {
+  if (arrival && startPhase !== 'landed') continue;
+  const g = fakeGame(); let begun = 0;
+  g.api.expeditionsBegin = () => { begun++; };
+  const beats = makeStoryBeats({ socket: 1, startPhase, arrival });
+  try { beats.tick(0.016, g.api); } catch { /* the bare fake has no foundry for the 'foundry' phase's own step; the nests are manned before any phase's step */ }
+  assert.ok(begun >= 1, `a start at '${startPhase}'${arrival ? ' (arrival)' : ''} mans the nests on the first tick, got ${begun}`);
 }
 
 // THE OPENING'S BEAT CLOCK (2026-09-18): the override asks how close the swarm is, the breach's first body comes after

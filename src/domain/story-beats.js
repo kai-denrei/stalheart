@@ -73,7 +73,7 @@ export function makeStoryBeats({
   let phase = startPhase, clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0, gateAt = null, sealed = false, reminded = 0;
   // A LATE START (a jump past the handover): the landing faces are already said, and the views strip is offered on the first tick
   const late = startPhase !== 'landed';
-  let offered = false, released = !arrival;   // an arrival holds `landed` until its cut
+  let offered = false, manned = false, released = !arrival;   // an arrival holds `landed` until its cut
   // STRAIGHT TO THE ACTION: a landing opens the sinkhole while the beacons are toured, so the swarm is up the lane when the Rotor is taken
   // THE SETTLING: only the story's own start settles (a chapter or a jump keeps its flow); the quiet breach at the deploy is off on it
   const settling = settle != null && arrival && startPhase === 'landed';
@@ -105,9 +105,13 @@ export function makeStoryBeats({
         if (STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('cleared')) api.unlock?.('views');
         if (phase === 'construction' && construction) { api.gunshipArrive?.(); if (quiverSocket >= 0) api.pilot?.(quiverSocket, lane); nextSpawn = clock + (construction.first ?? construction.every); }   // the player is still in the Quiver's optic there
         if (phase === 'settled') studyDelay = construction?.studyDelay ?? studyDelay;
-        if (phase === 'expedition') api.expeditionsBegin?.();
         offered = true;
       }
+      // THE NESTS ARE MANNED BEFORE ANYONE LOOKS (owner, 2026-11-13: "I suspect we are spawning the enemies at the rocket sites/nests/cargo later rather than
+      // already being there. They appeared out of nowhere iirc"): the landers stand in the world from the first frame (src/content/base-layout.js, stage 1), so
+      // their guards are put down on the beats' first tick, whatever the start; a chapter between the foundry and the study (?skip=dog, =wave, =quiver, the
+      // settled start) opened them only at the study beat, 55-80 bodies a site at once in front of the player. Idempotent: the landing and the expedition beat call it again
+      if (!manned) { manned = true; api.expeditionsBegin?.(); }
       // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
