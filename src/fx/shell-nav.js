@@ -103,6 +103,10 @@ export function mountShellNav({ navigate, buildText, query = new URLSearchParams
     raise: (b) => flash(b, raiseEnemies(count) ? 'raised' : 'no hooks'),
   };
 
+  // the build tag copies itself: one click puts the build and commit on the clipboard for a bug note
+  const tag = bar.querySelector('#build-tag'); tag.title = 'copy the build';
+  tag.addEventListener('click', () => { if (tag.dataset.busy) return; tag.dataset.busy = '1'; const done = (t) => { flash(tag, t); setTimeout(() => { delete tag.dataset.busy; }, 1400); };
+    navigator.clipboard?.writeText(tag.textContent).then(() => done('copied'), () => done('copy failed')) ?? done('copy failed'); });
   bar.querySelector('.shell-toggle').addEventListener('click', (ev) => { const b = ev.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
   nav.addEventListener('click', (ev) => {
     const tool = ev.target.closest('[data-tool]');

@@ -4040,7 +4040,7 @@ body.mobile-shell #gunship-briefing button, body.mobile-shell #sol82-briefing bu
 #laser-seat-keys [data-hold] { width: 84px; height: 84px; border-radius: 50%; }
 #laser-seat-keys [data-hold].on { color: #ffffff; border-color: #ff3b1f; background: rgba(60, 16, 10, 0.9); }
 /* the build tag, joined to the navigation shell top right, for debugging which release is in front of you */
-#build-tag { font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }
+#build-tag { font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: auto; cursor: copy; user-select: none; }
 /* the story's spotting monitor: a second small render riding behind a guided round */
 #story-monitor { position: fixed; right: 12px; bottom: 64px; width: 224px; height: 140px; border: 1px solid #2b6b96; border-radius: 8px; background: rgba(8, 14, 20, 0.5); z-index: 40; pointer-events: none; }
 /* GROUND TRUTH · IMPACT, bigger in the gunship seat (owner, 2026-09-15): the impact is the payoff, so the monitor grows to
