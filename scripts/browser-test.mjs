@@ -1937,6 +1937,15 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   assert.ok(from>=0,'the held shot began');assert.deepEqual(c.cuts,[],'no cut from the touchdown to the dog\'s seat');
   assert.ok(!c.shots.includes('sitesTour'),'no landers\' tour');for(const id of ['arrivalTalk','petPrint','dogScout'])assert.ok(c.shots.includes(id),`${id} on the way`);await evaluate('window.__camStop=true');}
  current='dog-seat';await finish();
+ // THE JUMP AND THE TRICKS (owner, 2026-11-13: "the dog is alright, but it has no jump animation"): a real Space leaves the ground on the arc (the K9's Jump
+ // clip on the body) and lands; a real R rolls it over (DOG_SCOUT.tricks), the drive's W cuts the trick
+ {const key=async(k,code,vk)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code,windowsVirtualKeyCode:vk,...(k.length===1?{text:k}:{})});await send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code,windowsVirtualKeyCode:vk});};
+  const j0=await dog();await key(' ','Space',32);const clips=new Set();let up=null;
+  for(const t0=Date.now();Date.now()-t0<60000;){const d=await dog();if(d.clip)clips.add(d.clip);if(d.lift>0&&!up)up=d;if(d.landed>j0.landed)break;await delay(30);}
+  const j1=await dog();console.log(`  dog: the jump: jumps ${j1.jumps}, landed ${j1.landed}, liftMax ${j1.liftMax} m (knob ${DOG_SCOUT.jump.heightM}), clips seen ${[...clips].join(',')}, mode ${j1.mode}`);
+  assert.equal(j1.jumps,j0.jumps+1,'Space jumps');assert.ok(up,'the body leaves the ground');assert.ok(j1.liftMax>=DOG_SCOUT.jump.heightM*0.5,`it rises (${j1.liftMax} m)`);
+  assert.equal(j1.landed,j0.landed+1,'it lands');assert.equal(j1.air,false,'down again');assert.equal(j1.lift,0,'on the ground');assert.ok(clips.has(DOG_SCOUT.jump.clip),`the Jump clip played (${[...clips]})`);
+  await key('r','KeyR',82);await delay(300);const r=await dog();console.log(`  dog: R: trick ${r.trick}, tricks ${r.tricks}, clip ${r.clip}`);assert.equal(r.trick,'roll','R rolls it over');}
  // THE DRIVE: hold W (and Shift once facing the way), steer on the waypoint's bearing, stop in the ring until it is surveyed
  const drive=async(want,budget,label)=>{
   const t0=Date.now();let best=1e9,bestAt=Date.now();

@@ -8,7 +8,9 @@
 // (a camera shot of its own, 'dogScout', live: the world runs under it). The survey points (DOG_SCOUT.points.count) ring the clearing (src/fx/site-ring.js) with a HUD
 // marker each (its kind and distance); standing in a ring `survey.seconds` surveys it (a toast, the pay, Isao's line on the first two); a body that
 // touches the dog knocks it down. An acceptance page that did not ask for the dog surveys at once and never takes the seat (a headless page would
-// stand at the first point for ever), as THE FIRST ORDERS pass by such a page.
+// stand at the first point for ever), as THE FIRST ORDERS pass by such a page. THE JUMP AND THE TRICKS (owner, 2026-11-13; DOG_SCOUT.jump, .tricks):
+// Space jumps (the K9's Jump clip, the body lifted on the arc src/domain/dog-scout.js stepJump gives), R P J the tricks; the seat's own key listener
+// (capture phase, while the seat is live) takes those keys ahead of the tank's (Space would fire a shell); the phone's FIRE pad jumps.
 //   host: scene, camera, metres(), cellSide(), graph(), dungeon(), story(), solidAt(p, padUnits), companions(), petPrint(), startShot, endShot,
 //         shotActive(), shotId(), enemies() (the live records), eco(), showToast, showBrief, held() ({ fwd, back, left, right, sprint }), unheld() (the cruise
 //         let go as the seat ends), auto (true: survey at once, no seat)
@@ -16,7 +18,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { DOG_SCOUT } from '../content/dog-scout.js';
 import { COMPANIONS } from '../content/companions.js';
-import { createScout, drive, steer, surveyStep, allSurveyed, knock, stepKnock, release, pickPoints, contactCell } from '../domain/dog-scout.js';
+import { createScout, drive, steer, surveyStep, allSurveyed, knock, stepKnock, release, pickPoints, contactCell, jump, stepJump, trick, stepTrick } from '../domain/dog-scout.js';
 import { BLOCKED, bfsDist, bfsPath } from '../dungeon.js';
 import { makeSiteRing, disposeSiteRing } from './site-ring.js';
 
@@ -27,7 +29,20 @@ export function createDogScout(h) {
   let s = createScout([]), begun = false, active = false, homeNow = false, contact = -1, points = [], rings = [], hud = null, birthChecked = false, lens = null;
   let path = null, pathAt = -9, pathFor = null, clock = 0, said = 0, solid = new Map(), solidAt = -99;
   const pos = new THREE.Vector3(), heading = new THREE.Vector3(), camFwd = new THREE.Vector3(), up = new THREE.Vector3(), v = new THREE.Vector3(), w = new THREE.Vector3(), x = new THREE.Vector3();
-  const tmpCam = new THREE.PerspectiveCamera(); let cell = -1;
+  const tmpCam = new THREE.PerspectiveCamera(); let cell = -1, keysOn = null, padEl = null, liftMax = 0, landed = 0;
+  const moveKeys = Object.fromEntries([[D.jump.key, 'jump'], ...Object.entries(D.tricks).map(([id, t]) => [t.key, id])]);
+  const doMove = (id) => { if (!active) return false; return id === 'jump' ? jump(s, TUNE) : trick(s, id, TUNE); };
+  function onKey(e) {
+    const id = active && moveKeys[e.code]; if (!id) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (!e.repeat) doMove(id);
+  }
+  const onPad = (e) => { if (!active) return; e.preventDefault(); e.stopImmediatePropagation(); doMove('jump'); };
+  function listen(on) {
+    if (typeof addEventListener !== 'function') return;
+    if (on && !keysOn) { keysOn = onKey; addEventListener('keydown', onKey, true); padEl = typeof document !== 'undefined' ? document.querySelector('#td-pad-fire') : null; padEl?.addEventListener('pointerdown', onPad, true); padEl?.addEventListener('click', onPad, true); }
+    if (!on && keysOn) { removeEventListener('keydown', onKey, true); keysOn = null; padEl?.removeEventListener('pointerdown', onPad, true); padEl?.removeEventListener('click', onPad, true); padEl = null; }
+  }
   const c = () => h.companions?.() ?? null, G = () => h.graph(), dg = () => h.dungeon(), m = () => h.metres();
   const centre = (ci) => G().centers[ci];
   function nearestFrom(start, p) {
@@ -136,7 +151,7 @@ export function createDogScout(h) {
     if (!h.auto) { h.showToast?.(`<div class="wave-num">${D.words.toast(p.kind.label, D.survey.pay)}</div>`, 1600); dimRing(i); }
     if (!h.auto && said < D.words.lines.length && s.surveyed.length < points.length) h.showBrief?.(D.words.lines[said++]);
   }
-  const pose = (oneShot = null) => ({ pos: pos.toArray(), heading: heading.toArray(), speed: s.speed, oneShot });
+  const pose = (oneShot = null, rate = 1) => ({ pos: pos.toArray(), heading: heading.toArray(), speed: s.speed, oneShot, rate, lift: s.lift });
 
   function tick(dt) {
     clock += dt;
@@ -147,6 +162,7 @@ export function createDogScout(h) {
     if (!h.shotActive()) takeShot();   // another shot took the camera and ended (or ended ours): the chase again
     const input = h.held();
     if (stepKnock(s, dt, TUNE) === 'up') cs.driven(K9, pose());
+    const wasUp = !!s.air; stepJump(s, dt, TUNE); stepTrick(s, dt, input); liftMax = Math.max(liftMax, s.lift); if (wasUp && !s.air && s.mode === 'driving') landed++;
     const st = steer(s, input, dt, TUNE);
     up.copy(pos).normalize();
     if (st.turn) heading.applyAxisAngle(up, st.turn);
@@ -166,7 +182,7 @@ export function createDogScout(h) {
       break;
     }
     homeNow = chord(pos.toArray(), centre(dg().heart)) <= D.home.cells * h.cellSide();
-    cs.driven(K9, pose(s.mode === 'knocked' ? D.knock.clip : null));
+    cs.driven(K9, s.mode === 'knocked' ? pose(D.knock.clip) : s.air ? pose(D.jump.clip, D.jump.rate) : pose(s.trick?.clip ?? null));
     paintHud();
   }
 
@@ -189,13 +205,14 @@ export function createDogScout(h) {
         homeNow = true; return true;
       }
       pos.fromArray(at.pos).normalize(); heading.fromArray(at.heading); cell = at.cell; camFwd.copy(heading);
-      drive(s); active = true; homeNow = true;
+      drive(s); active = true; homeNow = true; listen(true);
       cs.driven(K9, pose()); showRings(); makeHud(); takeShot(); paintHud();
       return true;
     },
     state: () => ({ begun, active, auto: !!h.auto, mode: s.mode, surveyed: s.surveyed.length, total: points.length, done: begun && (allSurveyed(s) || !points.length), home: homeNow, contact, knocks: s.knocks }),
     release() {
       const cs = c();
+      listen(false);
       if (active) { active = false; release(s); cs?.driven(K9, null); if (h.shotActive() && h.shotId?.() === 'dogScout') h.endShot(); dropLens(); h.unheld?.(); }
       for (const r of rings) disposeSiteRing(h.scene, r); rings = []; dropHud();
       return true;
@@ -206,8 +223,10 @@ export function createDogScout(h) {
         return { begun, active, auto: !!h.auto, mode: s.mode, speed: +s.speed.toFixed(2), knocks: s.knocks, surveyed: s.surveyed.slice(), total: points.length, home: homeNow, contact, cell,
           points: points.map((p, i) => ({ ci: p.ci, kind: p.kind.id, m: active ? Math.round(chord(pos.toArray(), centre(p.ci)) / m()) : null, surveyed: s.surveyed.includes(i) })),
           target: tg?.i ?? null, steer: wp != null ? +bearingTo(wp).toFixed(3) : null, ring: s.ring, ringT: +s.ringT.toFixed(2),
-          homeM: active ? Math.round(chord(pos.toArray(), centre(dg().heart)) / m()) : null, life: c()?.life(K9) ?? null, shot: h.shotActive() ? 'on' : 'off' };
+          homeM: active ? Math.round(chord(pos.toArray(), centre(dg().heart)) / m()) : null, life: c()?.life(K9) ?? null, shot: h.shotActive() ? 'on' : 'off',
+          air: !!s.air, lift: +s.lift.toFixed(3), liftMax: +liftMax.toFixed(3), jumps: s.jumps, landed, trick: s.trick?.id ?? null, tricks: s.tricks, clip: c()?.state?.()?.units?.[K9]?.clip ?? null };
       },
+      move: (id) => doMove(id),   // the harness's hand on a move key (the key itself goes through the same doMove)
       // the harness's hands: the dog set on a point's centre (or 'home'), the rest of the drive the player's
       goto: (i) => { if (!active) return false; const ci = i === 'home' ? dg().heart : points[i]?.ci; if (ci == null) return false; pos.fromArray(centre(ci)).normalize(); cell = ci; return true; },
     },

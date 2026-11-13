@@ -20,12 +20,19 @@
 //                                         bearing; fewer when the ground does not hold them
 //   contactCell(w, tune)              -> the cell the pack rises at: w { centers, cands [{ ci, hops }] (open floor off the clearing), gateHops,
 //                                         toward }: `contact.hops` hops beyond the gate, the nearest such cell to `toward` (the lane), or -1
+//   jump(s, tune)                      -> true when the dog leaves on a jump now (driving, not already up, not in a trick): `jump`'s clip timing
+//   stepJump(s, dt, tune)              -> the lift this step (metres over the ground): 0 through the crouch, an arc 4u(1-u) x `jump.heightM`
+//                                         from the clip's take-off to its landing (clip seconds / `jump.rate`), 0 again after; up for `endS`
+//   trick(s, id, tune)                 -> true when trick `id` (tune.tricks[id]: clip, seconds, hold) starts now (driving, on the ground, not
+//                                         already in one): the dog stops; a drive key (W or S) cuts it, else it ends after `seconds` (a `hold`
+//                                         trick waits for the key); a knock cancels a jump and a trick (the knock's own rule unchanged)
+//   stepTrick(s, dt, input)            -> 'done' or 'cut' the step the trick ends, else null
 //   bearingAt(centers, from, to)       -> the bearing of `to` round `from` (radians) in a frame fixed at `from` (its tangent plane, +Y the reference)
 //   angleDiff(a, b)                    -> the signed difference a - b wrapped into [-pi, pi]
 export const angleDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 
 export function createScout(points = []) {
-  return { mode: 'idle', speed: 0, points: points.map((p) => ({ ...p })), surveyed: [], ring: -1, ringT: 0, knockLeft: 0, graceLeft: 0, knocks: 0 };
+  return { mode: 'idle', speed: 0, points: points.map((p) => ({ ...p })), surveyed: [], ring: -1, ringT: 0, knockLeft: 0, graceLeft: 0, knocks: 0, air: null, lift: 0, jumps: 0, trick: null, tricks: 0 };
 }
 export function drive(s) { if (s.mode === 'idle') s.mode = 'driving'; return s; }
 export function release(s) { s.mode = 'home'; s.speed = 0; s.knockLeft = 0; return s; }
@@ -33,6 +40,8 @@ export function release(s) { s.mode = 'home'; s.speed = 0; s.knockLeft = 0; retu
 export function steer(s, input, dt, tune) {
   const D = tune.drive;
   if (s.mode !== 'driving') { s.speed = s.mode === 'knocked' ? 0 : s.speed; return { speed: s.speed, turn: 0 }; }
+  if (s.trick) { s.speed = 0; return { speed: 0, turn: 0 }; }
+  if (s.air) return { speed: s.speed, turn: 0 };   // up in the air: the run-up's speed and heading held to the landing
   const want = input.fwd && !input.back ? (input.sprint ? tune.top : D.trot) : input.back && !input.fwd ? -D.back : 0;
   const step = D.accel * dt * (Math.sign(want) !== Math.sign(s.speed) && s.speed !== 0 ? 2 : 1);   // braking is twice as quick as speeding up
   s.speed = want > s.speed ? Math.min(want, s.speed + step) : Math.max(want, s.speed - step);
@@ -54,6 +63,7 @@ export const allSurveyed = (s) => s.points.length > 0 && s.surveyed.length >= s.
 export function knock(s, tune) {
   if (s.mode !== 'driving' || s.graceLeft > 0) return false;
   s.mode = 'knocked'; s.knockLeft = tune.knock.seconds; s.speed = 0; s.knocks++;
+  s.air = null; s.lift = 0; s.trick = null;
   return true;
 }
 export function stepKnock(s, dt, tune) {
@@ -63,6 +73,36 @@ export function stepKnock(s, dt, tune) {
   if (s.knockLeft > 0) return null;
   s.mode = 'driving'; s.knockLeft = 0; s.graceLeft = tune.knock.graceS;
   return 'up';
+}
+
+// THE JUMP AND THE TRICKS (owner, 2026-11-13: "the dog is alright, but it has no jump animation ... Either we add a jump with space bar, and the roll,
+// hand, etc. animations to the dog")
+export function jump(s, tune) {
+  if (s.mode !== 'driving' || s.air || s.trick) return false;
+  s.air = { t: 0 }; s.lift = 0; s.jumps++;
+  return true;
+}
+export function stepJump(s, dt, tune) {
+  if (!s.air) { s.lift = 0; return 0; }
+  const J = tune.jump, r = J.rate || 1, t0 = J.upS / r, t1 = J.downS / r;
+  s.air.t += dt;
+  if (s.air.t >= J.endS / r) { s.air = null; s.lift = 0; return 0; }
+  const u = (s.air.t - t0) / (t1 - t0);
+  s.lift = u > 0 && u < 1 ? J.heightM * 4 * u * (1 - u) : 0;
+  return s.lift;
+}
+export function trick(s, id, tune) {
+  const T = tune.tricks?.[id];
+  if (!T || s.mode !== 'driving' || s.air || s.trick) return false;
+  s.trick = { id, clip: T.clip, left: T.hold ? Infinity : T.seconds }; s.speed = 0; s.tricks++;
+  return true;
+}
+export function stepTrick(s, dt, input) {
+  if (!s.trick) return null;
+  if (input?.fwd || input?.back) { s.trick = null; return 'cut'; }
+  s.trick.left -= dt;
+  if (s.trick.left > 0) return null;
+  s.trick = null; return 'done';
 }
 
 // the bearing of `to` round `from` in from's tangent plane, measured from the plane's projection of +Y (or +X near the poles)

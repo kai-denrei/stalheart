@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DOG_SCOUT } from '../src/content/dog-scout.js';
 import { COMPANIONS } from '../src/content/companions.js';
-import { createScout, drive, steer, surveyStep, allSurveyed, knock, stepKnock, release, pickPoints, contactCell, bearingAt, angleDiff } from '../src/domain/dog-scout.js';
+import { createScout, drive, steer, surveyStep, allSurveyed, knock, stepKnock, release, pickPoints, contactCell, bearingAt, angleDiff, jump, stepJump, trick, stepTrick } from '../src/domain/dog-scout.js';
 import { decodePlanetBake } from '../src/core/planet-bake.js';
 import { STORY_RECIPE, STORY_CLEARING, STORY_BACK_DOOR } from '../src/content/story-defaults.js';
 import { buildWorld } from '../src/domain/world-recipe.js';
@@ -24,6 +24,37 @@ assert.equal(DOG_SCOUT.contact.hops, 6); assert.equal(DOG_SCOUT.contact.recall, 
 assert.equal(K9.top, 5.5, 'the K9\'s own top as a companion'); assert.equal(TOP, 6.5, 'the seat\'s sprint a little faster');
 assert.ok(TOP <= Math.max(...K9.gaits.map((g) => g.max)), 'within its fastest gait\'s band (the sprint cycle, no sliding)');
 assert.deepEqual(DOG_SCOUT.points.kinds.map((k) => k.id), ['rock', 'biomass'], 'the rock and the crystals folded into one');
+// THE JUMP AND THE TRICKS (owner, 2026-11-13: "the dog is alright, but it has no jump animation"): the K9's own clips; the arc; the gating
+{ const tricks = Object.values(DOG_SCOUT.tricks);
+  for (const c of [DOG_SCOUT.jump.clip, ...tricks.map((t) => t.clip)]) assert.ok(c === DOG_SCOUT.jump.clip ? K9.tricks.includes(c) : [...K9.tricks, K9.sit].includes(c), `${c} is the K9's`);
+  const keys = [DOG_SCOUT.jump.key, ...tricks.map((t) => t.key)];
+  assert.equal(new Set(keys).size, keys.length, 'one key a move');
+  for (const k of keys) assert.ok(!['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyT', 'KeyF', 'KeyV', 'KeyH', 'KeyQ', 'KeyE', 'KeyU', 'KeyM', 'KeyO', 'KeyX', 'KeyZ', 'KeyB', 'KeyG', 'KeyC', 'KeyN'].includes(k), `${k} is not one of the base's keys`);
+  assert.ok(DOG_SCOUT.words.hint.includes('SPACE JUMP') && DOG_SCOUT.words.hint.includes('R ROLL') && DOG_SCOUT.words.hint.includes('P PAW'), 'the hint teaches them');
+  const J = DOG_SCOUT.jump, r = J.rate, s = createScout([{ ci: 1, kind: 'rock' }]);
+  assert.equal(jump(s, T), false, 'idle: no jump'); drive(s);
+  for (let i = 0; i < 40; i++) steer(s, { fwd: true, sprint: true }, 0.05, T);
+  const run = s.speed; assert.ok(run > 6, `the run-up (${run})`);
+  assert.equal(jump(s, T), true, 'Space: up'); assert.equal(jump(s, T), false, 'not again in the air'); assert.equal(trick(s, 'roll', T), false, 'no trick in the air');
+  const dt = 1 / 60; let peak = 0, peakT = 0, t = 0, firstUp = -1, lastUp = -1;
+  while (s.air) { t += dt; const l = stepJump(s, dt, T); if (s.air) { const st = steer(s, { fwd: true, left: true }, dt, T); assert.equal(st.speed, run, 'the run-up held'); assert.equal(st.turn, 0, 'no turn in the air'); }
+    if (l > 0) { if (firstUp < 0) firstUp = t; lastUp = t; } if (l > peak) { peak = l; peakT = t; } assert.ok(l >= 0 && l <= J.heightM + 1e-9, 'within the arc'); }
+  assert.ok(Math.abs(peak - J.heightM) < 0.01, `the peak ${peak}`); assert.ok(Math.abs(peakT - (J.upS + J.downS) / 2 / r) < 0.03, `the peak at the clip's top (${peakT})`);
+  assert.ok(Math.abs(firstUp - J.upS / r) < 0.03 && Math.abs(lastUp - J.downS / r) < 0.03, `off at ${firstUp}, down at ${lastUp}`);
+  assert.ok(Math.abs(t - J.endS / r) < 0.03, `the dog's own again at ${t}`); assert.equal(s.lift, 0); assert.equal(s.jumps, 1);
+  // a knock cancels the jump; the knock's rule unchanged (a knocked dog cannot jump or trick)
+  jump(s, T); stepJump(s, J.downS / r * 0.8, T); assert.ok(s.lift > 0);
+  assert.equal(knock(s, T), true, 'a body knocks an airborne dog down'); assert.equal(s.air, null); assert.equal(s.lift, 0); assert.equal(s.mode, 'knocked');
+  assert.equal(jump(s, T), false, 'no jump knocked down'); assert.equal(trick(s, 'paw', T), false, 'no trick knocked down');
+  stepKnock(s, DOG_SCOUT.knock.seconds + 0.01, T); assert.equal(s.mode, 'driving');
+  // a trick stops the dog, ends on its clip's seconds, a drive key cuts it, a knock cancels it, a held one waits for the key
+  for (let i = 0; i < 20; i++) steer(s, { fwd: true }, 0.05, T);
+  assert.equal(trick(s, 'nope', T), false, 'an unknown trick'); assert.equal(trick(s, 'roll', T), true, 'R: roll'); assert.equal(s.speed, 0, 'it stops');
+  assert.equal(jump(s, T), false, 'no jump mid-trick'); assert.equal(trick(s, 'paw', T), false, 'one trick at a time');
+  assert.equal(steer(s, {}, 0.1, T).speed, 0); assert.equal(stepTrick(s, DOG_SCOUT.tricks.roll.seconds - 0.1, {}), null); assert.equal(stepTrick(s, 0.2, {}), 'done'); assert.equal(s.trick, null);
+  trick(s, 'paw', T); assert.equal(stepTrick(s, 0.1, { fwd: true }), 'cut', 'W cuts it'); assert.ok(steer(s, { fwd: true }, 0.1, T).speed > 0, 'and drives on');
+  steer(s, {}, 1, T); trick(s, 'sit', T); assert.equal(stepTrick(s, 60, {}), null, 'a held sit waits'); assert.equal(stepTrick(s, 0.1, { back: true }), 'cut');
+  s.graceLeft = 0; trick(s, 'roll', T); assert.equal(knock(s, T), true); assert.equal(s.trick, null, 'a knock cancels the trick'); assert.equal(s.tricks, 4); }
 // the K9's own print: short, one angle (no cut inside it), at the game's lens
 { const P = K9.print, end = P.timeline.arrive + P.timeline.print + P.timeline.skin + P.timeline.wake;
   assert.ok(Math.abs(end - 7.2) < 1e-9, `7.2 s (${end})`); assert.equal(P.angles.length, 1, 'one angle'); assert.equal(P.angles[0].fov, 68, 'the game\'s lens'); assert.ok(P.angles[0].to >= end - 1e-9, 'over the whole print'); }

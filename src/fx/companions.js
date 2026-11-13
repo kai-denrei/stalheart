@@ -168,9 +168,10 @@ export function createCompanions(h) {
     if (d.pos) { u.pos.set(d.pos[0], d.pos[1], d.pos[2]).normalize(); u.cell = nearestFrom(u.cell, u.pos); }
     if (d.heading) u.heading.set(d.heading[0], d.heading[1], d.heading[2]);
     u.speed = Math.abs(d.speed ?? 0); u.blocked = false; place(u);
+    if (d.lift) u.wrap.position.addScaledVector(u.pos, d.lift * m);   // the jump's arc (2026-11-13): the drawn body off the ground, its point on it
     if (u.farRoot && u.root) { const lod = def.lodMetres ?? K.lodMetres, dd = u.wrap.position.distanceTo(h.eye()) / m, far = u.isFar ? dd > lod - K.fade : dd > lod; u.isFar = far; u.farRoot.visible = far; u.root.visible = !far; }
     if (!u.mixer) return;
-    if (d.oneShot) { if (u.oneShot !== d.oneShot) { u.oneShot = d.oneShot; fadeTo(u, d.oneShot, K.crossfade, true); } u.rate = 1; }
+    if (d.oneShot) { if (u.oneShot !== d.oneShot) { u.oneShot = d.oneShot; fadeTo(u, d.oneShot, K.crossfade, true); } u.rate = d.rate ?? 1; if (u.cur) u.cur.timeScale = u.rate; }
     else { u.oneShot = null; if (u.speed > 0.05) { const gt = gaitFor(def.gaits, u.speed, K.rate); fadeTo(u, gt.clip); u.rate = gt.rate; } else { fadeTo(u, def.idle); u.rate = 1; } if (u.cur) u.cur.timeScale = u.rate; }
     if (dt > 0) u.mixer.update(dt);
   }

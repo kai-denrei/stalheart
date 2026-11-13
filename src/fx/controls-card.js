@@ -19,6 +19,9 @@ export const CONTROLS_PAGE = [
     ['Click', 'in a seat: locks the mouse, the mouse aims'], ['Space', 'in a seat: fire'],
     ['Esc', 'in a seat: frees the mouse · again: back to the tank'], ['P', 'in a seat: pause'], ['G', 'gunship briefing'],
   ]],
+  ['RECKON K9 · THE RECON DOG', [   // the dog's seat (owner, 2026-11-13: "add a jump with space bar, and the roll, hand, etc. animations to the dog"; DOG_SCOUT.jump, .tricks)
+    ['W A S D', 'drive · Shift sprint'], ['Space', 'jump'], ['R', 'roll over'], ['P', 'give a paw'], ['J', 'sit · W or S stands it up'],
+  ]],
   ['ANY TIME', [['Esc', 'pause, in the tank'], ['X', 'the tune panel: what is on screen, tweaked and recorded'], ['Z', 'VARS: the game\'s knobs, the playtest page, the lab'], ['B', 'the terminal: the bestiary, over the paused game'], ['H / ?', 'this page']]],
 ];
 const PADS = [['#td-pad-fire', 'FIRE'], ['#td-pad-laser', 'LASER'], ['#td-pad-shield', 'SHIELD'], ['#td-pad-left', 'TURN'], ['#td-pad-right', 'TURN']];
