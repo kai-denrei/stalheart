@@ -113,7 +113,14 @@ console.log('Hull issue: held until the Stålheart stands, rolled out once (quie
   assert.equal(hull.state().state, 'finishing'); assert.equal(hull.held(), false, 'drawn while it prints'); assert.deepEqual(log, [['begin', 3]]);
   h.t = 107; hull.tick(h.api); assert.deepEqual(log.at(-1), ['set', 0.5]); assert.equal(log.some((l) => l[0] === 'early'), false, 'no seat while it prints');
   h.t = 114; hull.tick(h.api); assert.deepEqual(log.slice(-3), [['set', 1], ['end'], ['early', 3]], 'whole, then handed over');
-  assert.equal(hull.state().state, 'early'); assert.deepEqual(hull.state().finish, { k: 1, seenBelow: true, at: 100, doneAt: 114 });
+  assert.equal(hull.state().state, 'early'); assert.deepEqual(hull.state().finish, { k: 1, seenBelow: true, door: false, at: 100, doneAt: 114 });
   const plain = createHullIssue({ held: true, finish: 14 }), log2 = []; plain.early({ now: () => 0, early: () => log2.push('early') }, berth);
   assert.deepEqual(log2, ['early'], 'a host without the finish hooks hands over at once'); assert.equal(plain.state().state, 'early');
+}
+// UNDER THE STÅLHEART (owner, 2026-11-13): with a door the print and the hand-over are at the Stålheart's door, not the lane's berth
+{
+  const door = { ci: 7, exit: 9 }, log = [], api = { now: () => 0, stands: () => false, early: (b) => log.push(['early', b.ci]), finishBegin: (b) => log.push(['begin', b.ci]), finishSet: () => {}, finishEnd: () => {} };
+  const hull = createHullIssue({ held: true, finish: 1, door }); hull.early(api, { ci: 3 });
+  api.now = () => 2; hull.tick(api);
+  assert.deepEqual(log, [['begin', 7], ['early', 7]], 'printed at the door and handed over there'); assert.equal(hull.state().finish.door, true);
 }

@@ -40,7 +40,7 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
     // its door as every berth) only once it does
     early(host, berth) {
       if (state !== 'held' || !berth) return false;
-      if (finish > 0 && host.finishBegin) { state = 'finishing'; fin = { at: host.now(), berth, k: 0, seenBelow: false, doneAt: null }; host.finishBegin(berth); return true; }
+      if (finish > 0 && host.finishBegin) { const at = door ?? berth; state = 'finishing'; fin = { at: host.now(), berth: at, door: at === door, k: 0, seenBelow: false, doneAt: null }; host.finishBegin(at); return true; }   // UNDER THE STÅLHEART (2026-11-13): printed at its door, handed over at the door's run end
       state = 'early'; issuedAt = host.now(); host.early(berth); return true;
     },
     finishing: () => state === 'finishing',
@@ -59,7 +59,7 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
         host.issue(quiet);
       } else if (state === 'rolling' && !host.busy()) state = 'out';
     },
-    state: () => ({ state, issuedAt, quiet, door: door ? door.ci : -1, waited: +waited.toFixed(1), finish: fin ? { k: +fin.k.toFixed(3), seenBelow: fin.seenBelow, at: +fin.at.toFixed(1), doneAt: fin.doneAt } : null }),
+    state: () => ({ state, issuedAt, quiet, door: door ? door.ci : -1, waited: +waited.toFixed(1), finish: fin ? { k: +fin.k.toFixed(3), seenBelow: fin.seenBelow, door: fin.door, at: +fin.at.toFixed(1), doneAt: fin.doneAt } : null }),
   };
 }
 
