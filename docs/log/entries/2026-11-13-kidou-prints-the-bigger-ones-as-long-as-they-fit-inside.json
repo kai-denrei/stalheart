@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-11-13-kidou-prints-the-bigger-ones-as-long-as-they-fit-inside",
+  "date": "2026-11-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "KIDOU prints the bigger ones that fit inside: the size rule, the print waits for KIDOU over the cell, who printed it, and KIDOU's print beam",
+  "context": "Round 13, the owner's note (2026-11-13): \"printing; once the mobile Stalheart is ready, it should be moving around and creating things, like ISAO, the bigger ones are his, as long as they fit inside.\" Last night's hand-off listed \"KIDOU not solid / no print beam\". Reading the code: a dome step already sent the KIDOU gantry out (src/fx/gantry-drive.js), it printed only after its road ended, to its tool's reach, then handed the mast to Isao and drove home; the next dome waited on when.home. Missing: a readiness gate, a size rule, a check that the print begins where KIDOU stands, a record of who printed what, and a beam. Branch r13-kidou-prints off ad823d15.",
+  "outcome": "src/domain/kidou-jobs.js: printerOf(size, { ready, bay, small }) -> isao | kidou | shared (not ready or small: Isao; fits the bay: KIDOU whole; bigger: shared, KIDOU to its reach and Isao above, the domes' behaviour), reachedAt (tool point within `near` m of the cell). Knobs src/content/dome-city.js KIDOU_BAY: bay span 20 m, height 10.46 m (reach - nozzle), small 8 m x 4 m, near 0.5 m. src/fx/programme-host.js sends a gantry step to KIDOU only once the 'stalheart' perk is held and the rule is not Isao. src/fx/gantry-drive.js begins the print only when the tool point is within `near` of the cell (one re-drive otherwise, never a deadlock), records printedBy {step: {by: kidou | kidou+isao, reach, share}} and reach in its state (the harness's programme.colony.gantry). src/fx/kidou-rig.js draws ONE additive line from EXTRUSION_TIP to the rising layer, Isao's pale blue, its foot walking a ring, while it fabricates. The table (programme steps sized by their island and `metres`): the seven domes 20x20x23.3 shared; garage 12x18x6, chips 14x12x5, solar 20x20x8, landing 16x16x2 fit inside (kidou by the rule) but have no gantry road and no `gantry` flag, so Isao still prints them; stalheart, bays, hugin, depot, radar, assembly, board, armory, farm, launcher are bigger than the bay and keep Isao. Not done: KIDOU driving to non-dome courts; going job to job without returning home (the queue is still the programme's when.home).",
+  "alternatives": [
+    "Making garage/chips KIDOU's now: rejected in the time box, the courts lie off the grid's roads and a straight drive would cross domes.",
+    "Moving the beam into Isao's worker: rejected, the rig owns the tip and the frame."
+  ],
+  "evidence": [
+    "npm test 351 programs passed (test/kidou-jobs.mjs new: the rule's answers, every gantryStop within 0.5 m of its cell's centre, home not)",
+    "npm run check and npm run architecture pass, td-tab unchanged at 5,362. --colony-grid on the grown base: the perks held at sector 1 include stalheart (KIDOU ready)",
+    "KIDOU entered its print phase on dome-se at k 0.004 with its tool 0 m from the cell's centre (x 70.2, z 67.6, heading [0, 1], share 0.614)",
+    "the still at k 0.401 shows KIDOU straddling SE with the beam (artifacts/browser/colony-grid-kidou-printing.png)",
+    "SE stood at 241.1 s, printedBy {dome-se: kidou+isao, reach 0, share 0.614}",
+    "the LOGISTICS caption and the pad's rack refill (3 shells) as before."
+  ],
+  "supersedes": []
+}

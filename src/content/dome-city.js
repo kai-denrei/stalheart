@@ -108,3 +108,12 @@ export const COLONY_GANTRY = Object.freeze({
   reach: 11.26, nozzle: 0.8, top: 23.3,
   seconds: 30,   // a dome's whole print, the gantry's share and Isao's together
 });
+// KIDOU'S INSIDE (owner, 2026-11-13: "once the mobile Stalheart is ready, it should be moving around and creating things, like ISAO, the bigger
+// ones are his, as long as they fit inside."; the rule is src/domain/kidou-jobs.js printerOf). `bay`: what fits between its beams and under its
+// tool, span the 20 m island it straddles, height the layer its tool can lay (COLONY_GANTRY reach - nozzle); `small`: what stays Isao's whatever
+// KIDOU's size (pads, sentries, companions); `near`: how close (m) its tool point must stand to a job's centre before the print begins
+export const KIDOU_BAY = Object.freeze({
+  bay: Object.freeze({ span: 20, height: +(COLONY_GANTRY.reach - COLONY_GANTRY.nozzle).toFixed(2) }),
+  small: Object.freeze({ span: 8, height: 4 }),
+  near: 0.5,
+});

@@ -26,6 +26,12 @@ const LAUNCH_SHOT = 22;   // seconds of the first launch's cinematic: the charge
 import { isaoSpeak } from './isao-voice.js';
 import * as THREE from '../../vendor/three.module.js';
 import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
+import { printerOf } from '../domain/kidou-jobs.js';
+import { KIDOU_BAY } from '../content/dome-city.js';
+// KIDOU'S JOBS (owner, 2026-11-13: "once the mobile Stalheart is ready, it should be moving around and creating things, like ISAO, the bigger ones
+// are his, as long as they fit inside."): a gantry step goes to KIDOU once the Stålheart stands and the rule (src/domain/kidou-jobs.js) does not
+// call it Isao's; a dome (its 20 m island, `metres` tall) is 'shared', KIDOU's to its tool's reach and Isao's beam above it
+const kidouPrints = (step, ready) => printerOf({ w: 20, d: 20, h: step.metres }, { ready, ...KIDOU_BAY }) !== 'isao';
 
 export function createProgrammeHost(c) {
   const { orders, breachQueue, breachedCells, gunshipRig, showBrief, spawnIsao, updateHud, rebuildAfterBreach, recomputePortalDist, adoptBays } = c;
@@ -81,7 +87,7 @@ export function createProgrammeHost(c) {
       programmeBegin(pg, step);
       // A DOME IS THE GANTRY'S (2026-11-12 night): it drives out and prints to its tool's reach; Isao's beam takes the mast from there (an order begun
       // where the gantry stopped, `head`), or the step stands when the tool reached the top
-      if (step.gantry && gantry?.start(step, { progress: (st, k) => c.story().print.progress(st, k), hand: (st, k) => {
+      if (step.gantry && kidouPrints(step, programmeHas(pg, 'stalheart')) && gantry?.start(step, { progress: (st, k) => c.story().print.progress(st, k), hand: (st, k) => {
         if (k >= 1) { api.printed(st); return; }
         orders.push({ kind: 'structure', ci, cost: 0, seconds: st.seconds, head: k, step: st, bed: c.story().print.bed(st) }); spawnIsao(); updateHud();
       } })) { if (!c.pilotMode() && !c.briefQ()) showBrief(step.brief); updateHud(); return; }
