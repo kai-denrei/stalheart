@@ -4,7 +4,7 @@
 // bent onto the planet as the shader bends the shell, the family (pools, identity, the squad, the cloak, the death) and the switch (dress).
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { PEARL_TIERS, PEARL_MEMBRANE, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../src/content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_MEMBRANE, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE, WHITE_RUSH, PEARL_GAIT, PEARL_WAVES } from '../src/content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
 import { BESTIARY_STAGE } from '../src/content/bestiary.js';
 import { stageSet } from '../src/fx/bestiary-stage.js';
@@ -42,7 +42,7 @@ const skinOf = Object.values(PEARL_BODY.scale); assert(Math.min(...skinOf) >= 0.
 for (let k = 1; k < 8; k++) assert(PEARL_BODY.scale[PEARL_TIERS[k].id] > PEARL_BODY.scale[PEARL_TIERS[k - 1].id], 'the sizes grow with the ladder');
 // round 5 (owner, 2026-11-05, note 8: the ladder back): every tier still x1.08 and hopping; the white at the audit's ceiling, 1.2 radii a second, on its own
 // stride and stage shares; the rest under the yellow's metres (`mps`, test/pearl-motion.mjs orders them)
-for (const [id, p] of Object.entries(PEARL_PACE)) assert.deepEqual([p.speed, p.radii, p.glide, p.reach, p.hop], [1.08, id === 'white' ? 1.2 : PEARL_TIERS.find((t) => t.id === id).cored ? 0.9 : 1, false, undefined, id === 'white' ? 3.6 : undefined], `${id}: walks as Sky (x1.08, hopping; the white 1.2 radii a second on a 3.6-radius stride, the yellow and the blue 1, the cored 0.9)`);
+for (const [id, p] of Object.entries(PEARL_PACE)) assert.deepEqual([p.speed, p.radii, p.glide, p.reach, p.hop], [1.08, id === 'white' ? 1.2 * WHITE_RUSH : PEARL_TIERS.find((t) => t.id === id).cored ? 0.9 : 1, false, undefined, id === 'white' ? 3.6 : undefined], `${id}: walks as Sky (x1.08, hopping; the white 1.2 x WHITE_RUSH radii a second (owner, 2026-11-13: "try making the white basic enemies 2x faster") on a 3.6-radius stride, the yellow and the blue 1, the cored 0.9)`);
 for (const id of ['blue', 'orange', 'green', 'purple', 'brown', 'black']) assert(PEARL_PACE[id].mps > 0 && PEARL_PACE[id].mps < 1.65, `${id}: under the yellow's metres (${PEARL_PACE[id].mps})`);
 assert(Object.isFrozen(PEARL_TIERS) && Object.isFrozen(PEARL_TIERS[2].values));
 console.log('PASS the set: eight tiers, orange pearl-cored, tiers.ts\'s derived values');

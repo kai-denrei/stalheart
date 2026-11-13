@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "id": "2026-11-13-the-whites-rush-white-rush-1-2-on-a-longer-transfer",
+  "date": "2026-11-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The whites rush: WHITE_RUSH 1.2 on a longer transfer (2x pops; 1.2 is the fastest pop-free)",
+  "context": "Owner, 2026-11-13: \"try making the white basic enemies 2x faster, we need some seemingly faster moving enemies.\" The white walked at the motion audit's ceiling, 1.2 body radii a second (THE LADDER BACK, 2026-11-05). The follow audit's pop (test/pearl-motion.mjs, src/fx/pearl-motion.js) is a speed: 0.25 radii of drawn-centre move in a 60 fps frame (15 radii a second). A hop's peak speed is its mean over its transfer share times the ease's 1.875, so a hopping body cannot double its mean without doubling its peak, whatever the stride or the cycle.",
+  "outcome": "WHITE_RUSH = 1.2 in src/content/pearl-enemies.js (the owner's quote beside it): the white's walk cap 1.2 x WHITE_RUSH = 1.44 radii a second and its stage shares coil 0.04, extend 0.1, anchor 0.02, transfer 0.8, settle 0.04 (were 0.08 / 0.17 / 0.03 / 0.62 / 0.1). The other tiers untouched. test/pearl-motion.mjs: the white's record ceiling is 1.2 x rush; the pop and shape-pop asserts are unchanged; the smoothness bounds scale for a rushed tier as a time-compressed hop does (accel x rush^2, jerk x rush^3). SOFT_HUNT.pace.white kept at 1.6: it multiplies the walk, so the hunt is 1.2x faster with it. pearlLead, the ram point, the reticle and the lance read the body's point and its pace, derived per body; not changed.",
+  "alternatives": [
+    "Doubling the cap on the old timing: 628 centre + 142 shape pops in 3 runs.",
+    "A faster cycle at the same stride (a) and a longer stride (b, 4.5 / 5.4 / 7 radii) all pop past ~1.25 (the peak follows the mean).",
+    "A bigger body: not wanted.",
+    "A ?whites=1 URL override: not added (PEARL_SPECS are frozen from PEARL_PACE at module load in src/fx/creature-enemies.js; an override needs the flags threaded into that build, more than two lines).",
+    "Past 1.2 the white would have to glide (no hop) or take a gentler transfer ease than the kit's: the owner's call."
+  ],
+  "evidence": [
+    "Sweep (.superpowers/scratch/sweep.mjs, the follow audit's harness: amoeba, phage, ghost, scoutufo x3, scares, jittered frames, 20 s walk, white pops centre + shape).",
+    "Old timing: x1 12 + 0 (10 runs), x1.3 118 + 0, x1.6 383 + 8, x2 628 + 142 (3 runs).",
+    "New timing: x1 0 + 0, x1.2 0 + 0 (10 runs), x1.25 2 + 6, x1.3 5 + 7, x1.5 101 + 17 (6 runs); transfer 0.86: x2 218 + 86.",
+    "Drawn white body over 20 s: 2.27 -> 2.79 m/s (x1.23; record 2.03 -> 2.43), yellow 1.87-1.90 unchanged: white/yellow 1.21 -> 1.47. test/pearl-motion.mjs follow audit, white: 0 pops / 0 shape pops before and after; speed p95 8.19 -> 7.96, worst 14.95 -> 13.33 radii a second; accel p95 51.2 -> 80.0; jerk p95 1820 -> 4743; cycle 2.07 -> 1.65 s; moving share 0.61 -> 0.78.",
+    "Soft hunt: white worst 9.40 -> 7.26 radii a second (cap 10), no pop.",
+    "Sector 1 (unit model, not measured in a browser): a white on the 45-hop ring (~450 m) at 2.18 -> 2.62 m/s record walk reaches the gate ~206 -> ~172 s, about 34 s (17 %) sooner; S1-S3 pulses compress by the same share.",
+    "Sectors not retuned."
+  ],
+  "supersedes": []
+}
