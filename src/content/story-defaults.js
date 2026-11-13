@@ -232,6 +232,12 @@ export const STORY_BEATS = Object.freeze({
   rotorAuto: false, rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
   tremorDelay: 0.6, breachDelay: 1.5, spawnDelay: 0.3, overrideDelay: 0.8, overrideCells: 99, earlyBreach: 0, tankAfterNuke: 1.6,
 });
+// THE OVERRIDE ENDS WITH ITS LAST BODY (owner, 2026-11-13: "after the Rotor manual override... which is over very soon, we stay in that view with
+// nothing happening for dozens of seconds, with nothing to do; as soon as the last enemy is dead it should move on, without having to manually
+// click next"): on the dog's opening the Rotor's wave is done once nothing is left in the seat's reach (range and line of sight, the spawn queue
+// counted) for `emptyHold` s, not when the last harmless straggler out of sight has walked to the heart; `release` s after the clear (the last
+// kill reads) the seat lets the player go and the first harvest's beat runs (src/domain/story-beats.js `overrideDone`)
+export const STORY_OVERRIDE_DONE = Object.freeze({ emptyHold: 1, release: 1.5 });
 // THE SETTLING (owner, 2026-11-08: "we will delay the arrival of the first enemies, first we leave time to settle"; spec
 // docs/superpowers/specs/2026-11-08-the-settling-design.md 2.A): on the story's own start (the arrival from `landed`) nothing comes up for
 // `seconds` of game time from Isao's deploy; then the tremor, the quiet breach with its head start, the override and the Rotor's seat (the

@@ -4531,6 +4531,7 @@ export function initTdTab(root) {
     planetView: () => { if (!story.sites.length) return; endShot(); if (storyViews) storyViews.back(viewWas, setView); else setView('third'); snapCamera(); },   /* STRAIGHT BACK TO THE TANK (owner, 2026-10-07: "too many cuts"): no orbit pull-back over the sites, no swoop */
     near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r),
     kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
+    inReach: () => { const tw = pilot?.state.tower; return !tw ? -1 : spawnQueue.filter((q) => !q.guard).length + enemies.filter((e) => e.alive && !e.guard && missileDistance(graph.centers[tw.ci], e.pos) < (missileOf(tw.key)?.maxRange ?? effectiveStats(tw.def, tw.tier).range * 10) && losClear(tw.ci, e.pos, perchOf(tw))).length; }, vacate: () => leavePilot(),   /* the seat's reach, as the harness's aimEnemy; the tutorial override lets go (2026-11-13) */
     screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },
     autoTower: (ci) => { (story.autoTowers ??= new Set()).add(ci); },   /* ISAO MANS IT (2026-10-16): this sentry fires on its own before the handover (src/fx/tower-combat.js) */
     pilot: (ci, laneCi) => {

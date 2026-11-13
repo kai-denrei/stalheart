@@ -577,6 +577,22 @@ console.log('story-beats: the settling');
     beats.deploy(g.api); run(beats, g, 5); assert.equal(beats.phase(), 'piloting', `no dog hand: straight through (${beats.phase()})`);
     g.kill(5); run(beats, g, 0.3); assert.equal(beats.phase(), 'harvest'); run(beats, g, 41); assert.equal(beats.phase(), 'quiver-piloting', 'harvestMax, then no orders hand: the Quiver');
   }
+  // THE OVERRIDE ENDS WITH ITS LAST BODY (owner, 2026-11-13): the wave is done once the seat's reach has been empty `emptyHold` s (a flicker
+  // resets it), stragglers out of reach or not; `release` s later the seat lets go (vacate) and the harvest's beat runs; no hand: as before
+  {
+    let reach = 2, depot = true; const V = { n: 0 }, H = { flares: 0 };
+    const beats = mk({ gateReady: () => true, overrideDone: { emptyHold: 1, release: 1.5 } }), g = fakeGame({ printSeconds: 0.2, walk: 0 });
+    Object.assign(g.api, { touring: () => false, shot: () => false, inReach: () => reach, vacate: () => { V.n++; }, harvest: () => ({ ready: () => depot, flare: () => { H.flares++; return true; }, done: () => false }) });
+    beats.deploy(g.api); run(beats, g, 5); assert.equal(beats.phase(), 'piloting');
+    g.kill(2); run(beats, g, 3); assert.equal(beats.phase(), 'piloting', 'bodies in reach: the fight goes on');
+    reach = 0; run(beats, g, 0.5); reach = 1; run(beats, g, 0.1); reach = 0; run(beats, g, 0.6); assert.equal(beats.phase(), 'piloting', 'a flicker in reach starts the hold over');
+    run(beats, g, 0.6); run(beats, g, 0.1); assert.equal(beats.phase(), 'harvest', 'the reach empty a second: the clear, three stragglers still alive'); assert.ok(kinds(g, 'brief').some((l) => l[1] === 'wave_cleared'));
+    run(beats, g, 1.1); assert.equal(V.n, 0, 'the last kill reads first'); assert.equal(H.flares, 0, 'and the flare waits for it');
+    run(beats, g, 0.5); assert.equal(V.n, 1, 'the seat lets go'); assert.equal(H.flares, 1, 'the flare'); run(beats, g, 2); assert.equal(V.n, 1, 'once');
+    const plain = mk({ gateReady: () => true }), g2 = fakeGame({ printSeconds: 0.2, walk: 0 }); let vac = 0;
+    Object.assign(g2.api, { touring: () => false, shot: () => false, inReach: () => 0, vacate: () => { vac++; } });
+    plain.deploy(g2.api); run(plain, g2, 5); g2.kill(2); run(plain, g2, 3); assert.equal(plain.phase(), 'piloting', 'no overrideDone: the clear waits for the field'); assert.equal(vac, 0);
+  }
   // the whole salvage at the deploy, the barrels granting nothing (as the settling)
   {
     const tune = { deployDelay: 1, firstCycle: 4, cycleSeconds: 6, feedstockPerBarrel: 60, sections: ['A', 'B', 'C'], targets: ['tA', 'tB', 'tC'], events: { arcOn: 0.5, arcOff: 1, scrap: 2, barrel: 3 } };
