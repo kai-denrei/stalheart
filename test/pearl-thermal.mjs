@@ -42,6 +42,10 @@ const coredSkin = new Set(PEARL_TIERS.filter((t) => t.cored).map((t) => t.id));
   for (const m of umber) assert.equal(heatOf(m), 1, 'a cored pool made in the seat is hot');
   fam.add('ghost', { x: 30, z: 0, angle: 0, speed: 12 });
   for (const m of membranes(fam).filter((m) => tierOf(m) === 'yellow')) assert.equal(heatOf(m), warm, 'a soft pool made in the seat is warm');
+  // THE MOTES (owner, 2026-11-13): the gliding ivory's own pool is a soft skin under the gunship's FLIR, warm like the whites it runs among
+  fam.add('mote', { x: 40, z: 0, angle: 0, speed: 12 });
+  const motes = membranes(fam).filter((m) => tierOf(m) === 'mote'); assert(motes.length, 'the mote pool was made');
+  for (const m of motes) assert.equal(heatOf(m), warm, 'a mote is warm in the seat');
 
   // leaving the seat, in the game's order: the base's restore, then the family's
   base.set(false); fam.thermal(false);

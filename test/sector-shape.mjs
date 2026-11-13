@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { sizeWave, pulseBodies, flowWaves, pulseDue, flowDue, flowTarget, streamOffsets } from '../src/domain/sector-shape.js';
+import { SECTORS, SECTOR_MOTES } from '../src/content/sectors.js';
+import { computeWavePlan, ENEMY_SPEC } from '../src/enemyspec.js';
+import { PEARL_WAVES } from '../src/content/pearl-enemies.js';
+import { sizeWave, shareOut, pulseBodies, flowWaves, pulseDue, flowDue, flowTarget, streamOffsets } from '../src/domain/sector-shape.js';
 
 // THE SECTOR'S SHAPE (owner, 2026-10-15: "both by sector"; spec docs/superpowers/specs/2026-10-15-sector-shapes-design.md)
 const spec = { amoeba: { rammable: true }, ghost: { rammable: true }, drifter: {}, barbed: {} };
@@ -68,5 +71,24 @@ assert.equal(flowTarget(850, undefined), 850);
 assert.deepEqual(streamOffsets(4, 6), [0, 1.5, 3, 4.5]);
 assert.deepEqual(streamOffsets(1, 6), [0]);
 assert.deepEqual(streamOffsets(0, 6), [0]);
+
+// THE MOTES (owner, 2026-11-13: "introduce an even smaller category of whites that glide at 2x or 3x"): a share of the amoebas traded for motes, the
+// total kept, the motes first; nothing at share 0 or without amoebas; in the sectors' own waves (sector 1, every pulse) the count is the row's
+{
+  const w = shareOut([{ type: 'drifter', count: 2 }, { type: 'amoeba', count: 20 }], { from: 'amoeba', to: 'mote', share: 0.3 });
+  assert.deepEqual(w, [{ type: 'drifter', count: 2 }, { type: 'mote', count: 6 }, { type: 'amoeba', count: 14 }]);
+  assert.equal(shareOut(w, { from: 'amoeba', to: 'mote', share: 0 }), w);
+  assert.deepEqual(shareOut([{ type: 'ghost', count: 5 }], { from: 'amoeba', to: 'mote', share: 0.5 }), [{ type: 'ghost', count: 5 }]);
+  assert.deepEqual(shareOut([{ type: 'amoeba', count: 2 }], { from: 'amoeba', to: 'mote', share: 1 }), [{ type: 'mote', count: 2 }]);
+  const lines = [];
+  for (const row of SECTORS.filter((r) => r.shape === 'pulse')) row.bodies.forEach((b, k) => {
+    const plan = computeWavePlan(row.ladderStart + k, 1, 4, row.threat).entries, sized = sizeWave(plan, ENEMY_SPEC, { bodies: Math.round(b * PEARL_WAVES.crowd), coreShare: row.coreShare });
+    const out = shareOut(sized, { ...SECTOR_MOTES, share: SECTOR_MOTES.share[row.n] ?? 0 }), n = (es, t) => es.find((e) => e.type === t)?.count ?? 0;
+    assert.equal(total(out), total(sized), `sector ${row.n} wave ${k + 1}: the count is the row's`);
+    lines.push(`S${row.n}w${k + 1} ${total(sized)}: amoeba ${n(sized, 'amoeba')} -> ${n(out, 'amoeba')} + mote ${n(out, 'mote')}`);
+  });
+  assert(SECTOR_MOTES.share[1] > 0 && lines.some((l) => !/mote 0$/.test(l)), 'the motes in the first sector');
+  if (process.env.MOTES) console.log(lines.join('\n'));
+}
 
 console.log('sector-shape ok');

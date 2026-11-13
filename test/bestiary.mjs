@@ -57,7 +57,7 @@ assert.deepEqual(roster.filter((e) => e.kind === 'tier' && e.cored).map((e) => e
   assert.deepEqual(wFull.lore, { title: 'BIOMASS · THE CHAIN', text: CHAIN_NOTE.text }); assert(/chain/i.test(wFull.text.at(-1)));
   assert.equal(entryCard(white, 'silhouette', { spec, labels, log: [], copy: TERMINAL, chain: CHAIN_NOTE }).lore, null, 'not on an archive reading');
   const sil = entryCard(white, 'silhouette', { spec, labels, log: [], copy: TERMINAL, sightings });
-  assert.equal(sil.text, null, 'the text replaced'); assert.equal(sil.note, 'NO RECENT READING · last logged 2026-10-09'); assert.equal(sil.data.length, 2, 'the data lines kept');
+  assert.equal(sil.text, null, 'the text replaced'); assert.equal(sil.note, 'NO RECENT READING · last logged 2026-10-09'); assert.equal(sil.data.length, 3, 'the data lines kept (amoeba, phage, mote: the mote 2026-11-13)');
   assert.equal(sil.data[0].ram, 'goes under the treads'); assert(sil.selectable);
   const un = entryCard(orange, 'unseen', { spec, labels, copy: TERMINAL });
   assert.equal(un.name, '— — —'); assert.equal(un.data.length, 0); assert.equal(un.note, TERMINAL.unseenNote); assert(!un.selectable); assert(un.dim); assert.equal(un.warning, null, 'an unseen entry gives nothing away');

@@ -45,6 +45,7 @@ export const ALARM_HUES = {
 export const CREATURE_TINTS = {
   // --- rammable, up the safe belts -----------------------------------------
   amoeba: SAFE_HUES.white,         // wave 1 swarm — the white belt (owner, 2026-09-14: the amoeba leads)
+  mote: SAFE_HUES.white,           // the gliding ivory (2026-11-13): the white belt
   phage: SAFE_HUES.grey,           // a crawler once; a white over the yellows since round 5, note 8
   ghost: SAFE_HUES.yellowPale,     // agile flyer
   scoutufo: SAFE_HUES.yellow,      // fast scout
@@ -127,6 +128,10 @@ export const ENEMY_SPEC = {
   // THE LADDER, THE DOT CLOUDS TOO (owner, 2026-11-05, round 5, note 8: "white fastest, yellow second"; the Pearl set's is PEARL_PACE): amoeba 1.15 -> 1.5 and
   // phage 0.75 -> 1.45 over the yellows (scoutufo 1.4, ghost 1.25), the blue saucer 1.55 -> 1.2 under them, so ?creatures=dots agrees with the Pearl ladder
   amoeba:    { hp: 1, speed: 1.5, size: 0.5,   rammable: true,  heartDmg: 1, erratic: true, bounty: 3 },
+  // THE MOTE (owner, 2026-11-13: "introduce an even smaller category of whites that glide at 2x or 3x"): the amoeba's record (its size, so its
+  // Pearl body is PEARL_GLIDERS' scale of the amoeba's), cheaper; drawn as a gliding ivory (src/content/pearl-enemies.js PEARL_GLIDERS). `shelved`
+  // from the legacy INTROS programme only: it enters through the sector tables (src/content/sectors.js), not a wave of its own
+  mote:      { hp: 1, speed: 1.5, size: 0.5,   rammable: true,  heartDmg: 1, bounty: 2, shelved: true },
   ghost:     { hp: 1, speed: 1.25, size: 0.42, rammable: true,  heartDmg: 1, erratic: true, bounty: 6 },
   scoutufo:  { hp: 1, speed: 1.4,  size: 0.42, rammable: true,  heartDmg: 1, erratic: true, bounty: 7 },
   phage:     { hp: 1, speed: 1.45, size: 0.4,  rammable: true,  heartDmg: 1, bounty: 16 },

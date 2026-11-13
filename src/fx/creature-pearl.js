@@ -76,15 +76,15 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   // re-order can put a twin after another tier's skin (the review, 2026-10-19)
   const orderOf = (t) => t.values.membraneOrder ?? 2, twinOrder = (Math.max(2, ...set.filter((t) => !t.cored).map(orderOf)) + Math.min(...set.filter((t) => t.cored).map(orderOf))) / 2;
   // each tier's base radius: its smallest type's
-  const baseR0 = {};
-  for (const b of Object.values(tiers)) baseR0[b.tier] = Math.min(baseR0[b.tier] ?? Infinity, b.r0);
+  const baseR0 = {}, baseOf = {};   // a pool's tier (a glider's pool draws its tier's skin, PEARL_POOL_OF, 2026-11-13)
+  for (const b of Object.values(tiers)) { const k = b.pool ?? b.tier; baseR0[k] = Math.min(baseR0[k] ?? Infinity, b.r0); baseOf[k] = b.tier; }
   const pools = new Map();   // tier id -> { swarm, geo, cores, free, next, dying: Map(slot -> { at, op }), live, peak, placed, replaced, deaths, full, shed }
   let planetR = 0, clock = 0, motion = null;   // round four: the motion audit while the harness or the sim watches (./pearl-motion.js)
 
   function poolOf(id) {
     let p = pools.get(id);
     if (p) return p;
-    const def = byId[id], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id], separation: tune.separation ?? DEFAULT_CONFIG.separation };   // the neighbour push eased: the records space themselves
+    const def = byId[id] ?? byId[baseOf[id]], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id], separation: tune.separation ?? DEFAULT_CONFIG.separation };   // the neighbour push eased: the records space themselves
     // the first waves' pace (src/content/pearl-enemies.js PEARL_PACE): a slowed tier hops shorter, so it creeps in frequent hops rather than lunging
     if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
     // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
@@ -142,7 +142,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   function add(type, { x, z, angle = 0, lift = 0, opacity, grow = 1, members = 0, speed = 0, hub = 0, cell = -1 }) {
     const b = tiers[type];
     if (!b) return null;
-    const p = poolOf(b.tier), sw = p.swarm, c = sw.config, r = b.r0;
+    const p = poolOf(b.pool ?? b.tier), sw = p.swarm, c = sw.config, r = b.r0;
     const pace = pearlPace({ cycle: c.cycleDuration, reach: c.reach, seek: c.seekCount, r, speed }, gait ? { ...tune, keep: gait.keep, seekEfficiency: gait.seekEfficiency } : tune);
     const h = { p, type, r, pace, speed, slots: [], dead: false, dx: Math.cos(angle), dz: Math.sin(angle), op: opacityOf(opacity), hub, cell };
     const spots = members > 1 ? squadSpots(members, r, tune.squad) : [[0, 0]];
@@ -266,9 +266,12 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         if (slot.gx != null) { slot.sx = (slot.sx ?? 0) + (sw.offset[k] - slot.gx); slot.sz = (slot.sz ?? 0) + (sw.offset[k + 2] - slot.gz); }
         const walked = slot.px == null ? 0 : Math.hypot(qx - slot.px, qz - slot.pz), keep = Math.exp(-walked / (gait?.glideShove ?? 6)); slot.px = qx; slot.pz = qz;
         slot.sx = (slot.sx ?? 0) * keep; slot.sz = (slot.sz ?? 0) * keep;
-        const f = dt > 0 ? 1 - Math.exp(-dt / (gait?.glideSeconds ?? 0.12)) : 1, gx = sw.offset[k] + (qx + slot.sx - sw.offset[k]) * f, gz = sw.offset[k + 2] + (qz + slot.sz - sw.offset[k + 2]) * f;
-        sw.scale[i] = (h.r / c.r0) * grow; sw.place(i, gx, gz, ang); sw.setTarget(i, sw.offset[k], sw.offset[k + 2]); sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; sw.life[i * 4 + 3] = tint;
-        slot.gx = sw.offset[k]; slot.gz = sw.offset[k + 2];
+        const f = dt > 0 ? 1 - Math.exp(-dt / (gait?.glideSeconds ?? 0.12)) : 1; let gx = sw.offset[k] + (qx + slot.sx - sw.offset[k]) * f, gz = sw.offset[k + 2] + (qz + slot.sz - sw.offset[k + 2]) * f;
+        // THE GLIDE'S TOP SPEED (the motes, 2026-11-13; gait.glideMax radii a second): a target that jumps (the record put onto its path, a turn at the lip)
+        // is slid to, never jumped to: --pearl-story's first mote run measured 6 centre pops in 8,664 frames (steps 0.3-0.5 radii, a decaying catch-up)
+        { const mx = gx - sw.offset[k], mz = gz - sw.offset[k + 2], ml = Math.hypot(mx, mz), cap = (gait?.glideMax ?? Infinity) * h.r * grow * dt; if (dt > 0 && ml > cap) { gx = sw.offset[k] + mx * cap / ml; gz = sw.offset[k + 2] + mz * cap / ml; } }
+        sw.scale[i] = (h.r / c.r0) * grow; { const was = sw.placed[i]; sw.place(i, gx, gz, ang); sw.placed[i] = was; } sw.setTarget(i, sw.offset[k], sw.offset[k + 2]); sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; sw.life[i * 4 + 3] = tint;
+        slot.gx = sw.offset[k]; slot.gz = sw.offset[k + 2];   // a glide's place is a move, not a re-placement: the motion audit (./pearl-motion.js) watches it (2026-11-13: it booked every glided frame as `replaced` and measured none)
         continue;
       }
       const pos = sw.positionInto(i, POS), lag = Math.min(Math.hypot(pos[0] - px, pos[2] - pz), Math.hypot(sw.anchor[k] - px, sw.anchor[k + 2] - pz));
@@ -370,7 +373,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         if (!box) continue;
         const under = !!p.dying.get(i)?.st?.absorb;   // drawn in under the hull (PEARL_IMPACT.absorb): measured (drive null), never shoved, slowing or pinning
         if (under && drive !== null) continue;
-        const pad = IMPACT?.tiers?.[p.id]?.pad ?? 0, r = sw.config.r0 * sw.scale[i], pos = sw.positionInto(i, POS), far = Math.hypot(box.hl, box.hw) + r * 1.8 + pad;
+        const pad = IMPACT?.tiers?.[baseOf[p.id] ?? p.id]?.pad ?? 0, r = sw.config.r0 * sw.scale[i], pos = sw.positionInto(i, POS), far = Math.hypot(box.hl, box.hw) + r * 1.8 + pad;
         if ((pos[0] - box.x) ** 2 + (pos[2] - box.z) ** 2 > far * far) continue;
         n++;
         const pts = outline(p, i);
@@ -405,7 +408,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         // what is left is measured on the body where its moves left it (shoved on if they reshaped it), not taken from the first depth
         let left = depth - gave, mx = nx, mz = nz;
         if (left <= 0.01 && shoveOut(p, i, box, 0) > (IMPACT?.contact?.slop ?? 0.02)) { left = NOW[0]; mx = NOW[1]; mz = NOW[2]; }
-        const rest = dying ? 0 : Math.min(IMPACT?.contact?.pin ?? Infinity, left * Math.min(1, IMPACT?.tiers?.[p.id]?.mass ?? 1));
+        const rest = dying ? 0 : Math.min(IMPACT?.contact?.pin ?? Infinity, left * Math.min(1, IMPACT?.tiers?.[baseOf[p.id] ?? p.id]?.mass ?? 1));
         if (rest > 0.01) sink.push(sw.hub[i], -mx * rest, -mz * rest);
         // what neither the rock nor the hull gives is the body's: squashed flat against the wall along the contact (round three's squeeze: its room
         // along that axis, the shader's iOffset.y / iAnchor.y), more each frame the hull presses on

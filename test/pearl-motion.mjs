@@ -5,7 +5,7 @@
 // and the motion audit (src/fx/pearl-motion.js) over bodies following walking records: the round-three follow pops, the gait does not; the waves thinned.
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { PEARL_TIERS, PEARL_FOLLOW, PEARL_PACE, PEARL_IMPACT, PEARL_GAIT, PEARL_WAVES } from '../src/content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_FOLLOW, PEARL_PACE, PEARL_IMPACT, PEARL_GAIT, PEARL_WAVES, PEARL_GLIDERS } from '../src/content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
 import { pearlWait, pearlCatch, pearlSpeed } from '../src/domain/pearl-bodies.js';
 import { CutisSwarm, STEP } from '../src/fx/cutis-maku/swarm.js';
@@ -75,8 +75,8 @@ console.log('PASS the heading turned through the coil (the stalks keep their wor
   for (const [type, b] of Object.entries(PEARL_BODIES)) {
     // THE WHITES RUSH (owner, 2026-11-13): the white's ceiling is 1.2 x WHITE_RUSH on its 0.8 transfer; the follow audit below holds its pops at 0
     const s = pearlSpec(type), radii = s.speed * PEARL_GAIT.sectorPace * 10 / b.r0;
-    if (PEARL_PACE[b.tier].glide) assert(radii > 1.2, `${type} glides past the gait's ceiling (${radii.toFixed(2)} radii a second)`);   // a blob is not held (2026-10-16)
-    else assert(radii <= PEARL_PACE[b.tier].radii + 1e-9 && radii <= 1.2 * (PEARL_PACE[b.tier].rush ?? 1) + 1e-9, `${type} walks ${radii.toFixed(2)} radii a second`);
+    if (PEARL_PACE[b.pool].glide) assert(radii > 1.2, `${type} glides past the gait's ceiling (${radii.toFixed(2)} radii a second)`);   // a blob is not held (2026-10-16)
+    else assert(radii <= PEARL_PACE[b.pool].radii + 1e-9 && radii <= 1.2 * (PEARL_PACE[b.pool].rush ?? 1) + 1e-9, `${type} walks ${radii.toFixed(2)} radii a second`);   // its pool's pace (a glider's own, 2026-11-13)
     assert.equal(s.erratic, false); assert.equal(s.jink, false);
   }
   assert.equal(pearlSpeed({ speed: 1, r0: 2, sectorPace: 1.5, metresPerCell: 10 }), 1, 'no cap without radii');
@@ -185,8 +185,8 @@ function follow(gait, secs = 12, per = 3) {
   let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT, pace: PEARL_PACE, gait });
   fam.watch({ perTier: per });
-  const recs = [];
-  for (const [ti, type] of ['amoeba', 'ghost', 'saucer', 'drifter', 'corona', 'barbed', 'rolling', 'phantom'].entries()) for (let b = 0; b < per; b++) {
+  const recs = [], ground = {}, walk = {};
+  for (const [ti, type] of ['amoeba', 'ghost', 'saucer', 'drifter', 'corona', 'barbed', 'rolling', 'phantom', 'mote'].entries()) for (let b = 0; b < per; b++) {   // the mote (2026-11-13): the gliding ivory at its 2.5x
     // without the gait, the round-three tree's own records (the type's speed, the first waves' 0.4, the bursts)
     const spec = gait ? pearlSpec(type) : { ...ENEMY_SPEC[type], ...(ti < 2 ? { speed: ENEMY_SPEC[type].speed * 0.4, erratic: false } : {}) }, x = ti * 400 + b * 45, ang = rnd() * 6.28, jit = (0.9 + rnd() * 0.22) * 1.5;
     const r = { spec, x, z: 0, ang, ax: x, az: 0, bx: x + Math.cos(ang) * 10, bz: Math.sin(ang) * 10, prog: 0, jit, ph: rnd(), scare: -9 };
@@ -201,15 +201,17 @@ function follow(gait, secs = 12, per = 3) {
       if (r.spec.jink) pace *= 0.55 + 0.9 * (0.5 + 0.5 * Math.sin(t * 6.3 + r.ph * 11));
       if (rnd() < dt / 20) r.scare = t;
       if (t - r.scare < 0.35) pace = 0; else if (t - r.scare < 1.5) pace *= 1.6;
-      r.prog += pace * fam.paceOf(r.h) * dt;
+      r.prog += pace * fam.paceOf(r.h) * dt; if (gait) { const o = (walk[r.h.type] ??= { m: 0, s: 0 }); o.m += pace * fam.paceOf(r.h) * dt * 10; o.s += dt; }   // the record's metres (it waits for a lagging body)
       while (r.prog >= 1) { r.prog -= 1; r.ax = r.bx; r.az = r.bz; r.ang += (rnd() - 0.5) * 1.8; r.bx = r.ax + Math.cos(r.ang) * 10; r.bz = r.az + Math.sin(r.ang) * 10; }
       r.x = r.ax + (r.bx - r.ax) * r.prog; r.z = r.az + (r.bz - r.az) * r.prog;
       const v = r.spec.speed * r.jit * 10, lead = CREATURE_FOLLOW.lead * v;
       fam.track(r.h, { x: r.x, z: r.z, ax: r.x + Math.cos(r.ang) * lead, az: r.z + Math.sin(r.ang) * lead, dt, speed: v });
     }
     fam.step(dt, null, 0);
+    // the drawn centre's ground covered, by type (the mote's ratio to the amoeba, 2026-11-13), and the closest two bodies of a type (no stack)
+    if (gait) for (const r of recs) { const c = fam.view(r.h)?.centre; if (!c) continue; const o = (ground[r.h.type] ??= { m: 0, s: 0 }); if (r.c) { o.m += Math.hypot(c[0] - r.c[0], c[1] - r.c[1]); o.s += dt; } r.c = c; }
   }
-  return { motion: fam.motion(), stats: fam.stats() };
+  return { motion: fam.motion(), stats: fam.stats(), ground: Object.fromEntries(Object.entries(ground).map(([k, o]) => [k, o.m / o.s])), walk: Object.fromEntries(Object.entries(walk).map(([k, o]) => [k, o.m / o.s])) };
 }
 {
   const before = follow(null), after = follow(PEARL_GAIT);
@@ -229,6 +231,30 @@ function follow(gait, secs = 12, per = 3) {
     assert.equal(after.stats[id].replaced, 0, `${id}: never put back`);
     const b = before.motion[id]; assert(m.jerk[0] < b.jerk[0] / 5, `${id}: jerk p95 ${m.jerk[0]} against ${b.jerk[0]}`);
   }
+}
+// THE MOTES (owner, 2026-11-13: "Keep the whites as they are, and introduce an even smaller category of whites that glide at 2x or 3x"): the mote's pool
+// glides (no hop, no pop: the audit above, its limits untouched) and its drawn centre covers PEARL_GLIDERS.mote.rush x the amoeba's ground, within a
+// tenth either way (the scares and the amoeba's wait for its body are in both); it never holds its record back
+{
+  // two measures: the record's ground (metres a second along its path: the group's progress, the amoeba's record waiting for its hopping body) is the
+  // knob's, rush within a tenth; the drawn centre's path (a hopping body's own sideways and back-and-forth in it, so the amoeba's reads longer) at least 2x
+  const run = follow(PEARL_GAIT, 20, 4), m = run.motion.mote, ratio = run.walk.mote / run.walk.amoeba, drawn = run.ground.mote / run.ground.amoeba;
+  assert(m && m.frames > 300 && m.pops === 0 && m.shapePops === 0 && m.hops === 0, `the mote watched, gliding, no pop (${JSON.stringify(m)})`);
+  assert(Math.abs(ratio / PEARL_GLIDERS.mote.rush - 1) < 0.1, `the mote's ground ${run.walk.mote.toFixed(2)} m/s = ${ratio.toFixed(2)} x the amoeba's ${run.walk.amoeba.toFixed(2)} (rush ${PEARL_GLIDERS.mote.rush})`);
+  assert(drawn >= 2, `the drawn mote ${run.ground.mote.toFixed(2)} m/s = ${drawn.toFixed(2)} x the drawn amoeba's ${run.ground.amoeba.toFixed(2)}`);
+  assert.equal(run.stats.mote.replaced, 0, 'the mote never put back');
+  // the glide's top speed (PEARL_GAIT.glideMax): a record put 30 m on in one frame (--pearl-story measured a mote's decaying catch-up popping) is slid to
+  {
+    const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT, pace: PEARL_PACE, gait: PEARL_GAIT });
+    const h = fam.add('mote', { x: 0, z: 0, angle: 0, speed: 6 }), dt = 1 / 60;
+    for (let k = 0; k < 30; k++) { fam.track(h, { x: 0, z: 0, ax: 1, az: 0, dt, speed: 6 }); fam.step(dt, null, 0); }
+    const a = fam.view(h).centre.slice(); fam.track(h, { x: 30, z: 0, ax: 31, az: 0, dt, speed: 6 }); fam.step(dt, null, 0);
+    const b = fam.view(h).centre, r = fam.view(h).radius, moved = Math.hypot(b[0] - a[0], b[1] - a[1]) / r / dt;
+    assert(moved <= PEARL_GAIT.glideMax + 1e-6 && moved > PEARL_GAIT.glideMax * 0.9, `a jumped record's mote slides at its top speed (${moved.toFixed(2)} radii a second, glideMax ${PEARL_GAIT.glideMax})`);
+    fam.dispose?.();
+  }
+  if (process.env.MOTION_AUDIT) console.log('mote', JSON.stringify({ ground: run.ground, speed: m.speed, accel: m.accel, jerk: m.jerk }));
+  console.log(`PASS the mote: glides with no pop (worst ${m.speed[2] ?? m.speed.at(-1)} radii a second drawn), its record ${run.walk.mote.toFixed(2)} m/s = ${ratio.toFixed(2)} x the amoeba's ${run.walk.amoeba.toFixed(2)}, drawn ${run.ground.mote.toFixed(2)} = ${drawn.toFixed(2)} x ${run.ground.amoeba.toFixed(2)}`);
 }
 console.log('PASS the motion: the gait\'s bodies follow walking records with no centre or shape pop, no re-placement, long hops moving half the cycle; the round-three follow popped');
 

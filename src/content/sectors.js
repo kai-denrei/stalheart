@@ -70,6 +70,12 @@ export const SECTORS = freeze([
     brief: ['Something is digging beside the gate. Close to the sentries.', 'One mouth on the lane, and one where it comes up.'] },
 ]);
 
+// THE MOTES (owner, 2026-11-13: "Keep the whites as they are, and introduce an even smaller category of whites that glide at 2x or 3x"): in the
+// sectors `share` names (by n), that share of every sized wave's amoebas (`from`) come as motes (`to`: the gliding ivory, src/content/pearl-enemies.js
+// PEARL_GLIDERS), traded, not added, so a wave's count is the row's as before (src/domain/sector-shape.js shareOut). The first sectors only: a fast
+// runner among the hopping whites where the player meets them; the opening's waves (story-defaults) untouched. Sectors past 5 have none.
+export const SECTOR_MOTES = freeze({ from: 'amoeba', to: 'mote', share: freeze({ 1: 0.3, 2: 0.3, 3: 0.25, 4: 0.2, 5: 0.2 }) });
+
 // THE STAMPEDE (owner, 2026-10-02: the ramming is the fun, so more waves of weak bodies, bigger ones, a few hard cores to force the
 // shield): in a PULSE sector every `every`-th wave of a gate or back breach is a stampede, alternating a TRICKLE (the wave's bodies one
 // every `trickleGap` seconds, so a steady rammer can keep the combo alive; `trickleCallout`) and a FLOOD (`cores` x `core` riding in it;
@@ -335,7 +341,7 @@ export const KILL_SOURCES = freeze({ tank: 'TANK GUN', ram: 'RAM', towers: 'TOWE
 // type's belt, with the pale/deep hue variants folded into their belt; test/sectors.mjs holds this to the tints.
 export const BELTS = freeze(['white', 'grey', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black', 'red']);
 export const BELT_OF = freeze({
-  amoeba: 'white', phage: 'grey', ghost: 'yellow', scoutufo: 'yellow', saucer: 'blue', jellyfish: 'blue', gslime: 'blue',
+  amoeba: 'white', mote: 'white', phage: 'grey', ghost: 'yellow', scoutufo: 'yellow', saucer: 'blue', jellyfish: 'blue', gslime: 'blue',
   drifter: 'orange', corona: 'green', shellback: 'green', barbed: 'purple', prime: 'purple', rolling: 'brown', phantom: 'black',
   knot: 'red', jelly: 'red', cutis: 'brown', reed: 'green',
 });
