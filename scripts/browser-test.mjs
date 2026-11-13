@@ -1802,9 +1802,9 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await evaluate(`${T}.rover.spend(${PEARLS.capacity})`);
  await until(`${T}.rover.state().mode!=='full'`,20000).catch(async()=>assert.fail(`a spend lets it unload (${JSON.stringify(await R())})`));
  // THE FLARES RUN OUT (owner, 2026-11-10): three more F empty the stock, a fifth drops nothing; whole again on the repair spot
- await until(`!${T}.state().shotId`,90000).catch(()=>{});   // a close-up (a companion's print) takes the keys while it plays: wait it out (rover-card, 2026-11-13: the faster trip moved one into these presses)
+ await until(`!${T}.state().shot`,90000).catch(()=>{});   // a close-up takes the keys while it plays: wait it out (rover-card, 2026-11-13: the faster trip put the FEIDS-26 drop's shot, feidsDrop, over these presses; the state's key is `shot`)
  for(let k=0;k<3;k++){await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);await delay(250);}
- const e0=await R();assert.equal(e0.stock,0,`the stock is spent (${e0.stock}; open: ${await evaluate(`[...document.querySelectorAll('#gunship-briefing:not([hidden]),#sol82-briefing:not([hidden]),#rover-card,.msg:not(.hidden)')].map(e=>e.id||e.className).join()`)}; shot ${(await st()).shotId??null}, paused ${(await st()).paused??'?'})`);const ids0=e0.flares.map(f=>f.id).join();
+ const e0=await R();assert.equal(e0.stock,0,`the stock is spent (${e0.stock}; open: ${await evaluate(`[...document.querySelectorAll('#gunship-briefing:not([hidden]),#sol82-briefing:not([hidden]),#rover-card,.msg:not(.hidden)')].map(e=>e.id||e.className).join()`)}; shot ${(await st()).shot??null}, paused ${(await st()).paused??'?'})`);const ids0=e0.flares.map(f=>f.id).join();
  await K('keyDown','f','KeyF',70);await K('keyUp','f','KeyF',70);await delay(300);
  const e1=await R();assert.equal(e1.stock,0);assert.equal(e1.flares.map(f=>f.id).join(),ids0,'F with none left drops nothing');
  assert.match(await evaluate(`document.body.innerText`),/NO FLARES/,'the toast says so');
