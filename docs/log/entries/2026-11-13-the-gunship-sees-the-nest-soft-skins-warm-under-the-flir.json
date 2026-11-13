@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-11-13-the-gunship-sees-the-nest-soft-skins-warm-under-the-flir",
+  "date": "2026-11-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The gunship over a nest: the guards were drawn but cold; soft Pearl skins now run warm under the FLIR (one cause of two, the second open)",
+  "context": "Owner, 2026-11-13: \"when in gunship mode; the enemies near the nest/rockets don't show up, the gunship view should reflect the reality on the ground\". Reproduced on the real path before any fix (--nest-guards, stage 8 expedition page): the gunship laid over rocket-b (showcase.track on the site's cell), the seat taken, the optic pitched down, every guard record at the site read in the page.",
+  "outcome": "One cause measured: the guards were all drawn and in the frustum, but cold (black under the FLIR). At rocket-b 65 guard records (48 amoeba, 14 phage, 2 barbed, 1 small Reed): 64 Pearl bodies, 0 culled (LOD levels 1:2, 2:62), 1 Reed body; the bodies' membrane heat under the thermal view was 0 for 62 soft-tier bodies and 1.4 for the 2 cored ones. src/fx/creature-pearl.js heatPool set a soft tier's emissive (the shader's uHeat, read as FLIR heat) to 0 in the seat (2026-10-16, to make the hard-cores register more distinctly), so a nest of soft guards was black on the dark field; at the base the same bodies may read as silhouettes against the hot base (a guess, not measured). Not culling, not LOD range, not layers, not the crowd cap. Fix (partial): PEARL_FOLLOW.thermal { soft: 0.5, cored: 1, coredIntensity: 1.4 } (src/content/pearl-enemies.js): a soft skin runs 50 % toward white in the seat, a cored one still 100 %, so the distinction stays and no body is cold. No extra draws: the same instanced bodies, one emissive value. The gunship's damage path (src/fx/gunship-auto.js and the seat's rounds) hits records by position, unchanged. The --nest-guards suite now takes the gunship's seat over rocket-b and asserts every guard record is drawn (body level not 3, or a visible cloud) and that no guard body is cold. NOT RESOLVED VISUALLY: the after-fix screenshot from the seat (and the GROUND TRUTH inset) still shows no guard body at rocket-b to the eye, although all 64 are packed at LOD 1-2 and now carry heat; the rocket itself is not visible in the main optic either. A second cause remains, not found in the time box: most likely the bodies' size on screen at the seat's range (62 of 64 at the smallest LOD, 340 m, MAG 2.6x), or the aim not on the site; next step: read the bodies' pixel radius (geometry.js pixelsOf) and project the site's centre into the seat's frame.",
+  "alternatives": [
+    "A separate far marker (dots or sprites) for guards seen from orbit: rejected, the bodies were already drawn and in the frustum; extra draws for nothing.",
+    "Soft skins as hot as cored ones: rejected, loses the owner's 2026-10-16 call that hard-cores register more distinctly."
+  ],
+  "evidence": [
+    "--nest-guards before the fix: NEST GUARDS from the gunship's seat over rocket-b: records 65, bodies 64, drawnBodies 64, culled 0, levels {1:2, 2:62}, heat {cored 1.4: 2, soft 0: 62}; red on the new assertion (no guard body cold). Screenshot .superpowers/scratch/gunship-before.png (not committed).",
+    "test/pearl-thermal.mjs updated: soft skins read uHeat 0.5 in the seat, cored 1, every skin back to 0 after the seat; passes.",
+    "--nest-guards after the fix: records 65, drawn 65, culled 0, heat (emissiveIntensity) {cored 1.4: 2, soft 1: 62} (the soft skins' emissive 0.5); passes nest-guards-up and nest-guards-gunship. Screenshot .superpowers/scratch/gunship-after.png: still no guard visible to the eye. npm test 350 passed, npm run check and npm run architecture pass (td-tab 5362, unchanged). The suite's last step (nest-guards-blobs: a breach wave's bodies get their blobs) was red after the fix: 0 of the wave's bodies with a blob; not yet compared with the base."
+  ],
+  "supersedes": []
+}
