@@ -16,7 +16,9 @@
 //   createKidouRig(THREE, root, { mode }) -> { tick(t), set(pose), dispose(), state() }
 import { applyKidou } from '../../assets/models/stalheart-kidou/runtime.js';
 
-const BEAM = Object.freeze({ color: 0xbfe6ff, ring: 7.5, turn: 2.4 });   // Isao's ISAO_TINT (src/fx/isao-worker.js); the ring (m) and its rad/s
+const BEAM = Object.freeze({ color: 0xbfe6ff, ring: 7.5, turn: 2.4, stall: 0.2 });   // Isao's ISAO_TINT (src/fx/isao-worker.js); the ring (m) and its rad/s
+// STARVED (owner, 2026-11-13: "makes it feel like we need to feed it biomass"): a `stall` pose (the hungry job no longer rising, src/fx/gantry-drive.js
+// hunger) runs the beam's clock at BEAM.stall: the ring crawls, the flicker slows and the line dims
 
 export function createKidouRig(T, root, { mode = 'park' } = {}) {
   let beam = null;
@@ -29,9 +31,10 @@ export function createKidouRig(T, root, { mode = 'park' } = {}) {
         new T.LineBasicMaterial({ color: BEAM.color, transparent: true, opacity: 0.85, blending: T.AdditiveBlending, depthWrite: false }));
       beam.frustumCulled = false; root.add(beam);
     }
+    const dim = pose.stall ? 0.45 : 1; if (pose.stall) t *= BEAM.stall;
     root.updateMatrixWorld(true); const a = root.worldToLocal(n.getWorldPosition(v)), y = Math.min(pose.layer, a.y - 0.3), r = BEAM.ring * (0.35 + 0.65 * Math.abs(Math.sin(t * 1.3)));
     const p = beam.geometry.attributes.position; p.setXYZ(0, a.x, a.y, a.z); p.setXYZ(1, a.x + r * Math.cos(t * BEAM.turn), Math.max(0.05, y), a.z + r * Math.sin(t * BEAM.turn)); p.needsUpdate = true;
-    beam.material.opacity = 0.55 + 0.35 * Math.abs(Math.sin(t * 21)); beam.visible = true;
+    beam.material.opacity = dim * (0.55 + 0.35 * Math.abs(Math.sin(t * 21))); beam.visible = true;
   }
   let posed = false, still = false, dirty = true, contactError = null, tipAt = null;
   let pose = { mode, distance: 0, turnAngle: 0, speed: 0, omega: 0, tip: null };
@@ -60,7 +63,7 @@ export function createKidouRig(T, root, { mode = 'park' } = {}) {
     // the hoses' tubes are the adapter's own (it replaces the GLB's TubeGeometry on its first pose), so the rig frees them; the rest is the
     // story base's (its own() of the mounted tier)
     dispose() { if (posed) for (const h of hoses()) h.geometry.dispose(); if (beam) { beam.removeFromParent(); beam.geometry.dispose(); beam.material.dispose(); beam = null; } posed = false; },
-    state: () => ({ mode: pose.mode, posed, static: still, contactError, tip: tipAt, beam: !!beam?.visible }),
+    state: () => ({ mode: pose.mode, posed, static: still, contactError, tip: tipAt, beam: !!beam?.visible, stall: !!pose.stall }),
   };
   rig.tick(0);   // posed at mount: before the tier is warmed, printed or shown
   return rig;
