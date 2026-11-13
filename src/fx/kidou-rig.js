@@ -10,10 +10,29 @@
 // PARKED WITH THE TOOL UP (2026-11-12 night): the author's park drops the lift to 3.2 m, into a hull parked under the gantry for its repair and
 // through DAY 42's ball hung 6.2 m under the tip; parked here is the author's travel pose standing still (the lift at its travel height, the
 // tip 11.26 m up, the wheels straight). Park ignores time, so a parked pose is applied once and held; the others pose every tick.
+// THE PRINT BEAM (owner, 2026-11-13: "once the mobile Stalheart is ready, it should be moving around and creating things, like ISAO"): while it
+// fabricates with a `tip` and a `layer` (the dome's rising print height, metres over the ground), ONE line from the tip down to the layer, Isao's
+// pale works blue, its foot walking a ring over the island (`BEAM`): made once at the first print, rewritten in place, hidden otherwise.
 //   createKidouRig(THREE, root, { mode }) -> { tick(t), set(pose), dispose(), state() }
 import { applyKidou } from '../../assets/models/stalheart-kidou/runtime.js';
 
+const BEAM = Object.freeze({ color: 0xbfe6ff, ring: 7.5, turn: 2.4 });   // Isao's ISAO_TINT (src/fx/isao-worker.js); the ring (m) and its rad/s
+
 export function createKidouRig(T, root, { mode = 'park' } = {}) {
+  let beam = null;
+  function showBeam(t) {
+    const on = pose.mode === 'fabricate' && pose.tip != null && pose.layer != null;
+    if (!on) { if (beam) beam.visible = false; return; }
+    const n = root.getObjectByName('EXTRUSION_TIP'); if (!n) return;
+    if (!beam) {
+      beam = new T.Line(new T.BufferGeometry().setAttribute('position', new T.BufferAttribute(new Float32Array(6), 3)),
+        new T.LineBasicMaterial({ color: BEAM.color, transparent: true, opacity: 0.85, blending: T.AdditiveBlending, depthWrite: false }));
+      beam.frustumCulled = false; root.add(beam);
+    }
+    root.updateMatrixWorld(true); const a = root.worldToLocal(n.getWorldPosition(v)), y = Math.min(pose.layer, a.y - 0.3), r = BEAM.ring * (0.35 + 0.65 * Math.abs(Math.sin(t * 1.3)));
+    const p = beam.geometry.attributes.position; p.setXYZ(0, a.x, a.y, a.z); p.setXYZ(1, a.x + r * Math.cos(t * BEAM.turn), Math.max(0.05, y), a.z + r * Math.sin(t * BEAM.turn)); p.needsUpdate = true;
+    beam.material.opacity = 0.55 + 0.35 * Math.abs(Math.sin(t * 21)); beam.visible = true;
+  }
   let posed = false, still = false, dirty = true, contactError = null, tipAt = null;
   let pose = { mode, distance: 0, turnAngle: 0, speed: 0, omega: 0, tip: null };
   const v = new T.Vector3();
@@ -34,13 +53,14 @@ export function createKidouRig(T, root, { mode = 'park' } = {}) {
       const c = applyKidou(T, root, adapter(pose, t));
       if (c?.static) { still = true; return; }
       if (pose.tip != null) holdTip(pose.tip); else tipAt = null;
+      showBeam(t);
       posed = true; dirty = false; contactError = c?.maxContactError ?? null;
     },
     set(p) { pose = { ...pose, ...p }; dirty = true; },
     // the hoses' tubes are the adapter's own (it replaces the GLB's TubeGeometry on its first pose), so the rig frees them; the rest is the
     // story base's (its own() of the mounted tier)
-    dispose() { if (posed) for (const h of hoses()) h.geometry.dispose(); posed = false; },
-    state: () => ({ mode: pose.mode, posed, static: still, contactError, tip: tipAt }),
+    dispose() { if (posed) for (const h of hoses()) h.geometry.dispose(); if (beam) { beam.removeFromParent(); beam.geometry.dispose(); beam.material.dispose(); beam = null; } posed = false; },
+    state: () => ({ mode: pose.mode, posed, static: still, contactError, tip: tipAt, beam: !!beam?.visible }),
   };
   rig.tick(0);   // posed at mount: before the tier is warmed, printed or shown
   return rig;
