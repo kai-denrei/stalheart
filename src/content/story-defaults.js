@@ -103,6 +103,25 @@ export const PLUME_CLUSTER = Object.freeze([
   { angle: 300, radius: 0.8, width: 2.3, height: 22, phase: 2.3, cadence: 10, depth: 0.18 },
 ]);
 
+// THE LANDING WASH (owner, 2026-11-15: "when the rocket lands, the thrusters touching the surface should create effects of smoke and particles
+// flying ... like in the reference images of spacex boosters re-entry. perhaps we can re-use some of the nuclear strike effects after the explosion,
+// just the smoke"). The orbital strike's own puffs and sparks (src/fx/explosions/common.js: the base surge's motion, drag out along the ground and a
+// slow rise), fed from the ground point under the engines while the plume's tips reach it (src/domain/landing-wash.js, src/fx/landing-wash.js).
+// `reach`: the plume's length under the feet, as a share of the cluster's own (the longest sheet below its bell, at the hull's presentation scale);
+// over 1 the dust lifts a little before the flame touches. `full`: strongest from that share of the reach down. `puffs`: `rate` a second at full,
+// `capacity` alive at once (the oldest gives its slot up), metres and seconds as the strike's (size0 -> size1 over `grow`, `heat` the glow of the
+// exhaust in the first `heatTau` s, then smoke); `lift` the puff's centre over the ground as a share of its grown size, so the cloud rests on the ground
+// rather than being cut flat along it (a quad half under the ground drew a straight edge). `burst`: the ring thrown when the engines cut at the ground (the touchdown, a wreck), `wreck` times
+// on a wreck. `grit`: hot sparks flung low off the ground (the strike's spark layer, gravity on). `palette`: a pale dust, the strike's fire colours.
+export const LANDING_WASH = Object.freeze({
+  reach: 1.1, full: 0.3, intensity: 0.8,
+  puffs: Object.freeze({ rate: 95, capacity: 384, core: 3, lift: [0.24, 0.4], speed: [16, 32], up: [0, 0.6], drag: [0.9, 1.4], rise: [0.3, 1.1],
+    size0: [3, 5], size1: [10, 17], grow: [1.2, 2.2], life: [3.5, 6], heat: [0.45, 0.85], heatTau: 0.35 }),
+  burst: Object.freeze({ count: 30, wreck: 1.6, speed: [22, 38], size1: [13, 20], life: [5, 7] }),
+  grit: Object.freeze({ rate: 90, capacity: 192, speed: [22, 52], up: [0.06, 0.45], drag: [0.8, 1.6], life: [0.5, 1.3], heat: [0.7, 1.15], trail: 0.06, burst: 40 }),
+  palette: Object.freeze({ white: '#fff5e1', hot: '#ffd04a', warm: '#ff8420', ember: '#c4300c', smoke: '#c2b8a8', soot: '#574f45' }),
+});
+
 // Presentation scale. The SH02 is authored at 21.4 m; the story shows it
 // larger so a game-sized Isao reads small and clears the cargo well.
 // The story hull is 10 m long (the kit's MÖRK is authored at 13.28 m, so kit containers scale to match);

@@ -43,6 +43,7 @@
 // record: obj, dir, loiter, faceLock), sfx (src/audio.js); the beats' deploy runs the foundry through it.
 import * as THREE from '../../vendor/three.module.js';
 import { createLaunchPlume } from './launch-plume.js';
+import { createLandingWash } from './landing-wash.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
 import { PLUME_CLUSTER, SH02_WELL, STORY_ARRIVAL, STORY_ARRIVAL_MANUAL } from '../content/story-defaults.js';
 import { makeArrivalShot } from '../domain/arrival-shot.js';
@@ -89,6 +90,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     return (azimuth = d ? Math.atan2(-d.x, -d.z) : 0);
   };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
+  // THE LANDING WASH (owner, 2026-11-15: "the thrusters touching the surface should create effects of smoke and particles flying"; src/fx/landing-wash.js):
+  // `wash` the strike's smoke and grit fed from the ground under the engines, `reach` the plume's length under the feet (island metres), `padY` the pad's top
+  let wash = null, reach = 0, padY = 0;
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
   // THE LANDING FLOWN (2026-11-07, spec section 2): `flying` the host (src/fx/manual-landing.js) from the start when the landing may be flown,
   // `lhud` its panel (the arrival's: the verdict reads through the cut), `signature` the exhaust signature while it plays (`missionDue`: the
@@ -168,6 +172,15 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     b.copy(o.position).normalize(); c.copy(eye).sub(o.position); c.addScaledVector(b, -c.dot(b)).add(o.position);
     m4.lookAt(c, o.position, b); o.quaternion.setFromRotationMatrix(m4); drone.faceLock = 'angry';
   }
+  // the wash this frame: the hull's feet and up in island metres, its engines' light (the sheets' mean, each lit at plume x 0.55 at most); nothing while the
+  // rocket is hidden (a flown landing's under the signature stands on the pad unseen)
+  function washTick(dt) {
+    if (!wash || !rocket?.holder.visible || !(dt > 0)) return;
+    const h = rocket.holder; h.updateWorldMatrix(true, false);
+    const feet = a.setFromMatrixPosition(h.matrixWorld).applyMatrix4(inv).divideScalar(metres), axis = b.setFromMatrixColumn(h.matrixWorld, 1).transformDirection(inv);
+    let lit = 0; for (const p of plumes) lit += p.material.uniforms.uIntensity.value;
+    wash.tick(dt, { feet: [feet.x, feet.y, feet.z], axis: [axis.x, axis.y, axis.z], plume: plumes.length ? Math.min(1, lit / plumes.length / 0.55) : 0, reach, pad: padY, wreck: grade?.grade === 'WRECK' || grade?.grade === 'CRASH' });
+  }
   // the rocket back on the ground in its end pose (the base's own: legs out, shock over, door open), the landing's effects gone
   function settle() {
     if (!rocket) return;
@@ -176,7 +189,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     for (const name of CLIPS) { const act = rocket.root?.userData.actions?.[name]; if (act) clip(name, act.getClip().duration); }
     rocket.root?.userData.mixer?.update(0);
     for (const p of plumes) { p.removeFromParent(); p.userData.dispose(); }
-    plumes = []; if (dust) drop(dust); if (scorch) drop(scorch); dust = scorch = null; fxRoot?.removeFromParent();
+    plumes = []; if (dust) drop(dust); if (scorch) drop(scorch); dust = scorch = null; fxRoot?.removeFromParent(); wash?.dispose(); wash = null;
   }
   // Isao out at his point at his game size, facing the rocket; the beats deploy the AFR-01 (the swap) and he says his lines
   function deploy() {
@@ -207,6 +220,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       const p = createLaunchPlume({ width: e.width, height: e.height }), ang = e.angle * Math.PI / 180;
       p.position.set(Math.cos(ang) * e.radius, SH02_WELL.bell - e.height / 2 + 1, Math.sin(ang) * e.radius); p.userData.engine = e; rocket.holder.add(p); return p;
     });
+    // the wash: the longest sheet's tip under the feet (a sheet spans its bell + 1 m down `height` hull metres) at the hull's presentation scale
+    padY = new THREE.Vector3().setFromMatrixPosition(rocket.holder.userData.placed).applyMatrix4(inv).divideScalar(metres).y;
+    reach = (Math.max(...PLUME_CLUSTER.map((e) => e.height)) - SH02_WELL.bell - 1) * new THREE.Vector3().setFromMatrixColumn(rocket.holder.userData.placed, 0).length() / metres;
+    wash = createLandingWash({ parent: base.group, frame: site, metres, planetRadius: new THREE.Vector3().setFromMatrixPosition(site).length() });
     phase = 'landing'; t = 0;
     hud(true);
     if (!manual) { camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0); }   // the orbit picture: a flown landing has none (spec 14 C)
@@ -219,7 +236,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     }
     if (signature) missionDue = true; else api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
     if (manual) {   // THE LANDING (2026-11-07): the host in island metres with the pad's top at 0, its reticle under a group lifted there
-      const pad = new THREE.Vector3().setFromMatrixPosition(rocket.holder.userData.placed).applyMatrix4(inv).divideScalar(metres).y;
+      const pad = padY;
       const flightRoot = new THREE.Group(); flightRoot.name = 'LandingFlight'; flightRoot.position.y = pad; fxRoot.add(flightRoot);
       lhud = createLandingHud(globalThis.document?.body);
       flying = createManualLanding({ entry: seedEntry(seed, LANDING_GAME), rocket, plumes, camera, sfx: api.sfx, hud: lhud, toWorld: (p, out) => toWorld([p[0], p[1] + pad, p[2]], out), up, root: flightRoot,
@@ -416,7 +433,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       api = host;
       if (phase === 'done') {   // a landmark that came after a release is put in the end state as it appears, once
         if (late) for (const id of late) if (base.structure(id)) { late.delete(id); if (id === 'sh02') base.conceal(id); else base.reveal(id); }
-        swapCheck(dt);
+        washTick(dt); swapCheck(dt);
         if (api.shotId?.() === 'arrivalHold') { holdT += dt; handT += dt; if (handT >= tune.hold.hand) api.endShot?.(); }   // nobody took the hold: the game's camera glides in
         return;
       }
@@ -432,7 +449,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       }
       if (phase === 'landing') landingTick(dt);
       else { talkT += dt; holdT += dt; }
-      swapCheck(dt);
+      washTick(dt); swapCheck(dt);
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
     done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
@@ -453,7 +470,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov,   // lens: the game's own, put back at the end
-        hold: hold0 ? { t: +holdT.toFixed(2), inView, swapped, swapT: +swapT.toFixed(2), hand: +handT.toFixed(2) } : null,
+        hold: hold0 ? { t: +holdT.toFixed(2), inView, swapped, swapT: +swapT.toFixed(2), hand: +handT.toFixed(2) } : null, wash: wash ? { ...wash.state(), reach: +reach.toFixed(1), pad: +padY.toFixed(2) } : null,
         manual, offer, offered, lost: crashed, signature: !!signature, aimWait: aimWait == null ? null : +aimWait.toFixed(2), flown: storage.getItem('td.landing.flown') === '1', talkBrief: talkBrief(),
         view: flying?.view() ?? null, azimuth: azimuth == null ? null : +azimuth.toFixed(3), disk: disk(), diskAimed: api?.scene?.getObjectByName('sky-hole')?.userData.aimedFor === base, landing: flying?.state() ?? (grade ? { phase: 'done', grade: grade.grade, reason: grade.reason, sink: +grade.sink.toFixed(2), drift: +grade.drift.toFixed(2), tilt: +grade.tilt.toFixed(3), landed: landed?.map((x) => +x.toFixed(1)) ?? null } : null) };
     },

@@ -3821,6 +3821,34 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   mark(`the partial at k ${JSON.stringify((await st()).programme.colony?.gantry?.hungry)}`);
   await frameCell(g.hungry.step,6,7);await delay(2500);const s2=await st();console.log(`  at the still: ${JSON.stringify(s2.programme.colony?.gantry?.hungry)}; rig ${JSON.stringify(s2.programme.colony?.gantry?.phase)}`);}
  current='hungry-build';await finish();
+ } else if(args.includes('--landing-wash')) {
+ // THE LANDING WASH (owner, 2026-11-15: "when the rocket lands, the thrusters touching the surface should create effects of smoke and particles flying ...
+ // like in the reference images of spacex boosters re-entry"; src/fx/landing-wash.js): the automatic landing of a grown stage-1 page. Every frame the
+ // wash is logged (the clock, the altitude, its strength, puffs, grit, rings); it begins as the plume reaches the ground, a cloud stands by the touchdown,
+ // one ring at the cut, nothing more after it, and the wash goes with the swap. Stills: landing-wash-low (~14 m), -touch (0.5 s after), -roll (2 s after).
+ const T='window.__stalheartTest',A=async()=>(await evaluate(`${T}.state()`)).arrival,TD=2.6;
+ await go('landing-wash','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until(`!!${T}&&!!${T}.state().arrival`,90000);
+ await evaluate(`(()=>{const T=${T},L=window.__wash=[];(function tick(){try{const a=T.state().arrival;if(a.phase!=='waiting')L.push([a.phase,a.t,a.altitude,a.wash?.k??null,a.wash?.emitted??null,a.wash?.thrown??null,a.wash?.bursts??null]);}catch(e){L.push(['error',String(e)]);}if(L.length<6000)requestAnimationFrame(tick);})();})()`);
+ await until(`${T}.state().arrival.phase==="landing"`,60000).catch(async()=>assert.fail(`the SH02 comes down (${JSON.stringify(await A())})`));
+ {const a=await A();console.log(`  the wash: reach ${a.wash?.reach} m under the feet, the pad at ${a.wash?.pad}`);assert(a.wash&&a.wash.reach>20,`the wash stands with the landing (${JSON.stringify(a.wash)})`);}
+ await until(`(a=>a.phase!=="landing"||a.altitude<14)(${T}.state().arrival)`,30000);
+ {const a=await A();console.log(`  low: t ${a.t}, ${a.altitude} m, ${JSON.stringify(a.wash)}`);}
+ current='landing-wash-low';await finish();
+ await until(`(a=>a.phase!=="landing"||a.t>=${TD+0.5})(${T}.state().arrival)`,30000);
+ {const a=await A();console.log(`  touch: t ${a.t}, ${JSON.stringify(a.wash)}`);}
+ current='landing-wash-touch';await finish();
+ await until(`(a=>a.phase!=="landing"||a.t>=${TD+2})(${T}.state().arrival)`,30000);
+ {const a=await A();console.log(`  roll: t ${a.t}, ${JSON.stringify(a.wash)}`);}
+ current='landing-wash-roll';await finish();
+ {const L=await evaluate('window.__wash'),err=L.find(r=>r[0]==='error');assert(!err,`the log ran (${JSON.stringify(err)})`);
+  const on=L.filter(r=>r[4]>0),first=on[0],before=L.filter(r=>r[1]<TD&&r[0]==='landing').at(-1),after=L.filter(r=>r[1]>=TD+0.2).at(-1),reach=(await A())?.wash?.reach??33;
+  console.log(`  first puff at t ${first?.[1]} (${first?.[2]} m); by the touchdown ${JSON.stringify(before)}; after ${JSON.stringify(after)}; ${L.length} frames logged`);
+  assert(first&&first[2]<=reach*1.1+0.5&&first[2]>3,`the wash begins as the plume reaches the ground (${JSON.stringify(first)}, reach ${reach})`);
+  assert(before&&before[4]>=30,`a cloud stands by the touchdown (${JSON.stringify(before)})`);
+  assert(after&&after[6]===1,`one ring at the cut (${JSON.stringify(after)})`);
+  const cut=L.find(r=>r[6]===1),late=L.filter(r=>r[1]>cut[1]+0.1&&r[4]!=null);assert(late.every(r=>r[4]===cut[4]),`no puff once the engines are out (${JSON.stringify([cut,late.at(-1)])})`);}
+ await until(`(a=>a.phase==="done"&&(a.hold?.swapped??true))(${T}.state().arrival)`,120000).catch(async()=>assert.fail(`the swap (${JSON.stringify((await A()).hold)})`));
+ {const a=await A();assert.equal(a.wash,null,'the wash goes with the swap');console.log(`  after the swap: wash ${JSON.stringify(a.wash)}, rocket ${a.rocket}, salvage ${a.salvage}`);}
  } else if(args.includes('--dome-look')) {
  // THE DOME CITY, LOOKED AT (round 8 note 6, src/content/dome-city.js; no assertions but a page error): run it once with BASE=classic and once
  // with BASE=dome. The frame's cost on the base camera a skipped opening starts on (the perf readout's draw calls, triangles, frame and gpu ms,
