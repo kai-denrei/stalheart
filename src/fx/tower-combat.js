@@ -53,7 +53,7 @@ export function createTowerCombat(host) {
     if (!tw.lock) tw.lock = makeLock();
     let lockStepped = false;
     stepA6(tw.a6, dt, {
-      range, minRange: metresToArc(config.minRange, host.cellSide()), cellSide: host.cellSide(), tune: A6_TUNE, rand: host.a6Rng, open: (q) => { const c = host.cellIndex()(q); return c === tw.ci || host.dungeon().tags[c] !== BLOCKED; },
+      range, minRange: metresToArc(config.minRange, host.cellSide()), cellSide: host.cellSide(), tune: A6_TUNE, rand: host.a6Rng, open: (q) => { const c = host.cellIndex()(q); return (c === tw.ci || host.dungeon().tags[c] !== BLOCKED)&&!host.traffic?.blocked(tw.a6.pos,q,3.5*host.cellSide()/10,`tower:${tw.ci}`); },
       // Retain a living hard target inside the same metre band used by the lab.
       sense: from => {
         const e = host.acquireMissileTarget(tw, from, config);

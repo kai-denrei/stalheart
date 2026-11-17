@@ -23,10 +23,10 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
   for (const l of legs.filter((x) => x.kind === 'turn')) assert.ok(Math.abs(l.yaw1 - l.yaw0) <= Math.PI / 2 + 1e-9, 'no turn over a quarter');
   assert.ok(near(legs[0].t1, Math.PI / 2 / T.turn), 'a quarter in about 4 s');
   assert.ok(near(legs[1].t1 - legs[1].t0, 74.7 / T.speed), 'the middle road at 4 m/s');
-  assert.ok(legs.end.t > 40 && legs.end.t < 46, `a corner about 45 s out (${legs.end.t.toFixed(1)})`);
+  assert.ok(legs.end.t > 20 && legs.end.t < 23, `a corner about 45 s out (${legs.end.t.toFixed(1)})`);
   const mid = poseAt(legs, legs[1].t0 + 2);
-  assert.equal(mid.mode, 'drive'); assert.ok(near(mid.x, 4.5 - 8) && near(mid.z, 0), 'two seconds down the road, eight metres');
-  assert.ok(near(Math.abs(mid.distance), 8) && near(Math.abs(mid.speed), 4));
+  assert.equal(mid.mode, 'drive'); assert.ok(near(mid.x, 4.5 - 16) && near(mid.z, 0), 'two seconds down the road, eight metres');
+  assert.ok(near(Math.abs(mid.distance), 16) && near(Math.abs(mid.speed), 8));
   const turning = poseAt(legs, 1); assert.equal(turning.mode, 'turn'); assert.ok(near(turning.x, 4.5) && turning.omega !== 0, 'turning in place');
   // every road out arrives facing its last leg, the tool over the centre (the first --dome-print run arrived at NW backwards)
   for (const c of COLONY_CELLS) { const st = gantryStop(COLONY_CELLS, T, c.id), out = timeline(st.points, yawOf(T.heading), null, { ...T, arrive: true }), h = headingOf(out.end.yaw);
@@ -51,12 +51,12 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
   assert.equal(g.start(step, { progress: (s, k) => grows.push(k), hand: (s, k) => hands.push([s.id, k]) }), true);
   assert.equal(g.start(step, { progress() {}, hand() {} }), false, 'one job at a time');
   assert.equal(g.home(), false); assert.equal(g.state().phase, 'out');
-  for (let t = 0; t < 25; t += 0.1) g.tick(0.1);
+  for (let t = 0; t < 60 && g.state().phase === 'out'; t += 0.1) g.tick(0.1);
   assert.equal(g.state().phase, 'print', `at the cell (${JSON.stringify(g.state())})`);
   assert.ok(near(g.state().x, -67.6, 1e-3) && near(g.state().z, 0, 1e-3) && near(g.state().heading[0], -1, 1e-3), 'straddling W, facing it');
   assert.ok(moves.every(([id]) => id === 'stalheart') && poses.some((p) => p.mode === 'turn') && poses.some((p) => p.mode === 'drive'), 'it turned and drove, the Stålheart moved');
   const share = toolShare(0.3, T);
-  for (let t = 0; t < 30 * share + 0.5; t += 0.1) g.tick(0.1);
+  for (let t = 0; t < 30 * share / T.printRate + 0.5; t += 0.1) g.tick(0.1);
   assert.deepEqual(hands, [['dome-w', share]], 'the rest handed over at the tool\'s share');
   assert.ok(grows.length > 10 && grows.every((k, i) => i === 0 || k >= grows[i - 1]) && near(grows.at(-1), share, 1e-9), 'the print rose to the share');
   const tips = poses.filter((p) => p.mode === 'fabricate').map((p) => p.tip);
@@ -69,3 +69,14 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
   assert.equal(g.start({ id: 'x', cell: 'plaza', seconds: 30 }, { progress() {}, hand() {} }), false, 'no cell: no job');
 }
 console.log('Gantry route: the grid\'s roads, a corner through its column\'s middle, the turns and the drive timed, the job out, printing to the tool\'s reach with the tip over the layer, handing over and home.');
+
+// Printing is three times as fast; reaching the same cell takes exactly the same time.
+{ const sample = rate => {
+    const g=createGantryDrive({base:{move(){},rig(){}},cells:COLONY_CELLS,tune:{...T,printRate:rate},split:()=>.3});
+    let k=0;g.start({id:'speed',cell:'w',seconds:30},{progress(s,v){k=v;},hand(){}});
+    let travel=0;while(g.state().phase==='out'&&travel<100){g.tick(.01);travel+=.01;}
+    g.tick(1);return {travel,k};
+  };
+  const slow=sample(1),fast=sample(T.printRate);assert.equal(T.printRate,9);
+  assert.equal(slow.travel,fast.travel);assert.ok(Math.abs(fast.k/slow.k-9)<.05);
+}

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../vendor/three.module.js';
+import { createFoundryFx } from '../src/fx/foundry-fx.js';
+const scene=new THREE.Scene(), root=new THREE.Group(), tip=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshBasicMaterial());
+tip.name='tip';tip.scale.setScalar(2);root.add(tip);scene.add(root);
+const camera=new THREE.PerspectiveCamera(60,1,.1,100);camera.position.z=6;camera.lookAt(0,0,0);camera.updateMatrixWorld();
+const fx=createFoundryFx(scene,()=>({structure:id=>id==='sh02-salvage'?{near:root}:null}),{cellSide:.01,camera});fx.event('scrap',{section:'tip'});
+fx.tick(2);assert.equal(tip.visible,true,'a section being watched stays in place');assert.equal(tip.scale.x,2,'salvage never shrinks');
+camera.lookAt(0,0,20);fx.tick(.1);assert.equal(tip.visible,false,'completed salvage is removed off screen');assert.equal(tip.scale.x,2);
+fx.dispose();tip.geometry.dispose();tip.material.dispose();
+console.log('Foundry: constant section size, removal only out of view.');

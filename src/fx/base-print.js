@@ -6,6 +6,7 @@ export function createBasePrint({ base, plan, placer }) {
   const gates = plan.gates ?? (plan.gate ? [plan.gate] : []);
   const gateOf = (step) => (step.gate === true ? plan.gate : gates.find((g) => g.id === step.gate)) ?? null;   // a step's door: the front gate, or one named by id
   const at = { step: null, k: 0 };
+  const laid = new Map();   // completed layers survive bank changes and worker handoffs
   // the plot a step prints, in frame metres: centre, half extents across and along its heading, and the lattice cell at its centre.
   // The gate step's plot runs along the rim over the gate and both runs of walls.
   function plotOf(step) {
@@ -71,14 +72,16 @@ export function createBasePrint({ base, plan, placer }) {
       return (ox, oy, k) => { const a = ox * pw, b = oy * pd; return placer.toWorld([piece.x + hz * a + hx * b, h * clamp(k), piece.z - hx * a + hz * b]).toArray(); };
     },
     progress(step, k) {
-      at.step = step.id; at.k = k;
-      grown(step, k);
+      k = Math.max(laid.get(step.id) ?? 0, clamp(k)); laid.set(step.id, k);
+      at.step = step.id; at.k = k; grown(step, k);
     },
     // THE HUNGRY PARTIAL (owner, 2026-11-13: "the Stalheart should be building something, even if unfinished"; src/domain/hungry-build.js): the
     // same rise as a print's progress, drawn for a step nobody has bought yet, without taking the print's own state (the harness's programme.print)
-    // (k 0 undoes it: its structures back to nothing, which a print's progress never asks)
-    partial: (step, k) => { grown(step, k); if (!(k > 0)) for (const id of step.structures) base.grow(id, 0); },
+    // (laid layers persist across pauses, funding changes and later jobs)
+    partial: (step, k) => { k = Math.max(laid.get(step.id) ?? 0, clamp(k)); laid.set(step.id, k); grown(step, k); },
+    progressOf: (step) => laid.get(step.id) ?? 0,
     finish(step) {
+      laid.set(step.id, 1);
       at.step = step.id; at.k = 1;
       for (const id of step.islands) base.growIsland(id, 1);
       for (const id of step.structures) base.grow(id, 1);

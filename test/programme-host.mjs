@@ -23,7 +23,7 @@ function controller(o = {}) {
     story: {
       programme, sectorN: 0, hull: null, grow: true, backOpen: false,
       beats: { phase: () => o.phase ?? 'rotor-ready' }, wallCells: [4, 5], gateCell: 9, gateCellOf: (id) => (id === 'back' ? 11 : 9), socketToward: {},
-      print: { cellOf: (st) => ({ gate: 3, stalheart: 6, backgate: 12 })[st.id] ?? 8, bed: (st) => `bed:${st.id}`, repairBed: (r, tune) => `repair:${r.kind}:${tune.seconds}`, finish: rec('finish') },
+      print: { progressOf: () => o.printHead ?? 0, cellOf: (st) => ({ gate: 3, stalheart: 6, backgate: 12 })[st.id] ?? 8, bed: (st) => `bed:${st.id}`, repairBed: (r, tune) => `repair:${r.kind}:${tune.seconds}`, finish: rec('finish') },
     },
     playerHP: 3, waveActive: false, pilotMode: false, briefQ: null, pilot: null, deploy: null, t: 40, berths: [], playerDown: true,
     sectorRun: { gates: () => o.gates ?? [], doorsQuiet: () => true, backOpenBreaches: () => !!o.backOpen, repairGate: rec('repairGate'), note: rec('note') },
@@ -62,6 +62,7 @@ function storyApiOf(c) {
   api.build(); assert.equal(orders.length, 1, 'an order nobody works yet comes first');
   // THE GATE STANDS: its perk, the walls rock to the swarm and the tank in both worlds, the sector books it
   log.length = 0; orders.length = 0; api.printed(step('gate'));
+  assert.deepEqual([...s.dungeon.mended], [4,5], 'solid kit walls suppress terrain rocks');
   assert.equal(api.hasPerk('gate'), true); assert.deepEqual([...api.perks()], ['gate']);
   assert.deepEqual([s.dungeon.tags[4], s.dungeon.tags[5], s.tdFullTags[4], s.tdFullTags[5]], [BLOCKED, BLOCKED, BLOCKED, BLOCKED]);
   assert.deepEqual(log, [['finish', step('gate')], ['note', { type: 'print', id: 'gate' }], ['forgetWalls'], ['rebuild'], ['portalDist']]);
@@ -196,3 +197,5 @@ function storyApiOf(c) {
   assert.deepEqual(s.story.armoryPad, { cell: 7, pos: [0, 0, 1], standing: true }, 'its pad is the shells\' pad');
 }
 console.log('Programme host: one order at a time with his line, the gate\'s walls in both worlds, repairs between waves (the worst door first), the back gate only once held, the perks in the world, the rebuilt hull, the first hull through the same host.');
+
+{ const {api,orders}=controller({printHead:.4});api.build();assert.equal(orders[0].head,.4,'Isao resumes retained layers instead of reprinting from zero'); }

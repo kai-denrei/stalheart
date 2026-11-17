@@ -27,7 +27,7 @@ const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const tangent = (up, d) => d.clone().addScaledVector(up, -d.dot(up));
 const ROAD_YAW = 3, ROAD_SNAP = 3;
 
-export function createRoverScene(scene, { metres, url, tune, hose, wire = null }) {
+export function createRoverScene(scene, { metres, url, tune, hose, wire = null, blocked = null }) {
   const holder = new THREE.Group(); holder.name = 'yushi rover'; holder.matrixAutoUpdate = false; holder.visible = false; scene.add(holder);
   let model = null, ctl = null, error = null, distance = 0, belt = 0, steer = 0, at = null, fwd = null, last = null, spinning = false;
   loadModelFixture(url).then((src) => {
@@ -86,6 +86,7 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
       const up = at.clone().normalize(), toward = tangent(up, goal.clone().sub(at)), gap = toward.length() / metres;
       fwd = tangent(up, fwd).normalize();
       let move = 0, yaw = 0;
+      const before=at.clone();
       const turnTo = (want, rate) => { const a = Math.atan2(new THREE.Vector3().crossVectors(fwd, want).dot(up), fwd.dot(want)), k = Math.max(-rate * dt, Math.min(rate * dt, a)); fwd.applyAxisAngle(up, k); return { a, k }; };
       if (target.road && gap <= ROAD_SNAP) {   // on the road: stand on its point, face along it
         move = gap; at.copy(goal); spinning = !!target.spin;
@@ -99,6 +100,7 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
         spinning = false;
         if (target.heading) { const { k } = turnTo(tangent(up, v3(target.heading)).normalize(), tune.turn); yaw = k / Math.max(dt, 1e-6); }
       }
+      const held=!!blocked?.(before.toArray(),at.toArray()); if(held){at.copy(before);move=0;}
       distance += move; steer += ((spinning ? 0 : Math.max(-0.5, Math.min(0.5, yaw * 0.4))) - steer) * Math.min(1, dt * 4);
       if (target.harvesting) belt += 1.4 * dt;
       place(target.lift ?? 0);
@@ -116,7 +118,7 @@ export function createRoverScene(scene, { metres, url, tune, hose, wire = null }
       } else hoseMesh.visible = false;
       if (gauge) { gauge.sprite.visible = !!target.gauge; if (target.gauge) { drawGauge(target.fill ?? 0); gauge.sprite.position.copy(at).normalize().multiplyScalar(1 + ((target.lift ?? 0) + G.up) * metres); gauge.sprite.scale.set(G.metres * metres, G.tall * metres, 1); } }
       if (target.restart) drawRing(at, target.restart.cells * target.restart.cellSide, (RG?.up ?? 0.4) * metres, target.restart.share ?? 0); else { ringBase.visible = ringArc.visible = false; ringShown = null; }
-      last = { gap: +gap.toFixed(2), spinning, moved: +move.toFixed(3), gauge: gauge ? { shown: gauge.sprite.visible, pct: gaugeAt } : null, ring: ringShown };
+      last = { gap: +gap.toFixed(2), held, spinning, moved: +move.toFixed(3), gauge: gauge ? { shown: gauge.sprite.visible, pct: gaugeAt } : null, ring: ringShown };
     },
     state: () => ({ ready: !!ctl, error, visible: holder.visible, distance: +distance.toFixed(1), belt: +belt.toFixed(1), hose: hoseMesh.visible, point: at?.toArray() ?? null, ...(last ?? {}) }),
     point: () => at?.toArray() ?? null,

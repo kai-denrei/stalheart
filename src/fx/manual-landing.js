@@ -7,7 +7,7 @@
 // keeps the clock, the sequence, the swap and the HUD panel (it shows the verdict through the cut, so it outlives this host: dispose()
 // leaves it to the arrival).
 // The harness's state() reports the tilt SIGNED (about z, positive toward +x) and the drift on x as `vx`, which the browser suite's scripted
-// pilot steers on; the HUD's reading() carries the screen drift `vx` as driftAlong (its DRIFT row: the arrow by its sign, the speed) and the tilt's magnitude.
+// pilot steers on; the HUD's reading() carries the screen drift `vx` as driftAlong (its DRIFT row: the arrow by its sign, the speed) and the signed tilt.
 // Frames (2026-11-07): `toWorld` maps island metres with the pad's top at y = 0 to world units; `root` is a group whose local frame is
 // those same metres (the arrival's fxRoot, lifted to the pad's top), so the reticle is placed in it directly.
 // THE SIDE VIEW (spec 14 A): the flight model runs in its own frame, the island's turned about the pad's up by `azimuth` (island =
@@ -138,7 +138,7 @@ export function createManualLanding({ game = LANDING_GAME, entry, rocket, plumes
     }
   }
   const island = () => flightToIsland([s.x, s.y, s.z], az), ground = () => { const [x, , z] = island(); return floorAt(x, z); };   // the rocket in island metres, the ground under it
-  function reading() { return { altitude: Math.max(0, s.y), sink: Math.max(0, -s.vy), driftAlong: s.vx, driftAcross: s.vz, tilt: Math.abs(s.tilt), tw: game.vehicle.thrust * Math.max(s.throttle, s.throttle > 0 ? game.vehicle.minThrottle : 0) / game.sim.gravity, hStop: hStop(s, game), fuel: s.fuel, legs: s.legs, phase }; }
+  function reading() { return { altitude: Math.max(0, s.y), sink: Math.max(0, -s.vy), driftAlong: s.vx, driftAcross: s.vz, tilt: s.tilt, tiltRate: s.tiltRate, speed: Math.hypot(s.vx, s.vy, s.vz), vertical: s.vy, throttle: s.throttle, tw: game.vehicle.thrust * Math.max(s.throttle, s.throttle > 0 ? game.vehicle.minThrottle : 0) / game.sim.gravity, hStop: hStop(s, game), fuel: s.fuel, legs: s.legs, phase }; }
   // THE FUEL's calls (owner, 2026-11-12, a generous limit): LOW FUEL once at fuel.lowSeconds, NO FUEL at zero (the model cuts the engines there,
   // src/domain/manual-landing.js step), each once a flight, only while the player has the rocket (the flare spends none, a contact has its verdict)
   function fuelCalls() {

@@ -64,3 +64,9 @@ console.log('Preset round-trip, strict validation, draft isolation, immutable se
 const v6=baselinePreset('before-breaches');delete v6.breach;v6.base='stalheart-fx-6';v6.missiles.quiver.length=.67;
 const v7=parsePreset(JSON.stringify(v6));assert.equal(v7.base,'stalheart-fx-8');assert.equal(v7.missiles.quiver.length,.67);assert.equal(v7.breach.craterRadius,1);assert.equal(v7.breach.fissureWidth,1.15);
 for(const change of [{duration:NaN},{look:'unknown'},{fissureArms:3.5},{extra:1}]){const p=baselinePreset();Object.assign(p.breach,change);assert.throws(()=>validatePreset(p));}
+
+// Adding the authored bark preserves existing saved sound edits.
+for(const base of ['stalheart-fx-2','stalheart-fx-8']){
+ const saved=base.endsWith('2')?oldPreset('old-bark'):baselinePreset('old-bark');saved.base=base;if(base.endsWith('2'))delete saved.missiles;delete saved.audio.k9_bark;saved.audio.kinetic_fire.gain=.42;
+ const restored=parsePreset(JSON.stringify(saved));assert.ok(restored.audio.k9_bark);assert.equal(restored.audio.kinetic_fire.gain,.42);
+}

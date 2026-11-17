@@ -2,7 +2,7 @@
 // vocabulary, five touchable ones on phones. Pointer-transparent but for the touch rail. Numbers are set, never animated by the DOM.
 import { LANDING_GAME } from '../content/landing-game.js';
 
-const ROWS = [['alt', 'ALT', 'm'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', 'm/s'], ['tilt', 'TILT', '°'], ['tw', 'T/W', ''], ['stop', 'CAN STOP IN', 'm'], ['fuel', 'FUEL', 's']];
+const ROWS = [['alt', 'ALT', 'm'], ['speed', 'SPEED', 'm/s'], ['sink', 'SINK', 'm/s'], ['drift', 'DRIFT', 'm/s'], ['tilt', 'ATTITUDE', '°'], ['rate', 'ANG RATE', '°/s'], ['throttle', 'THRUST', '%'], ['tw', 'T/W', ''], ['stop', 'CAN STOP IN', 'm'], ['fuel', 'FUEL', 's']];
 const INERT = { el: null, show() {}, set() {}, annunciate() {}, verdict() {}, clear() {}, touch() {}, dispose() {} };
 export function createLandingHud(root, tune = LANDING_GAME) {
   if (!root || typeof document === 'undefined') return { ...INERT };
@@ -10,16 +10,33 @@ export function createLandingHud(root, tune = LANDING_GAME) {
   // only the annunciator and the verdict are live regions (2026-11-07, the final review): the numbers change every frame and would chatter
   const el = document.createElement('div'); el.id = 'landing-hud'; el.hidden = true;
   const ann = document.createElement('div'); ann.id = 'lh-ann'; ann.className = 'lh-ann'; ann.setAttribute('aria-live', 'polite'); el.append(ann);
-  const grid = document.createElement('div'); grid.className = 'lh-grid';
+  const make = (tag, cls, text = '') => { const n = document.createElement(tag); n.className = cls; n.textContent = text; return n; };
+  const optics = make('div', 'lh-optics'); optics.setAttribute('aria-hidden', 'true'); el.append(optics);
+  const groups = {};
+  for (const id of ['motion', 'height', 'attitude', 'engine', 'reserve']) { groups[id] = make('div', `lh-instrument lh-${id}`); el.append(groups[id]); }
+  const owner = { speed: 'motion', sink: 'motion', drift: 'motion', alt: 'height', stop: 'height', tilt: 'attitude', rate: 'attitude', throttle: 'engine', tw: 'engine', fuel: 'reserve' };
   const cells = {};
   for (const [id, label, unit] of ROWS) {
-    const k = document.createElement('span'); k.className = 'lh-k'; k.textContent = label;
-    const v = document.createElement('b'); v.id = `lh-${id}`; v.className = 'lh-v'; v.textContent = '—';
-    const u = document.createElement('span'); u.className = 'lh-u'; u.textContent = unit;
-    grid.append(k, v, u); cells[id] = v;
+    const row = make('div', `lh-reading lh-reading-${id}`);
+    const k = make('span', 'lh-k', label), v = make('b', 'lh-v', '—'), u = make('span', 'lh-u', unit);
+    v.id = `lh-${id}`; row.append(k, v, u); groups[owner[id]].append(row); cells[id] = v;
   }
-  el.append(grid);
-  const legs = document.createElement('div'); legs.id = 'lh-legs'; legs.className = 'lh-legs'; legs.textContent = 'LEGS UP'; el.append(legs);
+  // Moving scales carry actual speed and ground altitude, not decorative values.
+  const tape = (group, step) => {
+    const window = make('div', 'lh-tape'); window.setAttribute('aria-hidden', 'true');
+    const ticks = Array.from({ length: 7 }, () => { const n = make('span', 'lh-tick'); window.append(n); return n; });
+    group.append(window);
+    return (value) => { const v = Number.isFinite(value) ? Math.max(0, value) : 0, base = Math.floor(v / step) * step;
+      ticks.forEach((n, i) => { const mark = base + (3 - i) * step; n.textContent = mark < 0 ? '' : String(mark); n.hidden = mark < 0;
+        n.style.setProperty('--tick-y', `${(i - 3 + (v - base) / step) * 30}px`); }); };
+  };
+  const speedTape = tape(groups.motion, 5), altTape = tape(groups.height, 20);
+  const attitude = make('div', 'lh-bank'); attitude.setAttribute('aria-hidden', 'true');
+  attitude.innerHTML = '<span class="lh-bank-arc"></span><span class="lh-bank-zero"></span><span class="lh-bank-pointer">△</span><span class="lh-bank-label lh-bank-left">−30</span><span class="lh-bank-label lh-bank-right">30</span>';
+  groups.attitude.append(attitude);
+  const thrust = make('div', 'lh-thrust-scale'); thrust.setAttribute('aria-hidden', 'true'); groups.engine.append(thrust);
+  const keys = document.createElement('div'); keys.className = 'lh-keys'; keys.textContent = 'SPACE BURN · A/D TILT · L LEGS'; el.append(keys);
+  const legs = document.createElement('div'); legs.id = 'lh-legs'; legs.className = 'lh-legs'; legs.textContent = 'LEGS UP'; groups.reserve.append(legs);
   const verdictEl = document.createElement('div'); verdictEl.id = 'lh-verdict'; verdictEl.className = 'lh-verdict'; verdictEl.setAttribute('aria-live', 'polite'); el.append(verdictEl);
   const rail = document.createElement('div'); rail.id = 'lh-touch'; rail.className = 'lh-touch'; rail.hidden = true; el.append(rail);
   root.append(el);
@@ -29,6 +46,10 @@ export function createLandingHud(root, tune = LANDING_GAME) {
     el,
     show(on) { el.hidden = !on; },
     set(r) {
+      cells.speed.textContent = num(r.speed, 1); cells.rate.textContent = num((r.tiltRate ?? 0) * 180 / Math.PI, 1); cells.throttle.textContent = num((r.throttle ?? 0) * 100);
+      attitude.style.setProperty('--tilt', `${r.tilt ?? 0}rad`);
+      thrust.style.setProperty('--burn', `${Math.max(0, Math.min(1, r.throttle ?? 0)) * 100}%`);
+      speedTape(r.speed); altTape(r.altitude);
       cells.alt.textContent = num(r.altitude); cells.sink.textContent = num(r.sink, 1); hot(cells.sink, r.sink > hard.sink);
       const drift = Math.hypot(r.driftAlong, r.driftAcross); cells.drift.textContent = `${r.driftAlong < 0 ? '←' : '→'} ${num(drift, 1)}`; hot(cells.drift, drift > hard.drift);
       cells.tilt.textContent = num(r.tilt * 180 / Math.PI, 1); hot(cells.tilt, Math.abs(r.tilt) > hard.tilt);

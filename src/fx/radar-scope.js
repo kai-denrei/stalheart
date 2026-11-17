@@ -93,8 +93,8 @@ export function createRadarScope(host) {
     }
     // THE YUSHI ROVER (2026-11-12 night): away from home a friendly blip in the slurry's olive, always lit; DISABLED it blinks red with a ring round it
     // (it waits for the tank: src/fx/rover-glue.js radar, ROVER.radar)
-    const rv = host.rover?.() ?? null; roverDrawn = rv ? (rv.disabled ? 'disabled' : 'out') : null;
-    if (rv) {
+    const raw = host.rover?.() ?? null, fleet = Array.isArray(raw) ? raw : raw ? [raw] : []; roverDrawn = fleet.length ? (fleet.some(r=>r.disabled) ? 'disabled' : 'out') : null;
+    for (const rv of fleet) {
       const RV = ROVER.radar, on = !rv.disabled || Math.floor(t * RV.blink * 2) % 2 === 0;
       if (on) blip(rv.pos, rv.disabled ? RV.disabled : RV.colour, RV.size, true);
       if (rv.disabled) { const q = radarProject(rv.pos, cpos, basis, range); ctx.strokeStyle = RV.disabled; ctx.lineWidth = 1.5; ctx.globalAlpha = on ? 1 : 0.5; ctx.beginPath(); ctx.arc(cx + q.x * R, cy + q.y * R, RV.ring, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }

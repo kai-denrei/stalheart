@@ -6,7 +6,7 @@ const run = (c, dt, secs, cond) => { const ev = []; for (let k = 0; k < Math.rou
 // the countdown passed through to the party's 'start' (owner, 2026-10-18 round 2: thirty seconds of Isao's announcement first)
 const toParty = (c, cond = calm) => run(c, 0.25, DAY_42.countdown, cond);   // quarter seconds: exact in binary, so 30 s is 30 s
 assert.equal(DAY_42.day, 42); assert.equal(DAY_42.seconds, 43.8); assert.equal(DAY_42.shot.at, 1.5); assert.equal(DAY_42.shot.seconds, 10);
-assert.equal(DAY_42.countdown, 30); assert.equal(DAY_42.back, 20); assert.equal(DAY_42.briefs.soon, 'day_42_soon'); assert.equal(DAY_42.briefs.back, 'day_42_back');
+assert.equal(DAY_42.countdown, 30); assert.equal(DAY_42.back, 20); assert.equal(DAY_42.briefs.soon, 'day42_invite'); assert.equal(DAY_42.briefs.back, 'day42_wait_home');
 // arms only at day 42, fighting (or secure), in a breath, with no shot, seat or card, the hull alive, not the arena, not won, Isao free
 { const c = createPartyClock(DAY_42); assert.deepEqual(c.tick(0.1, { ...calm, day: 41 }), []); assert.deepEqual(c.tick(0.1, { ...calm, breathing: false }), []);
   for (const k of ['shot', 'seated', 'card', 'boss', 'won', 'isaoBusy']) assert.deepEqual(c.tick(0.1, { ...calm, [k]: true }), [], `${k} holds it off`);
@@ -24,7 +24,7 @@ assert.equal(DAY_42.countdown, 30); assert.equal(DAY_42.back, 20); assert.equal(
 { const c = createPartyClock(DAY_42); c.tick(0.1, calm); assert.deepEqual(c.tick(31, calm), ['back', 'start']); }
 // the countdown is an invitation: a seat, a shot, a card, Isao busy or a breath gone does NOT cancel it (the cut at 1.5 s asks the seat and the shot again)
 { const c = createPartyClock(DAY_42); c.tick(0.1, calm); const busy = { ...calm, seated: true, shot: true, card: true, isaoBusy: true, breathing: false, fighting: false };
-  assert.deepEqual(toParty(c, busy), ['back', 'start'], 'seated and under a shot: the countdown runs on'); assert.equal(c.state().phase, 'party'); }
+  assert.deepEqual(toParty(c, busy), ['back'], 'the invitation waits through a seat or shot'); assert.equal(c.state().phase, 'countdown'); assert.deepEqual(c.tick(.1,calm),['start']); }
 // a hull death or the win during the countdown cancels it quietly: no party this run, the hold released
 for (const k of ['alive', 'won']) { const c = createPartyClock(DAY_42); c.tick(0.1, calm); run(c, 0.1, 5, calm);
   assert.deepEqual(c.tick(0.1, { ...calm, [k]: k === 'won' }), ['cancel'], `${k}: cancelled`); assert.equal(c.state().phase, 'done'); assert.equal(c.holding(), false);
@@ -44,3 +44,5 @@ for (const k of ['alive', 'won']) { const c = createPartyClock(DAY_42); c.tick(0
 { const c = createPartyClock(DAY_42); c.tick(0.1, calm); run(c, 0.1, 1, calm); let s = c.state().t; for (let i = 0; i < 50; i++) c.tick(0, calm); assert.equal(c.state().t, s);
   toParty(c); run(c, 0.1, 1, calm); s = c.state().t; for (let i = 0; i < 50; i++) c.tick(0, calm); assert.equal(c.state().t, s); }
 console.log('disco-party-clock ok');
+
+{const c=createPartyClock(DAY_42);assert.deepEqual(c.tick(.1,{...calm,home:false}),['announce']);assert.deepEqual(run(c,.25,90,{...calm,home:false}),['back']);assert.equal(c.state().phase,'countdown');assert.equal(c.state().t,DAY_42.countdown);assert.equal(c.holding(),true);assert.deepEqual(c.tick(.1,{...calm,home:true}),['start']);assert.deepEqual(c.tick(.1,{...calm,home:true}),[]);}

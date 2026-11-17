@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-landing-helmet-telemetry",
+  "date": "2026-11-16",
+  "type": "change",
+  "status": "resolved",
+  "title": "Landing telemetry projected around the view as a worn helmet HUD",
+  "context": "The owner supplied two fighter HUD references and asked to replace the small upper-left landing panel with prominent transparent helmet symbology, retaining every reading while keeping the rocket and central view clear.",
+  "outcome": "The existing landing HUD now fills the viewport without a backing panel. Large peripheral speed and ground-altitude readings have live moving scales; sink and fuel are emphasized, signed attitude and angular rate flank the upper central gap, and thrust, T/W, drift, stopping distance, gear state, annunciation, verdict and keyboard/touch controls remain. Thin faded visor edges, local scanlines, restrained phosphor glow and dimmed scale markings provide the worn green display treatment without filtering the game image. Amber preserves urgent warnings. Layout adapts to portrait and short landscape; lower instruments clear the tutorial controls, and the tutorial card moves to the upper right only during short landscape arrivals. Flight physics and camera are unchanged. Local only.",
+  "alternatives": [
+    "A full center pitch ladder or opaque glass texture would obscure the rocket; place primary instruments around the clear corridor instead.",
+    "The first browser image revealed fuel under the tutorial card. Raised the lower instruments and added rectangle-overlap checks at desktop, portrait and landscape sizes.",
+    "The new bank scale exposed the old arrow sign inversion; its pointer now moves toward the labelled negative side for negative tilt, covered by a signed-attitude test."
+  ],
+  "evidence": [
+    "npm test: all 360 test programs passed; node test/landing-hud.mjs also passes added numeric telemetry and signed bank-pointer checks.",
+    "npm run test:browser -- --landing-helmet: ten live readings, primary type size and peripheral placement, transparent root, no tutorial/readout overlap at 1440x900, 390x844 and 844x390, and CLEAN manual touchdown.",
+    "Inspected artifacts/browser/landing-helmet.png, landing-helmet-mobile.png, landing-helmet-landscape.png and landing-helmet-final-descent.png.",
+    "npm run check and npm run build passed.",
+    "One existing presentation owner, src/fx/landing-hud.js, and scoped styles; no new runtime module, controller wiring or asset dependency."
+  ],
+  "supersedes": []
+}

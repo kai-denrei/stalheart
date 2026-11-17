@@ -55,7 +55,8 @@ const newLog = run((w) => { const host = { ...w.fixed }; for (const k of getN) {
 // RE-BASED 2026-11-02 (round 4, note 1: SOFT_HUNT.pace.white 1.35 -> 1.6, the phage's prog only; at 1.35 the log is '31678498317acf18' again)
 // RE-BASED 2026-11-05 (round 5, note 8: ENEMY_SPEC amoeba 1.15 -> 1.5, phage 0.75 -> 1.45, the dot ladder; the phage's and amoeba's prog only; with the old
 // speeds the log is '859ae72644c46b22' again)
-const GOLDEN = 'b7c86d5690abd15a';
+// RE-BASED 2026-11-16: requested 15% global walk pace; breach-only boost is tested below.
+const GOLDEN = 'cb371915f70fd636';
 assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), GOLDEN, 'the enemy loop behaves as the controller block did');
 print('Enemy step: the queue released on its clock, the walk, a kill and the board cleared, as the controller block did.');
 
@@ -97,7 +98,7 @@ print('Enemy step: the queue released on its clock, the walk, a kill and the boa
 // bowl's depth under the lip to where it stands, with no step at the end; a dot cloud is announced by a blob at the lip, a Pearl body is not (it is its own)
 {
   const { EMERGENCE } = await import(R + 'src/content/story-defaults.js'), { holeFloor } = await import(R + 'src/domain/hole-floor.js'), { CONTENT } = await import(R + 'src/content/runtime.js');
-  assert.deepEqual([EMERGENCE.climb, EMERGENCE.pop, EMERGENCE.rim, EMERGENCE.out], [0.5, 0.25, 0.95, 1.35], 'faster: climb 1.1 -> 0.5, pop 0.3 -> 0.25 (the rim and the start as they were)');
+  assert.deepEqual([EMERGENCE.climb, EMERGENCE.pop, EMERGENCE.rim, EMERGENCE.out], [0.05, 0.032, 0.95, 1.35], 'quicker climb and pop without changing the rim position');
   const go = (spec) => {
     const log = [], w = world(log), host = { ...w.fixed }, emerged = [];
     for (const k of getN) { host[k] = () => w.st[k]; host['set' + k[0].toUpperCase() + k.slice(1)] = (v) => (w.st[k] = v); }
@@ -143,4 +144,20 @@ print('Enemy step: the queue released on its clock, the walk, a kill and the boa
   assert.equal(host.spawnQueue.length, 2, 'the wave keeps its place and its clock');
   assert.ok(host.spawnQueue.every((q) => !q.guard && q.at >= 5), 'only the wave waits');
   print('Enemy step: a nest\'s guards go down at once, past a wave still waiting in the queue.');
+}
+
+// Requested pacing: a modest global change, with a temporary boost only at
+// the breach. This compares actual progress under the same seeded walker.
+{
+ const sample=(mult,near)=>{
+  const w=world([]),host={...w.fixed};for(const key of getN){host[key]=()=>w.st[key];host['set'+key[0].toUpperCase()+key.slice(1)]=v=>w.st[key]=v;}
+  host.params={...host.params,enemySpeed:mult};host.spawnQueue=[{...host.spawnQueue[0],type:'amoeba'}];
+  const ctl=createEnemyStep(host);ctl.updateEnemies(.01,.01);const e=host.enemies[0];e.emergeAge=99;e.behUntil=0;e.slowUntil=0;e.paceJitter=1;
+  if(near){e.breachSource=new THREE.Object3D();e.breachSource.userData.cells=1;e.riseAt=near==='rim'?e.cur:(e.cur+10)%30;}
+  const before=e.prog;ctl.updateEnemies(.01,.02);return e.prog-before;
+ };
+ const pace=imps.WALK_BIAS.pace,base=sample(1/pace,false),normal=sample(1,false);
+ assert.ok(Math.abs(normal/base-1.15)<1e-8,'15% faster normal movement');
+ assert.ok(Math.abs(sample(1,'rim')/normal-imps.EMERGENCE.exitPace)<1e-8,`extra speed at the sinkhole exit: ${sample(1,'rim')/normal} expected ${imps.EMERGENCE.exitPace}`);
+ assert.ok(Math.abs(sample(1,'far')/normal-1)<1e-8,'exit boost ends away from the sinkhole');
 }

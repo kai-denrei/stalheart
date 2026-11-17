@@ -37,7 +37,7 @@ export const COMPANIONS = freeze({
   // its own `padM`); a born unit inside that box is moved out of it every frame (src/domain/friendly-push.js), the hull not slowed
   hull: { halfLength: 4.4, halfWidth: 2.2, pad: 0.8 },
   units: [
-    { id: 'c07', name: 'C-07', kind: 'feline', model: 'assets/models/c07/c07_d0_lod1.glb', far: 'assets/models/c07/c07_d0_lod2.glb',
+    { id: 'c07', padM: 1.4, name: 'C-07', kind: 'feline', model: 'assets/models/c07/c07_d0_lod1.glb', far: 'assets/models/c07/c07_d0_lod2.glb',
       idle: 'Watch_Idle', sit: 'Sit_Down', tricks: ['Roll_Over', 'Give_Paw'], top: 7, accel: 7, turn: 3.2, trot: 4, born: 'pet_born_c07',   // no middle gait: the trot is a lope on the gallop clip at 0.65
       gaits: [{ clip: 'Feline_Walk_Cycle', mps: 0.5417, max: 1.1 }, { clip: 'Gallop_Cycle', mps: 6.111, max: 9 }] },
     { id: 'k9', name: 'RECKON K9', kind: 'canine', model: 'assets/models/reckon-k9/reckon_k9_d0_lod1.glb', far: 'assets/models/reckon-k9/reckon_k9_d0_lod2.glb',
@@ -93,7 +93,7 @@ export const COMPANIONS = freeze({
   ],
   play: {
     idle: [1.5, 4], wander: [0.45, 0.65], dash: [0.75, 1], trot: 2.3, sitSecs: [3, 6], trick: 0.25, wanderMax: 14,
-    chase: { secs: [8, 14], tagM: 1.6, flee: 0.75, every: [20, 45], first: 8, startM: 25, awayM: 20 },
+    chase: { secs: [8, 14], tagM: 2.4, flee: 0.75, every: [20, 45], first: 8, startM: 25, awayM: 20 },
     greet: { nearM: 6.5, every: [40, 90], first: 25 },   // round 8 note 3: 3 m off the hull's point sat a greeting cat inside the 8.8 m hull; now its half length + pad + 1 m (4.4 + 0.8 + 1, rounded up)
     dance: { dash: [0.45, 0.7], dashS: 3, sitSecs: [1.5, 2.5], floorM: [5, 13], hullM: 9 },
     dodge: { nearM: 6, rangeM: 60, laneM: 5, leadS: 3, movingMps: 0.5, closingMps: 0.3, stillMps: 0.3, stillS: 1, clearM: 12, maxS: 6 },

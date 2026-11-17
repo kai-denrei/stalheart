@@ -5,7 +5,7 @@ import { LANDING_GAME } from '../src/content/landing-game.js';
 // a minimal document: a real tree (append, remove, replaceChildren), querySelector by '#id', classList, textContent, style, hidden, listeners
 function node(tag) {
   const el = {
-    tag, id: '', className: '', hidden: false, textContent: '', style: {}, dataset: {}, attrs: {}, children: [], parent: null, handlers: {},
+    tag, id: '', className: '', hidden: false, textContent: '', style: { setProperty(k,v) { this[k]=v; } }, dataset: {}, attrs: {}, children: [], parent: null, handlers: {},
     setAttribute(k, v) { el.attrs[k] = v; },
     append(...c) { for (const n of c) { n.parent = el; el.children.push(n); } },
     appendChild(n) { el.append(n); return n; },
@@ -59,6 +59,13 @@ assert.equal(LANDING_GAME.verdict.hard.sink, 6, 'the hot lines are the verdict\'
   hud.set({ altitude: 200, sink: 1, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 0, fuel: LANDING_GAME.fuel.lowSeconds, legs: 0, phase: 'manual' }); assert.ok(root.querySelector('#lh-fuel').classList.contains('hot'), 'at the low line reads hot');
   hud.set({ altitude: 200, sink: 1, driftAlong: 0, driftAcross: 0, tilt: 0, tw: 1, hStop: 0, fuel: 0, legs: 0, phase: 'manual' }); assert.equal(root.querySelector('#lh-fuel').textContent, 'EMPTY'); assert.ok(root.querySelector('#lh-fuel').classList.contains('hot'));
   hud.verdict({ grade: 'CRASH', reason: 'sink', sink: 33.3, drift: 0, tilt: 0 }); assert.equal(root.querySelector('#lh-verdict').textContent, 'LANDING · CRASH · SINK 33.3'); assert.equal(root.querySelector('#lh-verdict').className, 'lh-verdict crash'); }
+// The helmet uses signed attitude: a negative lean goes toward the left scale.
+hud.set({altitude:80,speed:19,sink:18,driftAlong:-1,driftAcross:0,tilt:-.25,tiltRate:.1,throttle:.4,tw:1.5,hStop:20,fuel:16,legs:1});
+const attitudeGroup=hud.el.children.find(n=>n.className==='lh-instrument lh-attitude');
+assert.equal(attitudeGroup.children.find(n=>n.className==='lh-bank').style['--tilt'],'-0.25rad');
+assert.equal(root.querySelector('#lh-speed').textContent,'19.0');assert.equal(root.querySelector('#lh-throttle').textContent,'40');
+assert.equal(root.querySelector('#lh-tilt').textContent,'-14.3');assert.equal(root.querySelector('#lh-rate').textContent,'5.7');
+
 // the live regions are the annunciator and the verdict, not the whole panel (its numbers change every frame)
 assert.equal(root.querySelector('#landing-hud').attrs['aria-live'], undefined); assert.equal(root.querySelector('#lh-ann').attrs['aria-live'], 'polite'); assert.equal(root.querySelector('#lh-verdict').attrs['aria-live'], 'polite');
 

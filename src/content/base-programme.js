@@ -40,14 +40,14 @@ export const BASE_PROGRAMME = Object.freeze([
   // wait on it (owner: "faster intro, more intensity")
   { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], board: true, first: true, pays: 600, when: { phase: 'foundry' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
   { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], board: true, first: true, when: { phase: 'foundry' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
-  { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
-  { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
+  { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 13, metres: 8, brief: 'build_bays', perk: 'hulls' },
+  { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 13, metres: 16, brief: 'build_hugin', perk: 'gunship' },
   // THE DEPOT (owner, 2026-11-05, round 8 note 7): the Bio-Pearls the bank lives in, the rover's pad and the SAI-92's bay, printed straight after
   // HUGIN on a bare page; until it stands a kill pays the bank at once as it always did, from its perk on the bodies' biomass lies on the
   // ground for the rover (src/fx/rover-glue.js). On a skipped opening it stands from the start (stage 8)
-  { id: 'depot', label: 'depot', islands: ['depot'], structures: ['pearl-a', 'pearl-b', 'pearl-c', 'sai92-bay', 'sai92'], when: { sector: 1, idle: true }, seconds: 14, metres: 6, brief: 'build_depot', perk: 'depot' },
+  { id: 'depot', label: 'depot', islands: ['depot'], structures: ['pearl-a', 'pearl-b', 'pearl-c', 'sai92-bay'], when: { sector: 1, idle: true }, seconds: 14, metres: 6, brief: 'build_depot', perk: 'depot' },
   { id: 'radar', label: 'radar', islands: ['radar'], structures: ['radar'], when: { sector: 2 }, seconds: 12, metres: 18, brief: 'build_radar', perk: 'uplink', closeup: 'antenna' },   // closeup: the print on screen, its line said over the cut (ANTENNA_CLOSEUP below)
-  { id: 'assembly', label: 'assembly line', islands: ['assembly'], structures: ['assembly'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_assembly', perk: 'rebuild' },
+  { id: 'assembly', label: 'assembly line', islands: ['assembly'], structures: ['assembly'], when: { sector: 2, idle: true }, seconds: 13, metres: 8, brief: 'build_assembly', perk: 'rebuild' },
   // THE BACK GATE (owner, 2026-09-18: "back gate is a reminder that focusing on defense on one side leaves one open; surprise it
   // opens! ... Then Isao installs a gate and we can put sentries"). It is NOT pre-built: sector 2 cracks the mouth behind the bays
   // open as the surprise, the player holds it with the tank, SOL-82 and the gunship, and only once that back breach is closed or
@@ -79,10 +79,10 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'board', label: 'scoreboard', islands: ['board'], board: true, when: { sector: 1, idle: true }, seconds: 6, metres: 3, brief: 'build_board', perk: 'board' },
   // THE GARAGE (owner, 2026-10-03): the A6 paint bay, printed straight after the board; its perk puts the purple PIMP MY RIDE pad in it
   { id: 'garage', label: 'paint garage', islands: ['garage'], structures: ['garage'], board: true, when: { sector: 1, idle: true }, seconds: 10, metres: 6, brief: 'build_garage', perk: 'garage' },
-  { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory', 'ammo-a', 'ammo-b', 'ammo-c'], board: true, when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
-  { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], board: true, when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
-  { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], board: true, when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
-  { id: 'launcher', label: 'ARC-01 launcher', islands: ['launcher'], structures: ['launcher'], board: true, when: { sector: 4, idle: true, manned: 2 }, passable: true, seconds: 20, metres: 12, brief: 'build_launcher', perk: 'launcher' },
+  { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory', 'ammo-a', 'ammo-b', 'ammo-c'], board: true, when: { sector: 2, idle: true }, seconds: 13, metres: 8, brief: 'build_armory', perk: 'armory' },
+  { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], board: true, when: { sector: 3, idle: true }, seconds: 13, metres: 6, brief: 'build_farm', perk: 'farm' },
+  { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], board: true, when: { sector: 4, idle: true }, seconds: 11, metres: 5, brief: 'build_chips', perk: 'chips' },
+  { id: 'launcher', label: 'ARC-01 launcher', islands: ['launcher'], structures: ['launcher'], board: true, when: { sector: 4, idle: true, manned: 2 }, passable: true, seconds: 16, metres: 12, brief: 'build_launcher', perk: 'launcher' },
   // THE FOURTH PEARL (round 8 note 7), last so the board's four structure cards keep the colony's own ahead of it: +12,000 kg of storage on the depot, a board card from the board before sector 3 (the ledger's sector 3 is
   // where an ideal bank first passes the three pearls' 36,000 kg); standing, it adds its vessel to the bank's cap (src/fx/rover-glue.js reads the
   // step done, not a perk: the depot's perk opens the pearl's entry in the terminal, and the card's thumbnail is that entry's, `board: 'pearl'`)
@@ -103,7 +103,7 @@ export const BASE_PROGRAMME = Object.freeze([
   // host's standing(id), src/platform/story-world.js stands) and the gantry is home (`when.home`: Isao's print beam never meets the KIDOU on a road).
   // No island under a bridge, so `frame` makes its plot the plan's own frame x, z and heading, and `plot` the deck's strip (src/fx/base-print.js).
   // `passable`: a bridge whose domes were never bought holds nothing up, not even the other bridges, and is not owed
-  ...COLONY_BRIDGES.map((p) => ({ id: bridgeId(p), label: `bridge ${p.join('-').toUpperCase()}`, structures: [bridgeId(p)], frame: true, plot: BRIDGE_PLOT, when: { stand: p.map(domeId), home: true }, passable: true, seconds: 8, metres: 6, brief: 'build_bridge', perk: null })),
+  ...COLONY_BRIDGES.map((p) => ({ id: bridgeId(p), label: `bridge ${p.join('-').toUpperCase()}`, structures: [bridgeId(p)], frame: true, plot: BRIDGE_PLOT, when: { stand: p.map(domeId), home: true }, passable: true, seconds: 6, metres: 6, brief: 'build_bridge', perk: null })),
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
 // THE RECON DOG'S OPENING (owner, 2026-11-10, his call 1: "the Stålheart prints AFTER the Rotor fight, not from the deploy"; spec

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { createBasePrint } from '../src/fx/base-print.js';
+const drawn={},base={growIsland:(id,k)=>{drawn.island=k;},grow:(id,k)=>{drawn[id]=k;}},step={id:'dome-w',islands:['dome-w'],structures:['dome-w']};
+const print=createBasePrint({base,plan:{islands:[],structures:[]},placer:{}});
+print.partial(step,.7);const shell=drawn['dome-w'];
+print.partial(step,.2);assert.equal(drawn['dome-w'],shell,'spending biomass retains the shell');
+print.partial(step,0);assert.equal(drawn['dome-w'],shell,'changing jobs retains the shell');
+print.progress(step,.1);assert.equal(drawn['dome-w'],shell,'a worker taking over cannot rewind the print');
+assert.equal(print.progressOf(step),.7);
+print.finish(step);print.partial(step,.8);assert.equal(drawn['dome-w'],1,'late preview callbacks cannot remove a finished dome');
+assert.equal(print.progressOf(step),1);
+console.log('Print retention: spending, job handoff and late preview callbacks preserve built layers.');

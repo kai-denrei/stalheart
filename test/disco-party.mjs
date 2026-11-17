@@ -152,7 +152,7 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
   assert.equal(p.state().phase, 'done'); assert.equal(p.holding(), false); assert.deepEqual(log.briefs, [DAY_42.briefs.soon]); assert.deepEqual(log.played, []); assert.equal(log.armed, 0);
   alive = true; tickTo(p, 60); assert.equal(p.state().phase, 'done', 'no party after'); assert.equal(scene.getObjectByName('DISCO_BALL_ROOT'), undefined); assert.deepEqual(log.briefs, [DAY_42.briefs.soon]); }
 { let on = false; const { h, log } = host(); h.seated = () => on; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
-  assert.equal(p.state().phase, 'countdown'); on = true; countdown(p); assert.equal(p.state().phase, 'party', 'seated: the party still starts');
+  assert.equal(p.state().phase, 'countdown'); on = true; countdown(p); assert.equal(p.state().phase, 'countdown', 'the party waits for the seat'); on=false;p.tick(.1);on=true;
   assert.deepEqual(log.briefs, [DAY_42.briefs.soon, DAY_42.briefs.back, DAY_42.briefs.start]); tickTo(p, 2); assert.deepEqual(log.shots, [], 'seated at the cut: no startShot'); }
 // the state reports the countdown's own time
 { const { h } = host(); const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); for (let k = 0; k < 20; k++) p.tick(0.25);
@@ -180,7 +180,7 @@ for (const k of ['seated', 'shotActive']) { let on = false; const { h, log } = h
 // the held back line is dropped at the party's start: Isao busy from 20 s to 31 s of the countdown, then free: the party's own line shows, the back line never does
 { let busy = false; const { h, log } = host(); h.isaoBusy = () => busy; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1);
   for (let k = 0; k < (DAY_42.back - 0.25) / 0.25; k++) p.tick(0.25); busy = true; for (let k = 0; k < 45; k++) p.tick(0.25);   // busy from 19.75 s to 31 s
-  assert.equal(p.state().phase, 'party', 'the party has started'); assert.deepEqual(log.briefs, [DAY_42.briefs.soon], 'busy through the start: nothing shown');
+  assert.equal(p.state().phase, 'countdown', 'Isao finishes the current line before starting'); assert.deepEqual(log.briefs, [DAY_42.briefs.soon], 'busy through the start: nothing shown');
   busy = false; p.tick(0.25); assert.deepEqual(log.briefs, [DAY_42.briefs.soon, DAY_42.briefs.start], "the party's line shown, the back line dropped");
   tickTo(p, 5); assert.ok(!log.briefs.includes(DAY_42.briefs.back), 'the back line is never shown'); }
 { let busy = false; const { h, log } = host(); h.isaoBusy = () => busy; const p = createDiscoParty(h); p.tick(0.1); await new Promise((r) => setTimeout(r, 5)); p.tick(0.1); countdown(p);

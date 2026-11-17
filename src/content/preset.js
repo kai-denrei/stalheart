@@ -8,7 +8,7 @@ import { IMPACT_KNOBS, IMPACT_FAMILIES, IMPACT_RECIPES } from './impact-schema.j
 export const PRESET_BASE = 'stalheart-fx-8';
 // the sound keys version 8 added (the Rotor's own firing from its optic, the gunship's 40 mm, and DAY 42's track on 2026-10-18): a package
 // from before one of them gains it at the baseline, so the shipped package and every saved one load without a version bump
-const V8_SOUNDS = ['rotor_pov_fire', 'gunship_bofors_fire', 'gunship_rotary_fire', 'day_42_music', 'feids_reentry', 'mech_reentry_woosh', 'mech_landing_impact'];   // + FEIDS-26's three (2026-10-23)
+const V8_SOUNDS = ['k9_bark', 'rotor_pov_fire', 'gunship_bofors_fire', 'gunship_rotary_fire', 'day_42_music', 'feids_reentry', 'mech_reentry_woosh', 'mech_landing_impact'];   // + FEIDS-26's three (2026-10-23)
 export const AUDIO_KNOBS = Object.freeze([
   { key:'gain', min:0, max:2, step:.01 },
   { key:'maxVoices', min:1, max:32, step:1 },
@@ -99,6 +99,7 @@ export const serializePreset = p => JSON.stringify(canonical(validatePreset(p)),
 export function parsePreset(text) {
   if (typeof text!=='string' || text.length>250000) throw Error('Preset exceeds 250 KB');
   let p=JSON.parse(text);
+  if(p?.audio && /^stalheart-fx-[2-8]$/.test(p.base) && !Object.hasOwn(p.audio,'k9_bark')) p={...p,audio:{...p.audio,k9_bark:clone(baselinePreset().audio.k9_bark)}};
   const legacy=p && /^stalheart-fx-[2-5]$/.test(p.base);
   // Explicit additive migration: old visual/audio edits survive; the new lab
   // presentation fields start at the accepted baseline. Never mutate the input.

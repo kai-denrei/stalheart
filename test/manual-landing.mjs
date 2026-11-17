@@ -125,7 +125,7 @@ import { hStop, predictImpact, verdict, flareDue, flareStep, touched } from '../
 }
 { // the flare: due below its altitude inside its corridor, never above it or outside; and it settles the rocket to the ground
   const s = { ...createLanding(entry), y: 25, vy: -5, vx: 2, tilt: 0.1 };
-  assert.equal(flareDue(s, T), true); assert.equal(flareDue({ ...s, y: 40 }, T), false); assert.equal(flareDue({ ...s, vy: -9 }, T), false); assert.equal(flareDue({ ...s, vx: 6 }, T), false); assert.equal(flareDue({ ...s, tilt: 0.3 }, T), false);
+  assert.equal(flareDue(s, T), false); assert.equal(flareDue({ ...s, y: 40 }, T), false); assert.equal(flareDue({ ...s, vy: -9 }, T), false); assert.equal(flareDue({ ...s, vx: 6 }, T), false); assert.equal(flareDue({ ...s, tilt: 0.3 }, T), false);
   let f = { ...s }; for (let i = 0; i < 3000 && !touched(f); i++) flareStep(f, DT, T);
   assert.ok(touched(f), 'lands'); assert.ok(Math.abs(f.vy) <= T.flare.sinkFinal + 0.05, `settles at the final sink (${f.vy.toFixed(2)})`);
   assert.ok(Math.abs(f.vx) < 0.2 && Math.abs(f.tilt) < 0.02 && f.legsDown, 'drift and tilt killed, legs down');
@@ -184,7 +184,7 @@ console.log('manual-landing: rules ok');
   const s = createLanding({ ...entry, sink: 1, drift: 0, tilt: -0.3 }); s.legs = 1; s.legsDown = true;
   const v = verdict(s, 0, false, T); assert.equal(v.grade, 'WRECK'); assert.equal(v.reason, 'tilt'); assert.ok(Math.abs(v.tilt - 0.3) < 1e-12);
   const f = createLanding({ ...entry, altitude: 20, sink: 2, drift: 0, tilt: -0.3 });
-  assert.equal(flareDue(f, T), false, 'a -0.3 tilt is outside the 0.25 corridor'); f.tilt = -0.2; assert.equal(flareDue(f, T), true);
+  assert.equal(flareDue(f, T), false, 'a -0.3 tilt is outside the 0.25 corridor'); f.tilt = -0.2; assert.equal(flareDue(f, T), false, 'manual through touchdown');
 }
 console.log('manual-landing: drift on x ok');
 { // the host's pose (spec 14, the frame note): Rz(-tilt) puts the hull's up (0, 1, 0) on the thrust direction (sin tilt, cos tilt, 0)
@@ -241,3 +241,5 @@ console.log('manual-landing: pose ok');
   const t = engineShot([0, 0, 0], 0.2, 3, I); near(t.look, [3 * Math.sin(0.2), 3 * Math.cos(0.2), 0], 'tilted: up the hull\'s axis'); assert.equal(t.eye[0], t.look[0], 'the eye straight back: no swing across');
   console.log('manual-landing: intro ok');
 }
+
+assert.equal(flareDue({y:2,vy:-1,vx:0,vz:0,tilt:0}, T), false, 'no automatic takeover near the pad');

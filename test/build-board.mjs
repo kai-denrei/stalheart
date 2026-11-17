@@ -254,3 +254,5 @@ const world = (over = {}) => ({ steps: CLASSIC, done: new Set(FIRST_STEPS), boug
   assert.equal(calls.length, 1, 'the one printed step, once'); assert.equal(calls[0][0], 'foundry'); assert.equal(calls[0][1]?.replay, true, 'printed(step, { replay: true })');
 }
 console.log('Build board: six offers in priority, two picks within the bank, the bought set gates the programme.');
+
+{const w=world({hauler:{available:true,price:2400,label:'SECOND SAI-93',effect:'Two holds'}}),offers=boardOffers(w,BUILD_BOARD);assert.equal(offers[0].id,'hauler:second');assert.equal(offers[0].price,2400);assert.equal(pickable(offers,[],'hauler:second',2399),false);assert.equal(pickable(offers,[],'hauler:second',2400),true);w.hauler.available=false;assert.ok(!boardOffers(w,BUILD_BOARD).some(o=>o.kind==='hauler'));}

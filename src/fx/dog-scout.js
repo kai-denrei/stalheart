@@ -21,17 +21,20 @@ import { COMPANIONS } from '../content/companions.js';
 import { createScout, drive, steer, surveyStep, allSurveyed, knock, stepKnock, release, pickPoints, contactCell, jump, stepJump, trick, stepTrick } from '../domain/dog-scout.js';
 import { BLOCKED, bfsDist, bfsPath } from '../dungeon.js';
 import { makeSiteRing, disposeSiteRing } from './site-ring.js';
+import { createScoutScan } from './scout-scan.js';
+import { createScoutSpecimens } from './scout-specimens.js';
 
 const D = DOG_SCOUT, K9 = COMPANIONS.units.findIndex((u) => u.id === D.unit), TUNE = { ...D, top: D.drive.sprint ?? COMPANIONS.units[K9]?.top ?? 5.5 };
 const chord = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 export function createDogScout(h) {
-  let s = createScout([]), begun = false, active = false, homeNow = false, contact = -1, points = [], rings = [], hud = null, birthChecked = false, lens = null;
+  let s = createScout([]), begun = false, active = false, homeNow = false, atGate = false, watching = false, watchBlend = 0, gateTarget = -1, contact = -1, points = [], rings = [], hud = null, birthChecked = false, lens = null;
   let path = null, pathAt = -9, pathFor = null, clock = 0, said = 0, solid = new Map(), solidAt = -99;
+  let specimens = null; const scanner = createScoutScan(h.scene, h.metres());
   const pos = new THREE.Vector3(), heading = new THREE.Vector3(), camFwd = new THREE.Vector3(), up = new THREE.Vector3(), v = new THREE.Vector3(), w = new THREE.Vector3(), x = new THREE.Vector3();
   const tmpCam = new THREE.PerspectiveCamera(); let cell = -1, keysOn = null, padEl = null, liftMax = 0, landed = 0;
   const moveKeys = Object.fromEntries([[D.jump.key, 'jump'], ...Object.entries(D.tricks).map(([id, t]) => [t.key, id])]);
-  const doMove = (id) => { if (!active) return false; return id === 'jump' ? jump(s, TUNE) : trick(s, id, TUNE); };
+  const doMove = (id) => { if (!active) return false; const ok = id === 'jump' ? jump(s, TUNE) : trick(s, id, TUNE); if (ok && D.tricks[id]?.sound) h.sfx?.play(D.tricks[id].sound, { dist: 0 }); return ok; };
   function onKey(e) {
     const id = active && moveKeys[e.code]; if (!id) return;
     e.preventDefault(); e.stopImmediatePropagation();
@@ -61,18 +64,21 @@ export function createDogScout(h) {
     const cands = [], out = [];
     for (let ci = 0; ci < g.centers.length; ci++) { if (hops[ci] < 0 || d.tags[ci] === BLOCKED) continue; (inside(ci) ? cands : out).push({ ci, hops: hops[ci] }); }
     const gate = st.gateCell ?? -1, toward = gate >= 0 ? g.centers[gate] : null;
+    if(gate>=0){const aim=new THREE.Vector3().fromArray(centre(gate)).normalize(),back=new THREE.Vector3().fromArray(centre(d.heart)).projectOnPlane(aim).normalize();aim.addScaledVector(back,D.gate.standM*m()).normalize();gateTarget=cands.filter(p=>!solidCell(p.ci)).sort((a,b)=>chord(centre(a.ci),aim.toArray())-chord(centre(b.ci),aim.toArray()))[0]?.ci??gate;}
     const ring = pickPoints({ centers: g.centers, heart: d.heart, cands: cands.filter((p) => !solidCell(p.ci)), toward }, TUNE);
     points = ring.map((ci, i) => ({ ci, kind: D.points.kinds[i % D.points.kinds.length] }));
     contact = gate >= 0 ? contactCell({ centers: g.centers, cands: out, gateHops: hops[gate], toward: d.spawn >= 0 ? g.centers[d.spawn] : null }, TUNE) : -1;
     s = createScout(points.map((p) => ({ ci: p.ci, kind: p.kind.id })));
+    specimens?.dispose(); specimens = createScoutSpecimens(h.scene, points.map((p) => ({ point: centre(p.ci), cell: p.ci, kind: p.kind.id })), m());
   }
 
   // the chase rig behind the dog (a shot's pose: src/fx/camera-shot.js); the rig's heading follows the dog's over camera.ease seconds
   function chase(out) {
     const M = m(), C = D.camera; up.copy(pos).normalize();
     const p = v.copy(up).multiplyScalar(1 + 0.2 * M);
-    out.pos.copy(p).addScaledVector(up, C.up * M).addScaledVector(camFwd, -C.back * M);
-    tmpCam.position.copy(out.pos); tmpCam.up.copy(up); tmpCam.lookAt(w.copy(p).addScaledVector(up, C.lookUp * M).addScaledVector(camFwd, C.ahead * M));
+    out.pos.copy(p).addScaledVector(up, (C.up+(D.gate.cameraUp-C.up)*watchBlend) * M).addScaledVector(camFwd, -(C.back+(D.gate.cameraBack-C.back)*watchBlend) * M);
+    tmpCam.position.copy(out.pos);tmpCam.up.copy(up);w.copy(p).addScaledVector(up,C.lookUp*M).addScaledVector(camFwd,C.ahead*M);
+    if(watchBlend>0&&gateTarget>=0)w.lerp(new THREE.Vector3().fromArray(centre(h.story().gateCell)).addScaledVector(up,D.gate.lookUp*M),watchBlend);tmpCam.lookAt(w);
     out.quat.copy(tmpCam.quaternion);
   }
   function takeShot() {
@@ -110,8 +116,8 @@ export function createDogScout(h) {
     const done = allSurveyed(s);
     points.forEach((p, i) => { const k = hud.marks[i]; if (done || s.surveyed.includes(i)) { k.style.display = 'none'; return; } markAt(k, centre(p.ci), `${p.kind.label} · ${metresTo(centre(p.ci))} M${s.ring === i ? ` · ${Math.min(99, Math.round(100 * s.ringT / D.survey.seconds))}%` : ''}`); });
     const hm = hud.marks[points.length];
-    if (done) markAt(hm, centre(dg().heart), `${D.words.homeMark} · ${metresTo(centre(dg().heart))} M`); else hm.style.display = 'none';
-    hud.line.textContent = `${D.words.hint} · ${done ? D.words.home : D.words.surveyed(s.surveyed.length, points.length)}`;
+    if (done) markAt(hm, centre(gateTarget), `${D.words.homeMark} · ${metresTo(centre(gateTarget))} M`); else hm.style.display = 'none';
+    hud.line.textContent = watching ? 'HOLD POSITION · ISAO IS PRINTING THE GATE AND SENTRIES' : `${D.words.hint} · ${done ? D.words.home : D.words.surveyed(s.surveyed.length, points.length)}`;
   }
 
   // a step to `p` (a unit vector) is free: its cell and the cell at the body's leading edge are open floor, and no standing structure is there
@@ -124,6 +130,7 @@ export function createDogScout(h) {
   }
   function moveBy(dir, metres) {
     v.copy(pos).addScaledVector(dir, metres * m()).normalize();
+    if(h.traffic?.blocked(pos.toArray(),v.toArray(),D.drive.radiusM*m(),'companion:k9'))return false;
     const ci = free(v, dir); if (ci < 0) return false;
     pos.copy(v); cell = ci; return true;
   }
@@ -132,7 +139,7 @@ export function createDogScout(h) {
   // the next target: the nearest unsurveyed point, or the heart once all are; a waypoint three cells along the walk to it (open floor, off the
   // standing structures), read by the harness's driver (state().steer)
   function target() {
-    if (allSurveyed(s)) return { i: 'home', ci: dg().heart };
+    if (allSurveyed(s)) return { i: 'gate', ci: gateTarget>=0?gateTarget:dg().heart };
     let best = null, bd = Infinity;
     points.forEach((p, i) => { if (s.surveyed.includes(i)) return; const d = chord(pos.toArray(), centre(p.ci)); if (d < bd) { bd = d; best = { i, ci: p.ci }; } });
     return best;
@@ -147,40 +154,50 @@ export function createDogScout(h) {
   const bearingTo = (ci) => { const t = tangent(x, pos, v.fromArray(centre(ci)).normalize()); if (!t) return 0; up.copy(pos).normalize(); return Math.atan2(w.crossVectors(heading, t).dot(up), heading.dot(t)); };
 
   function grant(i) {
-    const p = points[i]; h.eco()?.addBiomass(D.survey.pay, { category: 'grant' });
+    const p = points[i]; if (!h.auto) scanner.complete(p.kind.id, clock); h.eco()?.addBiomass(D.survey.pay, { category: 'grant' });
     if (!h.auto) { h.showToast?.(`<div class="wave-num">${D.words.toast(p.kind.label, D.survey.pay)}</div>`, 1600); dimRing(i); }
     if (!h.auto && said < D.words.lines.length && s.surveyed.length < points.length) h.showBrief?.(D.words.lines[said++]);
   }
-  const pose = (oneShot = null, rate = 1) => ({ pos: pos.toArray(), heading: heading.toArray(), speed: s.speed, oneShot, rate, lift: s.lift });
+  const pose = (oneShot = null, rate = 1) => ({ pos: pos.toArray(), heading: heading.toArray(), speed: s.speed, oneShot, rate, lift: s.lift, bark: s.trick?.id === 'bark' ? Math.max(0, Math.sin((D.tricks.bark.seconds - s.trick.left) * Math.PI * 4 / D.tricks.bark.seconds)) : 0 });
 
   function tick(dt) {
     clock += dt;
+    specimens?.tick(dt, clock, h.camera);
     const cs = c();
     // THE DOG STANDS AS A COMPANION wherever the opening is not its own (a chapter, SKIP TUTORIAL, a static stage, a jump): born at once
     if (!birthChecked && cs && h.story()?.beats) { birthChecked = true; const st = h.story().beats.state(); if (st.scout == null && st.settle == null && cs.life(K9) === 'unborn') cs.birth(K9); }
-    if (!active || !cs) return;
+    if (!active || !cs) { scanner.tick({ time: clock }); return; }
     if (!h.shotActive()) takeShot();   // another shot took the camera and ended (or ended ours): the chase again
+    if(h.traffic){pos.fromArray(h.traffic.resolve(pos.toArray(),D.drive.radiusM*m(),'companion:k9'));cell=nearestFrom(cell,pos);}
     const input = h.held();
     if (stepKnock(s, dt, TUNE) === 'up') cs.driven(K9, pose());
     const wasUp = !!s.air; stepJump(s, dt, TUNE); stepTrick(s, dt, input); liftMax = Math.max(liftMax, s.lift); if (wasUp && !s.air && s.mode === 'driving') landed++;
-    const st = steer(s, input, dt, TUNE);
+    const st = steer(s, watching ? {} : input, dt, TUNE);
     up.copy(pos).normalize();
     if (st.turn) heading.applyAxisAngle(up, st.turn);
+    if (D.tricks[s.trick?.id]?.faceCamera) {
+      const toward = h.camera.position.clone().sub(pos).projectOnPlane(up).normalize().applyAxisAngle(up, Math.PI / 4);
+      heading.lerp(toward, 1 - Math.exp(-dt / 0.16)).normalize();
+    }
     heading.addScaledVector(up, -heading.dot(up)).normalize();
     if (Math.abs(st.speed) > 1e-3 && !moveBy(heading, st.speed * dt)) s.speed = 0;
     // the rig's heading after the dog's
     up.copy(pos).normalize(); camFwd.addScaledVector(up, -camFwd.dot(up)); if (camFwd.lengthSq() < 1e-12) camFwd.copy(heading);
-    camFwd.lerp(heading, 1 - Math.exp(-dt / D.camera.ease)).addScaledVector(up, -camFwd.dot(up)).normalize();
+    camFwd.lerp(s.trick ? camFwd : heading, 1 - Math.exp(-dt / D.camera.ease)).addScaledVector(up, -camFwd.dot(up)).normalize();
     // the survey
     let ring = -1; const R = D.survey.ringM * m();
     points.forEach((p, i) => { if (ring < 0 && chord(pos.toArray(), centre(p.ci)) <= R) ring = i; });
     const got = surveyStep(s, dt, ring, TUNE); if (got >= 0) grant(got);
+    const target = ring >= 0 ? specimens?.point(ring) : null;
+    scanner.tick({ origin: cs.socket?.(K9, 'SOCKET_SENSOR'), point: target, kind: points[ring]?.kind.id, progress: s.ringT / D.survey.seconds, time: clock, scanning: ring >= 0 && !s.surveyed.includes(ring) });
     // a body touching the dog knocks it down and away
     if (s.mode === 'driving' && s.graceLeft <= 0) for (const e of h.enemies?.() ?? []) {
       if (!e.alive || e.guard || !e.pos || chord(e.pos, pos.toArray()) > D.knock.touchM * m()) continue;
       if (knock(s, TUNE)) { const away = tangent(x, v.fromArray(e.pos).normalize(), pos.clone()); if (away) for (let k = 0; k < 8 && moveBy(away, D.knock.pushM / 8); k++); }
       break;
     }
+    watchBlend+=(Number(watching)-watchBlend)*(1-Math.exp(-dt/D.gate.ease));
+    atGate = allSurveyed(s) && (gateTarget<0 || chord(pos.toArray(),centre(gateTarget))<=D.survey.ringM*m() || chord(pos.toArray(),centre(h.story().gateCell))<=D.gate.arriveM*m());
     homeNow = chord(pos.toArray(), centre(dg().heart)) <= D.home.cells * h.cellSide();
     cs.driven(K9, s.mode === 'knocked' ? pose(D.knock.clip) : s.air ? pose(D.jump.clip, D.jump.rate) : pose(s.trick?.clip ?? null));
     paintHud();
@@ -202,14 +219,15 @@ export function createDogScout(h) {
       if (!points.length || !cs || !at || h.auto) {   // no seat: the surveys counted done, the dog home
         for (let i = 0; i < points.length; i++) { s.surveyed.push(i); grant(i); }
         if (!points.length) s.points = [];
-        homeNow = true; return true;
+        homeNow = true; atGate = true; return true;
       }
       pos.fromArray(at.pos).normalize(); heading.fromArray(at.heading); cell = at.cell; camFwd.copy(heading);
       drive(s); active = true; homeNow = true; listen(true);
       cs.driven(K9, pose()); showRings(); makeHud(); takeShot(); paintHud();
       return true;
     },
-    state: () => ({ begun, active, auto: !!h.auto, mode: s.mode, surveyed: s.surveyed.length, total: points.length, done: begun && (allSurveyed(s) || !points.length), home: homeNow, contact, knocks: s.knocks }),
+    watchGate() { scanner.dismiss();watching=true;s.speed=0;s.trick=null;listen(false); },
+    state: () => ({ begun, active, auto: !!h.auto, mode: s.mode, surveyed: s.surveyed.length, total: points.length, done: begun && (allSurveyed(s) || !points.length), atGate: atGate || !!h.auto, watching, home: homeNow, contact, knocks: s.knocks }),
     release() {
       const cs = c();
       listen(false);
@@ -220,16 +238,16 @@ export function createDogScout(h) {
     test: {
       state: () => {
         const tg = active ? target() : null, wp = tg ? waypoint(tg) : null;
-        return { begun, active, auto: !!h.auto, mode: s.mode, speed: +s.speed.toFixed(2), knocks: s.knocks, surveyed: s.surveyed.slice(), total: points.length, home: homeNow, contact, cell,
-          points: points.map((p, i) => ({ ci: p.ci, kind: p.kind.id, m: active ? Math.round(chord(pos.toArray(), centre(p.ci)) / m()) : null, surveyed: s.surveyed.includes(i) })),
-          target: tg?.i ?? null, steer: wp != null ? +bearingTo(wp).toFixed(3) : null, ring: s.ring, ringT: +s.ringT.toFixed(2),
+        return { begun, active, atGate, watching, gateTarget, auto: !!h.auto, mode: s.mode, speed: +s.speed.toFixed(2), knocks: s.knocks, surveyed: s.surveyed.slice(), total: points.length, home: homeNow, contact, cell,
+          facingCamera: +heading.dot(h.camera.position.clone().sub(pos).projectOnPlane(pos).normalize()).toFixed(3), scan: scanner.state(), points: points.map((p, i) => ({ ci: p.ci, kind: p.kind.id, m: active ? Math.round(chord(pos.toArray(), centre(p.ci)) / m()) : null, surveyed: s.surveyed.includes(i) })),
+          specimens: specimens?.state() ?? [], target: tg?.i ?? null, steer: wp != null ? +bearingTo(wp).toFixed(3) : null, ring: s.ring, ringT: +s.ringT.toFixed(2),
           homeM: active ? Math.round(chord(pos.toArray(), centre(dg().heart)) / m()) : null, life: c()?.life(K9) ?? null, shot: h.shotActive() ? 'on' : 'off',
           air: !!s.air, lift: +s.lift.toFixed(3), liftMax: +liftMax.toFixed(3), jumps: s.jumps, landed, trick: s.trick?.id ?? null, tricks: s.tricks, clip: c()?.state?.()?.units?.[K9]?.clip ?? null };
       },
       move: (id) => doMove(id),   // the harness's hand on a move key (the key itself goes through the same doMove)
       // the harness's hands: the dog set on a point's centre (or 'home'), the rest of the drive the player's
-      goto: (i) => { if (!active) return false; const ci = i === 'home' ? dg().heart : points[i]?.ci; if (ci == null) return false; pos.fromArray(centre(ci)).normalize(); cell = ci; return true; },
+      goto: (i, offsetM = 0) => { if (!active) return false; const ci = i === 'home' ? dg().heart : i === 'gate' ? gateTarget : points[i]?.ci; if (ci == null) return false; pos.fromArray(centre(ci)).normalize().addScaledVector(heading, -offsetM * m()).normalize(); cell = nearestFrom(ci, pos); return true; },
     },
-    dispose() { this.release(); },
+    dispose() { scanner.dispose(); this.release(); specimens?.dispose(); specimens = null; },
   };
 }

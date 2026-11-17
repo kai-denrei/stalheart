@@ -1,9 +1,10 @@
+import { FRIENDLY_TRAFFIC as CLEARANCE } from '../content/friendly-traffic.js';
 // ISAO THE WORKER (moved out of src/td-tab.js unchanged, the refactor run, 2026-10-07): the construction drone and his assistant,
 // the order book (orders, orderByCell), the travel and the print, the print beam, and flying him by hand in the drone view.
 // The controller keeps the two drones themselves (isao, assistant: its lets, read everywhere) and hands them in with setters.
-// `host` hands in the controller: its fixed objects and functions as values (X_AXIS, Z_AXIS, automated, checkAchievements,
+// `host` hands in the controller: its fixed objects and functions as values (automated, checkAchievements,
 // commitTower, disposeObj, effectiveStats, flashShopNote, keys, params, placeError, placeTowerObj, scene, sfx, showBrief,
-// showRangeRing, tmpObj, tmpQ, towers, updateHud), what it rebinds or declares later as getters (cellSide, dungeon, eco, graph, run,
+// showRangeRing, tmpObj, towers, updateHud), what it rebinds or declares later as getters (cellSide, dungeon, eco, graph, run,
 // sectorRun, story, storyApi, t, throttle) and the two drones as getters with setters (isao/setIsao, assistant/setAssistant).
 import { BASE_BUILDER } from '../content/base-programme.js';
 import { unlockedTowers } from '../domain/expeditions.js';
@@ -72,6 +73,17 @@ export function createIsaoWorker(host) {
     return norm3(add3(scale3(from, s0), scale3(to, s1)));
   }
 
+  function advanceWorker(w,target,angle,dt) {
+    w.poseDt=dt;
+    if(!host.traffic){w.dir=stepDir(w.dir,target,angle);return;}
+    const m=host.cellSide()/10,pad=CLEARANCE.workerRadiusM*m,id=w===host.isao()?'isao':'assistant';
+    const ahead=stepDir(w.dir,target,Math.max(angle,CLEARANCE.lookAheadM*m));
+    const need=1+host.traffic.ceiling(w.dir,ahead,pad,id)+pad,want=Math.max(isaoRadius(),need);
+    const old=w.flightRadius??isaoRadius(),rate=CLEARANCE.climbMps*m*dt;
+    w.flightRadius=old+Math.max(-rate,Math.min(rate,want-old));w.avoiding=w.flightRadius<need-1e-8;
+    if(!w.avoiding)w.dir=stepDir(w.dir,target,angle);
+  }
+
   function spawnIsao() {
     if (host.isao() || !host.graph() || !host.dungeon()) return Promise.resolve(false);
     return preloadFabricator().then((ok) => {
@@ -87,39 +99,28 @@ export function createIsaoWorker(host) {
     });
   }
   function placeWorker(w = host.isao()) {
-    const p = isaoPos(w.dir);
+    const pad=CLEARANCE.workerRadiusM*host.cellSide()/10;
+    const safe=1+(host.traffic?.ceiling(w.dir,w.dir,pad,w===host.isao()?'isao':'assistant')??0)+pad;
+    w.flightRadius=Math.max(w.flightRadius??isaoRadius(),isaoRadius(),safe);
+    const p=scale3(w.dir,w.flightRadius);
     w.obj.position.set(p[0], p[1], p[2]);
-    // up is its own radial; face where it is going (or where it is working)
-    // he faces what he is doing: the site while flying to it AND while
-    // printing it, his drift when idle. The build case used to fall through
-    // to a stale loiter point, so he printed with his back to the work —
-    // invisible until a camera was hung off his facing.
-    host.tmpObj.position.copy(w.obj.position);
-    host.tmpObj.up.set(w.dir[0], w.dir[1], w.dir[2]);
-
-    // WHILE PILOTED HE FACES WHERE HE IS FLYING. This is the bug the operator saw as "rotates on an unnatural axis": the aim
-    // below falls back to w.loiter, and pilotIsao sets loiter to his own POSITION, so the lookAt target sat on top of him, the
-    // distance guard skipped the lookAt entirely, and his quaternion was left stale from whatever it last was. He was not
-    // rotating oddly — he was not being oriented at all.
-    if (w === host.isao() && host.params.view === 'drone' && isaoHeading) {
-      const ahead = add3(p, scale3(isaoHeading, host.cellSide()));
-      host.tmpObj.lookAt(ahead[0], ahead[1], ahead[2]);
-      w.obj.quaternion.copy(host.tmpObj.quaternion);
-      // LEAN AND BANK, composed as quaternions onto the facing — never written as Euler on the same object, which would replace
-      // the whole orientation and put us straight back to an unnatural axis. This project has that dead end on record twice.
-      host.tmpQ.setFromAxisAngle(host.X_AXIS, isaoLean);
-      w.obj.quaternion.multiply(host.tmpQ);
-      host.tmpQ.setFromAxisAngle(host.Z_AXIS, isaoRoll);
-      w.obj.quaternion.multiply(host.tmpQ);
-      return;
+    // A quadcopter yaws in its tangent plane; the work target must never pitch
+    // the propellers sideways or turn the downward nozzle into a forward gun.
+    const aim = w === host.isao() && host.params.view === 'drone' && isaoHeading
+      ? isaoHeading : sub3(w.order ? norm3(host.graph().centers[w.order.ci]) : w.loiter, w.dir);
+    let forward = sub3(aim, scale3(w.dir, dot3(aim, w.dir)));
+    if (len3(forward) < 1e-5) {
+      const old = new THREE.Vector3(0,0,1).applyQuaternion(w.obj.quaternion).toArray();
+      forward = sub3(old, scale3(w.dir, dot3(old,w.dir)));
     }
-
-    // autonomous: he faces what he is doing — the site while flying to it AND
-    // while printing it, his drift when idle
-    const aim = w.order ? norm3(host.graph().centers[w.order.ci]) : w.loiter;
-    const t = isaoPos(aim);
-    if (dist3(t, p) > 1e-4) host.tmpObj.lookAt(t[0], t[1], t[2]);
-    w.obj.quaternion.copy(host.tmpObj.quaternion);
+    if (len3(forward) < 1e-5) forward = tangentBasis(w.dir)[0];
+    forward=norm3(forward);
+    const old=new THREE.Vector3(0,0,1).applyQuaternion(w.obj.quaternion).toArray(),flat=sub3(old,scale3(w.dir,dot3(old,w.dir)));
+    if(len3(flat)>1e-5){const from=norm3(flat),angle=Math.atan2(dot3(w.dir,cross3(from,forward)),dot3(from,forward)),limit=CLEARANCE.workerYaw*(w.poseDt??1/60),turn=Math.max(-limit,Math.min(limit,angle));
+      forward=add3(scale3(from,Math.cos(turn)),scale3(cross3(w.dir,from),Math.sin(turn)));}
+    const target = add3(p,forward);
+    host.tmpObj.position.copy(w.obj.position);host.tmpObj.up.fromArray(w.dir);
+    host.tmpObj.lookAt(...target);w.obj.quaternion.copy(host.tmpObj.quaternion);
   }
   const placeIsao = () => placeWorker(host.isao());
 
@@ -194,7 +195,7 @@ export function createIsaoWorker(host) {
 
   function finishOrder(order) {
     dropSiteRing(order);
-    if (order.kind === 'structure') { host.storyApi().printed(order.step); host.sfx.play('tower_upgrade'); } else if (order.kind === 'repair') { host.storyApi().repaired(order.repair); host.sfx.play('tower_upgrade'); } else if (order.kind === 'receive') { order.done?.(); /* the part is in: the glue calls the unlock */ } else if (order.kind === 'tower') {   /* a piece of the base Isao printed, or a piece of it the swarm took back (src/content/base-programme.js, src/domain/repair-orders.js) */
+    if (order.kind === 'structure') { host.storyApi().printed(order.step); host.sfx.play('tower_upgrade'); } else if (order.kind === 'repair') { host.storyApi().repaired(order.repair); host.sfx.play('tower_upgrade'); } else if (order.kind === 'receive' || order.kind === 'fabrication') { order.done?.(); /* the part is in: the glue calls the unlock */ } else if (order.kind === 'tower') {   /* a piece of the base Isao printed, or a piece of it the swarm took back (src/content/base-programme.js, src/domain/repair-orders.js) */
       const ghost = order.ghost, drop = () => { if (ghost) { host.scene.remove(ghost); host.disposeObj(ghost); } }; order.ghost = null;
       // re-check: the world moved while he flew (a strike, a sell, a tower
       // someone else put here). If the cell went bad, the biomass comes back.
@@ -241,9 +242,7 @@ export function createIsaoWorker(host) {
   // were the sphere's curvature leaking into the probe, not the model. 0.32
   // rad is a visible ~18 degrees: enough to read as a quadcopter tipping into
   // its acceleration, short of looking like a stall.
-  const ISAO_LEAN = 0.32;    // rad of nose-down at full forward
-  const ISAO_ROLL = 0.24;    // rad of bank into a turn
-  let isaoLean = 0, isaoRoll = 0;
+
   const ISAO_FLY = 3.4;      // cells/s under power
   function pilotIsao(dt) {
     const up = host.isao().dir;
@@ -268,7 +267,7 @@ export function createIsaoWorker(host) {
     const drive = host.keys.fast ? 1 : host.keys.slow ? -0.6 : (host.throttle() !== 0 ? host.throttle() : 0);
     if (drive) {
       const step = ISAO_FLY * host.cellSide() * drive * dt;
-      host.isao().dir = norm3(add3(host.isao().dir, scale3(h, step)));
+      advanceWorker(host.isao(),norm3(add3(host.isao().dir,scale3(h,step))),Math.abs(step),dt);
       host.isao().loiter = host.isao().dir.slice();   // he holds where you left him
     }
     // ALTITUDE ON SPACE / SHIFT, held rather than tapped — a drone climbs
@@ -276,14 +275,7 @@ export function createIsaoWorker(host) {
     // learned it that way.
     const climb = (host.keys.droneUp ? 1 : 0) - (host.keys.droneDown ? 1 : 0);
     if (climb) isaoAlt = Math.max(1.2, Math.min(9, isaoAlt + climb * ISAO_CLIMB * dt));
-    // LEAN. A quadcopter does not translate flat: it tips into the direction
-    // it is accelerating and rights itself when it stops. The lean EASES
-    // toward the demand rather than snapping, which is most of why it reads
-    // as a flying thing rather than a sliding one.
-    const wantLean = drive * ISAO_LEAN;
-    isaoLean += (wantLean - isaoLean) * Math.min(1, dt * 4.5);
-    const wantRoll = -steer * ISAO_ROLL;
-    isaoRoll += (wantRoll - isaoRoll) * Math.min(1, dt * 4.5);
+    if (!drive) advanceWorker(host.isao(), host.isao().dir, 0, dt);
     host.isao().obj.userData.spinRotors(dt, Math.abs(drive) * 0.8 + 0.2);
     if (host.isao().obj.userData.setFace) {
       host.isao().obj.userData.setFace(drive ? 'focused' : 'curious');
@@ -298,12 +290,13 @@ export function createIsaoWorker(host) {
   // every camera / face / probe site that names him is untouched.
   function stepWorker(w, dt) {
     const speed = ISAO_CELLS_SEC * host.cellSide();   // radians per second
+    if(w.state==='build')advanceWorker(w,w.dir,0,dt);
     if (w.state === 'idle') {
       // CLAIM THE FIRST ORDER NOBODY HAS. With two workers on one FIFO this
       // is the whole change: the queue stays the queue, each drone takes the
       // oldest unclaimed job, and the order carries its worker so finishing
       // and cancelling can find the right one.
-      const free = orders.find((o) => !o.worker && o.kind !== 'receive') ?? orders.find((o) => !o.worker);   /* a part to receive waits for every print */
+      const free = orders.find((o) => !o.worker && o.ready?.() !== false && o.kind !== 'receive') ?? orders.find((o) => !o.worker && o.ready?.() !== false);   /* a part to receive waits for every print */
       if (free) {
         free.worker = w;
         w.order = free;
@@ -322,12 +315,12 @@ export function createIsaoWorker(host) {
           w.loiter = norm3(add3(hd,
             add3(scale3(t1, Math.cos(a) * off), scale3(t2, Math.sin(a) * off))));
         }
-        w.dir = stepDir(w.dir, w.loiter, speed * 0.35 * dt);
+        advanceWorker(w,w.loiter,speed*.35*dt,dt);
       }
     }
-    if (w.state === 'travel' && w.order?.kind === 'receive' && orders.some((o) => !o.worker && o.kind !== 'receive')) { w.order.worker = null; w.order = null; w.state = 'idle'; } /* a print ordered while he flies to the crate takes him off it; the crate keeps waiting */ if (w.state === 'travel' && w.order) {
+    if (w.state === 'travel' && w.order?.kind === 'receive' && orders.some((o) => !o.worker && o.ready?.() !== false && o.kind !== 'receive')) { w.order.worker = null; w.order = null; w.state = 'idle'; } /* a print ordered while he flies to the crate takes him off it; the crate keeps waiting */ if (w.state === 'travel' && w.order) {
       const target = norm3(host.graph().centers[w.order.ci]);
-      w.dir = stepDir(w.dir, target, speed * dt);
+      advanceWorker(w,target,speed*dt,dt);
       if (dot3(w.dir, target) > 0.99995) {
         w.state = 'build';
         w.dur = w.order.seconds ?? buildSeconds(w.order.cost);
@@ -347,7 +340,7 @@ export function createIsaoWorker(host) {
     } else if (w.state === 'build' && w.order) {
       w.t += dt;
       const k = Math.min(1, w.t / w.dur);
-      const g = w.order.ghost; if (w.order.step) host.story()?.print.progress(w.order.step, k); else if (w.order.repair?.kind === 'gate') host.sectorRun()?.repairGateTo(k, w.order.repair.id ?? 'gate');   /* a structure rises with the print; the gate's own percentage climbs with it */
+      w.order.progress?.(k); const g = w.order.ghost; if (w.order.step) host.story()?.print.progress(w.order.step, k); else if (w.order.repair?.kind === 'gate') host.sectorRun()?.repairGateTo(k, w.order.repair.id ?? 'gate');   /* a structure rises with the print; the gate's own percentage climbs with it */
       if (g) { host.placeTowerObj({ obj: g, ci: w.order.ci, tier: 0, def: w.order.def }); g.userData.print?.set(k); }   // at the sentry's own size and perch, the wireframe rising with the print
       const step = Math.floor(k * (w.order.step?.readout ? 100 : 10));   /* a step read on the HUD (src/fx/build-readout.js) counts by the percent */
       if (step !== w.shown) { w.shown = step; host.updateHud(); }

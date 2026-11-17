@@ -58,8 +58,8 @@ export function createCompanions(h) {
   // a step into a heavy body's footprint (round 6: the pets keep padM + 0.6 m off the mech, and the mech off them; a step away is always free)
   function heavyIn(u, p) {
     for (const o of units) {
-      if (o === u || o.life === 'unborn' || (u.def.kind !== 'heavy' && o.def.kind !== 'heavy')) continue;
-      const r = ((u.def.kind === 'heavy' ? u.def.padM : o.def.padM) + 0.6) * h.metres(), d = p.distanceTo(o.pos);
+      if (o === u || o.life === 'unborn') continue;
+      const r = ((u.def.padM ?? .8) + (o.def.padM ?? .8)) * h.metres(), d = p.distanceTo(o.pos);
       if (d < r && d < u.pos.distanceTo(o.pos)) return true;
     }
     return false;
@@ -169,6 +169,7 @@ export function createCompanions(h) {
     if (d.heading) u.heading.set(d.heading[0], d.heading[1], d.heading[2]);
     u.speed = Math.abs(d.speed ?? 0); u.blocked = false; place(u);
     if (d.lift) u.wrap.position.addScaledVector(u.pos, d.lift * m);   // the jump's arc (2026-11-13): the drawn body off the ground, its point on it
+    if (d.bark) u.wrap.rotateX(-0.12 * d.bark);   // two small chest/head accents with the robotic bark
     if (u.farRoot && u.root) { const lod = def.lodMetres ?? K.lodMetres, dd = u.wrap.position.distanceTo(h.eye()) / m, far = u.isFar ? dd > lod - K.fade : dd > lod; u.isFar = far; u.farRoot.visible = far; u.root.visible = !far; }
     if (!u.mixer) return;
     if (d.oneShot) { if (u.oneShot !== d.oneShot) { u.oneShot = d.oneShot; fadeTo(u, d.oneShot, K.crossfade, true); } u.rate = d.rate ?? 1; if (u.cur) u.cur.timeScale = u.rate; }
@@ -196,7 +197,7 @@ export function createCompanions(h) {
       v.copy(u.pos).addScaledVector(u.heading, u.speed * m * dt).normalize();
       const cell = nearestFrom(u.cell, v), hull = p.mode === 'greet' || p.mode === 'greeted' ? null : h.hull();
       const keep = (def.keepFromHull ?? K.keepFromHull) * m, offHull = hull && Math.hypot(v.x - hull[0], v.y - hull[1], v.z - hull[2]) < keep && Math.hypot(v.x - hull[0], v.y - hull[1], v.z - hull[2]) < Math.hypot(u.pos.x - hull[0], u.pos.y - hull[1], u.pos.z - hull[2]);
-      if ((!roamSet.has(cell) && roamSet.has(u.cell)) || offHull || h.solidAt(v.toArray(), padOf(u)) || heavyIn(u, v)) { u.blocked = true; u.speed = 0; }
+      if ((!roamSet.has(cell) && roamSet.has(u.cell)) || offHull || h.solidAt(v.toArray(), padOf(u)) || heavyIn(u, v) || h.traffic?.blocked(u.pos.toArray(),v.toArray(),padOf(u),`companion:${u.def.id}`)) { u.blocked = true; u.speed = 0; }
       else { u.pos.copy(v); u.cell = cell; }
     }
     x.crossVectors(up, u.heading).normalize(); m4.makeBasis(x, up, u.heading);
@@ -235,7 +236,7 @@ export function createCompanions(h) {
     last = t; ctx.now = t; trackHull(dt);
     if (dt > 0) stepPlay(play, dt, ctx);
     for (let i = 0; i < units.length; i++) stepUnit(units[i], play.units[i], dt);
-    for (const u of units) { pushFromHull(u); measureHull(u); }
+    for (const u of units) { if(u.life==='born'&&!u.driven&&h.traffic){u.pos.fromArray(h.traffic.resolve(u.pos.toArray(),padOf(u),`companion:${u.def.id}`));u.cell=nearestFrom(u.cell,u.pos);seat(u);} pushFromHull(u); const rover = h.rover?.(); if (rover) pushFromHull(u, rover); measureHull(u); }
   }
   // THE HULL PUSHES THEM ASIDE (owner, 2026-11-05, round 8 note 3: "the tank bumping into mechs, cheetah, etc. should push them aside"): after its own
   // step, a born unit inside the hull's box (COMPANIONS.hull, grown by its pad: a pet's 0.8 m, the mech's padM) is moved out of it the least way
@@ -245,11 +246,11 @@ export function createCompanions(h) {
   // driven (5.8 m deep), K0-TECH 13 driven and 60 by the parked hull at the start; after, 0 frames for all four (C-07 shoved 51 times by the drive)
   function hullBox() { const p = h.hull(), d = h.hullDir?.(); return p && d ? { pos: p, dir: d } : null; }
   const hullPad = (u) => (u.def.kind === 'heavy' ? u.def.padM : K.hull.pad);
-  function pushFromHull(u) {
+  function pushFromHull(u, obstacle = undefined) {
     if (u.life !== 'born' || !u.loaded || u.driven) return;
-    const b = hullBox(); if (!b) return; const m = h.metres(), pu = padOf(u);
+    const b = obstacle === undefined ? hullBox() : obstacle; if (!b) return; const m = h.metres(), pu = padOf(u);
     const free = (q) => roamSet.has(nearestFrom(u.cell, v.fromArray(q))) && !h.solidAt(q, pu);
-    const o = pushOut(u.pos.toArray(), b, { halfLength: K.hull.halfLength * m, halfWidth: K.hull.halfWidth * m, pad: hullPad(u) * m, free });
+    const o = pushOut(u.pos.toArray(), b, { halfLength: (b.halfLength ?? K.hull.halfLength) * m, halfWidth: (b.halfWidth ?? K.hull.halfWidth) * m, pad: hullPad(u) * m, free });
     if (!o) return;
     u.pos.fromArray(o.pos); u.cell = nearestFrom(u.cell, u.pos); u.pushes++;
     seat(u);   // pushed off the roam only when no side of the box was free: its next steps are allowed back onto it (stepUnit)
@@ -268,7 +269,7 @@ export function createCompanions(h) {
       game: { on: play.game.on, pair: play.game.pair.slice(), chaser: play.game.chaser, tags: play.game.tags, games: play.game.games, nextAt: +play.game.nextAt.toFixed(1) }, dodges: play.dodges, hullMps: +(hullV.length() / h.metres()).toFixed(2),
       units: units.map((u, i) => ({ id: u.def.id, life: u.life, still: u.still, driven: !!u.driven, mode: play.units[i].mode, speed: +u.speed.toFixed(2), want: +play.units[i].speed.toFixed(2), clip: u.clip, rate: +u.rate.toFixed(2), target: u.goalToken, cell: u.cell, onRoam: roamSet.has(u.cell), blocked: u.blocked, moves: play.units[i].moves, hullM: hullSeen ? +(u.pos.distanceTo(hullP) / h.metres()).toFixed(2) : null, inHullFrames: u.inHullFrames, inHullMax: +u.inHullMax.toFixed(3), pushes: u.pushes, underM: +((u.pos.length() * (h.floorAt?.(u.pos.toArray()) ?? 1) - u.wrap.position.length()) / h.metres()).toFixed(3), far: u.isFar, eyeM: Math.round(u.wrap.position.distanceTo(h.eye()) / h.metres()), wire: wireCount(u.root), pose: u.poser?.state() ?? null, pos: u.pos.toArray().map((c) => +c.toFixed(5)) })),
     }),
-    contacts: () => units.filter((u) => u.loaded && u.life !== 'unborn').map((u) => ({ pos: u.wrap.position.toArray() })),
+    contacts: () => units.filter((u) => u.loaded && u.life !== 'unborn').map((u) => ({ id:`companion:${u.def.id}`, height:u.def.kind==='heavy'?8:2, pos: u.wrap.position.toArray(), dir: u.heading.toArray(), halfLength: u.def.padM ?? K.hull.pad, halfWidth: u.def.kind === 'heavy' ? u.def.padM : K.hull.pad })),
     roots: () => units.map((u) => u.root),
     frameOf(i, pos, quat) { const u = units[i]; if (!u || u.life === 'unborn') return false; pos.copy(u.wrap.position); quat.copy(u.wrap.quaternion); return true; },
     spots: (cells, padM) => spots(cells, padM),
@@ -294,6 +295,7 @@ export function createCompanions(h) {
     life: (i) => units[i]?.life ?? null,
     born: () => units.filter((u) => u.life === 'born').map((u) => u.def.id),
     loaded: (i) => !!units[i]?.loaded,
+    socket(i, name) { const u = units[i], n = u?.root?.getObjectByName(name); if (!n) return null; u.wrap.updateWorldMatrix(true, true); return n.getWorldPosition(new THREE.Vector3()).toArray(); },
     dispose() { disposed = true; for (const u of units) { u.mixer?.stopAllAction(); h.scene.remove(u.wrap); } units.length = 0; },
   };
 }

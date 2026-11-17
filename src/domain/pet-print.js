@@ -34,7 +34,7 @@ export function printGates(tr, w) {
 export function printReady(c) {
   if (c.disabled || c.shot) return false;
   if (c.forced) return true;
-  if (!c.gates || !c.alive || c.won || c.arena || c.seated || c.card || c.isaoBusy) return false;
+  if (!c.gates || !c.alive || c.won || c.arena || c.seated || c.card || c.isaoBusy || c.away) return false;
   if (c.held < c.delay) return false;
   return !closeupHold(c);   // THE CLOSE-UP GATE (2026-11-13): a live wave holds it to the next lull; `patience` no longer lets a print cut into a fight
 }

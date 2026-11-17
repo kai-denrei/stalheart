@@ -65,4 +65,15 @@ const dist = (a, b) => Math.abs(a - b);   // a line of cells: the caller's metri
 { const f = createField(); f.drop(1, 50, 0); f.drop(10, 30, 0); f.drop(12, 30, 0); f.drop(13, 5, 0);
   assert.deepEqual(f.richest(3, dist), { cell: 10, kg: 65 }, 'the richest ground: 10, 12 and 13 within 3 of cell 10'); assert.equal(createField().richest(3, dist), null); }
 assert.deepEqual([FIELD.seep.grace, FIELD.seep.floor, FIELD.seep.share, FIELD.seep.bond, FIELD.seep.cap, FIELD.maxPiles], [20, 0.5, 1 / 400, 3, 0.25, 400], 'the content numbers'); assert.equal(FIELD.decaySeconds, undefined, 'the rot is gone');
-console.log('Biomass field: drop, aggregate, near, take, seepage (grace, bond, cap) and the pile cap hold.');
+// Moving out of a newly opened sinkhole preserves cargo and the original age.
+{ const f = createField({ seep: { grace: 20, floor: 1, share: 0, bond: 1, cap: null } });
+  f.drop(1, 20, 0); f.drop(2, 30, 10); f.tick(10); const v = f.version();
+  assert.equal(f.relocate(() => 3), 2); assert.equal(f.version(), v + 1);
+  assert.deepEqual(f.piles(), [{ cell: 3, kg: 50, at: 10, bodies: 2 }]);
+  assert.equal(f.total(), 50); assert.equal(f.rotted(), 0); assert.equal(f.seeped(), 0);
+  assert.equal(f.tick(25), 5, 'moving and merging do not restart the original grace');
+  assert.deepEqual(f.term(), { laid: 50, seeped: 5 }, 'a move is not a new kill');
+  assert.equal(f.relocate(() => -1), 0, 'failed placement retains the record');
+  assert.equal(f.take(3, 45, 25), 45, 'pickup uses the relocated cell');
+}
+console.log('Biomass field: drop, aggregate, near, take, seepage, relocation and the pile cap hold.');

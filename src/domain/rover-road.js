@@ -18,6 +18,7 @@ const unit = (a) => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / 
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 
 export function clearRun(a, b, clear, o) {
+  if (o.edge && !o.edge(a,b)) return false;
   const surface = o.surface ?? ((p) => p), up = o.up ?? (() => [0, 1, 0]), d = sub(b, a), n = Math.max(1, Math.ceil(len(d) / o.step));
   for (let k = 0; k <= n; k++) {
     const q = surface(add(a, mul(d, k / n)));
@@ -69,4 +70,13 @@ export function roadAt(road, s) {
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= x) lo = m; else hi = m; }
   const a = pts[lo], b = pts[hi], d = sub(b, a), l = cum[hi] - cum[lo], u = l > 0 ? (x - cum[lo]) / l : 0;
   return { point: add(a, mul(d, u)), dir: l > 0 ? unit(d) : null };
+}
+
+// A read-only view of the pinned graph. Vehicle edges may be obstructed even
+// when both cells are open; the kernel and its BFS implementation stay unchanged.
+export function routeAdjacency(adj, edge) {
+  return new Proxy(adj,{get(target,key){
+    const value=Reflect.get(target,key);
+    return typeof key==='string' && Array.isArray(value) ? value.filter(nb=>edge(Number(key),nb)) : value;
+  }});
 }

@@ -14,6 +14,6 @@ assert.equal(cardDue({ wanted: true, leftHome: true, shown: true }), false, 'onc
 assert.equal(cardDue({ wanted: false, leftHome: true }), false, 'not on a page that passes it by');
 assert.equal(cardDue({ wanted: true, leftHome: true, fighting: true }), false, 'not over a live wave');
 assert.equal(cardDue({ wanted: true, leftHome: true, fighting: true, breathing: true }), true, 'a breath in the wave is a lull');
-assert.ok(ROVER_CARD.name === 'YUSHI ROVER' && ROVER_CARD.lines.length >= 2 && ROVER_CARD.lines.length <= 3, 'the name and two or three lines');
+assert.ok(ROVER_CARD.name === 'SAI-93' && ROVER_CARD.lines.length >= 2 && ROVER_CARD.lines.length <= 5, 'the name and concise dispatch, fleet and flare instructions');
 assert.ok(ROVER_CARD.lines.every((l) => l.length > 0 && l.length <= 90), 'short lines');
 console.log('rover-card: ok');

@@ -18,8 +18,8 @@ export function createPartyClock(cfg) {
       if (phase === 'idle') { if (ready(c)) { phase = 'countdown'; t = 0; forced = false; return ['announce']; } return []; }
       if (phase === 'countdown') {
         if (!c.alive || c.won) { phase = 'done'; t = 0; return ['cancel']; }
-        const was = t; t += dt; const ev = []; if (was < cfg.back && t >= cfg.back) ev.push('back');
-        if (t >= cfg.countdown) { phase = 'party'; t = 0; ev.push('start'); }
+        const was = t; t = Math.min(cfg.countdown,t+dt); const ev = []; if (was < cfg.back && t >= cfg.back) ev.push('back');
+        if (t >= cfg.countdown && c.home !== false && free(c)) { phase = 'party'; t = 0; ev.push('start'); }
         return ev;
       }
       if (phase === 'party') { const was = t; t += dt; const ev = []; if (was < cfg.shot.at && t >= cfg.shot.at) ev.push('shot'); if (t >= cfg.seconds) ev.push(...over()); return ev; }

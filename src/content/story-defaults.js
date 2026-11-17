@@ -173,7 +173,7 @@ export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1
 // -0.55 crater radii, and ends where the body stands; a Pearl body rises without the blob (it is drawn in its own colour as it rises; the blob stays for the
 // dot clouds); a record is born at the point it rises from, so its body never crosses the hole to reach it. Measured: release to a visible body 1.27 -> 0.64 s
 // after the queue's delay (docs/log entry 2026-11-05 round 5 stream A)
-export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: 8, facing: Math.PI / 2, out: 1.35, climb: 0.5, pop: 0.25 });
+export const EMERGENCE = Object.freeze({ rim: 0.95, scatter: 0.5, settle: .4, facing: Math.PI / 9, out: 1.35, climb: .05, pop: .032, exitPace: 9, exitCells: 3 });
 // ROUND AN OPEN HOLE, NOT ACROSS IT (owner, 2026-11-02, round 4, note 6; src/domain/crater-dodge.js through src/fx/enemy-step.js): a record within
 // `zone` crater radii of an open hole (src/game-breaches.js craters(), the hull's keep-off rule) is offset sideways off its heading so it stays `pad`
 // cells (a body's radius) beyond the crater's rim, the offset eased over `ease` s; its own hole is skipped while it is still climbing out of it.
@@ -186,7 +186,7 @@ export const BOSS_RUBBLE = Object.freeze({ scale: 3, hold: 60 });
 // THE WALK LEANS ON THE HEART (owner, 2026-10-15: "all enemies must be a bit faster. And with a much stronger bias to head towards the base"):
 // at a cell a record strays onto any exit `stray` of the time (was 0.05) and otherwise takes an exit nearer the heart, `straight` of those times
 // the nearest of them (src/domain/impact-scare.js seekExits; src/fx/enemy-step.js)
-export const WALK_BIAS = Object.freeze({ stray: 0.02, straight: 0.6 });
+export const WALK_BIAS = Object.freeze({ pace: 1.15, stray: 0.02, straight: 0.6 });
 // THE SECOND FRONT (owner, 2026-09-16: "protect the other side of the base"): the sealed clearing mouth nearest +Z, at most
 // `maxCells` wide, collapses with up to `flank` rock cells beside it; back breaches open `hops` steps out from it on lanes at
 // least `margin` hops shorter through the back than through the gate. The collapse shot dives after `preRoll` and holds `hold` seconds at

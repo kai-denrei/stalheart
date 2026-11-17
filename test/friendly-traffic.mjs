@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { createFriendlyTraffic } from '../src/fx/friendly-traffic.js';
+import { inHull } from '../src/domain/friendly-push.js';
+const m=.001,p=x=>[Math.sin(x),Math.cos(x),0];let bodies=[{id:'cat',pos:p(0),dir:[0,0,1],halfLength:1,halfWidth:1,height:2}];
+const traffic=createFriendlyTraffic({metres:()=>m,bodies:()=>bodies,base:()=>({solidAt:q=>Math.abs(q[0]-.012)<.001?'rocket':null,flightCeiling:q=>Math.abs(q[0]-.025)<.002?.03:0})});
+assert.equal(traffic.blocked(p(-.005),p(.005),.0007,'dog'),true,'a fast dog cannot tunnel through a cat');
+assert.equal(traffic.blocked(p(-.005),p(.005),.0007,'cat'),false,'self excluded');
+assert.equal(traffic.blocked(p(.008),p(.016),.0007,'dog'),true,'sampled movement catches the rocket between endpoints');
+const resolved=traffic.resolve(p(0),.0007,'dog');assert.equal(inHull(resolved,bodies[0],{halfLength:.001,halfWidth:.001,pad:.0007}),0);
+assert.ok(traffic.ceiling(p(.02),p(.03),.003,'isao')>=.03,'aerial route anticipates a gantry crossbeam');
+bodies=[{...bodies[0],pos:[0,1.04,0]}];assert.equal(traffic.blocked(p(-.005),p(.005),.0007,'dog'),false,'a high aircraft does not block the ground');
+bodies=[{...bodies[0],pos:p(0)}];assert.equal(traffic.landingClear(p(0),.003,'sai93',true),false,'own landing pad does not exempt a friendly standing on it');
+console.log('Friendly traffic: swept unit/structure contacts, separation, height filtering and air clearance.');
+assert.deepEqual(traffic.resolve([0,-1,0],.0007,'dog'),[0,-1,0],'opposite hemisphere friendlies cannot push this body');
+assert.equal(traffic.ceiling([0,-1,0],[0,-1,0],.003,'isao'),0,'opposite hemisphere aircraft ignored');
+assert.equal(traffic.landingClear([0,-1,0],.003,'sai93'),true);

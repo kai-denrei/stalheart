@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 77 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 78 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Explore SAI-93 as a single crystal and biomass hauler
+
+`2026-11-16-proposal-single-sai93-resource-hauler` · decision · **proposed**
+
+The owner proposed replacing Yushi with a flying SAI-93 that collects both resources. This is an exploration request; the shipping resource system remains unchanged.
 
 ### The flow of stages audited end to end: the timeline as it plays and the problems ranked (docs/FLOW.md)
 

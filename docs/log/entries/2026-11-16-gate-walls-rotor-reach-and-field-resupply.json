@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-gate-walls-rotor-reach-and-field-resupply",
+  "date": "2026-11-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Printed gate walls, immediate Rotor targets, SAI exhaust and eight-flare cargo resupply",
+  "context": "Round 20 requested real walls around the printed gate, Rotor targets within one or two seconds, the Fish joke later, small SAI-93 exhaust and landing wash, a canyon army in the hundreds, eight carried flares refilled at cargo flags with the shell-loading sound, and faster Stalheart printing.",
+  "outcome": "Gate completion marks its blocked wall cells as mended, suppressing raised terrain rocks under the actual wall models while preserving collision. The dog-to-Rotor handoff sets the local quiet-breach state so the established lane head start applies. The two original Fish recordings are restricted to the later idle moment, raised from sector 3. Each SAI owns four small socket-mounted launch plumes and a bounded landing wash using the existing rocket builders; the smoke stays in a fixed planetary frame and the engines extinguish on the ground. The first canyon population remains 1500 requested bodies (baseline browser capture had 624 live records). The repeat canyon still requests 2000, but waits for at least 300 bodies before the SOL handoff, with the existing ten-second queue timeout as a slow-machine fallback. Carried flare capacity is eight; the shared counter and help name the cargo flags, and driving into the cargo drop-off ring refills the supply with one tank_shells sound. Existing base refill locations remain. The cargo pad revalidates its cached cell after structures and blocked ground load, moves its ring to accessible ground if necessary, and excludes solid footprints from placement. STALHEART prints purchased and hungry partial jobs at three times the previous rate; travel speed, retained layers and Isao handoffs remain intact. Changes are local and unpushed.",
+  "alternatives": [
+    "Increasing the canyon totals blindly was unnecessary: the first-canyon baseline already had hundreds. The repeat handoff was arriving before the column filled; gate the presentation on body count instead.",
+    "The first cargo-refill probe timed out; another run refilled at a nearby existing base service. Requiring the tank inside the displayed cargo ring exposed a cached pad chosen before the base finished loading. Revalidate the cached cell and rebuild its visual ring instead of widening a misleading refill radius.",
+    "Early reduced-step miniature plumes rendered too faintly. Preserve the rocket shader sampling field, scale its geometry down and retain 28 march steps; the close-up shows small visible exhaust.",
+    "The repeat-canyon browser assertion initially counted actor records rather than squad members. Expose the handoff body count from the encounter owner; the passing capture records 318 bodies.",
+    "The new aircraft effect belongs in src/fx/resource-thrusters.js, using existing launch-plume and landing-wash owners; no duplicate particle or shader implementation and no new top-level module."
+  ],
+  "evidence": [
+    "npm test: 367 programs; npm run check; npm run build.",
+    "node test/host-contracts.mjs: 85 factories. Architecture guard: 225 pure-layer modules, td-tab.js 5391 lines below 5450. This round adds no controller lines; the accumulated local tree is +26 controller lines versus HEAD.",
+    "Focused tests: programme-host, story-beats, voice-hooks, gantry-route, hungry-build, cargo, canyon, sector-run, flare-status, resource-aircraft and resource-thrusters.",
+    "npm run test:browser -- --round20: opening section passed; a valid Rotor target was available on the first probe (1 ms). The resource section exposed the cargo placement issue fixed afterward.",
+    "npm run test:browser -- --round20-resources: real pinned SAI rig, flight and descending wash, eight F inputs plus empty refusal, physical cargo-ring refill and one shell-loading sound.",
+    "npm run test:browser -- --canyon: baseline 624 live records at the seat, 516 burned. --canyon-again: 318 bodies at handoff, 480 live records in the seat capture, 376 burned.",
+    "Visual captures: artifacts/browser/round20-gate-and-rotor.png, round20-sai-fx-close.png, round20-empty-flares.png, round20-refilled-flares.png and skip-tutorial-canyon-again-seat.png."
+  ],
+  "supersedes": []
+}

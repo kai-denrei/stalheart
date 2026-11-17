@@ -13,37 +13,37 @@
 // src/domain/hungry-build.js): hunger(step, k, { progress, stall }) sends a parked KIDOU out to the next dome the bank has not bought and holds its
 // tool over it, the dome printed to k (0..1) of its tool's share (the host's share of the bank), the beam dim and slow while `stall`. It is never a real job:
 // home() stays true so the programme may start one, and start() takes it over (the same dome: printed on from where it stands; another: the
-// partial undone, the road home, then out to the bought one). hunger(null) undoes the partial and drives home.
+// partial preserved, the road home, then out to the bought one). hunger(null) keeps the partial and drives home.
 import { gantryStop, timeline, poseAt, yawOf, headingOf, toolShare } from '../domain/gantry-route.js';
 import { reachedAt } from '../domain/kidou-jobs.js';
 
 export function createGantryDrive({ base, cells, tune, split = () => 0.3, id = 'stalheart', near = 0.5 }) {
-  const homeYaw = yawOf(tune.heading);
+  const homeYaw = yawOf(tune.heading), printSeconds = step => step.seconds / (tune.printRate ?? 1);
   let job = null, at = { x: tune.home[0], z: tune.home[1], yaw: homeYaw }, roll = 0, turned = 0, trips = 0;
   const by = {};   // who printed what (owner, 2026-11-13: "the bigger ones are his"): 'kidou' whole, 'kidou+isao' when Isao's beam took the rest
   const show = (p, extra = {}) => { at = { x: p.x, z: p.z, yaw: p.yaw }; base.move(id, p.x, p.z, headingOf(p.yaw)); base.rig(id, { mode: p.mode, distance: roll + p.distance, turnAngle: turned + p.turnAngle, speed: p.speed, omega: p.omega, tip: null, ...extra }); };
   const begin = (legs, phase) => { job.legs = legs; job.phase = phase; job.t = 0; };
-  // a hungry job given up: its partial undone, the road home from the cell (or on to it and back, mid-drive)
-  const leave = () => { job.leaving = true; if (job.phase === 'hold') { job.progress?.(job.step, 0); begin(timeline(job.stop.points.slice().reverse(), at.yaw, homeYaw, tune), 'back'); } };
+  // a hungry job given up: its partial preserved, the road home from the cell (or on to it and back, mid-drive)
+  const leave = () => { job.leaving = true; if (job.phase === 'hold') begin(timeline(job.stop.points.slice().reverse(), at.yaw, homeYaw, tune), 'back'); };
   const api = {
     home: () => !job || !!job.hungry,
-    hunger(step, k, { progress, stall = false, rising = 2 } = {}) {
+    hunger(step, k, { progress, stall = false, rising = 2, head = 0 } = {}) {
       if (job && !job.hungry) return;
       if (job && (!step || job.step.id !== step.id)) { if (!job.next && !job.leaving) leave(); return; }
       if (!step) return;
       if (!job && !(k > 0)) return;   // nothing in the bank toward it yet: KIDOU stays parked (once out, a spent bank holds it there, stalled)
-      if (!job) { const stop = gantryStop(cells, tune, step.cell); if (!stop) return; const s = split(step); job = { step, stop, progress, split: s, share: toolShare(s, tune), k: 0, hungry: true, want: 0 }; begin(timeline(stop.points, at.yaw, null, { ...tune, arrive: true }), 'out'); }
+      if (!job) { const stop = gantryStop(cells, tune, step.cell); if (!stop) return; const s = split(step); job = { step, stop, progress, split: s, share: toolShare(s, tune), k: head, hungry: true, want: 0 }; begin(timeline(stop.points, at.yaw, null, { ...tune, arrive: true }), 'out'); }
       job.want = job.share * Math.min(1, Math.max(0, k)); job.stall = stall; job.rising = rising; job.progress = progress;
     },
-    start(step, { progress, hand }) {
+    start(step, { progress, hand, head = 0 }) {
       if (job?.hungry) {
-        if (job.step.id === step.id && !job.leaving) { Object.assign(job, { hungry: false, progress, hand }); if (job.phase === 'hold') { job.phase = 'print'; job.t = (job.k / job.share) * Math.max(0.1, step.seconds * job.share); } return true; }
-        job.next = { step, progress, hand }; if (!job.leaving) leave(); return true;
+        if (job.step.id === step.id && !job.leaving) { Object.assign(job, { hungry: false, progress, hand }); if (job.phase === 'hold') { job.phase = 'print'; job.t = (job.k / job.share) * Math.max(0.1, printSeconds(step) * job.share); } return true; }
+        job.next = { step, progress, hand, head }; if (!job.leaving) leave(); return true;
       }
       if (job) return false;
       const stop = gantryStop(cells, tune, step.cell); if (!stop) return false;
       const s = split(step), share = toolShare(s, tune);
-      job = { step, stop, progress, hand, split: s, share, k: 0 };
+      job = { step, stop, progress, hand, split: s, share, k: Math.min(share, head) };
       begin(timeline(stop.points, at.yaw, null, { ...tune, arrive: true }), 'out');
       return true;
     },
@@ -62,19 +62,19 @@ export function createGantryDrive({ base, cells, tune, split = () => 0.3, id = '
         if (!reachedAt(at, hd, tune.tool, job.stop.cell, near) && !job.retried) { job.retried = true; begin(timeline([[at.x, at.z], job.stop.points.at(-1)], at.yaw, null, { ...tune, arrive: true }), 'out'); return; }
         job.reach = reach;
         if (job.hungry) { job.phase = 'hold'; job.t = 0; if (job.leaving) leave(); return; }
-        job.phase = 'print'; job.t = 0;
+        job.phase = 'print'; job.t = job.k * printSeconds(job.step);
       }
       // the hungry hold: the dome eases toward the bank's share, the tool over its layer, the beam stalled once it stops rising
       if (job.phase === 'hold') {
-        const was = job.k, rate = dt / Math.max(0.1, job.step.seconds);   // the print's own pace, up or (a bank spent elsewhere) back down
-        job.k = job.want > job.k ? Math.min(job.want, job.k + rate) : Math.max(job.want, job.k - rate);
+        const was = job.k, rate = dt / Math.max(0.1, printSeconds(job.step));   // the print's own pace, only forward; spending elsewhere pauses it
+        job.k = Math.max(job.k, Math.min(job.want, job.k + rate));
         if (job.k !== was) { job.progress?.(job.step, job.k); job.rose = 0; } else job.rose = (job.rose ?? 0) + dt;
         const layer = Math.max(0, (job.k - job.split) / (1 - job.split)) * tune.top;
         base.rig(id, { mode: 'fabricate', distance: roll, turnAngle: turned, speed: 0, omega: 0, tip: Math.min(tune.reach, Math.max(3.6, layer + tune.nozzle)), layer, stall: job.stall || job.rose > job.rising });
         return;
       }
       if (job.phase === 'print') {
-        const dur = Math.max(0.1, job.step.seconds * job.share), k = Math.min(job.share, (job.t / dur) * job.share);
+        const dur = Math.max(0.1, printSeconds(job.step) * job.share), k = Math.min(job.share, (job.t / dur) * job.share);
         job.k = k; job.progress(job.step, k);
         // the tip over the layer: the structure's share of k is its height's share of the dome's top
         const layer = Math.max(0, (k - job.split) / (1 - job.split)) * tune.top;

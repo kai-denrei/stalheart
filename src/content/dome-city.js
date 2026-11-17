@@ -104,9 +104,9 @@ export const DOME_DROPPED = Object.freeze(['radar', 'assembly', 'armory', 'farm'
 export const COLONY_PAD = Object.freeze({ foot: 18 });
 export const COLONY_GANTRY = Object.freeze({
   home: Object.freeze([4.5, 0]), heading: Object.freeze([0, 1]),
-  speed: 4, turn: 0.39, tool: 2.6,
+  speed: 8, turn: 0.78, tool: 2.6, printRate: 9,
   reach: 11.26, nozzle: 0.8, top: 23.3,
-  seconds: 30,   // a dome's whole print, the gantry's share and Isao's together
+  seconds: 22,   // a dome's whole print, the gantry's share and Isao's together
 });
 // KIDOU'S INSIDE (owner, 2026-11-13: "once the mobile Stalheart is ready, it should be moving around and creating things, like ISAO, the bigger
 // ones are his, as long as they fit inside."; the rule is src/domain/kidou-jobs.js printerOf). `bay`: what fits between its beams and under its

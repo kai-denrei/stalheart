@@ -27,7 +27,7 @@ export const DAY_42 = Object.freeze({
   replay: Object.freeze({ seconds: 20, lift: 2, cone: 0.42 }),
   light: Object.freeze({ intensity: 18, angle: 0.5, distance: 60, penumbra: 0.4 }), laser: Object.freeze({ length: 40, width: 0.18, opacity: 0.55 }),
   music: Object.freeze({ key: 'day_42_music', retry: 6, duck: Object.freeze({ buses: ['towers', 'tank'], depth: 0.6 }) }),
-  briefs: Object.freeze({ soon: 'day_42_soon', back: 'day_42_back', start: 'day_42', over: 'day_42_over' }), callout: 'ALARM · CONTACT',
+  briefs: Object.freeze({ soon: 'day42_invite', back: 'day42_wait_home', start: 'day_42', over: 'day_42_over' }), callout: 'ALARM · CONTACT',
   ball: 'assets/models/disco-ball/disco_ball_d0_lod1.glb', landmark: 'stalheart',
   // THE BOARDS' PARTY FACE (owner, 2026-10-18, third round: "the boards with the score could temporarily show : '42 days Survived!' And
   // 'CONGRATS! VENI VIDI KICK ASS!'"): from the party's start to its done the two scoreboards show `title` over `body` (wrapped to `wrap`

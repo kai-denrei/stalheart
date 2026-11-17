@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-upright-flight-fast-prints-and-sinkhole-rush",
+  "date": "2026-11-16",
+  "type": "change",
+  "status": "resolved",
+  "title": "Upright Isao, phased SAI thrust, faster construction and a baseward sinkhole rush",
+  "context": "Round 21 requested stable upright Isao flight, unobstructed flare information, coasting SAI thrusters and low local harvesting hops, much faster Stalheart printing, removal of invisible tank blockers, visible shell works, a prelaunch automatic-nuke laser warning, and five-times-faster enemy exits in one base-facing cone.",
+  "outcome": "Isao now faces along the planetary tangent with capped yaw, propellers up and nozzle down; obsolete body lean/bank calculations and unused host fields were removed. Flare supply chooses an unoccupied peripheral HUD slot and hides when a modal fills the screen. SAI thrust follows climb/boost/coast/brake/landing phases, with engines off during coast and existing landing smoke retained; biomass hops cruise at 4 m while base commutes retain 32 m, subject to structure clearance. Stalheart print rate rises from 3 to 9, travel/turn rates double, and Isao finishing work uses the same accelerated print rate. Ground collision clips mesh triangles to the tank-height band before projecting them, eliminating phantom ground walls from sloping high overhangs. The shell reload pad has two crates, thirteen warheads and a conveyor, with emissive detail readable at night. Automatic nukes paint a red ground blast target and laser for four seconds before release, rechecking friendly clearance while pending. Non-guard, non-boss enemies leave breaches in a baseward plus/minus-20-degree cone at exit pace 9 instead of 1.8; climb/pop/settle times are divided by five, and local path choice follows the base gradient rather than side targets. Changes remain local and unpublished. The specific invisible-blocker location remains unconfirmed because the referenced screenshot was not attached.",
+  "alternatives": [
+    "The initial Isao orientation change exposed an obsolete golden hash; update it together with explicit upright and bounded-turn assertions. Host-contract checks then caught unused X_AXIS, Z_AXIS and tmpQ fields, which were removed.",
+    "A synthetic mineral-HUD blocker passed, but the screenshot exposed the actual ground-feed overlap. Include ground-feed, story-monitor and throttle rectangles and repeat acceptance with the ground-feed selector.",
+    "Faster emergence exposed an existing 0.1-second duration floor: a 0.032-second pop finished before reaching full visibility. Reduce the normalization guard to 0.001 seconds so the shortened animation completes.",
+    "Increasing only the gantry print multiplier left full-duration Isao finishing work and slow travel. Accelerate the whole authorized construction sequence while retaining physical travel, funding gates and permanent printed layers.",
+    "Do not remove structure collision wholesale; clip sloping faces to the actual tank-height band so low solids remain blocking and high overhangs remain passable."
+  ],
+  "evidence": [
+    "npm test: all 368 test programs passed. npm run check and npm run build passed; final source build 54d5e58e. git diff --check passed.",
+    "node test/host-contracts.mjs: 85 factories passed. Focused coverage includes isao-worker, flare-status, resource-aircraft, gantry-route, programme-host, hungry-build, structure-footprint, armory-pad, gunship-auto-safe and enemy-step.",
+    "npm run test:browser -- --round21 passed using the real pinned rigs: Isao stays upright, SAI coasts with thrusters off, local-hop cruise is 4 m and base cruise 32 m, flare status clears a competing ground-feed rectangle, shell pad reports two crates and thirteen warheads.",
+    "npm run test:browser -- --gunship-auto passed firing and nuke release; focused unit coverage verifies no release before the four-second painted warning.",
+    "npm run test:browser -- --dome-print passed board, mid-print and end checks. Three domes and two bridges remain visible. Main print-to-handover phases measured 1.5-1.8 seconds; observed travel to southwest/west jobs was 22/11 seconds.",
+    "Visual evidence: artifacts/browser/round21-shell-works.png and dome-print browser captures. Browser harnesses exited cleanly; existing localhost on port 8155 is retained."
+  ],
+  "supersedes": []
+}

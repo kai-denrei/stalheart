@@ -1,6 +1,6 @@
 // THE CLOSE-UP GATE (flow fixes, 2026-11-13, docs/FLOW.md 6): one rule for the antenna's print, the companion prints and the FEIDS-26 drop
 import assert from 'node:assert/strict';
-import { closeupHold, fightOf } from '../src/domain/closeup-gate.js';
+import { closeupHold, fightOf, studyReady } from '../src/domain/closeup-gate.js';
 import { printReady } from '../src/domain/pet-print.js';
 import { dropReady } from '../src/domain/reinforcements.js';
 
@@ -20,3 +20,14 @@ for (const c of [{ fighting: true }, { seated: true }, { shot: true }]) {
 }
 assert.equal(printReady({ ...print, fighting: true, breathing: true }), true); assert.equal(dropReady({ ...drop, fighting: true, breathing: true }), true);
 console.log('Close-up gate: shot, seat and a live wave hold the antenna, the prints and the drop; a breath or no fight lets them go.');
+
+assert.equal(printReady({ ...print, away: true }), false, 'companion waits for the tank at base');
+assert.equal(printReady({ ...print, away: false }), true);
+for (const k of ['engaged','briefing','shot','busy']) assert.equal(studyReady({ [k]: true }), false, k);
+assert.equal(studyReady({}), true);
+
+const { baseDoorsClosed } = await import('../src/domain/closeup-gate.js');
+assert.equal(baseDoorsClosed([]),true);
+assert.equal(baseDoorsClosed([{built:true,present:true,open:false,want:false,t:.3}]),false,'closing travel holds the close-up');
+assert.equal(baseDoorsClosed([{built:true,present:true,open:false,want:true,t:0}]),false,'a door requested by a friendly is not settled');
+assert.equal(baseDoorsClosed([{built:true,present:true,open:false,want:false,t:0}]),true,'camera may cut once the door is fully closed');

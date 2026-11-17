@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-swept-scans-friendly-traffic-and-single-sai93",
+  "date": "2026-11-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Wide K9 scan visor, shared friendly collision and one SAI-93 for both resources",
+  "context": "The owner requested a broad sweeping eye scanner with large transparent helmet results, collision between friendlies and structures, SAI-93 replacing Yushi for both extraction jobs, and Isao avoiding the gantry and friendly structures. The vehicle replacement is now explicitly authorized, superseding the earlier exploration-only decision.",
+  "outcome": "K9 projects a 32-segment translucent scan cone and a moving light sheet onto crystals and live biomass; analysis/results fill a transparent green visor with large subject and result text. Shared swept ground contacts now cover companions, driven K9, tank, mechs and walking sentries, with actual-height filtering for aircraft. Structure ground collision includes salvage, gantry feet, bays, storage and remaining friendly props while retaining open spans and floors. Vertical faces receive a thin projected footprint; hidden salvage and bay poses invalidate their cached ground collision. Moving gantry transforms retain reusable local footprints. Isao and his assistant anticipate structure height, climb before crossing and retain their orders; manual flight and companion-print approaches also use clearance. Gameplay creates one SAI-93 and no Yushi vehicle. Its one typed hold and one queued order cover both resources, switching only after unloading: biomass retains 6000 kg capacity, 400 kg/s extraction and 1000 kg/s unloading; crystals retain 600 kg, 75 kg/s and 150 kg/s. It lifts before travel and lands before working. Amber biomass/violet crystal flares share stock; existing capped Bio-Pearl economy and sector-break settlement remain. Ground-rover hunter/bite/rescue callbacks are inert while Yushi is retired. Source assets and Workshop catalog are retained. Updated relevant unrecorded captions; no voice recording generated. Local only, unpushed.",
+  "alternatives": [
+    "A direct 600 kg replacement would sharply reduce biomass throughput; preserve the prior biomass hold and work rates in the shared transport FSM.",
+    "Filled building bounding boxes would seal drive-through spaces. Reuse low geometry for ground collision and separate conservative height bounds for aerial clearance.",
+    "The first dome-city test failed because it treated newly solid gantry/bay models as filled boxes. Updated those reachability checks to the actual geometry footprint; all routes remain reachable.",
+    "The initial scanner browser entry used skip=dog, which starts after surveying. Re-ran through the real landing-to-dog opening.",
+    "Perfectly vertical walls can project to zero-area triangles. The extracted footprint helper preserves these as centimetre-thick projected surfaces; regression tests cover this and hidden parts."
+  ],
+  "evidence": [
+    "npm test: 364 test programs passed, including resource-haul, friendly-traffic, structure-clearance, structure-footprint and extended scout-scan/isao-worker tests.",
+    "npm run check and npm run build passed; final runtime build def8dcf9. Architecture: 225 pure modules; td-tab.js 5389/5450 lines; 85 host factories checked.",
+    "npm run test:browser -- --round18 passed: crystal and biomass scan cones, 1440x900 transparent visor with large type, one SAI-93 delivered 1200 kg biomass then more than 100 kg minerals, active companion contacts block crossings, gantry height/feet detected, no Yushi vehicle requested.",
+    "Inspected artifacts/browser/round18-cone-rock.png and round18-result-biomass.png; final artifacts include both cones and result states.",
+    "npm run test:browser -- --companions passed: roaming and gait changes, tag play, tank dodge (minimum sampled separation 7.55 m), no sampled hull penetration or below-floor pets. The later tag distance adjustment accommodates the cheetah collision radius and is covered by the final unit suite.",
+    "npm run test:browser -- --footprints passed on final runtime: solar charging area and bridge/gantry spans remain open; salvage, bays, garage and gantry feet report solid geometry.",
+    "git diff --check passed; localhost at 127.0.0.1:8155 returns HTTP 200. The known baseline default cold-opening browser timeout was not part of these focused runs."
+  ],
+  "supersedes": [
+    "2026-11-16-proposal-single-sai93-resource-hauler"
+  ]
+}

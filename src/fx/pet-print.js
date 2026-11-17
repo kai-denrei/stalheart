@@ -23,6 +23,7 @@
 // THE THIRD AND THE FOURTH (round 6, 2026-11-05): K0-TECH after the greenhouse, and the Nih-Dairia mech after THE ARENA's kill (the trigger's
 // `boss`: sectorRun().bossDown(), the arena's SECURE with its mother dead; the arena's own hold lifted from then). A unit's own `print` goes over
 // COMPANIONS.print (printKnobs: the mech's 9 m plot, its 20 s print and its angles); a posed unit's ghost is posed as its body is (src/fx/mech-pose.js).
+import { FRIENDLY_TRAFFIC } from '../content/friendly-traffic.js';
 import * as THREE from '../../vendor/three.module.js';
 import { COMPANIONS } from '../content/companions.js';
 import { STORY_PHASES } from '../domain/automation.js';
@@ -127,7 +128,15 @@ export function createPetPrint(h) {
   function poseIsao(r, s) {
     const I = r.isao; if (!I) return;
     const hover = at(r, [Math.sin(r.t * 0.9) * 0.25, r.box.h + r.K.hoverM - I.foot + Math.sin(r.t * 2.1) * 0.12, r.box.zc], v.clone());
-    I.rec.obj.position.lerpVectors(I.from, hover, s.isao);
+    // Lift, cross above the structures, then descend onto the print bed.
+    // The timeline still owns the approach; the ordinary worker resumes its order.
+    const pad=FRIENDLY_TRAFFIC.workerRadiusM*r.m, a=I.from.clone().normalize(), b=hover.clone().normalize();
+    I.clearance ??= Math.max(I.from.length(),hover.length(),1+(h.traffic?.ceiling(a.toArray(),b.toArray(),pad,'isao')??0)+pad);
+    const u=s.isao;
+    if(u<.2)I.rec.obj.position.copy(a).multiplyScalar(THREE.MathUtils.lerp(I.from.length(),I.clearance,u/.2));
+    else if(u<.8)I.rec.obj.position.lerpVectors(a,b,(u-.2)/.6).normalize().multiplyScalar(I.clearance);
+    else I.rec.obj.position.copy(b).multiplyScalar(THREE.MathUtils.lerp(I.clearance,hover.length(),(u-.8)/.2));
+    I.rec.flightRadius=I.rec.obj.position.length();
     tmp.position.copy(I.rec.obj.position); tmp.up.copy(r.up); tmp.lookAt(w.copy(I.rec.obj.position).addScaledVector(r.z, r.m * 4).addScaledVector(r.up, -r.m * 1.2 * s.isao));
     I.rec.obj.quaternion.slerpQuaternions(I.quat, tmp.quaternion, Math.min(1, s.isao * 1.5));
   }
@@ -195,8 +204,8 @@ export function createPetPrint(h) {
       const gates = printGates(tr, { phase: h.phase?.() ?? null, phases: STORY_PHASES, perk: (p) => !!h.perk(p), day: day(), prevDay, boss: bossDown });
       held = gates ? held + dt : 0;
       const cond = { forced: forced >= 0, shot: h.shotActive(), gates, held, delay: tr.delay ?? 0, patience: tr.patience ?? Infinity, alive: h.alive(), won: h.won(), arena: !!sr?.defNow?.()?.boss && !bossDown,
-        seated: h.seated(), card: h.card(), isaoBusy: h.isaoBusy(), fighting: st === 'fighting', breathing: !!sr?.breathing?.() };
-      if (!printReady(cond)) { why = cond.shot ? 'shot' : forced >= 0 ? 'forced' : !gates ? 'gates' : held < cond.delay ? 'delay' : cond.seated ? 'seat' : cond.card ? 'card' : cond.isaoBusy ? 'brief' : cond.fighting ? 'fight' : 'held'; return; }
+        seated: h.seated(), card: h.card(), isaoBusy: h.isaoBusy(), away: h.atBase?.() === false, fighting: st === 'fighting', breathing: !!sr?.breathing?.() };
+      if (!printReady(cond)) { why = cond.shot ? 'shot' : forced >= 0 ? 'forced' : !gates ? 'gates' : held < cond.delay ? 'delay' : cond.away ? 'tank away' : cond.seated ? 'seat' : cond.card ? 'card' : cond.isaoBusy ? 'brief' : cond.fighting ? 'fight' : 'held'; return; }
       if (!c.loaded(i)) { why = 'loading'; return; }
       why = begin(i, k) ? 'printing' : 'no spot';
     },

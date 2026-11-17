@@ -2,6 +2,9 @@
 // docs/superpowers/specs/2026-11-12-colony-layout-design.md, built 2026-11-12 night; src/content/dome-city.js). The switch, the one mapping, the
 // seven cells and six bridges derived from the one table, the placement rule for the courts and the outer belt, the hull's reach, the KIDOU's
 // roads (its frame swept along every road clear of whatever may stand then), the gantry's measured clearance over a dome, and the plan printed.
+import * as THREE from '../vendor/three.module.js';
+import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { measureStructureFootprint } from '../src/fx/structure-footprint.js';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { ISLANDS, STRUCTURES, SOLID_STRUCTURES, BASE_LAYOUT_MODES, BASE_LAYOUT_DEFAULT, withBaseLayout, baseLayoutMode, KIT, STAGES } from '../src/content/base-layout.js';
@@ -104,6 +107,16 @@ for (const b of boxes.filter((x) => !x.city)) for (const i of city.islands) if (
       const col = dome.from(at.to([end * 26, b.lift + foot * b.scaleY, 0]));
       assert.ok(Math.abs(col[1]) < 0.1, `${b.id}: its end column ${col[1].toFixed(3)} m over ${d.id}'s slab`); } } }
 
+// Newly solid gantry/bay geometry has drive-through lanes; a filled model box
+// is no longer a valid approximation for these two structures.
+const laneFeet=new Map();
+for(const id of ['stalheart','bays']){
+ const s=city.structures.find(s=>s.id===id),island=byId.get(s.island),bytes=readFileSync(s.asset);
+ const loaded=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ const holder=new THREE.Group(),root=loaded.scene;holder.position.set(island.x,0,island.z);holder.scale.setScalar(s.scale??1);
+ const [hx,hz]=s.heading??[0,1];holder.rotation.y=Math.atan2(hx,hz);root.position.set(...(s.offset??[0,0,0]));holder.add(root);
+ laneFeet.set(id,measureStructureFootprint({holder,near:root},1));
+}
 // EVERY ISLAND IS REACHABLE BY THE HULL: a flood on a 2 m grid from the plaza, over the clearing, stopped by the domes, the bridges' columns and every
 // solid structure's model box, reaches every island's edge, the mouth, all four courts, and the bays' roll-out behind dome-s (round it, under a bridge)
 const M = 2, N = Math.ceil(2 * R / M), cellOf = (x, z) => [Math.floor((x + R) / M), Math.floor((z + R) / M)], blocked = new Uint8Array(N * N);
@@ -111,7 +124,10 @@ const M = 2, N = Math.ceil(2 * R / M), cellOf = (x, z) => [Math.floor((x + R) / 
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (Math.hypot(-R + (i + 0.5) * M, -R + (j + 0.5) * M) > R - 4) blocked[j * N + i] = 1;
   for (const d of DOME_ISLANDS) { const r = 14.6 * DOME_SCALE; block(d.x - r, d.x + r, d.z - r, d.z + r); }
   for (const b of bridges) { const along = b.heading[0] !== 0 ? [0, 1] : [1, 0]; for (const t of [-26, -10, 10, 26]) { const x = b.x + along[0] * t, z = b.z + along[1] * t; block(x - 2.2, x + 2.2, z - 2.2, z + 2.2); } }
-  for (const b of boxes) if (SOLID_STRUCTURES.includes(b.id) && !b.city) block(b.x0, b.x1, b.z0, b.z1);
+  for (const b of boxes) if (SOLID_STRUCTURES.includes(b.id) && !b.city) {
+    const f=laneFeet.get(b.id);if(!f){block(b.x0,b.x1,b.z0,b.z1);continue;}
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const p=new THREE.Vector3(-R+(i+.5)*M,0,-R+(j+.5)*M).applyMatrix4(f.inv);if(f.grid.hit(p.x,p.z))blocked[j*N+i]=1;}
+  }
   const start = cellOf(0, 30), seen = new Uint8Array(N * N), q = [start[1] * N + start[0]]; seen[q[0]] = 1;
   for (let h = 0; h < q.length; h++) { const i = q[h] % N, j = (q[h] - i) / N; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj, k = b * N + a; if (a >= 0 && b >= 0 && a < N && b < N && !seen[k] && !blocked[k]) { seen[k] = 1; q.push(k); } } }
   const reach = (x, z) => { const [i, j] = cellOf(x, z); return seen[j * N + i] === 1; };

@@ -134,9 +134,11 @@ function makeHull() {
   glue.tick(0.6); assert.equal(glue.state().attached, true, 'the crate is on the deck');
   assert.ok(marks.some((m) => m.state === 'carried'), 'the radar points home while carrying');
   const pad = glue.state().pad; assert.ok(pad && pad.reach > 0, 'the cargo drop-off pad stands once a site is out');
+  assert.equal(glue.atDropOff(pad.at),true);assert.equal(glue.atDropOff([0,-1,0]),false);
   assert.ok(Math.abs(Math.hypot(...marks.find((m) => m.state === 'carried').dir.map((v, i) => v - pad.at[i]))) < 1e-4, 'the radar points at the pad');
   tank = [0, -1, 0]; glue.step(); assert.equal(siteState(story.expeditions, 'rocket-a'), 'carried', 'away from the pad it is not home');
   tank = pad.at; glue.step();
+  assert.equal(glue.atDropOff(pad.at),true,'refill zone works without carried cargo');
   assert.equal(siteState(story.expeditions, 'rocket-a'), 'delivered'); assert.ok(briefs.includes('part_home'));
   for (let i = 0; i < 240; i++) glue.tick(1 / 60);
   assert.ok(said.includes(`${towerName('relay')} UNLOCKED`) && towerName('relay') === 'RELAY', `the unlock callout on landing (${said})`);
@@ -159,7 +161,7 @@ function makeHull() {
   // ISAO RECEIVES THE PART: with a receive hook the crate waits on the ground and the unlock is called only when he is done;
   // without him the crate sinks at holdMax and the unlock is called then; a print outranks the receipt (the host's rule)
   const scene = new THREE.Scene(), hull = makeHull(); scene.add(hull);
-  const centers = [[0, 1, 0], [0.6, 0.8, 0]];
+  const centers = [[0, 1, 0], [0.6, 0.8, 0], [0, Math.cos(.03), Math.sin(.03)]];
   const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
   let tank = centers[0]; const said = [], sent = [];
   const glue = createExpeditionGlue({ story, scene, sfx, cellSide: 0.05, centers: () => centers, tankPos: () => tank, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: (t) => said.push(t), toast: () => {}, receive: (r) => { sent.push(r); return true; } });
@@ -188,7 +190,7 @@ function makeHull() {
 {
   // nobody comes: holdMax passes, the crate sinks on its own, and the unlock is called then
   const scene = new THREE.Scene(), hull = makeHull(); scene.add(hull);
-  const centers = [[0, 1, 0], [0.6, 0.8, 0]];
+  const centers = [[0, 1, 0], [0.6, 0.8, 0], [0, Math.cos(.03), Math.sin(.03)]];
   const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
   let tank = centers[0]; const said = [];
   const glue = createExpeditionGlue({ story, scene, sfx, cellSide: 0.05, centers: () => centers, tankPos: () => tank, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: (t) => said.push(t), toast: () => {}, receive: () => true });
@@ -206,7 +208,7 @@ function makeHull() {
   // storyApi only when the story has expeditions; the nests are spawned through storyApi, the guards left are the live guard bodies
   // and the queued ones, and the part landed at home is an order for Isao
   const scene = new THREE.Scene(), hull = makeHull(); scene.add(hull);
-  const centers = [[0, 1, 0], [0.6, 0.8, 0]];
+  const centers = [[0, 1, 0], [0.6, 0.8, 0], [0, Math.cos(.03), Math.sin(.03)]];
   const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
   const log = [], orders = [], enemies = [], spawnQueue = [], player = { pos: centers[0] };
   const storyApi = { spawn: (type, ci, o) => { log.push(['spawn', ci, o.guard.site]); spawnQueue.push({ guard: o.guard }); } };

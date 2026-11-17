@@ -11,6 +11,7 @@ export function thumbSource(offer) {
     case 'structure': return { draw: 'structure', step: offer.step };
     case 'sentry': return { draw: 'tower', key: offer.key, up: 0 };
     case 'upgrade': return { draw: 'tower', ci: offer.ci, up: 1 };
+    case 'hauler': return { draw: 'hauler' };
     case 'pet': return { draw: 'pet', index: offer.index };
     case 'repair': case 'spare': return { draw: 'hull' };
     case 'shield': return { draw: 'dome' };

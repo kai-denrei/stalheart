@@ -16,6 +16,6 @@ export function stepBreachWaves(state,dt,config){
  return events;
 }
 export function emergence(age,duration){
- const t=Math.max(0,Math.min(1,age/Math.max(.1,duration))),ease=t*t*(3-2*t);
+ const t=Math.max(0,Math.min(1,age/Math.max(.001,duration))),ease=t*t*(3-2*t);
  return {opacity:ease,scale:.08+.92*ease,rise:ease};
 }

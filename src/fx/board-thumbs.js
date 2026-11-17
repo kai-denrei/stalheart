@@ -1,3 +1,4 @@
+import { MINERALS } from '../content/minerals.js';
 // THE BUILD BOARD'S THUMBNAILS (owner, 2026-11-05, round 7 note 4: "the build board gets small wireframe thumbnails like the glossary's"; the
 // rules src/domain/board-thumbs.js, the frame BUILD_BOARD.thumb). Each card's picture is one frame of the real thing through the glossary's
 // sprite rig (td-tab's spriteShot, src/fx/wave-card.js), drawn as the bestiary's tinted wireframe (model-fixture setWireframe): a structure
@@ -24,6 +25,7 @@ const domeOf = (step) => DOME_STRUCTURES.find((s) => s.id === step && !s.anchor 
 //   thumbModel(src) -> { url, hide? } the GLB a card's picture is drawn from, or null (the node test checks every board structure has one)
 export const thumbModel = (src) => (src.draw === 'structure' ? entry((e) => (e.board ?? e.needs?.perk) === src.step) ?? (domeOf(src.step) ? { url: domeOf(src.step).far } : null)   // `board`: an entry that draws a card whose step has no perk of its own (the fourth Bio-Pearl, round 8)
   : src.draw === 'kind' && COLONY.kinds[src.kind] ? { url: domeFiles(COLONY.kinds[src.kind].module).far }   // a colony card: its kind's one-draw LOD2 (2026-11-12 night)
+  : src.draw === 'hauler' ? { url: MINERALS.model }
   : src.draw === 'hull' ? entry((e) => e.id === 'mork')
   : src.draw === 'pet' && COMPANIONS.units?.[src.index]?.model ? { url: COMPANIONS.units[src.index].model } : null);
 

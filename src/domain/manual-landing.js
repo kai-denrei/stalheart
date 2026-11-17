@@ -105,6 +105,7 @@ export function verdict(s, slope, offPad, tune) {
 // the auto-lander takes back under flare.altitude when the state is inside its corridor (spec 2.4)
 export function flareDue(s, tune) {
   const f = tune.flare;
+  if (!f.enabled) return false;
   return s.y <= f.altitude && -s.vy <= f.sink && Math.hypot(s.vx, s.vz) <= f.drift && Math.abs(s.tilt) <= f.tilt;
 }
 

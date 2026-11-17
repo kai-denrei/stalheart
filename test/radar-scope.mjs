@@ -149,3 +149,5 @@ function scope(o = {}) {
   const { radar } = scope({ rover: () => null }); radar.draw(0); assert.equal(radar.state().rover, null, 'home: no mark');
 }
 console.log('Radar scope paints the frame, contacts, proximity arcs, heart frame and strike cross from the host it is given.');
+
+{const {ROVER}=await import('../src/content/rover.js');const {ctx,radar}=scope({rover:()=>[{pos:[.03,.99,.02],disabled:false},{pos:[-.03,.99,.02],disabled:false}]});radar.draw(.5);assert.equal(calls(ctx,'fillRect').filter(r=>r[3]===ROVER.radar.size).length,2,'both working aircraft appear on radar');}

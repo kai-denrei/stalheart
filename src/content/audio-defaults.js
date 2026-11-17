@@ -21,6 +21,7 @@ export const BUSES = ['towers', 'tank', 'enemies', 'ui', 'voice', 'ambient', 'mu
 const A = 'assets/audio';
 
 export const SOUNDS = {
+  k9_bark: { file: `${A}/k9_bark.mp3`, bus: 'enemies', gain: 0.65, maxVoices: 1, minInterval: 0.8, rateJitter: 0 },
   // --- towers ------------------------------------------------------------
   // tier-2 intervals: single .496 rapid .231 spread .833 homing .694
   //                   slow .833 aoe .926 sniper .992 laser .556

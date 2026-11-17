@@ -1,3 +1,4 @@
+import { MINERALS } from '../content/minerals.js';
 // THE ROVER'S ARRIVAL CARD (owner, 2026-11-13: "we should announced its arrival with a card showing the 3d model rotating and a brief explanation
 // of what it does"). At the rover's first run out of home (src/domain/rover-card.js cardDue: once, never over a live wave, passed by on acceptance and
 // skipped pages unless ?rovercard=1) the game pauses under a card: the rover's LOD1 (ROVER.model) turning on a small stage of its own (one WebGL
@@ -7,7 +8,7 @@
 //   createRoverCard({ root, pause(v), search (the page's query), sectorRun() }) -> { tick(leftHome), state(), close() }
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture, setWireframe } from './model-fixture.js';
-import { ROVER, ROVER_CARD } from '../content/rover.js';
+import { ROVER_CARD } from '../content/rover.js';
 import { cardDue, cardWanted } from '../domain/rover-card.js';
 import { fightOf } from '../domain/closeup-gate.js';
 
@@ -35,7 +36,7 @@ export function createRoverCard({ root, pause, search = '', sectorRun = () => nu
     renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1)); renderer.setSize(w, hgt, false); renderer.setClearColor(0x050806, 1);
     scn = new THREE.Scene(); cam = new THREE.PerspectiveCamera(30, w / hgt, 0.1, 100); cam.position.set(0, 3.2, 11); cam.lookAt(0, 0.2, 0);
     turn = new THREE.Group(); turn.rotation.y = -0.6; scn.add(turn);
-    loadModelFixture(ROVER.model).then((src) => {
+    loadModelFixture(MINERALS.model).then((src) => {
       if (!open) return;
       const obj = cloneFixture(src);
       obj.traverse((o) => { if (o.isMesh && o.geometry) { o.geometry = o.geometry.clone(); owned.push(o.geometry); } });

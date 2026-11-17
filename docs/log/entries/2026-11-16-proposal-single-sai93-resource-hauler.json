@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-proposal-single-sai93-resource-hauler",
+  "date": "2026-11-16",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Explore SAI-93 as a single crystal and biomass hauler",
+  "context": "The owner proposed replacing Yushi with a flying SAI-93 that collects both resources. This is an exploration request; the shipping resource system remains unchanged.",
+  "outcome": "A shared flying hauler is viable, but a direct substitution with current SAI-93 tuning is not equivalent. In the existing rover transport FSM, a 6000 kg pile on a straight 350 m one-way route banks in 48.1 s with Yushi (one trip), 340.0 s with current SAI-93 (ten trips), or 43.0 s with SAI-93 flight speed and Yushi capacity/loading rates (one trip). A prototype should first preserve hauling throughput, then evaluate the loss of ground-route escort and disabled-rover rescue, shared dispatch priority, separate cargo accounting and depot delivery. No vehicle replacement or economy tuning was applied.",
+  "alternatives": [
+    "Retain the current split: Yushi for biomass, SAI-93 for crystals.",
+    "Prototype one aircraft with separate mineral and biomass job queues and explicit cargo type, using comparable biomass hauling throughput.",
+    "A direct replacement with the current 600 kg SAI hold would reduce income substantially."
+  ],
+  "evidence": [
+    "src/content/rover.js: capacity 6000 kg, harvest 400 kg/s, unload 1000 kg/s, speed 26 m/s.",
+    "src/content/minerals.js: capacity 600 kg, harvest 75 kg/s, unload 150 kg/s, speed 32 m/s.",
+    "Measured using src/domain/rover-run.js createRoverRun/dispatch/stepRover at dt .05 with one 6000 kg pile, straight 350 m legs, unlimited depot storage and no threat. The matched variant changes only capacity, harvestRate and unloadRate to Yushi values.",
+    "This simplified comparison excludes terrain detours, takeoff/landing, enemy pressure, flare expiry and seepage; it is a transport comparison, not a campaign balance result."
+  ],
+  "supersedes": []
+}

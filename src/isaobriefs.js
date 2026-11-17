@@ -26,6 +26,8 @@ export const daysWord = (n = REINFORCEMENTS.days) => NUMBER_WORDS[n] ?? String(n
 const capital = (w) => w.charAt(0).toUpperCase() + w.slice(1);
 
 export const BRIEFS = {
+  day42_invite: {id:'day42_invite',face:'glee',title:'COMMS · ISAO',once:true,lines:['Forty-two days! Bring the tank home. I have a surprise.', 'We will start when you are back inside the base.']},
+  day42_wait_home: {id:'day42_wait_home',face:'glee',title:'COMMS · ISAO',once:true,lines:['The party is ready. Come back through the gate.', 'We are waiting for you. Bring your towel.']},
   // --- THE STORY -----------------------------------------------------------
   // Four beats the game had no way of saying. All of this was already written
   // — in src/lore.js, the codex — and none of it was reachable from the TD
@@ -139,6 +141,8 @@ export const BRIEFS = {
     id: 'tremor', face: 'scan', title: 'TREMOR DETECTED', once: true,
     lines: ['Tremor on the radar. Far out, past the tunnel.', 'Something is coming up through the ground.'],
   },
+  rotor_first_control: { id: 'rotor_first_control', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['They don’t look Friendly… When in doubt. Shoot first', 'Manual override. The Rotor is yours.'] },
   manual_override: {
     id: 'manual_override', face: 'focused', title: 'MANUAL OVERRIDE',
     lines: ['The sentries are not ready for auto-targeting yet.', 'Manual override. The Rotor is yours.'],
@@ -288,7 +292,7 @@ export const BRIEFS = {
   // the ground with the depot standing (src/fx/rover-glue.js), and the word when the pearls are full
   build_depot: {
     id: 'build_depot', face: 'determined', title: 'COMMS · ISAO', once: true,
-    lines: ['Printing the depot: three Bio-Pearls and a pad for the Yushi Rover.', 'From now on the biomass waits on the ground. The rover fetches it.'],
+    lines: ['Printing the depot: three Bio-Pearls and a landing bay for SAI-93.', 'From now on the biomass waits on the ground. SAI-93 flies it home.'],
   },
   build_pearl: { id: 'build_pearl', face: 'glee', title: 'ISAO · THE DEPOT', lines: ['A fourth Bio-Pearl. Twelve tonnes more room.'] },
   // THE DOME CITY FROM SCRATCH (the owner's note of 2026-11-07): a dome bought on the board, and a bridge once both its domes stand; said at each
@@ -297,19 +301,21 @@ export const BRIEFS = {
   build_bridge: { id: 'build_bridge', face: 'glee', title: 'ISAO · THE BRIDGES', lines: ['And a bridge between them. No helmets indoors.'] },
   rover_flare: {
     id: 'rover_flare', face: 'curious', title: 'COMMS · ISAO', once: true,
-    lines: ['Drop a flare where the bodies lie, F. The rover comes.', 'It brings the biomass home to the pearls. Nothing else does now.'],
+    lines: ['Drop a flare where the bodies lie, F. SAI-93 comes.', 'It brings the biomass home to the pearls. The same aircraft mines crystals.'],
   },
+  mineral_hopper: { id: 'mineral_hopper', face: 'focused', title: 'SAI-93 · RESOURCE HAULER', once: true,
+    lines: ['Amethyst deposits outside the walls. Drive close and press F: a violet flare sends SAI-93.', 'Violet for minerals, amber for biomass. It mines the marked deposit and flies the minerals home.'] },
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12; captions only, unrecorded): the first jab at the rover's hold beyond the walls (src/fx/rover-glue.js bite)
   // THE ROVER DISABLED (2026-11-12 night; captions only, unrecorded): the first time the hunters stop it beyond the walls (src/fx/rover-glue.js)
   rover_disabled: { id: 'rover_disabled', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['The rover is down out there. It will not move on its own.', 'Get the tank beside it and hold. I restart it through your hull.'] },
   rover_bitten: { id: 'rover_bitten', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['They are on the rover! Every bite is harvest lost.', 'Take the tank out to it: they go for you first.'] },
   rover_break: {
     id: 'rover_break', face: 'glee', title: 'COMMS · ISAO', once: true,
-    lines: ['The rover brought its load home during the break.', 'Half of what you flagged made the pearls. The rest still lies out there.'],   // half since 2026-11-12 (ROVER.breakShare)
+    lines: ['SAI-93 brought its load home during the break.', 'Half of what you flagged made the pearls. The rest still lies out there.'],   // half since 2026-11-12 (ROVER.breakShare)
   },
   storage_full: {
     id: 'storage_full', face: 'determined', title: 'COMMS · ISAO', once: true,
-    lines: ['The pearls are full. The rover waits with its load.', 'Spend some, or buy me a fourth pearl.'],
+    lines: ['The pearls are full. SAI-93 waits with its load.', 'Spend some, or buy me a fourth pearl.'],
   },
   build_launcher: {
     id: 'build_launcher', face: 'determined', title: 'COMMS · ISAO', once: true,
@@ -317,11 +323,11 @@ export const BRIEFS = {
   },
   quiver_override: {
     id: 'quiver_override', face: 'focused', title: 'MANUAL OVERRIDE', once: true,
-    lines: ['Its targeting chips are not ready either.', 'Manual override. Hold the reticle on it until the lock takes, then fire.'],
+    lines: ['Its targeting chips are not ready either.', 'Mouse tracks the target. WASD moves the secondary sight. Align both, hold for lock, then Space to fire.'],
   },
   quiver_cleared: {
     id: 'quiver_cleared', face: 'glee', title: 'COMMS · ISAO', once: true,
-    lines: ['Two for two.', 'The wall is yours: the strip cycles the mounts, MAP for the whole planet.'],
+    lines: ['They came from that sinkhole, close it with a nuke.'],
   },
   // after the Quiver: the study screen
   // spoken in a close-up before the screen opens (owner, 2026-09-13): the face goes neutral, skeptical, then to work, one per line
@@ -355,7 +361,7 @@ export const BRIEFS = {
   // biomass"): said as the first orders close; and his own Rotor when nobody ordered one by the settle's end
   scout_material: {
     id: 'scout_material', face: 'focused', title: 'COMMS · ISAO', once: true,
-    lines: ['That was the rocket. For the rest we scout: rock, crystals, liquid, biomass.', 'The rover goes out once the Stålheart stands.'],
+    lines: ['That was the rocket. For the rest we scout: rock, crystals, liquid, biomass.', 'SAI-93 brings home both crystals and biomass.'],
   },
   rotor_emergency: {
     id: 'rotor_emergency', face: 'determined', title: 'COMMS · ISAO', once: true,
@@ -365,20 +371,20 @@ export const BRIEFS = {
   // the dog's survey (captions only, unrecorded). dog_print as the K9's print starts (COMPANIONS.prints.triggers[0]); dog_scout as its seat is
   // taken; dog_survey_* on the first two surveys (src/fx/dog-scout.js); dog_contact the last survey's pack; dog_wall the dog home (the gate's
   // print); dog_rotor the Rotor printed after the wall; first_harvest Isao's flare on the first wave's bodies (the rover's first run)
-  dog_print: { id: 'dog_print', face: 'focused', title: 'COMMS · ISAO', once: true, lines: ['First, eyes on the ground. I print a scout.'] },
-  dog_scout: { id: 'dog_scout', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Rock, crystals, biomass. Take the dog and look.', 'Two marks on your screen. Stand in each ring.'] },
+  dog_print: { id: 'dog_print', face: 'focused', title: 'COMMS · ISAO', once: true, lines: ['The landing damaged some of our computers. A slow start: no auto-targeting for the sentries yet.', 'First, eyes on the ground. I print a scout.'] },
+  dog_scout: { id: 'dog_scout', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Rock, crystals, biomass. Take the dog and look.', 'Two marks on your screen. Stand in each ring.', 'GS01 is in orbit. It can give us support when we call.'] },
   dog_survey_first: { id: 'dog_survey_first', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['Good rock, and crystals. I can print with that. One more mark.'] },
   dog_survey_second: { id: 'dog_survey_second', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Crystals in the ground. One more mark.'] },
-  dog_contact: { id: 'dog_contact', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['Movement. That is not rock.', 'Bring the dog home!'] },
-  dog_wall: { id: 'dog_wall', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['They follow you. We need a wall.'] },
+  dog_contact: { id: 'dog_contact', face: 'surprised', title: 'COMMS · ISAO', once: true, lines: ['More movement beyond the gate. There are more of them.', 'Hold on this side. I am printing a gate and sentries.'] },
+  dog_wall: { id: 'dog_wall', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['not sure what they are, but their biomass will be great for printing', 'Keep watching the approach. The gate is going up.', 'The gunship risks hitting us this close. Sentries can guard us around the clock.'] },
   dog_rotor: { id: 'dog_rotor', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['Too much for the dog. I print the Rotor.', 'Get ready.'] },
-  first_harvest: { id: 'first_harvest', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['A depot, and the rover\'s first run.', 'My flare is on the bodies at the gate: watch it fill.'] },
+  first_harvest: { id: 'first_harvest', face: 'glee', title: 'COMMS · ISAO', once: true, lines: ['A depot, and SAI-93’s first run.', 'My flare is on the bodies at the gate. It will collect while we build.'] },
   // THE EXPOSITION (owner, 2026-11-12: no start bank; "Isao and Stalheart require local resources to build", biomass "bonds together well, otherwise
   // it seeps into the ground and some is lost"; the economy design 2.7; captions only, unrecorded): after first_harvest, each waiting for the panel
   // (DOG_SCOUT.words.exposition)
   no_bank: { id: 'no_bank', face: 'focused', title: 'COMMS · ISAO', once: true, lines: ['We brought nothing to build with.', 'The Stålheart prints from what this planet gives us.'] },
   biomass_bonds: { id: 'biomass_bonds', face: 'curious', title: 'COMMS · ISAO', once: true, lines: ['Their tissue is the best feedstock I have seen.', 'It binds to itself: kill them close together and it holds.'] },
-  biomass_seeps: { id: 'biomass_seeps', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['What we leave lying seeps into the ground.', 'The rover brings it in. What it does not reach, we lose.'] },
+  biomass_seeps: { id: 'biomass_seeps', face: 'determined', title: 'COMMS · ISAO', once: true, lines: ['What we leave lying seeps into the ground.', 'SAI-93 brings it in. What it does not reach, we lose.'] },
   build_solar: {
     id: 'build_solar', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The hull can drink from the sun.', 'Printing the array. Park on its pad for shield.'],

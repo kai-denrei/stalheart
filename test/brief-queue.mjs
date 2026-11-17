@@ -112,3 +112,6 @@ const q2 = createBriefQueue({ querySelector: (sel) => el(sel) }, { sfx, isao: ()
 assert.deepEqual(q2.seen, ['stalheart', 'harvest', 'motive', 'tremor', 'chain_lore'], 'the seen list survives in storage');
 take(); q2.show('harvest'); assert.equal(q2.queue(), null, 'and a seen once-beat stays silent in the next run');
 console.log('Brief queue: paints, dwells on the frame clock, advances silently or on a tap, holds one beat pending, marks once-beats seen, clears.');
+
+// A new story situation replaces stale survey instructions, including the wait list.
+q2.show('arena_road');q2.show('dog_wall');q2.want('dog_survey_first');q2.cut('dog_contact',{discardWaiting:true});assert.equal(q2.queue().id,'dog_contact');assert.equal(q2.pending(),null);q2.end();assert.equal(q2.queue(),null);

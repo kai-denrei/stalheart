@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-round-17-manual-descent-scanner-and-persistent-prints",
+  "date": "2026-11-16",
+  "type": "change",
+  "status": "resolved",
+  "title": "Round 17: manual touchdown, scout analysis, immediate gunship and persistent construction",
+  "context": "Twelve playtest notes requested control through landing, offscreen salvage, dog gestures and scans, new Rotor dialogue, Quiver inertia, faster gunship handover, enlarged sensor exposition, closed-door camera timing, quicker large prints, investigation of missing domes and exploration of one flying hauler. The hauler proposal is recorded separately.",
+  "outcome": "The flown landing keeps player input to contact, with transparent side telemetry for speed, sink, drift, signed attitude, angular rate, thrust, stopping distance and fuel. Salvaged shuttle sections retain scale and disappear only outside the camera frustum. K9 uses H HAND with a three-quarter camera-facing turn, R ROLL and B BARK with an original synthesized double bark; its authored sensor socket scans live specimen positions and presents analysis/results on a transparent HUD. First Rotor control uses the requested new line on its own unvoiced trigger; Quiver clearance gives the nuke order and immediately requests the gunship seat, retrying until available and waiting for the nuke before issuing the tank. WASD secondary sight has exact time-integrated acceleration and coasting. First hard-core contact presents an enlarged centered copy of the live radar with clearly labelled example arcs. Return-home close-ups and study wait for built doors to finish closing. Dome print time is 22 s (was 30), bridges 6 s (was 8); selected large programme structures are about 20 percent faster. Printed layers never retract when the bank falls or a job changes, and workers resume the retained height. Completed structures stay fully grown even after late preview callbacks. New Isao dialogue remains caption-only pending recorded audio. Local only, no push or publication.",
+  "alternatives": [
+    "Retain the existing optional landing-assist pure functions for tests, but disable automatic flare in the shipping recipe.",
+    "The missing-dome cause found in code was hungry-preview rollback: spent biomass lowered print height, and changing jobs explicitly erased the preview. Preserve actual laid layers without granting unpaid building perks.",
+    "Keep the established Isao recording pipeline; a new trigger avoids playing an old recording over the requested new Rotor words.",
+    "Initial validation exposed strict sound-package migration, old exact duration expectations, an obsolete director cue and a programme-host test double without the new progressOf contract. Fixed these and reran the suite.",
+    "The first browser harness omitted world=story; its next hand-pose check ran during the camera entry blend. Corrected the page and waited for the established camera, then checked the actual three-quarter facing. Improved scan captures by passing approach offsets through the existing acceptance hook."
+  ],
+  "evidence": [
+    "npm test: all 360 test programs passed.",
+    "npm run check, npm run architecture and node test/host-contracts.mjs passed: 223 pure-layer modules, td-tab 5379/5450 lines, 84 host factories.",
+    "npm run build passed.",
+    "npm run test:browser -- --round17 passed: manual CLEAN touchdown at about 1.45 m/s with no flare phase, real H/R/B keys, camera-facing hand, crystal and biomass scans/results, real reticle coasting and the centered enlarged radar. Screenshots inspected in artifacts/browser/round17-*.png.",
+    "npm run test:browser -- --round17-gunship passed the actual Quiver-clear-to-gunship handover.",
+    "npm run test:browser -- --dome-print passed in about 6.5 minutes: the actual sector-2 board purchased research, habitat and biosphere domes, workers printed at their correct cells, and all three completed domes plus both west bridges remained visible after subsequent jobs. artifacts/browser/dome-print-{mid,end}.png.",
+    "test/foundry-fx.mjs proves watched salvage keeps its authored scale and hides only once offscreen; test/print-retention.mjs covers bank loss, job handoff and stale callbacks; test/closeup-gate.mjs covers closing travel, requested-open doors and settled closure.",
+    "test/manual-guidance.mjs checks acceleration, coast, braking, clamped edges and frame-rate independence; test/presets.mjs covers legacy and current sound-package migration without losing saved edits.",
+    "scripts/bake-k9-bark.mjs reproducibly authors assets/audio/k9_bark.mp3; scripts/isao-unvoiced.mjs regenerated docs/ISAO-UNVOICED-LINES.md.",
+    "Architecture review: one new FX owner, src/fx/scout-scan.js; no new top-level source module, pinned-kernel change or second Three.js copy. Default cold-opening browser timeout remains the preexisting limitation documented in round 15."
+  ],
+  "supersedes": []
+}

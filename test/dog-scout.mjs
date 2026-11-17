@@ -18,19 +18,19 @@ const TOP = DOG_SCOUT.drive.sprint ?? K9.top, T = { ...DOG_SCOUT, top: TOP };   
 
 // the tune: the spec's numbers (section 3), paced up 2026-11-12 evening (owner: "much too slow ... maybe reduce to scouting two spots, much closer")
 assert.equal(DOG_SCOUT.points.count, 2); assert.deepEqual(DOG_SCOUT.points.cells, [5, 7]); assert.equal(DOG_SCOUT.points.spread, 50); assert.equal(DOG_SCOUT.points.spreadMax, 80);
-assert.equal(DOG_SCOUT.survey.seconds, 1.5); assert.equal(DOG_SCOUT.survey.pay, 150, 'the pay stays 150 kg a point'); assert.equal(DOG_SCOUT.survey.ringM, 6);
+assert.equal(DOG_SCOUT.survey.seconds, 2.4); assert.equal(DOG_SCOUT.survey.pay, 150, 'the pay stays 150 kg a point'); assert.equal(DOG_SCOUT.survey.ringM, 6);
 assert.deepEqual(DOG_SCOUT.contact.bodies.map((b) => [b.type, b.count]), [['amoeba', 8], ['ghost', 4]], 'twelve: eight whites, four yellows');
-assert.equal(DOG_SCOUT.contact.hops, 6); assert.equal(DOG_SCOUT.contact.recall, 40); assert.equal(DOG_SCOUT.knock.seconds, 1.5); assert.equal(DOG_SCOUT.knock.pushM, 4); assert.equal(DOG_SCOUT.home.cells, 3);
+assert.equal(DOG_SCOUT.contact.hops, 2); assert.equal(DOG_SCOUT.contact.recall, 40); assert.equal(DOG_SCOUT.knock.seconds, 1.5); assert.equal(DOG_SCOUT.knock.pushM, 4); assert.equal(DOG_SCOUT.home.cells, 3);
 assert.equal(K9.top, 5.5, 'the K9\'s own top as a companion'); assert.equal(TOP, 6.5, 'the seat\'s sprint a little faster');
 assert.ok(TOP <= Math.max(...K9.gaits.map((g) => g.max)), 'within its fastest gait\'s band (the sprint cycle, no sliding)');
 assert.deepEqual(DOG_SCOUT.points.kinds.map((k) => k.id), ['rock', 'biomass'], 'the rock and the crystals folded into one');
 // THE JUMP AND THE TRICKS (owner, 2026-11-13: "the dog is alright, but it has no jump animation"): the K9's own clips; the arc; the gating
 { const tricks = Object.values(DOG_SCOUT.tricks);
-  for (const c of [DOG_SCOUT.jump.clip, ...tricks.map((t) => t.clip)]) assert.ok(c === DOG_SCOUT.jump.clip ? K9.tricks.includes(c) : [...K9.tricks, K9.sit].includes(c), `${c} is the K9's`);
+  for (const c of [DOG_SCOUT.jump.clip, ...tricks.map((t) => t.clip)]) assert.ok(c === DOG_SCOUT.jump.clip ? K9.tricks.includes(c) : [...K9.tricks, K9.sit, K9.idle].includes(c), `${c} is the K9's`);
   const keys = [DOG_SCOUT.jump.key, ...tricks.map((t) => t.key)];
   assert.equal(new Set(keys).size, keys.length, 'one key a move');
-  for (const k of keys) assert.ok(!['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyT', 'KeyF', 'KeyV', 'KeyH', 'KeyQ', 'KeyE', 'KeyU', 'KeyM', 'KeyO', 'KeyX', 'KeyZ', 'KeyB', 'KeyG', 'KeyC', 'KeyN'].includes(k), `${k} is not one of the base's keys`);
-  assert.ok(DOG_SCOUT.words.hint.includes('SPACE JUMP') && DOG_SCOUT.words.hint.includes('R ROLL') && DOG_SCOUT.words.hint.includes('P PAW'), 'the hint teaches them');
+  for (const k of keys) assert.ok(!['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyT', 'KeyF', 'KeyV', 'KeyQ', 'KeyE', 'KeyU', 'KeyM', 'KeyO', 'KeyX', 'KeyZ', 'KeyG', 'KeyC', 'KeyN'].includes(k), `${k} is not one of the base's keys`);
+  assert.ok(DOG_SCOUT.words.hint.includes('SPACE JUMP') && DOG_SCOUT.words.hint.includes('R ROLL') && DOG_SCOUT.words.hint.includes('H HAND') && DOG_SCOUT.words.hint.includes('B BARK'), 'the hint teaches them');
   const J = DOG_SCOUT.jump, r = J.rate, s = createScout([{ ci: 1, kind: 'rock' }]);
   assert.equal(jump(s, T), false, 'idle: no jump'); drive(s);
   for (let i = 0; i < 40; i++) steer(s, { fwd: true, sprint: true }, 0.05, T);
@@ -100,7 +100,7 @@ assert.deepEqual(DOG_SCOUT.points.kinds.map((k) => k.id), ['rock', 'biomass'], '
   surveyStep(s, 0.1, -1, T); for (let k = 0; k < n - 2; k++) got = Math.max(got, surveyStep(s, 0.1, 0, T)); assert.equal(got, -1, 'leaving the ring restarted its clock');
   for (let k = 0; k < 3; k++) got = Math.max(got, surveyStep(s, 0.1, 0, T)); assert.equal(got, 0, 'survey.seconds inside surveys it');
   for (let k = 0; k < 30; k++) assert.equal(surveyStep(s, 0.1, 0, T), -1, 'not twice');
-  for (const i of [2, 1]) { let g = -1; for (let k = 0; k < 21; k++) g = Math.max(g, surveyStep(s, 0.1, i, T)); assert.equal(g, i); }
+  for (const i of [2, 1]) { let g = -1; for (let k = 0; k < n + 1; k++) g = Math.max(g, surveyStep(s, 0.1, i, T)); assert.equal(g, i); }
   assert.deepEqual(s.surveyed, [0, 2, 1], 'any order'); assert.ok(allSurveyed(s));
   assert.ok(!allSurveyed(createScout([])), 'no points: never all surveyed');
 }

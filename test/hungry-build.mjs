@@ -53,6 +53,7 @@ assert.equal(whoShows(steps[1], { ready: true }), 'print', 'no road: the partial
   g.hunger(w, 0.5, { progress: partial }); tick(g, 30);
   assert.ok(Math.abs(parts.at(-1)[1] - 0.5 * share) < 1e-9, `the partial at half the tool's share (${parts.at(-1)})`);
   assert.ok(poses.at(-1).mode === 'fabricate' && poses.at(-1).stall === true, 'no longer rising: the beam stalls');
+  const retained = g.state().k; g.hunger(w, 0, { progress: partial }); tick(g, 5); assert.equal(g.state().k, retained, 'spending the bank does not unprint the dome');
   g.hunger(w, 0.75, { progress: partial }); g.tick(0.1); assert.equal(poses.at(-1).stall, false, 'fed: the beam works again');
   tick(g, 10);
   assert.equal(g.start(w, { progress: (st, k) => prints.push(k), hand: (st, k) => hands.push([st.id, k]) }), true, 'bought: the real job takes it over');
@@ -60,7 +61,7 @@ assert.equal(whoShows(steps[1], { ready: true }), 'print', 'no road: the partial
   tick(g, 30); assert.deepEqual(hands, [['dome-w', share]]); tick(g, 30); assert.equal(g.state().phase, 'home'); assert.equal(g.state().trips, 1);
   // given up for another: the partial undone, home, then out to the bought one
   parts.length = 0; g.hunger(w, 0.4, { progress: partial }); tick(g, 40); assert.equal(g.state().phase, 'hold');
-  assert.equal(g.start(nw, { progress() {}, hand() {} }), true); assert.deepEqual(parts.at(-1), ['dome-w', 0], 'W\'s partial undone');
+  assert.equal(g.start(nw, { progress() {}, hand() {} }), true); assert.ok(parts.at(-1)[1] > 0, 'W retains its printed layers when KIDOU leaves');
   assert.equal(g.state().phase, 'back'); tick(g, 40); assert.equal(g.state().step, 'dome-nw', 'out to the bought one'); assert.equal(g.state().hungry, null);
 }
 console.log(`hungry-build: cap ${cap}, ${domes.length} domes priced by kind, next/who rules hold`);

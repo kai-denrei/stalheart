@@ -102,7 +102,7 @@ export function createBriefQueue(root, host) {
     if (!briefQ || !briefPending) { showBrief(id); return; }   // a free panel shows it, a busy one with a free slot holds it there
     wanted.push({ id, left: wait });
   }
-  function cutBrief(id) { briefPending = null; if (briefQ) endBrief(); showBrief(id); }   // DAY 42 (round 4, 2026-10-19): the party's over line goes out with the alarm, over whatever gate line holds the panel (src/fx/disco-party.js sayOver)
+  function cutBrief(id, { discardWaiting = false } = {}) { briefPending = null; if(discardWaiting)wanted=[]; if (briefQ) endBrief(); showBrief(id); }   // DAY 42 (round 4, 2026-10-19): the party's over line goes out with the alarm, over whatever gate line holds the panel (src/fx/disco-party.js sayOver)
   function clearBriefs() { briefPending = null; endBrief(); }
   if (briefEl) briefEl.addEventListener('click', () => stepBrief(false));
 

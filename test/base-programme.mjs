@@ -41,7 +41,7 @@ const domeOf = (id) => DOME_STRUCTURES.find((s) => s.id === id);
   for (const id of BRIDGES) {
     const s = step(id), b = domeOf(id);
     assert.deepEqual({ islands: s.islands, structures: s.structures, frame: s.frame, plot: s.plot, seconds: s.seconds, metres: s.metres, brief: s.brief, perk: s.perk, board: !!s.board, passable: s.passable },
-      { islands: [], structures: [id], frame: true, plot: BRIDGE_PLOT, seconds: 8, metres: 6, brief: 'build_bridge', perk: null, board: false, passable: true }, `${id}: the step's shape`);
+      { islands: [], structures: [id], frame: true, plot: BRIDGE_PLOT, seconds: 6, metres: 6, brief: 'build_bridge', perk: null, board: false, passable: true }, `${id}: the step's shape`);
     // the two domes it names stand a grid step either side of it along its length
     const linked = DOME_ISLANDS.filter((i) => Math.abs(Math.hypot(i.x - b.x, i.z - b.z) - DOME_GRID / 2) < 1e-6 && (b.heading[0] ? i.x === b.x : i.z === b.z));
     assert.deepEqual(linked.map((i) => i.id).sort(), [...s.when.stand].sort(), `${id}: its two domes`);

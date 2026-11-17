@@ -7,8 +7,8 @@
 //   (settling)    with `settle` (STORY_SETTLE): no breach at the deploy; foundry -> printing with nothing ordered (the Rotor is the first orders'); at the settle's end an unordered Rotor is Isao's (rotor_emergency); the tremor waits for the settle, the Rotor, the gate and a quiet camera; the breach rises with the head start
 //   (the dog)     with `scout` (THE RECON DOG, owner 2026-11-10; spec docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md) on the story's own
 //                 start: foundry -> dog-print (Isao prints RECKON K9 once the landers' tour is over: api.dog().print()) -> scouting (the player drives it to
-//                 the survey points: api.dog().begin()) -> contact (the last survey: the tremor, a pack of Whites and Yellows risen beyond the gate) ->
-//                 walled (the dog home or `contact.recall` s on: the seat let go; the gate's step prints at `walled`) -> the gate standing, Isao's Rotor
+//                 the survey points: api.dog().begin()) -> contact (reaching the gate after scanning: the tremor, a pack of Whites and Yellows risen beyond the gate) ->
+//                 walled (the dog watches Isao print the gate and Rotor) -> the gate standing, Isao's Rotor
 //                 (dog_rotor) -> printing; the tremor's gated opening after it (the pack and the fodder one wave). After the clear: harvest (the depot's step
 //                 prints at `harvest`; api.harvest() lays the first wave's bodies at the gate and flares them, the rover's first run) -> orders (THE FIRST
 //                 ORDERS, api.orders().done()) -> the Quiver's beat, the Stålheart printing from it (sector 0 during its print)
@@ -37,11 +37,12 @@
 //                 and the sites marked on the radar
 import { makeFoundry, deployFoundry, stepFoundry, foundryState, skipFoundry } from './foundry.js';
 import { STORY_PHASES } from './automation.js';
+import { studyReady } from './closeup-gate.js';
 export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
   laneCell = null,          // (hops) => the lane cell that many cells in from the sinkhole toward the gate, or -1: the quiet breach's head start (fodderEmerge.headStart)
-  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [], calmMax = Infinity,
+  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [],
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed', rotorAuto = false,
   overrideDone = null,      // the tutorial override's end on the dog's opening: { emptyHold, release } (src/content/story-defaults.js STORY_OVERRIDE_DONE); null: the clear waits for the field
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
@@ -60,7 +61,7 @@ export function makeStoryBeats({
   let quiverOrdered = false, cWaves = 0, cSent = 0, studyDelay = quiver?.studyDelay ?? 3, upAt = null;
   // the beats pay for the Quiver and put it on Isao's book, once; a refused order is tried again at the override and at the clear
   // THE ROTOR IS ISAO'S (owner, 2026-10-16; `rotorAuto`): it fires on its own from the first wave (api.autoTower) and the player watches; else the manual override
-  const takeRotor = (api) => { if (rotorAuto) api.autoTower?.(socket); else api.pilot?.(socket, lane); }, overrideLine = rotorAuto ? 'rotor_auto' : 'manual_override';
+  const takeRotor = (api) => { if (rotorAuto) api.autoTower?.(socket); else api.pilot?.(socket, lane); }, overrideLine = rotorAuto ? 'rotor_auto' : 'rotor_first_control';
   const orderQuiver = (api) => { if (quiverOrdered || !quiver || quiverSocket < 0) return; api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); };
   // a construction wave: the next row of the table, from the sinkhole (reopened if a strike filled it), risen over `stagger` seconds
   const constructionWave = (api) => {
@@ -83,6 +84,7 @@ export function makeStoryBeats({
   const dog = (api) => api.dog?.() ?? null;
   let emergency = false;   // Isao's own Rotor order at the settle's end (its cost granted once)
   const settleOver = () => released && clock - releasedAt >= settle;
+  let gunshipTaken = false;
   let releasedAt = null, opened = false, quiet = false, nukes0 = null, nukeAt = null;   // quiet: the sinkhole opened unseen, during the tour
   if (late || arrival) faces = 2;
   const enter = (p) => { phase = p; at = clock; };
@@ -103,7 +105,7 @@ export function makeStoryBeats({
       if (late && !offered) {
         if (fd && foundryCut != null) skipFoundry(fd, foundryCut);
         if (STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('cleared')) api.unlock?.('views');
-        if (phase === 'construction' && construction) { api.gunshipArrive?.(); if (quiverSocket >= 0) api.pilot?.(quiverSocket, lane); nextSpawn = clock + (construction.first ?? construction.every); }   // the player is still in the Quiver's optic there
+        if (phase === 'construction' && construction) { nukes0 = api.nukes?.() ?? 0; api.gunshipArrive?.(); if (quiverSocket >= 0) api.pilot?.(quiverSocket, lane); nextSpawn = clock + (construction.first ?? construction.every); }   // the player is still in the Quiver's optic there
         if (phase === 'settled') studyDelay = construction?.studyDelay ?? studyDelay;
         offered = true;
       }
@@ -131,25 +133,28 @@ export function makeStoryBeats({
       // THE DOG (spec 1, beats 2-8): printed once the tour is over and no shot plays; driven to the points; the last survey wakes the pack beyond the gate
       else if (phase === 'dog-print') {
         const D = dog(api);
-        if (!dogAsked && !api.touring?.() && !api.shot?.()) { dogAsked = D ? !!D.print() : true; if (dogAsked) said.add('dog_print'); }
+        if (!dogAsked && !api.touring?.() && !api.shot?.() && api.supportBrief?.() !== false) { dogAsked = D ? !!D.print() : true; if (dogAsked) said.add('dog_print'); }
         if (dogAsked && (!D || D.born())) { D?.begin(); api.brief?.('dog_scout'); said.add('dog_scout'); enter('scouting'); }
       } else if (phase === 'scouting') {
         const d = dog(api)?.state() ?? { done: true, contact: -1 };
-        if (d.done) {
+        if (d.done && d.atGate !== false) {
           const ci = d.contact >= 0 ? d.contact : fodder, C = scout.contact;
-          api.tremor?.(ci); api.brief?.('dog_contact'); said.add('dog_contact');
+          api.tremor?.(ci); (api.briefNow ?? api.brief)?.('dog_contact'); said.add('dog_contact');
           if (ci >= 0) for (const b of C.bodies) for (let i = 0; i < b.count; i++, pack++) api.spawn(b.type, ci, { here: true, harmless: true, spread: C.spread, pace: C.pace, delay: pack * C.stagger });
-          enter('contact');
+          dog(api)?.watchGate?.(); enter('contact');
         }
       } else if (phase === 'contact') {
-        const d = dog(api)?.state() ?? { home: true };
-        if (d.home || clock - at >= scout.contact.recall) { dog(api)?.release(); api.tremor?.(-1); api.brief?.('dog_wall'); said.add('dog_wall'); enter('walled'); }
+        if (clock - at >= (scout.contact.watch ?? 3)) { api.tremor?.(-1); api.brief?.('dog_wall'); said.add('dog_wall'); enter('walled'); }
       } else if (phase === 'walled' && gateReady()) {   // the gate stands: too much for the dog, Isao prints the Rotor (his grant, as the emergency Rotor was)
         if (!said.has('dog_rotor')) { api.brief?.('dog_rotor'); said.add('dog_rotor'); api.grant(api.cost(key)); }
         if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }
       // NO SENTRY UP AT THE SETTLE'S END: Isao prints the Rotor himself (its cost granted once; a Rotor already on the book is left to stand)
       else if (phase === 'printing' && settling && orderedAt === null && settleOver() && !api.pending?.(socket)) { if (!emergency) { emergency = true; api.grant(api.cost(key)); api.brief?.('rotor_emergency'); said.add('rotor_emergency'); } if (api.order(key, socket)) orderedAt = clock; }
+      else if (phase === 'rotor-ready' && scouting && gateReady() && (!api.shot?.() || api.shotId?.() === 'dogScout')) {
+        dog(api)?.release();api.tremor?.(-1);quiet=true;if(!opened){api.breach?.(fodder,{quiet:true});opened=true;}nextSpawn=clock;
+        orderQuiver(api);(api.briefNow ?? api.brief)?.(overrideLine);said.add(overrideLine);takeRotor(api);enter('piloting');
+      }
       else if (phase === 'rotor-ready' && opened) { if (gateAt === null && gateReady()) { gateAt = clock; orderQuiver(api); } if (!api.touring?.()) { api.brief?.(overrideLine); said.add(overrideLine); takeRotor(api); enter('piloting'); } }   // the tour over: straight into the Rotor (or Isao's, rotorAuto)
       else if (phase === 'rotor-ready' && gated && gateAt === null) { if (gateReady()) { gateAt = clock; orderQuiver(api); } }   // THE TREMOR WAITS FOR THE GATE: no fodder before it stands; the Quiver goes on the book with it
       else if (phase === 'rotor-ready' && clock - Math.max(at, gateAt ?? at) >= (gated ? tremorDelay : controlDelay) && (!settling || (settleOver() && !api.shot?.())) && (!scouting || !api.shot?.())) {   // a settled opening: the settle run out and no camera shot playing
@@ -174,7 +179,7 @@ export function makeStoryBeats({
         if (spawned >= fodderTotal && (api.enemies() === 0 || (emptyAt !== null && clock - emptyAt >= overrideDone.emptyHold))) { api.brief?.('wave_cleared'); api.unlock?.('views'); said.add('wave_cleared'); enter('cleared'); }
       } else if (phase === 'cleared' && scouting) enter('harvest');
       // THE FIRST HARVEST (spec 1, beat 10): the depot prints at `harvest`; once it is live Isao's flare goes on the bodies at the gate, and the rover's
-      // first trip home (or harvestMax s) brings THE FIRST ORDERS; the Quiver's beat waits for the card to close
+      // short introduction (or harvestMax s if the depot fails) brings THE FIRST ORDERS; the Quiver's beat waits for the card to close
       else if (phase === 'harvest' && overrideDone && clock - at < overrideDone.release) { /* the last kill reads */ }
       else if (phase === 'harvest') {
         if (overrideDone && !vacated) { vacated = true; api.vacate?.(); }   // the seat lets go: the camera back to where it was before the seat
@@ -193,14 +198,15 @@ export function makeStoryBeats({
       }
       else if (phase === 'quiver-piloting') {
         if (hardcores < 2 && clock >= nextSpawn) { if (quiver.second) api.spawn(quiver.second, fodder, { pace: quiver.secondPace ?? 1 }); else api.spawn(quiver.hardcore, fodder); hardcores = 2; }   // the second a black, slower (2026-10-16)
-        if (hardcores >= 2 && api.enemies() === 0) {
+        if (hardcores >= 2 && (api.quiverEnemies?.() ?? api.enemies()) === 0) {
           api.brief?.('quiver_cleared'); said.add('quiver_cleared');
-          if (construction && api.stalheartStands && !api.stalheartStands()) { enter('construction'); api.gunshipArrive?.(); if (tankAfterNuke != null) api.gunshipSeat?.(); nukes0 = api.nukes?.() ?? 0; nextSpawn = clock + (construction.first ?? construction.every); }
+          if (construction && (tankAfterNuke != null || (api.stalheartStands && !api.stalheartStands()))) { enter('construction'); api.gunshipArrive?.(); if (tankAfterNuke != null) gunshipTaken = api.gunshipSeat?.() !== false; nukes0 = api.nukes?.() ?? 0; nextSpawn = clock + (construction.first ?? construction.every); }
           // THE STÅLHEART ALREADY STANDS (the settling, spec 2.D): no sector 0, so GS01 comes on station here (a settled opening only: an
           // unsettled one that finds it standing keeps today's flow, no gunship, test/story-beats.mjs 'no construction, no free pass')
           else { enter('settled'); api.unlock?.('views'); if (settling && construction) api.gunshipArrive?.(); }
         }
       } else if (phase === 'construction') {
+        if (tankAfterNuke != null && !gunshipTaken) gunshipTaken = api.gunshipSeat?.() !== false;
         // THE STÅLHEART STANDS, ITS FIRST HULL IS OUT AND SECTOR 0 IS DOWN: the handover. Its last bodies are the new MÖRK's first
         // work (and the seats'): the automatic towers fire without the seat's multipliers and would take minutes over what a
         // player clears in seconds, and a live body holds every wave clock and idle print after it. No new wave once it stands.
@@ -218,10 +224,10 @@ export function makeStoryBeats({
         // field brings Isao's reminder, once per wave
         if (!sealed && cWaves > 0 && api.sourceAlive && !api.sourceAlive()) { sealed = true; api.brief?.('sinkhole_sealed'); said.add('sinkhole_sealed'); }
         if (!up && !sealed && cWaves > reminded && api.enemies() === 0) { api.brief?.(reminded === 0 ? 'sinkhole_strike' : 'sinkhole_strike_again'); reminded = cWaves; }
-        if (up && (api.enemies() <= (construction?.mopUp ?? 0) || clock - upAt >= (construction?.mopUpSeconds ?? Infinity))) { studyDelay = construction?.studyDelay ?? studyDelay; enter('settled'); api.unlock?.('views'); }   // and the hull is the player's for a moment before the study
+        if (up && (tankAfterNuke == null || said.has('tank_ready')) && (api.enemies() <= (construction?.mopUp ?? 0) || clock - upAt >= (construction?.mopUpSeconds ?? Infinity))) { studyDelay = construction?.studyDelay ?? studyDelay; enter('settled'); api.unlock?.('views'); }   // and the hull is the player's for a moment before the study
         else if (!up && construction && !sealed && clock >= nextSpawn && api.enemies() < (construction.alive ?? Infinity)) { constructionWave(api); nextSpawn = clock + construction.every; }   // a wave waits while the field is full
-      } else if (phase === 'settled' && quiver && clock - at >= studyDelay && (!api.engaged?.() || clock - at >= studyDelay + calmMax)) {   /* never over a fight: the end of it, or calmMax at most */ api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
-      else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
+      } else if (phase === 'settled' && quiver && clock - at >= studyDelay && studyReady({ engaged: !!api.engaged?.(), briefing: !!api.briefing?.(), shot: !!api.shot?.(), busy: !!api.busy?.() })) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
+      else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.() && !api.shot?.() && !api.engaged?.() && !api.busy?.()) { api.screen?.('synthetic'); enter('study'); }
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.expeditionsBegin?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },
     // THE ARRIVAL'S CUE (src/fx/arrival.js): the landing has played and Isao has said its lines, so the AFR-01 deploys now, in this

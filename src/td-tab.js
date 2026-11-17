@@ -1,3 +1,6 @@
+import { FRIENDLY_TRAFFIC } from './content/friendly-traffic.js';
+import { createFriendlyTraffic } from './fx/friendly-traffic.js';
+import { baseDoorsClosed } from './domain/closeup-gate.js';
 import { createSentryPilot } from './sentry-pilot.js';
 import {DEFAULT_TANK, TANK_WALL} from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact, threadClearance } from './domain/hull-contact.js'; import { makeSteerEase } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
@@ -6,6 +9,7 @@ import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } 
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { applyScare } from './domain/impact-scare.js'; import { createWaveClock } from './domain/wave-clock.js';
+import { COMPANIONS } from './content/companions.js';
 import { groundBlock } from './domain/drive-ground.js';   // THE TANK'S GROUND, the rover's too (2026-11-12)
 import { EXPLOSION_SCARE } from './content/explosions.js';
 import { createThermalHeat } from './fx/thermal-heat.js';
@@ -976,8 +980,16 @@ export function initTdTab(root) {
   }
   let hullWhy = '';   // which test refused the last refused candidate (the corridor probe's trace; 2026-10-16)
   // THE TANK'S GROUND (src/domain/drive-ground.js): rock, container, open sinkhole, the pad; the buildings and the spawn points for the rover's road
-  const hullGround = { rock: (ci) => dungeon.tags[ci] === BLOCKED, container: (ci) => containerBlocked(ci), breach: (p) => breachBlocked(p), pedestal: (p) => dist3(p, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3, solid: (p, pad) => storyBase?.solidAt(p, pad) ?? null, unit: (p) => unitBlocker(p) };
+  const returningThroughDoor = () => !!story?.inside?.(player.cur) && !baseDoorsClosed(storyBase?.gateList() ?? []);
+  const friendlyTraffic = createFriendlyTraffic({ base: () => storyBase, metres: () => metresToArc(1,cellSide), bodies: () => [
+    ...(companions?.contacts() ?? []), ...(mechSquad?.contacts() ?? []), ...roverGlue.contacts(),
+    ...(playerHP>0 && story?.hull?.out() ? [{id:'tank',pos:player.pos,dir:player.smoothDir,halfLength:COMPANIONS.hull.halfLength,halfWidth:COMPANIONS.hull.halfWidth,height:4}] : []),
+    ...towers.filter(tw=>tw.obj&&!tw.obj.userData.loading).map(tw=>({id:`tower:${tw.ci}`,pos:tw.obj.position.toArray(),dir:new THREE.Vector3(0,0,1).applyQuaternion(tw.obj.quaternion).toArray(),halfLength:3.5,halfWidth:3.5,height:10})),
+    ...[isao,assistant].filter(Boolean).map(w=>({id:w===isao?'isao':'assistant',pos:w.obj.position.toArray(),dir:new THREE.Vector3(0,0,1).applyQuaternion(w.obj.quaternion).toArray(),halfLength:FRIENDLY_TRAFFIC.workerRadiusM,halfWidth:FRIENDLY_TRAFFIC.workerRadiusM,height:6.4})),
+  ] });
+  const hullGround = { rock: (ci) => dungeon.tags[ci] === BLOCKED, container: (ci) => containerBlocked(ci), breach: (p, extra = 0) => breachBlocked(p, CRATER_PAD + extra / cellSide), pedestal: (p) => dist3(p, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3, solid: (p, pad) => storyBase?.solidAt(p, pad) ?? null, unit: (p) => unitBlocker(p) };
   function freeBlocked(cand) {
+    if (friendlyTraffic.blocked(player.pos,cand,COMPANIONS.hull.halfWidth*metresToArc(1,cellSide),'tank')) return (hullWhy = 'friendly'), true;
     const ci = cellIndex(cand), ground = groundBlock(cand, ci, hullGround);
     if (ground) return (hullWhy = ground), true;   // the pad, and any open sinkhole: no-go
     // THE HULL'S OWN FOOTPRINT against the rock faces (operator, 2026-09-13): its centre, nose and tail; a move may not take it deeper
@@ -2389,21 +2401,25 @@ export function initTdTab(root) {
     // the story planet has a day
     daylight?.restore();
     daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, ...(({ phase, day }) => ({ phase, dayNo: day }))(dayFlag(flags.day)), dial: root }) : null;
-    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, pets: () => companions, hull: () => (playerHP > 0 ? player.pos : null), startShot, snapCamera, showBrief, cutBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide),
+    discoParty?.restore(); discoParty = story ? createDiscoParty({ scene, camera, home: () => !!story?.hull?.out() && !!story?.inside?.(player.cur) && baseDoorsClosed(storyBase?.gateList() ?? []), pets: () => companions, hull: () => (playerHP > 0 ? player.pos : null), startShot, snapCamera, showBrief, cutBrief, callout: (x, c) => showCallout(x, c), armWave, sfx, metres: () => metresToArc(1, cellSide),
       daylight: () => daylight, sectorRun: () => sectorRun, base: () => storyBase, shotActive, warning: () => waveClock.in() >= 0, boards: () => story?.boards ?? [],   /* DAY 42 (owner, 2026-10-18; src/fx/disco-party.js): Isao's disco ball, once a run; no party over the board's wave warning */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen(), alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(), warm: warmShaders }) : null;
-    mechSquad?.restore(); mechSquad = story ? createMechSquad({ scene, metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => (playerHP > 0 ? player.pos : null), hullDir: () => (playerHP > 0 ? player.smoothDir : null), towerDef: (k) => TOWER_BY_KEY[k], towerId: () => nextTowerId++, seed: params.seed, eye: () => camera.position, wire: () => (wire ? wireOpts : null) }) : null;
+    mechSquad?.restore(); mechSquad = story ? createMechSquad({ scene, traffic: friendlyTraffic,
+      rover: () => roverGlue.collision(true), metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, enemies: () => enemies, hull: () => (playerHP > 0 ? player.pos : null), hullDir: () => (playerHP > 0 ? player.smoothDir : null), towerDef: (k) => TOWER_BY_KEY[k], towerId: () => nextTowerId++, seed: params.seed, eye: () => camera.position, wire: () => (wire ? wireOpts : null) }) : null;
     reinforcements?.restore(); reinforcements = story ? createReinforcements({ scene, camera, metres: () => metresToArc(1, cellSide), sfx, explode, startShot, snapCamera, showBrief, callout: (x, c) => showCallout(x, c), graph: () => graph, dungeon: () => dungeon, story: () => story,
-      daylight: () => daylight, sectorRun: () => sectorRun, shotActive: () => shotActive() || !!hullDeploy.state(), flag: flags.reinforce, uplink: () => programme.hasPerk('uplink'), landed: (m, f, c) => mechSquad?.adopt(m, f, c), squad: () => mechSquad, alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(),   /* FEIDS-26 (2026-10-23) */
+      daylight: () => daylight, sectorRun: () => sectorRun, shotActive: () => shotActive() || !!hullDeploy.state() || returningThroughDoor(), flag: flags.reinforce, uplink: () => programme.hasPerk('uplink'), landed: (m, f, c) => mechSquad?.adopt(m, f, c), squad: () => mechSquad, alive: () => playerHP > 0, won: () => !!player.won, isaoBusy: () => !!briefs.queue(),   /* FEIDS-26 (2026-10-23) */
       seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
-    companions?.dispose(); companions = story && flags.pets !== '0' ? createCompanions({ scene, party: () => discoParty?.floor() ?? null, metres: () => metresToArc(1, cellSide), graph: () => graph, dungeon: () => dungeon, inside: (ci) => !!story.inside?.(ci), solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false, floorAt: (p) => storyBase?.floorAt(p) ?? 1,
+    companions?.dispose(); companions = story && flags.pets !== '0' ? createCompanions({ scene, traffic: friendlyTraffic,
+      rover: () => roverGlue.collision(true), party: () => discoParty?.floor() ?? null, metres: () => metresToArc(1, cellSide), graph: () => graph, dungeon: () => dungeon, inside: (ci) => !!story.inside?.(ci), solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false, floorAt: (p) => storyBase?.floorAt(p) ?? 1,
       hull: () => (playerHP > 0 ? player.pos : null), hullDir: () => (playerHP > 0 ? player.smoothDir : null), eye: () => camera.position, wire: () => (wire ? wireOpts : null), seed: params.seed, born: flags.pets === 'born' }) : null;   // C-07 AND RECKON K9 (owner, 2026-10-27): the two companions (src/fx/companions.js), printed by Isao since 2026-10-30 (?pets=born: on the clearing from the first frame); ?pets=0 leaves them out
-    petPrint?.restore(); petPrint = companions ? createPetPrint({ scene, camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, showBrief, companions: () => companions, isao: () => isao, phase: () => story?.beats?.phase?.() ?? null, perk: (id) => programme.hasPerk(id), day: () => daylight?.day?.() ?? 0, sectorRun: () => sectorRun,   /* ISAO PRINTS THE COMPANIONS (owner, 2026-10-30; src/fx/pet-print.js) */
-      shotActive: () => shotBusy() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() || !!controlsCard?.state().shown, isaoBusy: () => !!briefs.queue(), alive: () => playerHP > 0, won: () => !!player.won, slabAt: (p, pad) => storyBase?.slabAt(p, pad) ?? null }) : null;
-    antennaPrint?.restore(); antennaPrint = story ? createAntennaPrint({ camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, want: (id) => briefs.want(id), print: () => story?.print ?? null, shotActive: () => shotActive() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, sectorRun: () => sectorRun }) : null;   /* THE ANTENNA ON SCREEN (round 4, 2026-11-02; src/fx/antenna-print.js) */
-    dogScout?.dispose(); dogScout = companions ? createDogScout({ scene, camera, metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false, companions: () => companions, petPrint: () => petPrint,   /* THE RECON DOG (2026-11-12; src/fx/dog-scout.js) */
+    petPrint?.restore(); petPrint = companions ? createPetPrint({ scene, camera, traffic: friendlyTraffic, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, showBrief, companions: () => companions, isao: () => isao, phase: () => story?.beats?.phase?.() ?? null, perk: (id) => programme.hasPerk(id), day: () => daylight?.day?.() ?? 0, sectorRun: () => sectorRun,   /* ISAO PRINTS THE COMPANIONS (owner, 2026-10-30; src/fx/pet-print.js) */
+      shotActive: () => shotBusy() || !!hullDeploy.state(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, card: () => paused || !!story?.debrief?.isOpen() || !!gunshipBriefing?.isOpen() || !!syntheticModal?.isOpen() || laserStation.briefingOpen() || !!controlsCard?.state().shown, isaoBusy: () => !!briefs.queue(), atBase: () => !!story?.inside?.(player.cur) && !returningThroughDoor(),
+      alive: () => playerHP > 0, won: () => !!player.won, slabAt: (p, pad) => storyBase?.slabAt(p, pad) ?? null }) : null;
+    antennaPrint?.restore(); antennaPrint = story ? createAntennaPrint({ camera, metres: () => metresToArc(1, cellSide), startShot, endShot, snapCamera, want: (id) => briefs.want(id), print: () => story?.print ?? null, shotActive: () => shotActive() || !!hullDeploy.state() || returningThroughDoor(), seated: () => pilotMode || laserStation.seated() || !!pilot?.gunship, sectorRun: () => sectorRun }) : null;   /* THE ANTENNA ON SCREEN (round 4, 2026-11-02; src/fx/antenna-print.js) */
+    dogScout?.dispose(); dogScout = companions ? createDogScout({ scene, camera, sfx, traffic: friendlyTraffic,
+      metres: () => metresToArc(1, cellSide), cellSide: () => cellSide, graph: () => graph, dungeon: () => dungeon, story: () => story, solidAt: (p, pad) => storyBase?.solidAt(p, pad) ?? false, companions: () => companions, petPrint: () => petPrint,   /* THE RECON DOG (2026-11-12; src/fx/dog-scout.js) */
       startShot, endShot, shotActive, shotId, enemies: () => enemies, eco: () => eco, showToast, showBrief, held: () => ({ fwd: keys.fast || cruise, back: keys.slow, left: keys.left, right: keys.right, sprint: keys.laser }), unheld: () => { cruise = false; }, auto: flags.acceptance === '1' && !storyQuery.dog }) : null;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
     // model happens to land — which is what lets a reset place the tank once instead of standing it beside the Heart and
@@ -3357,8 +3373,7 @@ export function initTdTab(root) {
   // --- ISAO: the industrial construction drone (src/fx/isao-worker.js): an order is placed, he flies to the cell and prints, so
   // TRAVEL and BUILD stand between wanting a tower and having one; the controller keeps the two drones, the module their work
   const isaoWorker = createIsaoWorker({
-    X_AXIS,
-    Z_AXIS,
+    traffic: friendlyTraffic,
     automated,
     checkAchievements,
     commitTower,
@@ -3374,7 +3389,6 @@ export function initTdTab(root) {
     showBrief,
     showRangeRing,
     tmpObj,
-    tmpQ,
     towers,
     updateHud,
     cellSide: () => cellSide,
@@ -3664,7 +3678,7 @@ export function initTdTab(root) {
   function stepPlasmaBeams(...a) { return plasmaBeamsFx.stepPlasmaBeams(...a); }
 
   // THE TOWER COMBAT LOOP (src/fx/tower-combat.js): the A6 walkers, every tower's frame, the shots, beams, lightning and slugs
-  const towerCombat = createTowerCombat({
+  const towerCombat = createTowerCombat({ traffic: friendlyTraffic,
     SLOW_BOLTS,
     Z_AXIS,
     a6Rng,
@@ -4506,7 +4520,7 @@ export function initTdTab(root) {
   const storyApi = {
     // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
     // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels
-    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10, held: () => !!story?.arrival.swapHeld?.() })).event(ev, d); if (ev === 'deploy') { const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
+    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10, camera, held: () => !!story?.arrival.swapHeld?.() })).event(ev, d); if (ev === 'deploy') { const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
     order: (key, ci) => orderTower(key, ci, { quiet: true }), pending: (ci) => orderByCell.has(ci),   /* an order on that cell (the beats' emergency Rotor, 2026-11-08) */
     grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); },
     built: (ci) => towerByCell.has(ci),
@@ -4514,10 +4528,11 @@ export function initTdTab(root) {
     isao: () => !!isao,
     // a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the
     // Quiver beat settled with it still to come
+    quiverEnemies: () => enemies.filter((e) => e.alive && !e.guard && !e.spec.rammable).length + spawnQueue.filter((q) => !q.guard && ENEMY_SPEC[q.type]?.rammable === false).length,
     enemies: () => enemies.filter((e) => e.alive && !e.guard).length + spawnQueue.filter((q) => !q.guard).length,   // the site guards are not the beats' business
     creatures: (q, side, wave) => creatureEnemies.replace(q, side, wave),   // a sector wave's share of ?creatures, the Pearl set's build-up (src/fx/creature-enemies.js)
     spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard || o?.here ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
-    brief: (id) => showBrief(id), want: (id) => briefs.want(id),   /* want: a line that waits for a busy panel (the first harvest's exposition, 2026-11-12) */
+    brief: (id) => showBrief(id), briefNow: (id) => briefs.cut(id, { discardWaiting: true }), want: (id) => briefs.want(id),   /* want: a line that waits for a busy panel (the first harvest's exposition, 2026-11-12) */
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
     // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
     breach: (ci, o) => { const obj = buildPortalObj(ci, o?.radius ?? 1); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; obj.userData.keep = !!o?.keep; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
@@ -4564,8 +4579,10 @@ export function initTdTab(root) {
   });
   // THE ROVER AND THE BIO-PEARLS (round 8 note 7, src/fx/rover-glue.js): kills lie on the ground, F's flare sends the rover, the pearls are the bank
   const roverGlue = createRoverGlue({
-    scene, hullConsole, player, showBrief, showToast, updateHud, wire: () => (wire ? wireOpts : null), metres: () => metresToArc(1, cellSide), briefQ: () => briefs.queue(),
-    story: () => story, storyBase: () => storyBase, graph: () => graph, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, enemies: () => enemies, atBase: () => hullRepair.state().under || !!(story?.armoryPad?.ring?.state().standing && story.armoryPad.ring.state().near),   /* the shells' pad restocks the flares too (2026-11-12 night) */
+    scene, hullConsole, player, showBrief, showToast, updateHud, sfx, wire: () => (wire ? wireOpts : null), metres: () => metresToArc(1, cellSide), briefQ: () => briefs.queue(),
+    queuePrint: (order) => { orders.push(order); spawnIsao(); }, traffic: friendlyTraffic, hullOut: () => !!story?.hull?.out(),
+    dungeon: () => dungeon, seed: () => params.seed, busy: () => paused || shotBusy() || !!syntheticModal?.isOpen(),
+    story: () => story, storyBase: () => storyBase, graph: () => graph, cellSide: () => cellSide, t: () => t, eco: () => eco, playerHP: () => playerHP, pilotMode: () => pilotMode, atBase: () => !!story?.glue?.atDropOff?.(player.pos) || hullRepair.state().under || !!(story?.armoryPad?.ring?.state().standing && story.armoryPad.ring.state().near),   /* the shells' pad restocks the flares too (2026-11-12 night) */
     arrival: createRoverCard({ root, pause: (v) => { paused = !!v; }, search: location.search, sectorRun: () => sectorRun }),   // THE ARRIVAL CARD (owner, 2026-11-13; src/fx/rover-card.js)
     ground: hullGround, cellIndex: (p) => cellIndex(p),   // the tank's ground and the lattice lookup: the rover's road (2026-11-12)
   });
@@ -4678,6 +4695,7 @@ export function initTdTab(root) {
   });
   // THE BUILD BOARD (owner, 2026-11-05, round 6 note 2; src/fx/build-board.js): the sector loop's break, on the debrief's CONTINUE: six offers, two picks
   const buildBoard = createBuildBoard({ root, endShot, eco: () => eco, story: () => story, towers: () => towers, orders, placeError, graph: () => graph, cellSide: () => cellSide, orderTower, orderUpgrade, callout: (x, c) => showCallout(x, c), manned: () => laserStation.manned?.() ?? 0, petLife: (i) => companions?.life?.(i) ?? null, printPet: (i) => petPrint?.force(i),
+    hauler: () => roverGlue.haulerOffer(), printHauler: () => roverGlue.printSecond(),
     hull: () => ({ dents: hullArmour, max: hullHits(), hulls: playerHP, maxHulls: PLAYER_MAX }), mendHull: () => { hullArmour = hullHits(); if (playerMesh) applyTankHealth(playerMesh, 1); updateHud(); }, addHull: () => { playerHP = Math.min(PLAYER_MAX, playerHP + 1); syncLifeContainers(); updateHud(); },
     shield: () => ({ rack: shield.rack, cap: shieldTune.rackCap }), fillRack: () => { shield.rack = shieldTune.rackCap; updateHud(); }, sentryKeys: () => unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base), spriteShot, towerLook: () => params.towerLook });
   const firstOrders = createFirstOrders({ board: buildBoard, story: () => story, touring: () => storyApi.touring(), loading: () => !!story?.arrival.loading?.(), pause: (v) => { paused = !!v; }, brief: (id) => briefs.want(id), acceptance: flags.acceptance === '1', wanted: storyQuery.first });   // THE FIRST ORDERS (2026-11-08, THE SETTLING; src/fx/first-orders.js); want: the scouting line waits for a busy panel (--settling saw showBrief's one-deep slot drop it behind the Stålheart's lines)
@@ -4780,6 +4798,7 @@ export function initTdTab(root) {
     nukes: autoSupport.nukes,
     danger: isaoMoments.danger,
     engaged: isaoMoments.engaged,
+    busy: () => returningThroughDoor() || paused || pilotMode || cruise || Math.abs(throttle) > 0.01 || Object.values(keys).some(Boolean) || laserStation.seated() || !!hullDeploy.state() || !!petPrint?.printing() || !!syntheticModal?.isOpen() || !!gunshipBriefing?.isOpen(),
     tankReady: programme.tankReady,
     // THE STORY'S TICK, once per unfrozen frame, in the order programme-host's build() ran it: the sky, Isao's moments, the colony's
     // opening props, the first hull, the colony's perks, the fire support, the colony's works, then at most one order for Isao
@@ -4805,6 +4824,7 @@ export function initTdTab(root) {
     bossBegin: bossRun.begin, bossEnd: bossRun.end, arenaDue: () => bossRun.arenaDue(), bossTalking: () => bossRun.talking(),   // THE ARENA sector (src/fx/boss-run.js): its breach opens once the hull is at the beacon
     descent: (then) => descentHost.begin(then),   // THE DESCENT before the ending (src/fx/descent-host.js)
     printNow: (id, then) => !!petPrint?.printNow(id, then),
+    supportBrief: () => { const b=gunshipBriefing??=createGunshipBriefing(root);if(b.seen())return true;if(!b.isOpen())b.openPaused({get:()=>paused,set:v=>{paused=v;}},null,{introduction:true});return false; },
     dog: () => dogScout, harvest: () => firstHarvest, orders: () => firstOrders,   // THE RECON DOG's seat, the first harvest and the first orders for the beats (src/domain/story-beats.js scout)
     breakSide: canyonRun.breakSide,
     repaired: programme.repaired,
@@ -5020,7 +5040,7 @@ export function initTdTab(root) {
           gates: storyBase?.gateList() ?? null, backSockets: (story.backSockets ?? []).map((sk) => sk.cell),
           broke: programmeHas(story.programme, 'gate') ? (story.wallCells ?? []).filter((wc) => dungeon.tags[wc] !== BLOCKED).length : 0,
           repairing: orders.find((o) => o.kind === 'repair')?.repair ?? null, repairBed: !!orders.find((o) => o.kind === 'repair')?.bed,
-          isao: isao ? { state: isao.state, order: isao.order?.kind ?? null, printK: isao.dur ? +Math.min(1, isao.t / isao.dur).toFixed(3) : 0 } : null,
+          isao: isao ? { pos:isao.obj.position.toArray(), quat:isao.obj.quaternion.toArray(), avoiding:!!isao.avoiding, state: isao.state, order: isao.order?.kind ?? null, printK: isao.dur ? +Math.min(1, isao.t / isao.dur).toFixed(3) : 0 } : null,
           perks: [...storyApi.perks()],
         } : null,
         towerCells: towers.map((t) => [t.key, t.ci]),
@@ -5116,6 +5136,7 @@ export function initTdTab(root) {
       sectorClearField: () => sectorRun?.test.clearField(), breachAt: (ci) => !!storyApi.breach(ci, {}),
       // THE PACING PROBE'S DEFENDER (--pacing): a body within r cells of a door dies there; it counts arrivals (not harmless
       // leftovers), not a player's kills
+      traffic: friendlyTraffic,
       sectorCull: (r = 8, pay = null) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && (!e.breachSource || e.emergeAge >= 1.2) && doors.some((c) => chord(e.pos, c) < cellSide * r)) { if (pay) damageEnemy(e, t, e.hp + 1, false, pay); else killCreature(e, false); if (!e.harmless) n++; } return n; },
       sectorContinue: (via) => sectorRun?.test.cont(via), landing: (cmd, arg) => story?.arrival.landing?.(cmd, arg) ?? null,   // THE LANDING's harness (src/fx/arrival.js landing)
       descentNow: () => descentHost.begin(() => {}), descentReport: (o) => descentHost.report(o),   // THE DESCENT's harness: open the cave, hand an outcome back
@@ -5240,7 +5261,7 @@ export function initTdTab(root) {
       viewBack: (height, back) => { const m = story?.backMouth; if (!m) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...m.dir), { id: 'backview', hold: 600, dive: { ...story.backDoor.dive, height: height ?? story.backDoor.dive.height, back: back ?? story.backDoor.dive.back, diveSeconds: 1e-3 } }); },
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
       rover: roverGlue.test,   // the rover, the field and the pearls (round 8 note 7, --rover)
-      dog: { state: () => dogScout?.test.state() ?? null, goto: (i) => !!dogScout?.test.goto(i) },   // the recon dog's seat (2026-11-12, --dog-scout)
+      dog: { state: () => dogScout?.test.state() ?? null, goto: (i, offsetM = 0) => !!dogScout?.test.goto(i, offsetM) },   // the recon dog's seat (2026-11-12, --dog-scout)
       // THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems
       // through these and nothing else, so it needs no ?acceptance=1
       showcase: createShowcaseHooks({
@@ -5298,7 +5319,7 @@ export function initTdTab(root) {
       story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>{thermalHeat.set(on);creatureEnemies.thermal?.(on);},leave:()=>leavePilot(),glide:s=>seatGlide.begin(camera,{seconds:s,speed:s?SEAT_GLIDE_PEAK*metresToArc(1,cellSide):0}),gunship:gunshipRig.pilotBag(),
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),leave:()=>root.querySelector('#story-views [data-view="tank"]:not([disabled])')?.click(),pause:()=>{togglePause();pilot.state.held=false;},
-      wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body
+      wake:()=>holdWake(),paused:()=>paused,cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body
       zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();}, lens:()=>[camera.fov,camera.aspect], round:()=>{const tw=pilot?.state.tower,m=tw&&towerSeekers.find(m=>m.by===tw);return m?{pos:m.p,u:m.t/m.config.duration,phase:m.pose?.phase}:null;},   /* the piloted mount's guided round in flight, for the framing (src/core/round-framing.js) */
       visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos,perchOf(pilot.state.tower)),
       aimPoint:(eye,dir,range)=>roundEnd(eye.toArray(),dir.toArray(),range,terrainOf(pilot.state.tower.ci)).point,   // exactly where the reticle's line meets the terrain
@@ -5334,8 +5355,10 @@ export function initTdTab(root) {
         lock:pilot.state.tower.lock,
         heart:heartHP,
       }),
+      guidance:()=>({ ...pilot.state.guide, candidate:pilot.state.sightTarget?.id??null }),
       select:key=>pilot.select(key),
-      aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
+      aimEnemy:(centerSecondary=false)=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;if(centerSecondary)pilot.state.guide={x:0,y:0};
+        pilot.aimAt(add3(groundAt(e),scale3(norm3(groundAt(e)),cellSide*.3)));return {id:e.id,hp:e.hp};},
       enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},
       hold:on=>{pilot.state.held=!!on;},
       view:v=>pilot.setView(v),

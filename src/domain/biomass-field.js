@@ -41,6 +41,19 @@ export function createField({ seep = { grace: 0, floor: 0.5, share: 1 / 400, bon
       return kg;
     },
     piles: () => [...byCell.values()].map((p) => ({ cell: p.cell, kg: p.kg, at: p.at, bodies: p.bodies })),
+    // Terrain can open under a body. Moving its record keeps the pickup and
+    // drawing together, without granting fresh biomass or renewing its grace.
+    relocate(resolve) {
+      const moved = [...byCell.values()].map((p) => [p, resolve(p.cell)]).filter(([p, c]) => Number.isInteger(c) && c >= 0 && c !== p.cell);
+      for (const [p] of moved) byCell.delete(p.cell);
+      for (const [p, cell] of moved) {
+        const to = byCell.get(cell);
+        if (to) { to.kg += p.kg; to.bodies += p.bodies; to.laid = Math.min(to.laid, p.laid); to.at = Math.max(to.at, p.at); }
+        else byCell.set(cell, { ...p, cell });
+      }
+      if (moved.length) version++;
+      return moved.length;
+    },
     near(cell, reach, dist) {
       const out = [];
       for (const p of byCell.values()) { const d = dist(cell, p.cell); if (d <= reach) out.push({ cell: p.cell, kg: p.kg, at: p.at, d }); }

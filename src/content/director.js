@@ -59,7 +59,7 @@ export const DIRECTOR_CODE_BRIEFS = freeze([
   { id: 'scout_material', at: { phase: 'printing' }, file: 'src/fx/first-orders.js', find: "'scout_material'", trigger: 'the first orders\' close (the board shut after the landers\' tour): the scouting line' },
   { id: 'rotor_emergency', at: { phase: 'printing' }, file: 'src/domain/story-beats.js', find: "'rotor_emergency'", trigger: 'the settle\'s end with no Rotor standing or on the book: Isao\'s own order' },
   { id: 'tremor', at: { phase: 'tremor' }, file: 'src/domain/story-beats.js', find: "api.brief?.('tremor')", trigger: 'the gate stands: the tremor' },
-  { id: 'manual_override', at: { phase: 'override' }, file: 'src/domain/story-beats.js', find: "'manual_override'", trigger: 'the first wave near the gate: the Rotor\'s manual override' },
+  { id: 'rotor_first_control', at: { phase: 'override' }, file: 'src/domain/story-beats.js', find: "'rotor_first_control'", trigger: 'the first wave near the gate: the Rotor\'s manual override' },
   { id: 'rotor_auto', at: { phase: 'override' }, file: 'src/domain/story-beats.js', find: "'rotor_auto'", trigger: 'the same moment with STORY_BEATS.rotorAuto (off)' },
   ...['alien_comms', 'harvest_biomass', 'wave_cleared'].map((id) => ({ id, at: { phase: 'piloting' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'the Rotor\'s wave: kills counted, then cleared' })),
   ...['quiver_intro', 'quiver_override'].map((id) => ({ id, at: { phase: 'cleared' }, file: 'src/domain/story-beats.js', find: `'${id}'`, trigger: 'the wave cleared: the Quiver printed and handed over' })),

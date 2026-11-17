@@ -2,7 +2,7 @@
 // inside the hull's box (grown by the pad) leaves it by the least move on each of the four sides and at a corner, a point outside is left
 // alone, the caller's `free` sends it out another side, the point keeps its length; inHull is the measure.
 import assert from 'node:assert/strict';
-import { pushOut, inHull } from '../src/domain/friendly-push.js';
+import { pushOut, inHull, friendlyTravelBlocked } from '../src/domain/friendly-push.js';
 
 const R = 753, m = 1 / R;   // a unit sphere, 753 m to the unit; the hull at the pole facing +z
 const hull = { pos: [0, 1, 0], dir: [0, 0, 1] }, box = { halfLength: 5 * m, halfWidth: 2.5 * m, pad: 0.8 * m };
@@ -37,3 +37,23 @@ assert.ok(near(inHull(at(2, 0), hull, box) * R, 1.3), 'inHull: the depth to the 
 assert.equal(pushOut(at(0, 0), null, box), null);
 assert.equal(pushOut(at(0, 0), { pos: [0, 1, 0], dir: [0, 1, 0] }, box), null, 'a heading straight up is no heading');
 console.log('friendly-push: four sides, a corner, clear after every push, the heading turns the box, free() picks another side');
+
+const body={...hull,...box};
+assert.equal(friendlyTravelBlocked(at(-20,0),at(20,0),[body]),true,'swept high speed crossing stops');
+assert.equal(friendlyTravelBlocked(at(-20,10),at(20,10),[body]),false,'clear parallel lane');
+assert.equal(friendlyTravelBlocked(at(2,0),at(8,0),[body]),false,'existing contact may retreat');
+assert.equal(friendlyTravelBlocked(at(2,0),at(0,0),[body]),true,'cannot deepen contact');
+assert.equal(friendlyTravelBlocked(at(-20,0),at(20,0),[{...body,pos:[0,-1,0]}]),false,'opposite hemisphere is not traffic');
+
+// Route edges matter too: two free endpoints can still cross a parked body.
+const {bfsPath}=await import('../src/dungeon.js');
+const {routeAdjacency}=await import('../src/domain/rover-road.js');
+const adj=[[1,2],[0,3],[0,3],[1,2]], pts=[at(-10,0),at(10,0),at(-10,12),at(10,12)];
+assert.deepEqual(bfsPath(routeAdjacency(adj,(a,b)=>!friendlyTravelBlocked(pts[a],pts[b],[body])),0,c=>c===3),[0,2,3]);
+
+assert.equal(friendlyTravelBlocked(at(2,5.49),at(3.49,4),[body]),true,'a 1 cm corner crossing between samples is blocked');
+
+assert.deepEqual(adj,[[1,2],[0,3],[0,3],[1,2]],"routing never mutates the pinned graph");
+
+const {clearRun}=await import('../src/domain/rover-road.js');
+assert.equal(clearRun(at(2,5.49),at(3.49,4),()=>true,{step:1,half:0,edge:(a,b)=>!friendlyTravelBlocked(a,b,[body])}),false,'road shortcuts use the same swept edge rule');

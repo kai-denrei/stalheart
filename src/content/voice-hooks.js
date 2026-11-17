@@ -7,6 +7,7 @@ import { ISAO_TRIGGERS } from './isao-voice.js';
 
 // trigger -> extra aliases: brief ids, callout texts (matched on their start) or event names
 export const VOICE_HOOKS = Object.freeze({
+  idle_flavor: Object.freeze(['idle_flavor_late']),
   sector_brief: Object.freeze(['sector_1', 'sector_2', 'sector_3', 'sector_4', 'sector_5']),
   ram_chain_milestones: Object.freeze(['RAM ×25', 'RAM ×50']),   // ×10 is too low to call (owner, 2026-10-05)
   hull_lost: Object.freeze(['MÖRK DOWN!']),
@@ -35,12 +36,13 @@ export const VOICE_CALLOUTS = Object.freeze(['SECTOR SECURE', 'STAMPEDE — RAM 
 // standing, the next hull out of its berth, a sector lost, the armory's pad loading shells, an automated SOL pass's countdown (the count
 // then runs on the line's beats, src/fx/laser-arsenal.js) (src/fx/isao-voice.js isaoSpeak)
 export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing', 'mk9_release', 'paint_pad', 'language_analysis', 'welcome', 'welcome_settle', 'ad_astra',
-  'welcome_nominal', 'sol88_liftoff', 'heart_threat', 'repair_underway', 'idle_flavor']);   // heart_threat_more follows heart_threat_01 (VOICE_SEQUENCE)   // 2026-10-07, the owner's labs: the START button hovered, the first satellite's release, bodies at the heart (117 then 118), a repair order, the quiet   // paint_pad: the shop opens (src/fx/programme-host.js)   // mk9_release: every MK-9 launched (src/fx/gunship-rig.js launchHeavy)   // language_analysis: Isao's study screen opens (src/fx/synthetic-modal.js)   // welcome, welcome_settle, ad_astra: the welcome guide and its START (src/fx/start-gate.js)
+  'welcome_nominal', 'sol88_liftoff', 'heart_threat', 'repair_underway', 'idle_flavor', 'idle_flavor_late']);   // heart_threat_more follows heart_threat_01 (VOICE_SEQUENCE)   // 2026-10-07, the owner's labs: the START button hovered, the first satellite's release, bodies at the heart (117 then 118), a repair order, the quiet   // paint_pad: the shop opens (src/fx/programme-host.js)   // mk9_release: every MK-9 launched (src/fx/gunship-rig.js launchHeavy)   // language_analysis: Isao's study screen opens (src/fx/synthetic-modal.js)   // welcome, welcome_settle, ad_astra: the welcome guide and its START (src/fx/start-gate.js)
 
 // THE LINE FOR ITS MOMENT (owner, 2026-10-05: "'The Stålheart stands, MÖRK rolling out' said much too early"; "'25, show-off' at a ram
 // bonus of 16"): a line that names a particular moment plays only at that moment (a brief id or a callout text); unlisted lines play
 // at any of their trigger's moments
 export const VOICE_LINE_MOMENTS = Object.freeze({
+  idle_flavor_14: Object.freeze(['idle_flavor_late']), idle_flavor_15: Object.freeze(['idle_flavor_late']),
   stalheart_begins_01: Object.freeze(['stalheart_begins']), stalheart_begins_02: Object.freeze(['stalheart_begins']),
   stalheart_begins_03: Object.freeze(['stalheart_stands']), stalheart_begins_05: Object.freeze(['stalheart_stands']),
   // the paint lines are the shop's (owner, 2026-10-05: "pimp your ride voice triggered before the garage is available"): its print says nothing

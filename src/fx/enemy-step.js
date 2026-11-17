@@ -28,7 +28,7 @@ import { createSoftHunt } from './soft-hunt.js';   /* the soft tiers hunt the hu
 import { SQUADS } from '../content/sectors.js';   /* the squads unpacked under a count (2026-10-16) */   /* a blob at the lip takes the tier's skin; a soft tier's record smaller, a cored one's bigger (2026-10-16) */
 import { waveReset as shieldWaveReset, shoveVec, shoveMag } from '../shield.js';
 import { TOWER_ORDER } from '../towers.js';
-import { showContact } from './contact-card.js';
+import { showContact, unlockTankSensors } from './contact-card.js';
 import { grantStrikes } from '../strike.js';
 import { makeDotSquad } from './squads.js';
 import { DEATH_KEYS } from '../audiomanifest.js';
@@ -69,6 +69,13 @@ export function createEnemyStep(host) {
     host.strike.armed = false; host.strike.target = -1; host.strike.falling = -1;
     grantStrikes(host.strike, host.spawnPoints.filter((sp2) => sp2.alive).length, host.strikeTune);
   }
+
+  const baseExit = (exits, fallback) => {
+    if(!exits.length)return fallback;
+    const d=host.dungeon().distToHeart,known=exits.filter(ci=>d?.[ci]>=0),pool=known.length?known:exits;
+    const rank=ci=>known.length?d[ci]:dist3(host.graph().centers[ci],host.graph().centers[host.dungeon().heart]);
+    return pool.reduce((a,b)=>rank(a)<=rank(b)?a:b);
+  };
 
   // cheap hop estimate for spreading spawn points (chord distance in cells)
   function hopEstimate(a, b) {
@@ -224,6 +231,7 @@ export function createEnemyStep(host) {
     for (let i = 0; i < host.spawnQueue.length; i++) { const g = host.spawnQueue[i]; if (!g.guard || g.at > host.spawnClock() || host.creatures?.()?.full?.(g)) continue; host.spawnQueue.splice(i--, 1); if (g.sp.alive) spawnOne(g); }
   }
   function releaseSpawns(dtSeconds) {
+    if(host.storyMode() && host.story()?.hull?.out?.())unlockTankSensors(host.root);
     host.setSpawnClock(host.spawnClock() + (dtSeconds)); host.crowdGate.frame(host.enemies, dtSeconds > 0);
     releaseGuards();
     while (host.spawnQueue.length && host.spawnQueue[0].at <= host.spawnClock()) {
@@ -240,7 +248,7 @@ export function createEnemyStep(host) {
   function spawnOne(queued) {
     const entry = host.creatures?.()?.dress?.(queued) ?? queued, { type, sp } = entry, ci = entry.cell ?? sp.ci;   // `cell`: a body that rises up the lane, not at its source (the opening's head start, src/domain/story-beats.js)   // ?creatures=pearl dresses a mapped type in its Pearl body (src/fx/creature-enemies.js)
     {
-      const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl, { hull: !host.story()?.hull?.held?.() }); }   // before the hull is issued the card says harder, not 'do not ram'   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
+      const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl, { hull: !!host.story()?.hull?.out?.() }); }   // before the hull is issued the card says harder, not 'do not ram'   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const tierKey = tierKeyOf({ type, tier: entry.tier }, PEARL_OF), tk = host.params.tune?.tier?.[tierKey], grow = (tk?.size ?? 1) * (entry.sizeMul ?? 1);   // the tune panel's knobs for this tier (src/fx/tune-knobs.js); an entry's own scale over it (THE ARENA's small Reeds x3, 2026-10-18, note 8b)
@@ -249,13 +257,13 @@ export function createEnemyStep(host) {
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
       const exits = host.openNeighbors(ci);
-      const next = exits.length ? exits[Math.floor(host.whim()() * exits.length)] : ci;
+      const next = exits.length ? (sp.obj.userData.breach && ci === sp.ci ? baseExit(exits,ci) : exits[Math.floor(host.whim()() * exits.length)]) : ci;
       // WHERE IT COMES UP (owner, 2026-09-13: the whole crater boils, not one point; 2026-10-15: from the lip, and crawling out, not hovering; 2026-10-16:
       // never over the hole: a blob climbs the lip, the record starts past it; EMERGENCE): at its breach's own cell a record starts `out` crater radii from
       // the centre, on the half facing its first exit, plus its scatter beyond, under the ground while its blob climbs; risen up the lane (`cell`) it
       // scatters on its spread round that cell as before
       const atHole = !!sp.obj.userData.breach && ci === sp.ci, holeCells = sp.obj.userData.cells ?? 1;   // a wide hole (the arena's) has a wide lip
-      const emergeOff = entry.spread ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * entry.spread * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * holeCells * EMERGENCE.out * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
+      const emergeOff = (entry.spread || atHole) ? (() => { const c0 = host.graph().centers[ci], [u, v] = tangentBasis(norm3(c0)); let a = host.whim()() * 6.283, r = Math.sqrt(host.whim()()) * (entry.spread??0) * host.cellSide(); if (atHole) { if (next !== ci) { const d = sub3(host.graph().centers[next], c0); a = Math.atan2(dot3(d, v), dot3(d, u)) + (host.whim()() - 0.5) * 2 * EMERGENCE.facing; } r = CONTENT.breach.craterRadius * holeCells * EMERGENCE.out * host.cellSide() + r * EMERGENCE.scatter; } return add3(scale3(u, Math.cos(a) * r), scale3(v, Math.sin(a) * r)); })() : null;
       // THE BLOB (src/fx/emerge-blob.js): the picture of this one climbing out, in its tint, from the lip to where the record waits; the record itself pops up when it is done
       // NO BLOB FOR HER (owner, 2026-10-23, note 3: "a giant green blob preceding the large boss"; BOSS_RUBBLE): the boss record (src/domain/boss-sector.js bossWaves' `boss`)
       // rises with no blob; as she breaks the surface (the climb's wait over) the drop's rock chunks are thrown from the lip toward her (src/fx/rock-chunks.js)
@@ -292,7 +300,7 @@ export function createEnemyStep(host) {
   }
 
 
-  const ENEMY_SPEED = 1.0; // cells/s toward the Heart — FASTER still
+  const ENEMY_SPEED = WALK_BIAS.pace; // cells/s toward the Heart — FASTER still
   // THE HUNTERS' FIELD (owner, 2026-10-15; src/domain/hunters.js): while a hunter lives, the walking distance from the tank's cell to every cell,
   // refreshed once a second or when the tank changes cell; null without a hunter or a tank
   let hunt = null, huntAt = -9, huntCur = -1;
@@ -378,6 +386,8 @@ export function createEnemyStep(host) {
         e.obj.userData.s0 = sv;
       }
       let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1) * (host.params.enemySpeed ?? 1) * (host.params.tune?.tier?.[e.tierKey]?.speed ?? 1);   // ENEMY SPEED x: the playtest knob over every walk, and the tune panel's per-tier walk (owner, 2026-10-16)
+      const rushing=!!(e.breachSource&&!e.guard&&!e.boss&&e.riseAt>=0&&dist3(e.pos,host.graph().centers[e.riseAt]) < (CONTENT.breach.craterRadius*(e.breachSource.userData.cells??1)+EMERGENCE.exitCells)*host.cellSide());
+      const rushPace=rushing?pace:0;
       if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S, e.flight ?? undefined); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
       pace *= softHunt.pace(e, tNow, isScared(e, tNow));   // a soft tier's goal (the hull or the gate) and its faster walk at the hull (src/fx/soft-hunt.js; 1 for every other record)
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
@@ -431,6 +441,7 @@ export function createEnemyStep(host) {
       // STAGGERED: it stands where it was thrown. Zeroing `pace` and not
       // `e.prog` is deliberate — the path is untouched, so when it recovers it
       // carries on from exactly where it was rather than restarting a cell.
+      if(rushing)pace=Math.max(pace,rushPace)*EMERGENCE.exitPace;
       if (tNow < (e.stagUntil ?? -1)) pace = 0;
       // THE MOTHER WALKS ON THE SINKHOLE (owner, 2026-10-18, note 8c; src/domain/boss-sector.js groundPhase): a record with a `ground` (THE ARENA's boss, src/fx/boss-run.js)
       // stands on its cell, the crater's centre, while its lip offset eases away, then hunts; its clock starts once it has risen (emergeAge >= riseDur; review,
@@ -467,6 +478,7 @@ export function createEnemyStep(host) {
         const hf = e.hunter ? hunt : softHunt.field(e);   // the hull's walk, or a soft body's goal's (the hull or the rover)
         if (!pool && hf && (e.hunter || softHunt.wants(e))) { const h = huntExits(exits, hf, e.cur); if (h !== exits) pool = h; }   // a hunter walks at the tank (src/domain/hunters.js); a soft one too, when the hull is its goal (SOFT_HUNT)
         if (!pool) pool = seekExits(exits, host.dungeon().distToHeart, e.cur, host.whim()(), WALK_BIAS);   // the walk leans on the heart (WALK_BIAS; owner, 2026-10-15: "a much stronger bias to head towards the base")
+        if(rushing&&exits.length)pool=[baseExit(exits,e.cur)];
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (e.guard) { const hull = host.playerHP() > 0 && !host.playerDown() ? host.player.pos : null, near = hull && Math.hypot(hull[0] - e.guard.c[0], hull[1] - e.guard.c[1], hull[2] - e.guard.c[2]) < e.guard.r * STORY_EXPEDITIONS.aggro; pool = guardExits({ exits, centers: host.graph().centers, guard: e.guard, cur: e.cur, hull, aggro: STORY_EXPEDITIONS.aggro, field: near ? guardField(e.guard) : null }); } else if (host.story()?.ring.size && e.type === host.story().hardcore && host.story().ring.has(e.cur)) { const stay = exits.filter((c) => host.story().ring.has(c)); pool = stay.length ? stay : [e.cur]; }
         e.next = pool.length ? pool[Math.floor(host.whim()() * pool.length)] : e.cur;

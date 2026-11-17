@@ -12,11 +12,11 @@ const SEEN = 'td.controls-page-seen', RACK = 'td.shield-empty-hint', AUTO_HIDE_M
 export const CONTROLS_PAGE = [
   ['MÖRK · THE TANK', [
     ['W / ↑', 'faster · tap twice to cruise'], ['S / ↓', 'brake, then reverse'], ['A D / ← →', 'steer · Q / E throttle'],
-    ['Space', 'fire a shell'], ['Shift', 'hold: lasers'], ['T', 'shield'], ['F', 'drop a flare: the rover comes for the biomass'], ['V', 'view · 1 map · 2 first person · 3 third'],
+    ['Space', 'fire a shell'], ['Shift', 'hold: lasers'], ['T', 'shield'], ['F', 'dispatch SAI-93 near crystals; otherwise drop a 90-second biomass flare'], ['V', 'view · 1 map · 2 first person · 3 third'],
   ]],
   ['SEATS · THE STRIP AT THE BOTTOM', [
     ['7 8 9 0', 'tank · gunship · SOL-82 · map, from anywhere'],   // the views strip's four buttons, on the keys (owner, 2026-09-16)
-    ['Click', 'in a seat: locks the mouse, the mouse aims'], ['Space', 'in a seat: fire'],
+    ['Click', 'in a seat: locks the mouse, the mouse aims'], ['W A S D', 'Quiver: align the secondary sight with the target'], ['Space', 'in a seat: fire'],
     ['Esc', 'in a seat: frees the mouse · again: back to the tank'], ['P', 'in a seat: pause'], ['G', 'gunship briefing'],
   ]],
   ['RECKON K9 · THE RECON DOG', [   // the dog's seat (owner, 2026-11-13: "add a jump with space bar, and the roll, hand, etc. animations to the dog"; DOG_SCOUT.jump, .tricks)

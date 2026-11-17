@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-round-15-guidance-scouting-and-mineral-harvest",
+  "date": "2026-11-16",
+  "type": "change",
+  "status": "accepted",
+  "title": "Round 15: two Quiver sights, real scout specimens, quiet story beats, finite flares and SAI-93 mining",
+  "context": "The owner authorized the outstanding round-15 feedback after a restart: landing damage and early gunship context, real crystals and harmless biomass for K9, no premature ram lesson, manual dual-sight Quiver acquisition, no interruption by the vibration study, companion printing after the tank returns to base, temporary flares, friendly vehicle collisions, and reachable deposits mined by SAI-93.",
+  "outcome": "The opening explains damaged computers and introduces orbital support and the sentries' continuous guard duty. Pre-tank contact cards omit the ram instruction and its voice trigger. The unrecorded Isao script is regenerated. K9 finds a cluster using the pinned lab-crystals geometry/shader and a small, living white Cutis with no enemy or damage record. Quiver acquisition requires both the mouse primary sight and WASD secondary sight on the target; touch arrows control the latter. Study gates have no timeout escape and defer for combat, dialogue, camera shots, seats, driving and other active interactions. Natural companion prints wait for the tank inside the base. Cave flares now fade over their final five seconds and expire at 90 seconds, matching the surface's finite flare lifetime; the cave source was validated, committed locally and imported at 9e37152. Seeded open, reachable cells carry five finite amethyst deposits. F near one dispatches the pinned SAI-93; the existing rover transport FSM manages cargo, queuing, storage limits and home delivery. The parked SAI-92 display is replaced by the working hopper, sharing its existing bay. Rover/tank contact uses swept box checks; companions yield to the rover, route edges avoid the parked miner, and pad/dock approaches follow roads. Cargo waits for the rendered vehicle to arrive. Kernel source, graph topology and baked planet are unchanged.",
+  "alternatives": [
+    "A separate mining transport FSM was unnecessary: src/domain/rover-run.js already owns trips, harvesting, unloading, queuing and full-storage holds.",
+    "Point sampling missed short corner crossings, allowing a planned road that the drawn rover could not follow. Segment clipping now tests the complete move; a one-centimetre corner-crossing regression covers the failure.",
+    "The first edge-filter attempt modified the pinned dungeon BFS. The kernel check rejected it. That change was fully reverted; routeAdjacency in the existing rover-road module now filters a view of the adjacency list before calling the unchanged kernel BFS.",
+    "Direct pad-to-dock movement crossed the hopper's bay. Work-stop approaches now use the same routing and ground checks, and the bank cannot receive cargo while the rover is held away from its dock.",
+    "Browser runs caught an incorrect SAI-93 filename and an obsolete static-model lookup in the bestiary. Both were corrected and the asset path is checked by test/minerals.mjs."
+  ],
+  "evidence": [
+    "npm test: 356 test programs passed; targeted reruns of manual-guidance, friendly-push, rover-road, rover-run, minerals, closeup-gate, story-beats, base-plan, base-programme and bestiary cover the changed boundaries.",
+    "npm run check and npm run build passed, including pinned kernel/asset verification. The cave source passed all 59 tests, check and build before import; below/BELOW.lock.json pins 9e37152acb894632d342d32b2851c73d6b48a5af.",
+    "npm run test:browser -- --round15: real WASD key events align the Quiver secondary sight and permit a shot; real F dispatches SAI-93, cargo is held until home, and landed unloading credits the bank. No failed resources or browser exceptions.",
+    "npm run test:browser -- --round15-traffic: rover leaves its pad past the parked miner, collects an outside pile, returns and unloads (82 kg credited at the sampled first unload). STALHEART_DOCK_PROBE=1 runs the shorter depot approach regression (22 kg credited at the sampled first unload).",
+    "The opening --dog-scout runs reached both real specimens, their survey/contact, the wall, Rotor and first wave. Longer --dog-scout/--rover runs were stopped to diagnose traffic failures; they are not reported as complete passes. Their traffic fixes are covered by the final focused trip and docking runs.",
+    "Default npm run test:browser still times out at towers >= 2 in the cold opening. The identical failure reproduced in an isolated checkout of the untouched starting commit 9ee4c35b; it is not reported as passing.",
+    "Architecture review: td-tab grew by 10 lines to 5375 (ceiling 5450, zero overlong lines); browser-test grew by 5 lines. npm run architecture passes 223 pure-layer modules, node test/host-contracts.mjs passes 84 factories. Existing manual-weapon owns stat adaptation, not sight input; rover-run owns transport and is reused; friendly-push and rover-road own contact and routes. The pinned BFS remains unchanged behind routeAdjacency.",
+    "docs/ISAO-UNVOICED-LINES.md regenerated with node scripts/isao-unvoiced.mjs. New runtime source modules live in content/domain/fx, with no new top-level module, dependency, release token or published change."
+  ],
+  "supersedes": []
+}

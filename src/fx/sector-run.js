@@ -395,10 +395,11 @@ export function createSectorRun(h) {
       // CANYON.queueWait seconds after the first body is up the pass comes anyway, the rest rising under the beam
       if (!h.queued(sp) || t - canyon.firstAt >= (CANYON.queueWait ?? Infinity)) canyon.upAt ??= t;
     }
-    // THE CANYON AGAIN (round 7, note 5): the seat seatDelay after the announce, the column still rising; the first canyon as before (canyonSeatDue)
+    // The repeat handoff waits for hundreds to be visible, with a bounded queue fallback.
     const again = def.n > SECTORS.length;
-    if (!canyonSeatDue({ again, announcedAt: b.openedAt ?? null, upAt: canyon.upAt, t, tune: CANYON })) return;
-    canyon.phase = 'pass'; canyon.passAt = t; canyon.overhead = again ? CANYON.again?.overhead ?? CANYON.pass.overhead : CANYON.pass.overhead;
+    const bodies = again ? h.enemies().reduce((n, e) => n + (e.alive && e.breachSource === sp.obj ? e.members || 1 : 0), 0) : 0;
+    if (!canyonSeatDue({ again, announcedAt: b.openedAt ?? null, upAt: canyon.upAt, firstAt: canyon.firstAt, bodies, t, tune: CANYON })) return;
+    canyon.seatedBodies = bodies; canyon.phase = 'pass'; canyon.passAt = t; canyon.overhead = again ? CANYON.again?.overhead ?? CANYON.pass.overhead : CANYON.pass.overhead;
     const plan = canyon.plan;
     api.canyonPass?.({ point: h.centers()[plan.spawn], axis: plan.axis, ...CANYON.pass, overhead: canyon.overhead });
     canyon.say = true; h.hud();
@@ -547,7 +548,7 @@ export function createSectorRun(h) {
     state: () => ({
       nest: nest ? { cell: nest.ci, open: !!nest.alive } : null,   // the arena's hole, kept open after its sector (the cave's door)
       bossDown: bossDownAt == null ? null : +bossDownAt.toFixed(1),   // THE ARENA's mother dead, on the sector clock (round 6: the mech's print)
-      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'print', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length, stoodDown: sector?.stoodDown ?? null, grace: readySince === null ? null : { run: +graceRun.toFixed(1), held: +graceAway.toFixed(1) }, securedAt: sector?.securedAt ?? null,
+      phase, clock: +clock.toFixed(2), n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, seatedBodies: canyon.seatedBodies ?? null, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'print', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length, stoodDown: sector?.stoodDown ?? null, grace: readySince === null ? null : { run: +graceRun.toFixed(1), held: +graceAway.toFixed(1) }, securedAt: sector?.securedAt ?? null,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, hole: !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),

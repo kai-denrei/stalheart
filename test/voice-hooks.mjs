@@ -70,5 +70,13 @@ const pinned = new Set(lock.files.map((f) => f.path)), defs = voiceSounds();
 ok('every line is a lazy sound with a pinned file', Object.values(defs).every((d) => d.lazy && pinned.has(d.file) && existsSync(new URL('../' + d.file, import.meta.url))));
 ok('and nothing pinned is without a line', pinned.size === Object.keys(defs).length);
 
+// The original Fish recordings survive, but early idle moments cannot pick them.
+{ const {createIsaoVoice}=await import('../src/fx/isao-voice.js');
+  const fish=new Set(['idle_flavor_14','idle_flavor_15']);
+  const off=new Set(ISAO_TRIGGERS.idle_flavor.lines.filter(l=>!fish.has(l.id)).map(l=>l.id));
+  const voice=createIsaoVoice({flavor:[],rare:[],sequence:{},picks:()=>({muted:false,off,quiet:new Set()}),rand:()=>0});
+  ok('Fish is excluded from opening idle',voice(null,'idle_flavor')===null);
+  ok('Fish is still available at the later idle moment',fish.has(voice(null,'idle_flavor_late')?.id));
+}
 console.log(`\n${n - bad}/${n} passed`);
 if (bad) process.exit(1);

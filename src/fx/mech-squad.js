@@ -80,7 +80,7 @@ export function createMechSquad(h) {
       m.mixer.stopAllAction();   // the landing clip let go: the gait poses the rig from here (its first pose is the park's, this tick)
       const farRoot = m.far ? m.far.clone(true) : null; if (farRoot) { farRoot.visible = false; m.wrap.add(farRoot); }
       const wo = h.wire?.(); if (wo) { setWireframe(m.root, true, wo); if (farRoot) setWireframe(farRoot, true, wo); }   // before instance(): the parts' InstancedMeshes take the wire material (host.wire, ?wire=1)
-      const mc = { ...m, farRoot, isFar: false, role, cur, hp: ARENA_KING.mech.hp, down: false, downT: 0, flee: null, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0, quarry: -1, frames: 0, aimed: 0 };   // frames, aimed: the frames run and those with a weapon on a target (round 7's measure)
+      const mc = { ...m, trafficId:`mech:${mechs.length}`, farRoot, isFar: false, role, cur, hp: ARENA_KING.mech.hp, down: false, downT: 0, flee: null, next: cur, prev: -1, from: v.clone(), prog: 1, seg: 0, walking: false, gait: createGait(), rig: rigOf(m.root), contacts: 6, speed: 0, last: null, heading: new THREE.Vector3(0, 0, 1).applyQuaternion(m.wrap.quaternion), start: cur, startDist: dg.distToHeart[cur], cells: 0, wait: 0, quarry: -1, frames: 0, aimed: 0 };   // frames, aimed: the frames run and those with a weapon on a target (round 7's measure)
       mc.recs = REINFORCEMENTS.weapons.map((key, i) => rig(mc, key, i));
       mechs.push(mc); records.push(...mc.recs);
     }
@@ -132,9 +132,9 @@ export function createMechSquad(h) {
   // inside the hull's box (COMPANIONS.hull, the drawn tank's half sizes) grown by REINFORCEMENTS.hullPadM is moved out of it the least way
   // (src/domain/friendly-push.js) and its walk goes on from there: a segment under way is re-laid from the pushed point to the same next cell; a parked
   // one stays where it was put until its next decision walks it from there. Its cells and records are untouched (they follow cur/next as before)
-  function pushFromHull(mc) {
-    const p = h.hull(), d = h.hullDir?.(); if (!p || !d) return;
-    const m = h.metres(), o = pushOut(mc.wrap.position.toArray(), { pos: p, dir: d }, { halfLength: COMPANIONS.hull.halfLength * m, halfWidth: COMPANIONS.hull.halfWidth * m, pad: REINFORCEMENTS.hullPadM * m });
+  function pushFromHull(mc, obstacle = null) {
+    const p = obstacle?.pos ?? h.hull(), d = obstacle?.dir ?? h.hullDir?.(); if (!p || !d) return;
+    const m = h.metres(), o = pushOut(mc.wrap.position.toArray(), { pos: p, dir: d }, { halfLength: (obstacle?.halfLength ?? COMPANIONS.hull.halfLength) * m, halfWidth: (obstacle?.halfWidth ?? COMPANIONS.hull.halfWidth) * m, pad: REINFORCEMENTS.hullPadM * m });
     if (!o) return;
     mc.wrap.position.fromArray(o.pos); mc.pushes = (mc.pushes ?? 0) + 1;
     if (mc.prog < 1) { mc.from.copy(mc.wrap.position); mc.seg = Math.max(1e-6, mc.from.distanceTo(v.fromArray(centre(mc.next)))); mc.prog = 0; }
@@ -162,9 +162,12 @@ export function createMechSquad(h) {
       mc.from.copy(mc.wrap.position); mc.next = n; mc.prog = n === mc.cur && mc.from.distanceTo(v.fromArray(centre(n))) < cs * 0.05 ? 1 : 0;
       mc.seg = Math.max(1e-6, mc.from.distanceTo(v.fromArray(centre(n))));
     }
-    const moving = mc.prog < 1;
-    if (moving) { mc.prog = Math.min(1, mc.prog + speed * dt / mc.seg); v.fromArray(centre(mc.next)); mc.wrap.position.lerpVectors(mc.from, v, mc.prog).normalize(); }   // on the floor: the unit sphere
-    pushFromHull(mc);
+    let moving = mc.prog < 1;
+    if (moving) { const next=Math.min(1,mc.prog+speed*dt/mc.seg);v.fromArray(centre(mc.next)).lerpVectors(mc.from,v,next).normalize();
+      if(h.traffic?.blocked(mc.wrap.position.toArray(),v.toArray(),REINFORCEMENTS.hullPadM*m,mc.trafficId)){moving=false;mc.wait=1;mc.prog=1;mc.next=mc.cur;}
+      else {mc.prog=next;mc.wrap.position.copy(v);} }
+    if(h.traffic)mc.wrap.position.fromArray(h.traffic.resolve(mc.wrap.position.toArray(),REINFORCEMENTS.hullPadM*m,mc.trafficId));   // on the floor: the unit sphere
+    pushFromHull(mc); if (h.rover?.()) pushFromHull(mc, h.rover());
     // the gait's rate: the ground speed in metres a second over the demo's walk at the cargo scale
     const rate = moving ? gaitRate(speed / m, REINFORCEMENTS.scale) : 0;
     mc.walking = moving; mc.rate = rate;
@@ -220,7 +223,7 @@ export function createMechSquad(h) {
     roots: () => mechs.map((mc) => mc.root),   // the game-tier roots (the harness's material survey)
     wire: () => parts ? [parts.filter((p) => p.inst.material?.wireframe).length, parts.length] : null,   // [wireframed parts, parts] (state().wire.mechs)
     wireColours: () => parts ? parts.map((p) => `${p.meshes[0].name}:${p.inst.material?.color?.getHexString?.() ?? '-'}`) : null,   // the instanced parts' line colours (the palette's check)
-    contacts: () => mechs.map((mc) => ({ pos: mc.wrap.position.toArray() })),   // the radar's friendlies (src/fx/radar-scope.js host.mechs): each mech's live place
+    contacts: () => mechs.map((mc) => ({ id:mc.trafficId, height:8, pos: mc.wrap.position.toArray(), dir: mc.heading.toArray(), halfLength: REINFORCEMENTS.hullPadM, halfWidth: REINFORCEMENTS.hullPadM })),   // the radar's friendlies (src/fx/radar-scope.js host.mechs): each mech's live place
     frameOf(i, pos, quat) { const mc = mechs[i]; if (!mc) return false; pos.copy(mc.wrap.position); quat.copy(mc.wrap.quaternion); return true; },   // a mech's place and facing (the harness's look, src/fx/reinforcements-host.js)
     show(on) { hidden = !on; },   // the harness's A/B for the four's draw cost (--reinforcements)
   };

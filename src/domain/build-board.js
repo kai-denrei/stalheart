@@ -26,6 +26,7 @@ const scaled = (base, k) => Math.max(10, Math.round((base * k) / 10) * 10);
 export function boardOffers(w, tune) {
   const out = [], has = (id) => out.some((o) => o.id === id), push = (o) => { if (out.length < tune.offers && !has(o.id)) out.push(o); };
   const ctx = { ...w.ctx, waveActive: false }, k = priceIndex(tune, w.ctx.sector);
+  if(w.hauler?.available)push({id:'hauler:second',kind:'hauler',...w.hauler,price:scaled(w.hauler.price,k)});
   const structs = (w.steps ?? []).filter((s) => s.board && !w.done.has(s.id) && !w.bought.has(s.id) && tune.structures[s.id] && whenHolds({ ...(s.when ?? {}), idle: false }, ctx));
   for (const s of structs.slice(0, tune.structuresMax)) push({ id: `build:${s.id}`, kind: 'structure', step: s.id, label: String(s.label).toUpperCase(), price: scaled(tune.structures[s.id].price, k), effect: tune.structures[s.id].effect });
   const kinds = w.sentryRoom ? (w.sentries ?? []).slice().sort((a, b) => a.cost - b.cost) : [];

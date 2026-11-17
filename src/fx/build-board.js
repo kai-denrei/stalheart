@@ -55,7 +55,7 @@ export function createBuildBoard(c) {
     const rotorCell = s.beats?.state?.().socket ?? -1;   // the first orders' Rotor goes on the plan's own socket (the beats'), not the emptiest lane
     const sentries = c.sentryKeys().map((k) => TOWER_BY_KEY[k]).filter(Boolean).map((d) => ({ key: d.key, name: d.name, cost: d.cost }));
     return { w: { steps: pg.steps, done: pg.done, bought: pg.bought ?? new Set(), ctx: { phase: s.beats?.phase?.() ?? null, sector: n, back: s.backOpen ? 'held' : null, manned: c.manned(), standing: s.stands },   // standing: `when.stand` (2026-11-07)
-      bank: bank(), sentryRoom: site() >= 0, sentries, upgrades: weakest(), hull: c.hull(), shield: c.shield(), pets: pets(),
+      bank: bank(), sentryRoom: site() >= 0, sentries, upgrades: weakest(), hull: c.hull(), shield: c.shield(), pets: pets(), hauler: c.hauler?.(),
       rotor: TOWER_BY_KEY.rotor ? { key: 'rotor', name: TOWER_BY_KEY.rotor.name, cost: TOWER_BY_KEY.rotor.cost } : null, rotorCell, rotorBuilt: c.towers().some((t) => t.ci === rotorCell), rotorPending: c.orders.some((o) => o.ci === rotorCell), secondCell: n === 'first' ? secondSite(rotorCell) : -1 } };
   }
   // THE COLONY'S ROW (2026-11-12 night; src/domain/colony.js): the cells this story's plan holds, which are taken (a dome bought or standing), which
@@ -113,6 +113,7 @@ export function createBuildBoard(c) {
     else if (o.kind === 'spare') c.addHull();
     else if (o.kind === 'shield') c.fillRack();
     else if (o.kind === 'pet') c.printPet(o.index);
+    else if (o.kind === 'hauler' && !c.printHauler?.()) { e.addBiomass(o.price, { category: 'refund' }); return false; }
     return true;
   }
   function close(took, labels = []) {
@@ -206,7 +207,7 @@ export function createBuildBoard(c) {
       colony: row.map((o) => ({ id: o.id, kind: o.dome, label: o.label, price: o.price, cell: cellOf[o.id], suggested: o.suggested })), cells: map.map((m) => ({ id: m.id, state: m.state })),
       bought: [...(c.story()?.programme?.bought ?? [])] }),
     // test.dome(cell, kind): a dome bought on the programme as the board's pick does, unpaid, with its kind's module (the harness's colony, 2026-11-12 night)
-    test: { toggle: (id) => pick(id), confirm, skip, cell: (id) => chooseCell(id),
+    test: { open: (n = 2) => show(n, () => {}), toggle: (id) => pick(id), confirm, skip, cell: (id) => chooseCell(id),
       dome: (cell, kind) => { const s = c.story(), k = COLONY.kinds[kind]; if (!s?.programme || !k) return false; const ok = buy(s.programme, `dome-${cell}`, { kind, perk: k.perk ?? null }); if (ok) s.colony?.assign(cell, kind); return ok; } },
   };
 }

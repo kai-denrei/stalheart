@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-gate-handoff-fleet-and-homecoming",
+  "date": "2026-11-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Gate discovery hands K9 to Rotor, a second SAI-93 can be printed, and Day 42 waits for the tank",
+  "context": "The owner requested a dog-to-gate construction handoff, tank-only sensor teaching, clearer flare limits, an optional second SAI-93, quicker enemies and sinkhole exits, gunship exposition before scouting, and a Day 42 invitation that waits for the tank to return.",
+  "outcome": "After both scans K9 targets accessible ground inside the gate. Reaching it reveals a nearby alien pack; the scanner clears and the camera eases outward to frame Isao printing the gate and Rotor. The dog retains its view until Rotor control begins. Contact and handoff dialogue can replace stale survey instructions. The gunship card introduces the watchful aircraft after landing and before K9 control, with a storage-safe in-session acknowledgement. Hard-core sightings are remembered, but the enlarged sensor lesson queues only once the tank is out. A persistent flare counter displays four carried flares, 90-second burn time and separate three-marker limits for amber/violet; empty attempts explain refill under Stalheart or at the ammunition pad. From the sector build board, a second SAI-93 costs 2400 kg before the board's sector index and takes a 12-second Isao fabrication job after travel. It is unavailable for dispatch while printing. Each aircraft owns its flight and typed hold; both share finite deposits and the economy, choose idle capacity first, and appear in traffic/radar. There is no third-aircraft offer. Normal enemy record pace increases 15%; sinkhole climb/pop become 0.25/0.16 seconds and a local 1.8x exit boost ends beyond the crater margin, with offset settlement shortened to two seconds. The Day 42 countdown announces and holds at its end until the living tank is home, the doors are closed and a free presentation moment is available. Yushi stays retired. New dialogue is caption-only pending recording. Local changes only, no push or publication.",
+  "alternatives": [
+    "Retaining the old dog-home recall and a second tremor sequence delayed the action; gate discovery now leads directly through visible printing into the Rotor.",
+    "A second duplicated mining system would duplicate deposits and resource accounting. Extract one aircraft presentation owner and retain one deposit owner plus the shared transport FSM.",
+    "The first visual capture kept old scan results and a stale one-more-mark line over gate construction. Dismiss the scan at discovery, widen and ease the camera to include Isao, and prioritize the new story beat.",
+    "Existing sensor and party tests encoded the superseded early lesson and unconditional timed party. Update those assertions and exercise the real Quiver-to-tank handoff and an extended away-from-home countdown."
+  ],
+  "evidence": [
+    "npm test: 366 test programs passed; includes real SAI model parsing, print material restoration, flight/harvest/unload, two-aircraft resource conservation, dispatch selection, build-board affordability, flare copy, two radar blips, enemy pace/exit multipliers, story gates, party waiting and priority dialogue.",
+    "npm run check and npm run build passed; 85 host factories, 225 pure modules, td-tab.js 5391/5450 lines, architecture and pinned assets unchanged.",
+    "npm run test:browser -- --round19 passed: early gunship card; K9 scans, gate watch and Rotor handoff; paid second SAI print and no third offer; concurrent biomass/mineral deliveries; F depletion and refill; delayed sensor presentation; party waits outside and starts at home.",
+    "npm run test:browser -- --round19-opening passed on the final opening: visible contact dialogue at gate discovery; real Quiver hard-core encounter without a sensor card, gunship nuke, tank unlock, then enlarged sensor lesson.",
+    "Reviewed artifacts/browser/round19-gate-watch.png, round19-second-sai-offer.png and round19-empty-flares.png. Localhost 127.0.0.1:8155 responds HTTP 200; browser harness servers and Chrome are cleaned up.",
+    "git diff --check and npm run log:check passed. Existing unrelated working-tree changes preserved."
+  ],
+  "supersedes": [
+    "2026-11-16-swept-scans-friendly-traffic-and-single-sai93"
+  ]
+}

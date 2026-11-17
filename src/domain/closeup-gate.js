@@ -5,14 +5,26 @@
 // src/domain/reinforcements.js dropReady).
 //   closeupHold({ shot, seated, fighting, breathing }) -> null (clear) | 'shot' | 'seat' | 'fight'
 //   fightOf(sectorRun) -> { fighting, breathing } from a sector run (or nothing running: both false)
-export function closeupHold({ shot = false, seated = false, fighting = false, breathing = false } = {}) {
+export function closeupHold({ shot = false, seated = false, fighting = false, breathing = false, away = false, busy = false } = {}) {
   if (shot) return 'shot';
   if (seated) return 'seat';
+  if (away) return 'away';
+  if (busy) return 'busy';
   if (fighting && !breathing) return 'fight';
   return null;
+}
+
+// Story interruptions have no timeout override. Background construction may
+// continue, but the current action, dialogue and combat must finish first.
+export function studyReady({ engaged = false, briefing = false, shot = false, busy = false } = {}) {
+  return !engaged && !briefing && !shot && !busy;
 }
 
 export function fightOf(sr) {
   const phase = sr?.state?.()?.phase ?? null;
   return { fighting: phase === 'fighting', breathing: phase === 'fighting' && !!sr?.breathing?.() };
 }
+
+// A return-triggered close-up waits for the actual animated doors, including
+// their closing travel. A door still requested by a nearby friendly is not shut.
+export const baseDoorsClosed = (gates = []) => gates.every((g) => !g.built || !g.present || (!g.want && !g.open && g.t <= 0.01));

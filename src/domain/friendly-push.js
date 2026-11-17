@@ -43,3 +43,33 @@ export function pushOut(p, hull, { halfLength, halfWidth, pad = 0, free = null }
   for (const [d, sx, sz] of sides) { const pos = at(sx * d * OVER, sz * d * OVER); if (free(pos)) return { pos, depth: d }; }
   return least;
 }
+
+// A swept move cannot cross a friendly, even at the tank's top speed. Units
+// already touching may move out. All dimensions are arcs on a unit sphere.
+export function friendlyTravelBlocked(from, to, bodies, pad = 0) {
+  const unit=p=>{const l=Math.hypot(...p)||1;return p.map(x=>x/l);}, a=unit(from), b=unit(to);
+  const angle=Math.acos(Math.max(-1,Math.min(1,a.reduce((n,x,i)=>n+x*b[i],0))));
+  const steps=Math.max(1,Math.ceil(angle/.01));
+  // Clip the whole segment against the box. Sampling isolated points missed
+  // brief corner crossings and let a route exist that the vehicle could not drive.
+  const crosses=(p,q,hw,hl)=>{
+    if(!(hw>0&&hl>0))return false;let enter=0,exit=1;
+    for(const [v,d,half] of [[p.x,q.x-p.x,hw],[p.z,q.z-p.z,hl]]) {
+      if(Math.abs(d)<1e-14){if(Math.abs(v)>=half)return false;continue;}
+      const t1=(-half-v)/d,t2=(half-v)/d;enter=Math.max(enter,Math.min(t1,t2));exit=Math.min(exit,Math.max(t1,t2));
+      if(enter>=exit)return false;
+    }
+    return exit>0&&enter<1;
+  };
+  for(const body of bodies) {
+    if(!body?.pos||!body.dir||a.reduce((n,x,i)=>n+x*body.pos[i],0)<0)continue;
+    const depth=inHull(a,body,{halfLength:body.halfLength,halfWidth:body.halfWidth,pad});
+    const hw=body.halfWidth+pad-depth-1e-10,hl=body.halfLength+pad-depth-1e-10;
+    let p=frame(a,body);if(!p)continue;
+    for(let i=1;i<=steps;i++) {
+      const u=i/steps,q=frame(unit(a.map((x,k)=>x+(b[k]-x)*u)),body);
+      if(crosses(p,q,hw,hl))return true;p=q;
+    }
+  }
+  return false;
+}

@@ -44,28 +44,34 @@ export const DOG_SCOUT = freeze({
     { id: 'rock', label: 'ROCK AND CRYSTALS', colour: 0x9fdcff },
     { id: 'biomass', label: 'BIOMASS', colour: 0x9fc24a },
   ] },
-  survey: { seconds: 1.5, pay: 150, ringM: 6 },
-  contact: { bodies: [{ type: 'amoeba', count: 8 }, { type: 'ghost', count: 4 }], hops: 6, spread: 0.8, stagger: 0.25, pace: 1, recall: 40 },
+  survey: { seconds: 2.4, pay: 150, ringM: 6 },
+  scan: { colour: 0xc4f4e0, resultSeconds: 10, crystalRadiusM: 2.2, biomassRadiusM: 1.2, sweepHz: .8, results: {
+    rock: ['AMETHYST', 'CRYSTALLINE MINERAL', 'INERT · PRINT FEEDSTOCK'],
+    biomass: ['SOFT-BODIED ORGANISM', 'MOVEMENT DETECTED · NO HARD CORE', 'BIOMASS · PRINT FEEDSTOCK'],
+  } },
+  contact: { bodies: [{ type: 'amoeba', count: 8 }, { type: 'ghost', count: 4 }], hops: 2, watch: 3, spread: 0.8, stagger: 0.25, pace: 1, recall: 40 },
   knock: { touchM: 1.6, seconds: 1.5, pushM: 4, graceS: 1, clip: 'Roll_Over' },
   home: { cells: 3 },
+  gate: { arriveM: 24, standM: 16, cameraBack: 32, cameraUp: 18, lookUp: 14, ease: 1.2 },
   jump: { clip: 'Jump', rate: 1.4, upS: 0.55, downS: 1.15, endS: 1.5, heightM: 1.1, key: 'Space' },
   tricks: {
     roll: { clip: 'Roll_Over', seconds: 4.8, key: 'KeyR' },
-    paw: { clip: 'Give_Paw', seconds: 4.0, key: 'KeyP' },
+    paw: { clip: 'Give_Paw', seconds: 4.0, key: 'KeyH', faceCamera: true },
+    bark: { clip: 'Alert_Idle', seconds: 0.9, key: 'KeyB', sound: 'k9_bark' },
     sit: { clip: 'Sit_Down', seconds: 2.4, hold: true, key: 'KeyJ' },
   },
   drive: { sprint: 6.5, trot: 3.1, back: 1.2, accel: 7, turn: 2.8, turnFall: 6, radiusM: 0.7 },
   camera: { back: 8, up: 3.6, ahead: 6, lookUp: 0.8, ease: 0.25, near: 0.0008, easeIn: 2.4, printEase: 3.5, hand: 3 },
   // watch (flow fixes, 2026-11-13, docs/FLOW.md 3): at the flare the player leaves the Rotor's seat for a live shot of the rover's run (skippable, any
-  // key), `back` metres out beyond the rover from the base and `up` over it, looking `lookUp` metres over it; it ends as the rover is home; `order` the
+  // key), `back` metres out beyond the rover from the base and `up` over it, looking `lookUp` metres over it; it ends after six seconds while the rover keeps working; `order` the
   // line on screen with it, `keys` under it
-  harvest: { kg: 150, piles: 5, maxS: 120, poured: 380, watch: { back: 16, up: 10, lookUp: 1, ease: 1.2, order: 'THE ROVER HAULS THE FIRST HARVEST', keys: 'the bodies are biomass · any key: back to the base' } },   // poured: the rover's first trip home (measured 380-386 kg, 2026-11-13): the bank ?skip=dog opens with
+  harvest: { kg: 150, piles: 5, maxS: 120, poured: 380, watch: { seconds: 6, back: 16, up: 10, lookUp: 1, ease: 1.2, order: 'SAI-93 HAULS THE FIRST HARVEST', keys: 'the bodies are biomass · any key: back to the base' } },   // poured: the rover's first trip home (measured 380-386 kg, 2026-11-13): the bank ?skip=dog opens with
   words: {
     toast: (label, kg) => `${label} · SURVEYED +${kg} KG`,
-    hint: 'RECKON K9 · W A S D DRIVE · SHIFT SPRINT · SPACE JUMP · R ROLL · P PAW · J SIT',
+    hint: 'RECKON K9 · W A S D DRIVE · SHIFT SPRINT · SPACE JUMP · H HAND · R ROLL · B BARK · J SIT',
     surveyed: (n, total) => `SURVEYED ${n}/${total}`,
-    home: 'BRING THE DOG HOME',
-    homeMark: 'HOME',
+    home: 'HEAD TO THE GATE · INVESTIGATE THE MOVEMENT',
+    homeMark: 'GATE',
     lines: ['dog_survey_first', 'dog_survey_second'],   // Isao on the first two surveys (src/isaobriefs.js)
     // THE EXPOSITION (owner, 2026-11-12: "we establish with exposition that Isao and Stalheart require local resources to build, and that Biomass actually
     // works GREAT ... and that biomass bonds together well, otherwise it seeps into the ground and some is lost"; the economy design 2.7): after the first

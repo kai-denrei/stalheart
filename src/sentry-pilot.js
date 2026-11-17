@@ -7,10 +7,16 @@ import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js'
 import { seatHint } from './fx/seat-hint.js';
 import { groundAt } from './fx/lance-follow.js';
 import { GUNSHIP_SEAT_HINT as H } from './content/gunship.js';
+import { MANUAL_GUIDANCE } from './content/manual-guidance.js';
+import { stepGuidance, guidanceAligned } from './domain/manual-guidance.js';
 export function createSentryPilot(root, host) {
   const state = { tower:null, held:false, yaw:0, pitch:-.2, zoom:1, target:null, shots:0, view:'pov' };   // view: pov (over the barrels) | third (behind the turret)
+  const guideKeys = {}, guideCodes = { KeyW: 'up', KeyA: 'left', KeyS: 'down', KeyD: 'right' };
+  const guidance = () => MANUAL_GUIDANCE[state.tower?.key] ?? null;
+  state.guide = { x: 0, y: 0 }; state.sightTarget = null;
   const panel=document.createElement('section'); panel.id='sentry-pilot';
   panel.innerHTML=`<header>SENTRY CONTROL <small>THE MOUNTS ON THE WALL</small></header><p><button data-map>Map / optic · M</button></p><output></output><footer>${host.mobile?'Drag to aim · ‹ › turn · ◉ fire · MAP':'Click to lock the mouse, move it to aim · Space fires · wheel zoom · 1 map · 2 PoV · 3 third · P pause · Esc frees the mouse, Esc again or 7: the tank · H controls'}</footer><div class="pilot-cross">＋</div>`;
+  const defaultFooter = panel.querySelector('footer').textContent;
   root.append(panel);const hintOff=seatHint(panel.querySelector('footer'),{mobile:!!host.mobile});   /* the phone's seat hint, once per browser (src/fx/seat-hint.js) */root.classList.add('sentry-pilot-mode');
   const up=new THREE.Vector3(),forward=new THREE.Vector3(),direction=new THREE.Vector3(),eye=new THREE.Vector3(),camEye=new THREE.Vector3(),v=new THREE.Vector3();
   let dragging=false,map=false,lastX=0,lastY=0,lastT=performance.now();
@@ -22,10 +28,17 @@ export function createSentryPilot(root, host) {
   function select(key){dismountGunship();state.held=false;host.select(key);panel.querySelectorAll('[data-weapon]').forEach(b=>b.classList.toggle('on',b.dataset.weapon===key));}
   function toggleMap(){map=!map;state.held=false;root.classList.toggle('pilot-map',map);host.map(map);host.zoom(map?1:state.zoom);}
   listen(panel.querySelector('[data-map]'),'click',toggleMap);
+  const guidePad=document.createElement('p'); guidePad.hidden=true;
+  guidePad.innerHTML='<span>SECONDARY SIGHT</span> <button data-guide="up">↑</button><button data-guide="left">←</button><button data-guide="down">↓</button><button data-guide="right">→</button>'; panel.append(guidePad);
+  for(const b of guidePad.querySelectorAll('button')) {
+    listen(b,'pointerdown',e=>{e.preventDefault();guideKeys[b.dataset.guide]=true;b.setPointerCapture(e.pointerId);host.wake();});
+    for(const ev of ['pointerup','pointercancel','lostpointercapture'])listen(b,ev,()=>{guideKeys[b.dataset.guide]=false;});
+  }
   const editable=e=>/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable;
   listen(window,'keydown',e=>{
     if(editable(e)||/^[hH?xX]$/.test(e.key))return;   // H / ? reach the controls page from a seat (src/fx/controls-card.js); X the tune panel (src/fx/tune-panel.js)
     e.stopImmediatePropagation();
+    if (guidance() && guideCodes[e.code]) { e.preventDefault(); guideKeys[guideCodes[e.code]] = true; return; }
     if(e.key==='Escape'){host.leave?.();return;}   // ESC IS THE TANK (owner, 2026-09-25): the first Esc frees the mouse (the browser's), the next leaves, as 7 and TANK do
     if(e.code==='Space'){e.preventDefault();state.held=gunship||!map;}
     if(e.repeat)return;
@@ -34,7 +47,7 @@ export function createSentryPilot(root, host) {
     if(e.key==='1'&&!map)toggleMap();if(e.key==='2')setView('pov');if(e.key==='3')setView('third');
     if(e.code==='KeyM')toggleMap();if(e.code==='KeyP')host.pause();
   },{capture:true});
-  listen(window,'keyup',e=>{if(editable(e))return;e.stopImmediatePropagation();if(e.code==='Space'){e.preventDefault();state.held=false;}},{capture:true});
+  listen(window,'keyup',e=>{if(editable(e))return;e.stopImmediatePropagation();if(guideCodes[e.code]){e.preventDefault();guideKeys[guideCodes[e.code]]=false;}if(e.code==='Space'){e.preventDefault();state.held=false;}},{capture:true});
   listen(root,'pointerdown',e=>{
     if(e.target.closest('button,a,input,select,.lil-gui,.tzone,.tfire,#shell-bar,#shell-nav,#gunship-briefing,#story-views,.minimap,#controls-card'))return;   // the strip, the radar and the controls page do not take the mouse back (2026-09-25 playtest)
     if(gunship&&map){e.stopImmediatePropagation();e.preventDefault();px=e.clientX;py=e.clientY;state.held=true;host.wake();return;}   // the shelved top view: the pointer is the aim, the button the trigger, no lock
@@ -58,7 +71,7 @@ export function createSentryPilot(root, host) {
   // THE SEAT LETS GO WHEN THE PAGE STOPS LISTENING (owner, 2026-09-16: a screenshot left the trigger down and the mount auto-fired).
   // Blur alone missed the cases where the window keeps focus but the input does not reach us: a hidden tab, a lost pointer lock, the
   // pointer leaving the canvas. Which events count is src/core/held-input.js's ruling, not four inline conditions.
-  const release=()=>{dragging=false;releaseHeld(state,['held']);state.turn=0;};
+  const release=()=>{dragging=false;releaseHeld(state,['held']);state.turn=0;for(const k of Object.keys(guideKeys))guideKeys[k]=false;};
   for(const type of RELEASE_EVENTS)listen(type==='mouseleave'?root:type==='blur'?window:document,type,()=>{if(releasesHeld(type,{hidden:document.visibilityState==='hidden',locked:!!document.pointerLockElement,wasLocked:true}))release();});
   listen(root,'wheel',e=>{if(map||e.target.closest('#sentry-pilot'))return;e.preventDefault();e.stopImmediatePropagation();const z=Math.max(1,Math.min(5,(gunship?state.zoomGoal??state.zoom:state.zoom)+(e.deltaY<0?.25:-.25)));if(gunship)state.zoomGoal=z;else{state.zoom=z;host.zoom(state.zoom);};},{capture:true,passive:false});
   function pose(tw,goal){
@@ -66,6 +79,7 @@ export function createSentryPilot(root, host) {
     if(!tw)return false;
     if(gunship&&tw===ship)holdAim();
     const now=performance.now(),dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+    if (guidance() && !map && !host.paused?.()) stepGuidance(state.guide, guideKeys, dt, guidance());
     if(state.turn)state.yaw-=state.turn*1.6*dt;
     up.copy(tw.obj.position).normalize();
     forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(tw.obj.quaternion).normalize();
@@ -119,11 +133,21 @@ export function createSentryPilot(root, host) {
     if(held&&inBox(held,cone,cellSide)>0){best=held;state.hidden=null;}
     else if(held&&inBox(held,cone,cellSide,false)>0&&now-(state.hidden??=now)<SIGHT_GRACE)best=held;   // in the box, behind an edge: held a moment
     else{state.hidden=null;for(const e of enemies){if(!e.alive)continue;const along=inBox(e,cone,cellSide);if(along>0&&along<near){near=along;best=e;}}}
+    state.sightTarget=best;
+    if(best && guidance()) {
+      const right = new THREE.Vector3().crossVectors(direction, up).normalize(), vertical = new THREE.Vector3().crossVectors(right, direction).normalize();
+      v.fromArray(groundAt(best)).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
+      const along=v.dot(direction);
+      if(along<=0 || !guidanceAligned(v.dot(right)/along,v.dot(vertical)/along,state.guide,cone,Math.tan(guidance().toleranceDeg*Math.PI/180))) best=null;
+    }
     state.target=best;
     return best||{pilotAim:true,pos:host.aimPoint(eye,direction,range)};
   }
-  function attach(tw,toward){
+  function attach(tw,toward,reset=true){
     state.tower=tw;state.held=false;state.target=null;state.hidden=null;headSeen=false;   // the yaw below is against the mount's frame as it is now
+    const g=guidance(); if(reset) {state.guide={x:g?.start[0]??0,y:g?.start[1]??0}; state.sightTarget=null; release();}
+    guidePad.hidden = !g || !host.mobile;
+    panel.querySelector('footer').textContent=g ? (host.mobile ? 'Drag to track · arrows align secondary sight · fire when locked' : 'MOUSE · track target   W A S D · align secondary sight   SPACE · fire when locked') : defaultFooter;
     v.fromArray(toward);tw.obj.worldToLocal(v);state.yaw=Math.atan2(v.x,v.z);
     up.copy(tw.obj.position).normalize();eye.copy(tw.obj.position).addScaledVector(up,host.cellSide()*.65);
     v.fromArray(toward).sub(eye);state.pitch=Math.atan2(v.dot(up),v.clone().addScaledVector(up,-v.dot(up)).length());
@@ -258,7 +282,7 @@ export function createSentryPilot(root, host) {
   // heat is a small bar under it, red past 70 % (app.css .pilot-heat)
   const heat=document.createElement('div');heat.className='pilot-heat';heat.innerHTML='<i></i>';heat.hidden=true;panel.append(heat);
   return {state,pose,target,attach,select,setView,release,isMap:()=>map,hit(){cross.classList.add('hit');clearTimeout(hitT);hitT=setTimeout(()=>cross.classList.remove('hit'),120);},mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
-    aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
+    aimAt:pos=>{const {held,target}=state;attach(state.tower,pos,false);state.held=held;state.target=target;},
     update(text,info=null){panel.querySelector('output').textContent=text;const s=info?.state??(/OVERHEATED/.test(text)?'overheated':'ready');panel.classList.toggle('overheat',s==='overheated');cross.dataset.state=s;const h=gunship?null:info?.heat;heat.hidden=!(h>0.02);if(!heat.hidden){heat.firstElementChild.style.width=`${Math.round(Math.min(1,h)*100)}%`;heat.classList.toggle('hot',h>=0.7);}},   // an overheated mount reads red (owner, 2026-10-15); the reticle and the heat bar (2026-10-16)
     dispose(){vignette.remove();hintOff();dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
   };

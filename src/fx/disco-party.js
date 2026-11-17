@@ -332,7 +332,7 @@ export function createDiscoParty(h) {
       if (day >= DAY_42.day - DAY_42.loadAhead) fetchBall();
       warmSpots();
       if (rep && !rep.done) { replayFrame(); return; }   // the ending's replay owns the ball, the arm and the track; the clock waits
-      const cond = { day, fighting: phase === 'fighting', secure: phase === 'secure', breathing: !!sr?.breathing?.(), shot: h.shotActive(), seated: h.seated(),
+      const cond = { day, home: h.home?.() ?? true, fighting: phase === 'fighting', secure: phase === 'secure', breathing: !!sr?.breathing?.(), shot: h.shotActive(), seated: h.seated(),
         card: !ball || structure()?.holder?.visible === false || h.card() || !!h.warning?.(), alive: h.alive(), boss: !!sr?.defNow?.()?.boss, won: h.won(), isaoBusy: h.isaoBusy() };   // the board's wave warning is a card: no party over its rings; nor
       // with the Stålheart's holder hidden (final review, 2026-10-18: SOL can burn it; the ball would hang from nothing)
       const was = clock.state().phase, events = clock.tick(dt, cond);

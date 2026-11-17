@@ -43,6 +43,7 @@
 export const ROVER = Object.freeze({
   capacity: 6000, harvestRate: 400, unloadRate: 1000, speed: 26, turn: 1.3, reach: 3, price: 3600, breakShare: 0.5, recheck: 1,
   road: Object.freeze({ pad: 2, half: 2.5, radius: 8, step: 2, ahead: 6 }),
+  body: Object.freeze({ halfLength: 5, halfWidth: 2.5, gap: 0.6 }),
   retreat: Object.freeze({ bodies: 6, cells: 4, clear: 2 }),
   // THE ROVER HUNTED (the economy design 2.6, 2026-11-12): beyond the walls the whites and yellows hunt it (src/domain/soft-hunt.js huntGoal) and each
   // jab's peak eats `bite` kg of its hold (lost; it has no hit points); the callout at most every `every` s, Isao's rover_bitten the first time
@@ -76,12 +77,12 @@ export const PILE_LOOK = Object.freeze({ colour: 0x71863c, metres: 0.32, maxMetr
 // THE FLARES RUN OUT (owner, 2026-11-10: "flares must run out"): the hull carries `stock`; F with none left drops nothing; the stock is whole again
 // when the hull stands on a repair spot (the Stålheart's gantry or the garage, src/content/tank.js HULL_REPAIR.spots)
 export const FLARE = Object.freeze({
-  seconds: 90, max: 3, stock: 4, colour: 0xffb43c, light: 2.4, lightMetres: 40, coreMetres: 0.5, haloMetres: 6, stickMetres: 1.6, pulse: 3.2,
+  seconds: 90, max: 3, stock: 8, refillSound: 'tank_shells', colour: 0xffb43c, light: 2.4, lightMetres: 40, coreMetres: 0.5, haloMetres: 6, stickMetres: 1.6, pulse: 3.2,
 });
 // THE WORDS: the hull console's line, the HUD's field number, Isao's first hint (src/isaobriefs.js rover_flare), the toasts
 export const ROVER_WORDS = Object.freeze({
-  rover: 'ROVER', field: 'FIELD', full: 'STORAGE FULL', flare: 'FLARE', dispatched: 'ROVER DISPATCHED', queued: 'ROVER · NEXT FLARE QUEUED',
-  noDepot: 'NO ROVER YET', flares: 'FLARES', noFlares: 'NO FLARES · RESTOCK AT BASE', restocked: 'FLARES RESTOCKED', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
+  rover: 'SAI-93', field: 'FIELD', full: 'STORAGE FULL', flare: 'FLARE', dispatched: 'AMBER FLARE · SAI-93 DISPATCHED', queued: 'SAI-93 · NEXT JOB QUEUED',
+  noDepot: 'NO SAI-93 YET', flares: 'FLARES', noFlares: 'FLARES 0/8 · REFILL AT THE CARGO DROP-OFF FLAGS', restocked: 'FLARES REFILLED · 8/8', hintKg: 300, hint: 'rover_flare', fullBrief: 'storage_full', breakBrief: 'rover_break',
   attacked: 'ROVER UNDER ATTACK', bitten: 'rover_bitten',
   // THE ROVER DISABLED (2026-11-12 night): the callouts, Isao's caption, the first sortie's hint (the first time it leaves the walls), the radar's mark
   disabled: 'ROVER DISABLED · NEEDS THE TANK', restarted: 'ROVER RESTARTED', disabledBrief: 'rover_disabled',
@@ -91,11 +92,13 @@ export const ROVER_WORDS = Object.freeze({
 // does"; src/fx/rover-card.js, the rule src/domain/rover-card.js): at the rover's first run out of home, the game paused, the rover's LOD1 turning
 // `spin` rad/s on a `size` px stage (the bestiary's tinted wireframe); its name, its lines (true to the rules: rover-run.js, the hunt, the disable)
 export const ROVER_CARD = Object.freeze({
-  name: 'YUSHI ROVER', tag: 'HARVESTER · NOW IN SERVICE',
+  name: 'SAI-93', tag: 'HARVESTER · NOW IN SERVICE',
   lines: Object.freeze([
-    'Drop a FLARE (F) on the bodies: it drives out, rakes up the biomass, hauls it home.',
+    'F dispatches the same aircraft: amber for biomass, violet for crystals.',
     'Only what it brings back reaches the Bio-Pearls. That is the bank.',
-    'The hunters go for it. A crowd sends it home; three jabs stop it until the tank comes.',
+    'One hold, one queued job each. Print a second SAI-93 on the build board.',
+    '8 flares carried. 90s burn. 3 markers per colour; the next replaces the oldest.',
+    'Refill at the cargo drop-off flags. STÅLHEART and ammunition pads refill too.',
   ]),
   dismiss: 'any key · click to continue', spin: 0.6, size: Object.freeze([320, 180]), colour: '#9fc24a',
 });

@@ -16,6 +16,8 @@
 // prefers-reduced-motion drops every spin and blink and says the phase in words instead.
 import * as THREE from '../../vendor/three.module.js';
 import { add3, sub3, scale3, dot3, norm3 } from '../vec3.js';
+import { MANUAL_GUIDANCE } from '../content/manual-guidance.js';
+import { groundAt } from './lance-follow.js';
 import { BELT_OF } from '../content/sectors.js';
 
 const WHITE = '#f2fbff';
@@ -87,7 +89,7 @@ export function createStoryScope(root) {
   return {
     // one call a frame. `on` hides everything. meter 0..1 and `locked` come straight off the launcher's own lock;
     // `sx`/`sy` are the held body's own point on the glass, so the inner box closes on THAT body and no other.
-    update({ on, w, h, meter = 0, locked = false, target = null, max = 0, zoom = 1, box = 0, cone = 0, lockTime = 0, flight = 0, ready = true, overheated = false, cooldown = 0, sx = null, sy = null }) {
+    update({ on, w, h, meter = 0, locked = false, target = null, max = 0, zoom = 1, box = 0, cone = 0, lockTime = 0, flight = 0, ready = true, overheated = false, cooldown = 0, sx = null, sy = null, guide = null }) {
       layer.style.display = on ? '' : 'none';
       // A SEAT THAT IS LEFT FOR ANOTHER SEAT never says off (owner, 2026-10-04: the Quiver's panels stayed up in the gunship): the scope
       // is fed every frame while its mount is seated, so a feed that stops for `STALE` seconds takes the layer down by itself
@@ -136,7 +138,7 @@ export function createStoryScope(root) {
 
       /* ---------------- tracking inside the tracking: the box closes from the square's edge onto the body ---------------- */
       const bx = sx === null ? cx : Math.max(cx - b, Math.min(cx + b, sx)), by = sy === null ? cy : Math.max(cy - b, Math.min(cy + b, sy));
-      if (target && phase !== 'away') {
+      if (target && !guide && phase !== 'away') {
         const ease = fill * fill * (3 - 2 * fill);
         const half = b + (Math.max(11, b * 0.15) - b) * ease;
         const ix = cx + (bx - cx) * ease, iy = cy + (by - cy) * ease;
@@ -150,6 +152,13 @@ export function createStoryScope(root) {
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
       }
+      if (guide) {
+        const gx = cx + guide.x * box, gy = cy + guide.y * box;
+        ctx.strokeStyle = locked ? WHITE : FG;
+        brackets(gx, gy, Math.max(4, guide.radius), Math.max(3, guide.radius * 0.35), 2);
+        ctx.textAlign = 'center'; ctx.fillStyle = FG;
+        ctx.fillText('W A S D', gx, gy + guide.radius + 6);
+      }
       /* the body's own pip, on the point the rules hold */
       if (target) {
         ctx.strokeStyle = tone; ctx.lineWidth = 1;
@@ -158,7 +167,7 @@ export function createStoryScope(root) {
 
       /* the centre pip: where the launcher is pointed */
       ctx.strokeStyle = tone; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(cx, cy, R * 0.22, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, guide?.radius ?? R * 0.22, 0, TAU); ctx.stroke();
       line(cx - R * 0.5, cy, cx - R * 0.24, cy); line(cx + R * 0.24, cy, cx + R * 0.5, cy);
       line(cx, cy - R * 0.5, cx, cy - R * 0.24); line(cx, cy + R * 0.24, cx, cy + R * 0.5);
 
@@ -173,13 +182,13 @@ export function createStoryScope(root) {
         ctx.globalAlpha = 1;
       } else {
         ctx.fillStyle = far ? WARN : phase === 'track' ? CYAN : phase === 'away' ? FG : 'rgba(95, 230, 214, 0.78)';
-        ctx.fillText(phase === 'away' ? `ROUND AWAY · ${flight} IN FLIGHT` : far ? 'OUT OF RANGE' : phase === 'track' ? `LOCKING ${Math.round(fill * 100)}%` : 'SEARCHING · NOTHING IN THE BOX', cx, tagY + 4);
+        ctx.fillText(phase === 'away' ? `ROUND AWAY · ${flight} IN FLIGHT` : far ? 'OUT OF RANGE' : phase === 'track' ? guide && !guide.aligned ? 'ALIGN SECONDARY SIGHT · W A S D' : `LOCKING ${Math.round(fill * 100)}%` : 'SEARCHING · NOTHING IN THE BOX', cx, tagY + 4);
       }
 
       /* ---------------- telemetry, tucked into the margins beside the sight ---------------- */
       const belt = target ? (BELT_OF[target.type] || '—').toUpperCase() : '—';
       const lockLine = locked ? { s: 'LOCKED', c: WHITE } : target ? { s: `T-LOCK ${(Math.max(0, 1 - fill) * lockTime).toFixed(2)} S`, c: CYAN } : { s: 'NO TARGET', c: DIM };
-      const seeker = ['SEEKER · QUIVER', [`CONE ${cone.toFixed(1)}° HALF`, `MAG ${zoom.toFixed(1)}x`, `MAX ${Math.round(max)} M`, { s: still ? `STATE ${phase.toUpperCase()}` : 'BOX = WHAT IT TAKES', c: DIM }]];
+      const seeker = ['SEEKER · QUIVER', [`CONE ${cone.toFixed(1)}° HALF`, `MAG ${zoom.toFixed(1)}x`, `MAX ${Math.round(max)} M`, { s: still ? `STATE ${phase.toUpperCase()}` : guide ? 'MOUSE TRACK · WASD ALIGN' : 'BOX = WHAT IT TAKES', c: DIM }]];
       const launcher = ['LAUNCHER · TALON', [
         overheated ? { s: 'OVERHEATED', c: HOT } : flight > 0 ? { s: `HOLD · ${flight} IN FLIGHT`, c: WARN } : ready && cooldown <= 0 ? { s: 'READY', c: FG } : { s: 'LOADING', c: WARN },
         cooldown > 0 ? `COOLING ${cooldown.toFixed(1)} S` : 'COOLING 0.0 S',
@@ -219,9 +228,11 @@ export function createScopeFeed(host) {
   const scopeV = new THREE.Vector3();   // puts the held body on the glass for the scope's inner box
   return (tw, distance, maxRange) => {
     if (host.storyScope()) {
-      const cfg = missileOf(tw.key), t = tw.pilotTarget && !tw.pilotTarget.pilotAim ? tw.pilotTarget : null, bearing = t ? Math.acos(Math.max(-1, Math.min(1, dot3(towerBarrel(tw, norm3(host.graph().centers[tw.ci])), norm3(sub3(t.pos, host.graph().centers[tw.ci])))))) * 180 / Math.PI : 0, sp = t ? scopeV.fromArray(add3(t.pos, scale3(norm3(t.pos), host.cellSide() * 0.3))).project(camera) : null, onGlass = !!sp && sp.z < 1, lockedNow = !!tw.lock?.locked;
+      const cfg = missileOf(tw.key), t = host.pilot().state.sightTarget ?? (tw.pilotTarget && !tw.pilotTarget.pilotAim ? tw.pilotTarget : null), bearing = t ? Math.acos(Math.max(-1, Math.min(1, dot3(towerBarrel(tw, norm3(host.graph().centers[tw.ci])), norm3(sub3(t.pos, host.graph().centers[tw.ci])))))) * 180 / Math.PI : 0, sp = t ? scopeV.fromArray(add3(groundAt(t), scale3(norm3(groundAt(t)), host.cellSide() * 0.3))).project(camera) : null, onGlass = !!sp && sp.z < 1, lockedNow = !!tw.lock?.locked;
       if (lockedNow !== !!tw.lockTick) { tw.lockTick = lockedNow; if (lockedNow) sfx.play('laser_click'); }
       host.storyScope().update({
+        guide: MANUAL_GUIDANCE[tw.key] ? { ...host.pilot().state.guide, aligned: !!host.pilot().state.target,
+          radius: innerHeight / 2 * Math.tan(MANUAL_GUIDANCE[tw.key].toleranceDeg * Math.PI / 180) / Math.tan(camera.fov * Math.PI / 360) } : null,
         on: !!cfg && !host.pilot().isMap(),
         w: innerWidth,
         h: innerHeight,

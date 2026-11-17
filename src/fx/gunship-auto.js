@@ -27,7 +27,7 @@ export function landGunshipRounds(G) {
     const lc = G.stepHeavy(); if (lc >= 0) { G.blast(lc); G.laser(-1); }
   }
 export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [], hull = () => null, road = () => null }) {
-  let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null, roadReady = -Infinity, roadDrops = 0;
+  let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null, roadReady = -Infinity, roadDrops = 0, pending = null;
   // the release's picture and sound, the pile's and the road's alike (Isao's mk9_release is the rig's launchHeavy's)
   function release(lc) {
     const from = G.optic.muzzle('heavy'), up = Math.hypot(...from) ? from.map((v) => v / Math.hypot(...from)) : [0, 1, 0];
@@ -37,12 +37,18 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
     const key = tune.nukeCalls[Math.floor(Math.random() * tune.nukeCalls.length)];
     if (!hasCue || hasCue(key)) sfx?.play?.(key);
   }
+  const paint = (ci, roadShot) => {
+    if(G.select('heavy')===false||!G.paintHeavy(ci,{auto:true}))return;
+    pending={ci,road:roadShot,left:tune.nukeWarnS??4};const p=G.centers[ci],n=p.map(v=>v/Math.hypot(...p));
+    G.optic.paint?.(p,n,G.guns.heavy.blastCells*G.cs,pending.left);G.laser(ci);callout(tune.warning??'TACTICAL NUKE · CLEAR THE LASER MARK');
+  };
+  const cancel = () => {if(pending&&G.state.heavyPaint===pending.ci)G.state.heavyPaint=null;pending=null;G.laser(-1);};
   return {
     // seated: the player is in the seat (the seat runs the guns); returns whether auto flew this tick
     tick(dt, seated) {
       const st = G.state;
       if (!seated) { G.optic.fade?.(dt); landGunshipRounds(G); }   // nobody's pose() is ageing the tracers; what is in the air still lands
-      if (seated || !G.onStation()) { phase = 'rest'; t = 0; return false; }
+      if (seated || !G.onStation()) { if(pending)cancel();phase = 'rest'; t = 0; return false; }
       if (!st.mounted) G.mount();
       t += dt;
       const live = G.enemies();
@@ -53,18 +59,20 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
       let seen = null; const pile = () => (seen ??= live.filter((e) => onScreen(e.pos, tune.nukeView) && safe(e.pos) && near2(e.pos)));
       // THE NUKES ON THE ROAD (2026-10-23): the drive out's rock cluster, every reload + fall, unless a pile of more than roadWeight bodies wins the pass
       const rt = road?.() ?? null, roadKeep = keep + 2 * G.cs;
-      if (rt && rt.cell >= 0 && st.clock >= roadReady && !st.heavyFalling && !(pileOpen && pile().length >= Math.max(tune.nukePile, tune.roadWeight ?? 0)) && near().every((f) => dist(rt.point, f) > roadKeep) && onScreen(rt.point, tune.nukeView) && near2(rt.point)) {
-        if (G.select('heavy') !== false && G.paintHeavy(rt.cell, { auto: true })) { const lc = G.launchHeavy({ auto: true }); if (lc >= 0) { roadReady = st.clock + G.guns.heavy.travel + G.guns.heavy.reload; roadDrops++; release(lc); } }
-        G.select(gun);
-      } else if (pileOpen) {
-        if (pile().length >= tune.nukePile) {
-          const p0 = densestTarget(pile(), { radius: G.guns.heavy.blastCells * G.cs * 10, metres: 10 }), p = p0 && safe(p0) ? p0 : null, ci = p ? G.cell(p) : -1;
-          if (ci >= 0 && G.select('heavy') !== false && G.paintHeavy(ci, { auto: true })) {
-            const lc = G.launchHeavy({ auto: true });
-            if (lc >= 0) { nukePass = st.passes; release(lc); }
+      if(pending){
+        const p=G.centers[pending.ci],margin=pending.road?roadKeep:keep;
+        if(!near().every(f=>dist(p,f)>margin))cancel();
+        else {pending.left-=dt;G.optic.tracer?.(G.optic.muzzle('heavy'),p,0xff2a1a,.2);
+          if(pending.left<=0){const shot=pending,lc=G.launchHeavy({auto:true});pending=null;
+            if(lc>=0){if(shot.road){roadReady=st.clock+G.guns.heavy.travel+G.guns.heavy.reload;roadDrops++;}else nukePass=st.passes;
+              G.optic.paint?.(p,p.map(v=>v/Math.hypot(...p)),G.guns.heavy.blastCells*G.cs,G.guns.heavy.travel);release(lc);}
           }
-          G.select(gun);
         }
+      } else if (rt && rt.cell >= 0 && st.clock >= roadReady && !st.heavyFalling && !(pileOpen && pile().length >= Math.max(tune.nukePile, tune.roadWeight ?? 0)) && near().every((f) => dist(rt.point, f) > roadKeep) && onScreen(rt.point, tune.nukeView) && near2(rt.point)) {
+        paint(rt.cell,true);G.select(gun);
+      } else if (pileOpen && pile().length >= tune.nukePile) {
+        const p0=densestTarget(pile(),{radius:G.guns.heavy.blastCells*G.cs*10,metres:10}),p=p0&&safe(p0)?p0:null,ci=p?G.cell(p):-1;
+        if(ci>=0)paint(ci,false);G.select(gun);
       }
       // the guns: a burst, a rest, the other gun
       if (phase === 'rest') { if (t >= tune.rest) { phase = 'burst'; t = 0; gun = gun === 'rotary' ? 'bofors' : 'rotary'; G.select(gun); target = null; } landGunshipRounds(G); G.step(dt, false); return true; }
@@ -89,6 +97,6 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
       if (t >= tune.burst) { phase = 'rest'; t = 0; }
       return true;
     },
-    state: () => ({ gun, phase, nukePass, rounds, roadDrops }),
+    state: () => ({ gun, phase, nukePass, rounds, roadDrops, warning: pending ? {...pending} : null }),
   };
 }

@@ -64,19 +64,25 @@ export function createExpeditionGlue(h) {
     return { point: p, normal: p.clone().normalize(), facing: m.facing };
   }
   // on the lattice: the open cell nearest the ideal spot, so a hull parked on it is on the pad (kept once the landing has a frame)
-  let padPoint = null;
+  let padPoint = null, padCell = -1;
   const dropAt = () => {
-    if (padPoint) return padPoint;
+    if (padPoint && (h.open?.(padCell) ?? true) && !h.solid?.(padPoint)) return padPoint;
     const want = dropPose().normal.toArray(), C = h.centers(); let best = -1, bd = Infinity;
-    for (let i = 0; i < C.length; i++) { if (i === h.story.home || !(h.open?.(i) ?? true)) continue; const d = chord(C[i], want); if (d < bd) { bd = d; best = i; } }
-    const at = best >= 0 && bd < dropReach() * 2.5 ? C[best].slice() : want;
-    if (h.landing?.()) padPoint = at;
+    for (let i = 0; i < C.length; i++) {
+      if (i === h.story.home || !(h.open?.(i) ?? true)) continue;
+      const d = chord(C[i], want); if (d >= bd || h.solid?.(C[i])) continue;
+      bd = d; best = i;
+    }
+    const at = best >= 0 ? C[best].slice() : want;
+    if (h.landing?.()) { padPoint = at; padCell = best; }
     return at;
   };
   const dropReach = () => (look.drop?.radius ?? 8) * metres;
   function padStep(e) {
+    const at = dropAt();
+    if (pad && chord(pad.at, at) > 1e-8) { pad.ring.removeFromParent(); pad.ring.geometry.dispose(); pad.ring.material.dispose(); pad = null; }
     if (!pad && h.scene && e.sites.some((s) => s.state !== 'hidden')) {
-      const at = dropAt(), ring = makePadRing(at, dropReach(), 1 + 0.3 * metres, { color: look.drop?.color ?? 0xffb43c, rings: [1, 0.62, 0.24], size: 3.5 });
+      const ring = makePadRing(at, dropReach(), 1 + 0.3 * metres, { color: look.drop?.color ?? 0xffb43c, rings: [1, 0.62, 0.24], size: 3.5 });
       h.scene.add(ring); pad = { at, ring };
     }
     if (!pad) return;
@@ -236,6 +242,7 @@ export function createExpeditionGlue(h) {
       /* the crate he was coming for is gone (holdMax, or pushed off the landing by newer crates): the part is in all the same */
       if (receipt?.held && !cargo?.state().crates.some((p) => p === 'fall' || p === 'settle' || p === 'rest')) endReceipt(receipt);
     },
+    atDropOff: (pos) => !!pad && !!pos && chord(pos,dropAt()) < dropReach()*1.15,
     view: (kind, id) => cargo?.view(kind, id) ?? null,
     state: () => ({ ...(cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }), receiving: !!receipt?.held, sign: !!sign, pad: pad ? { at: pad.at.map((v) => +v.toFixed(5)), reach: +dropReach().toFixed(5), visible: pad.ring.visible } : null }),
     dispose() { cargo?.dispose(); cargo = null; sign?.dispose?.(); sign = null; if (pad) { h.scene?.remove(pad.ring); pad.ring.geometry.dispose(); pad.ring.material.dispose(); pad = null; } },

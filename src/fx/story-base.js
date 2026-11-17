@@ -1,9 +1,10 @@
+import { structureCeiling, invalidateStructureBounds } from './structure-clearance.js';
 // Presentation of the story base for both the lab and the game: instanced
 // island slabs with a shader-drawn 4 m grid, kit walls and gate, and the
 // landmark models on their islands. Consumes a base plan and a placer that
 // maps frame metres onto whichever sphere the host renders.
 import * as THREE from '../../vendor/three.module.js';
-import { rasterFootprint } from '../domain/footprint.js';
+import { measureStructureFootprint } from './structure-footprint.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
@@ -190,9 +191,11 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
         let opened = false;
         const out = b.rollout ? held[b.rollout] : null;
         bays.push({ n: b.n, vehicle: b.vehicle ? nodeNamed(root, b.vehicle) : null, rollout: out ? out.getClip().duration : 0, open() {
+          const record=records.get(s.id);if(record)record.foot=null;
           if (opened || !b.doors) return; opened = true;
+          if(record)record.dynamicFootUntil=clock+(kit.bay?.doorSeconds??2.4)+.2;
           const a = mixer.clipAction(swingClip(root, b.doors, b.like, kit.bay?.doorSeconds ?? 2.4)); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play();
-        }, roll(t) { if (out) { out.paused = true; out.time = Math.max(0, Math.min(out.getClip().duration, t)); mixer.update(0); } } });
+        }, roll(t) { const record=records.get(s.id);if(record)record.dynamicFootUntil=clock+.2; if (out) { out.paused = true; out.time = Math.max(0, Math.min(out.getClip().duration, t)); mixer.update(0); } } });
       }
       bays.sort((a, b) => a.n - b.n);
       return root;
@@ -263,7 +266,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     move: (id, x, z, heading) => {
       const st = plan.structures.find((q) => q.id === id), r = records.get(id); if (!st || !r) return false;
       place(r.holder, x, z, st.y, heading, st.scale, st.tilt ?? 0, st.lift ?? 0, st.scaleY ?? st.scale);
-      r.holder.userData.placed = r.holder.matrix.clone(); r.box = null; r.foot = null;
+      r.holder.userData.placed = r.holder.matrix.clone(); r.box = null; if(r.foot){r.holder.updateWorldMatrix(true,true);r.foot.inv.copy(r.holder.matrixWorld).invert();}
       const l = lod.find((q) => q.id === id); if (l) l.at.setFromMatrixPosition(r.holder.matrix);
       return true;
     },
@@ -343,24 +346,16 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // the ones that stop it; each one standing and shown keeps a footprint measured once off its model in its holder's own frame: the
     // box of the meshes that reach down to its ground (an arm or a gantry overhead is not a wall). solidAt(p, pad): a unit point within
     // `pad` scene units of one
+    invalidateFootprint(id) { const r=records.get(id);if(r){r.foot=null;invalidateStructureBounds(r);} },
+    flightCeiling(p, pad = 0) { let top=0; for(const st of plan.structures){if(kOf(grown.structures,st.id,st)<=0)continue;const r=records.get(st.id);if(r)top=Math.max(top,structureCeiling(r,p,pad));}return top; },
     solidAt(p, pad = 0) {
       for (const st of plan.structures) {
         if (!solid.has(st.id) || kOf(grown.structures, st.id, st) < 1) continue;
         const r = records.get(st.id), root = r && (r.near ?? r.far); if (!root || r.holder.visible === false) continue;
         let f = r.foot;
-        if (!f || f.root !== root) {
-          // THE FOOTPRINT FROM THE GEOMETRY (owner, 2026-10-07: "collision ON, but not so much that its entire perimeter becomes an
-          // invisible wall"; src/domain/footprint.js): the triangles within `reach` of the structure's ground, in the holder's own frame,
-          // rasterised on `footCell`-metre cells; a lander's body and legs block where they stand, the lane beside them stays open, and
-          // the solar array's panels block round its open charging pad. A triangle that never rises `footLip` metres over the ground is
-          // the ground (a slab, a pad), not a wall. Once a tier, off whichever tier stands
-          r.holder.updateWorldMatrix(true, true);
-          const inv = new THREE.Matrix4().copy(r.holder.matrixWorld).invert(), scale = r.holder.matrixWorld.getMaxScaleOnAxis(), reach = 2.5 * metres / scale, lip = footLip * metres / scale, tris = [], v = new THREE.Vector3(), m = new THREE.Matrix4();
-          let low = Infinity;
-          root.traverse((o) => { if (!o.isMesh || !o.geometry?.attributes.position) return; m.multiplyMatrices(inv, o.matrixWorld); const pos = o.geometry.attributes.position, idx = o.geometry.index; const n = idx ? idx.count : pos.count, at = (k) => { v.fromBufferAttribute(pos, idx ? idx.getX(k) : k).applyMatrix4(m); return [v.x, v.y, v.z]; };
-            for (let k = 0; k + 2 < n; k += 3) { const a = at(k), b = at(k + 1), c = at(k + 2), y = Math.min(a[1], b[1], c[1]); if (y < low) low = y; tris.push(y, Math.max(a[1], b[1], c[1]), a[0], a[2], b[0], b[2], c[0], c[2]); } });
-          const xz = []; for (let k = 0; k < tris.length; k += 8) if (tris[k] <= low + reach && tris[k + 1] >= low + lip) xz.push(tris[k + 2], tris[k + 3], tris[k + 4], tris[k + 5], tris[k + 6], tris[k + 7]);
-          f = r.foot = { root, inv, scale, grid: rasterFootprint(xz, footCell * metres / scale) };
+        if (!f || f.root !== root || (clock < (r.dynamicFootUntil??0) && r.footAt!==Math.floor(clock*8))) {
+          f = r.foot = measureStructureFootprint(r, metres, footCell, footLip);
+          r.footAt=Math.floor(clock*8);
         }
         const q = solidV.set(p[0], p[1], p[2]).applyMatrix4(f.inv);
         if (f.grid.hit(q.x, q.z, pad / f.scale)) return st.id;
@@ -368,7 +363,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       return null;
     },
     // THE CONSOLE UNDER THE GANTRY (owner, 2026-10-14, the terminal and the bestiary: "opened from the base console and a key"; the hull drives
-    // under the Stålheart by the owner's rule of 2026-10-03, so it is not in SOLID_STRUCTURES and solidAt never sees it): whether a unit point
+    // under the Stålheart by the owner's rule of 2026-10-03, so only its feet enter the ground footprint): whether a unit point
     // stands inside a standing structure's model box seen from above, in its holder's own frame, `pad` scene units out. The box is measured
     // once a tier, off the meshes' own bounding boxes
     // THE SLAB UNDER A POINT (2026-10-30, the companions' print bed: a bed beside a raised island hid behind its edge): the top (metres over the
@@ -406,7 +401,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       if (!r.box || r.box.root !== root) {
         r.holder.updateWorldMatrix(true, true);
         const inv = new THREE.Matrix4().copy(r.holder.matrixWorld).invert(), box = new THREE.Box3(), b = new THREE.Box3(), m = new THREE.Matrix4();
-        root.traverse((o) => { if (!o.isMesh || !o.geometry?.attributes.position) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); box.union(b.copy(o.geometry.boundingBox).applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld))); });
+        root.traverse((o) => { if (!o.isMesh || !o.geometry?.attributes.position) return; for(let a=o;a&&a!==r.holder;a=a.parent)if(a.userData.collisionHidden)return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); box.union(b.copy(o.geometry.boundingBox).applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld))); });
         r.box = { root, inv, scale: r.holder.matrixWorld.getMaxScaleOnAxis(), box };
       }
       const v = solidV.set(p[0], p[1], p[2]).applyMatrix4(r.box.inv), b = r.box.box, e = pad / r.box.scale;

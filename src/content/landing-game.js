@@ -20,6 +20,7 @@ export const LANDING_GAME = Object.freeze({
   entry: Object.freeze({ altitude: [300, 400], sink: [30, 40], drift: [4, 7], tilt: [0.15, 0.25], fuelSeconds: [18, 22], wind: 0 }),
   // the auto-lander takes back under this height when the state is inside its corridor (spec 2.4)
   flare: Object.freeze({
+    enabled: false,   // flown landings stay manual through ground contact
     altitude: 30, sink: 8, drift: 5, tilt: 0.25, sinkFinal: 1.8,
     settle: 2.5,       // s: the time scale of the ease (each step closes dt / settle * settleGain of the gap), so drift and tilt are gone in about this long
     settleGain: 3,     // the ease's gain over dt / settle: an exponential ease at rate 1/settle only reaches 63% in `settle` s; at 3x it is e^-3, about 95 % closed, "gone" (2026-11-07, the final review: the comment said 99.9 %)

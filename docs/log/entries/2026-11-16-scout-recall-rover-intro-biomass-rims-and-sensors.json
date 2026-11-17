@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "id": "2026-11-16-scout-recall-rover-intro-biomass-rims-and-sensors",
+  "date": "2026-11-16",
+  "type": "change",
+  "status": "resolved",
+  "title": "Scout recall, shorter rover introduction, reachable biomass, violet dispatch and tank sensors",
+  "context": "Six playtest follow-ups: the dog returns to an empty landing site, biomass needs exposition, the first rover view holds too long, piles float over sinkholes, SAI-93 needs a distinct flare and hard-core contacts need a tank sensor explanation.",
+  "outcome": "The recall uses the requested uncertainty line and RETURN marker; the return dialogue adds the requested printing line. The skippable rover camera lasts six seconds and then opens first orders, independently of real cargo delivery (the existing build card pauses play while choosing). Biomass records and their instanced visuals move together to connected floor outside sinkholes, with clearance for the whole pile, and are rechecked as terrain opens. Relocation conserves kilograms, bonded bodies and original seepage age. F near minerals drops a bounded 90-second violet flare and dispatches SAI-93; biomass flares remain amber. The first hard-core contact queues one dismissible sensor card: direction, blue/orange/red cell ranges, silent warnings and avoidance, including pre-tank wording. Recording text regenerated. Local only, no push or publication.",
+  "alternatives": [
+    "Moving only the pile mesh would leave pickup coordinates over the hole; relocate the resource record instead.",
+    "Do not credit the first haul early to end its camera. First orders can proceed while the rover completes the actual delivery after the paused card closes.",
+    "The first focused browser attempt asserted order before the transport FSM consumed its queue. Corrected the assertion to accept the actual queued or active order; no runtime workaround."
+  ],
+  "evidence": [
+    "npm test: 357 test programs passed.",
+    "npm run check; npm run architecture: passed, 223 pure modules, td-tab 5375/5450 lines.",
+    "node test/host-contracts.mjs: 84 factories passed.",
+    "npm run build: passed.",
+    "npm run test:browser -- --round16: passed F key dispatch, violet flare lifetime, center-of-hole biomass relocation and accessible footprint, sensor timing, physical dismissal and once-per-run behavior.",
+    "test/first-harvest.mjs: six-second skippable intro, missing camera fallback, no fabricated delivery.",
+    "test/biomass-field.mjs: relocation merge, conservation, seepage age and pickup at the new cell.",
+    "Default cold-opening browser timeout remains the preexisting baseline failure documented by the round-15 entry.",
+    "Architecture review: no new source module or duplicate owner; this follow-up adds zero td-tab lines (changes the existing breach predicate to accept footprint clearance). Combined pending tree is +10 td-tab lines relative to HEAD."
+  ],
+  "supersedes": []
+}

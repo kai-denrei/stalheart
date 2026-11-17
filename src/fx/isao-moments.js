@@ -16,7 +16,7 @@ export function createIsaoMoments(c) {
     for (const e of c.enemies()) if (e.alive && !e.guard && !e.harmless) { any = true; if (d[e.cur] >= 0 && d[e.cur] <= STORY_CALM.heartHops) { near = true; break; } }
     // heart_threat_more follows its "her" line on its own chance, as the voice's sequence (src/content/voice-hooks.js VOICE_SEQUENCE)
     if (near) { if (t - (s.threatAskedAt ?? -Infinity) < 5) return; s.threatAskedAt = t; isaoSpeak('heart_threat'); }
-    else if (!any && !danger() && t - (s.idleAskedAt ?? -Infinity) >= 5) { s.idleAskedAt = t; isaoSpeak('idle_flavor'); }
+    else if (!any && !danger() && t - (s.idleAskedAt ?? -Infinity) >= 5) { s.idleAskedAt = t; if (s.sectorN >= 3) isaoSpeak('idle_flavor_late'); else isaoSpeak('idle_flavor'); }
   };
   const hopsToHeart = (ci) => c.dungeon()?.distToHeart?.[ci] ?? -1;   // walking hops from the heart, -1 unknown
   const danger = () => {   // engaged() below

@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../vendor/three.module.js';
+import { createScoutScan } from '../src/fx/scout-scan.js';
+const scene = new THREE.Scene(), scan = createScoutScan(scene, .001);
+scan.tick({ origin: [0,1,.01], point:[0,1.001,0], kind:'rock', progress:.5, time:1, scanning:true });
+assert.equal(scan.state().beam,true);
+const line=scene.getObjectByName('K9 scanning laser');
+assert.ok(Math.abs(line.geometry.attributes.position.getZ(0)-.01)<1e-8,'beam begins at the supplied eye socket');
+assert.equal(scan.state().coneSegments,32);assert.equal(scan.state().radiusM,2.2);
+const sheet=scene.getObjectByName('K9 scanning sweep'),before=Array.from(sheet.geometry.attributes.position.array);
+scan.tick({origin:[0,1,.01],point:[0,1.001,0],kind:'rock',progress:.6,time:1.2,scanning:true});
+assert.notDeepEqual(Array.from(sheet.geometry.attributes.position.array),before,'the wide sheet sweeps across the specimen');
+assert.ok(line.geometry.attributes.position.count>=96,'a volume, not one ray');
+scan.complete('rock',2);scan.tick({time:3});assert.equal(scan.state().result,'rock');assert.equal(scan.state().beam,false,'the analysis ends its beam');
+scan.dismiss();assert.equal(scan.state().until,0,'the gate discovery dismisses old scan results');
+scan.dispose();assert.equal(scene.children.length,0,'scanner owns and removes all of its scene objects');
+console.log('Scout scan: authored origin, analysis completion, scene cleanup.');

@@ -1,18 +1,19 @@
 // The gunship's briefing: a skippable, once-per-browser military brief the
-// first time the seat is offered. The KORP turns slowly as a wireframe in
+// after landing, before the recon dog takes control. The KORP turns slowly as a wireframe in
 // its own small renderer while the brief steps through the airframe, the
 // orbit and the fuel state, the three guns and the gunner's role. Pure
 // presentation: the host pauses the game, opens it, and takes the seat when
 // it closes.
+import { storage } from '../storage.js';
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from '../content/gunship.js';
 
 const KORP_URL = 'assets/models/korp/korp_d0_lod1.glb';
-const SEEN_KEY = 'stalheart:v1:gunship-briefing';
+const SEEN_KEY = 'td.gunship-briefing-opening-v2';
 const PAGES = [
-  { head: 'KORP / GS01 · HEAVY GUNSHIP', body: ['MÖRK manufacturer family. Forward attack, ground support.', '30 × 32 m airframe. Four tilt engines: cruise to hover.', 'Crew aboard: none. Guns slaved to the ground station.'] },
+  { head: 'KORP / GS01 · HEAVY GUNSHIP', body: ['A watchful eye overhead. KORP is already covering the landing site.', '30 × 32 m airframe. Four tilt engines: cruise to hover.', 'Scout with RECKON K9 first. We will hand you the guns when the ground needs them.'] },
   { head: 'ORBIT · FUEL STATE', body: [`Low on fuel. No manoeuvre, no landing.`, `Fixed pass over the base: ${GUNSHIP_ORBIT.pass} s out, ${GUNSHIP_ORBIT.station} s overhead.`, 'While it is overhead the guns are yours. Then you watch it come around.'] },
   { head: `${GUNSHIP_GUNS.rotary.label} · ROTARY × 2`, body: ['Six-barrel, 1800 rounds a minute.', 'Sustained fire. Walks a horde off the wall.', 'Tight blast. Free while on station.'] },
   { head: `${GUNSHIP_GUNS.bofors.label} · BOFORS`, body: ['Explosive, mid-tier, slow cadence.', 'Breaks a bunched mass apart.', 'Wider blast. Free while on station.'] },
@@ -27,9 +28,9 @@ export function createGunshipBriefing(root) {
     <footer><span>SPACE OR CLICK · NEXT</span><span><button type="button" data-skip>SKIP</button> <button type="button" data-next>NEXT</button></span></footer></div>`;
   root.append(el);
   const canvas = el.querySelector('canvas'), h2 = el.querySelector('h2'), ul = el.querySelector('ul'), dots = [...el.querySelectorAll('.dots i')], next = el.querySelector('[data-next]');
-  let renderer = null, scene = null, cam = null, model = null, raf = 0, page = 0, onClose = null, t0 = 0, opened = 0, due = false;
-  const seen = () => { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return false; } };
-  const remember = () => { try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* no store: the brief simply shows again */ } };
+  let renderer = null, scene = null, cam = null, model = null, raf = 0, page = 0, onClose = null, t0 = 0, opened = 0, due = false, introduction = false, acknowledged = false;
+  const seen = () => acknowledged || storage.getItem(SEEN_KEY) === '1';
+  const remember = () => { acknowledged=true;storage.setItem(SEEN_KEY,'1'); };
   function setup() {
     if (renderer) return;
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -46,7 +47,7 @@ export function createGunshipBriefing(root) {
   function show(i) {
     page = Math.max(0, Math.min(PAGES.length - 1, i)); const p = PAGES[page];
     h2.textContent = p.head; ul.innerHTML = p.body.map((l) => `<li>${l}</li>`).join('');
-    dots.forEach((d, k) => d.classList.toggle('on', k === page)); next.textContent = page === PAGES.length - 1 ? 'TAKE THE GUNS' : 'NEXT';
+    dots.forEach((d, k) => d.classList.toggle('on', k === page)); next.textContent = page === PAGES.length - 1 ? (introduction?'CONTINUE TO RECKON K9':'CONTINUE') : 'NEXT';
   }
   function tick(t) {
     if (el.hidden) return;
@@ -69,9 +70,9 @@ export function createGunshipBriefing(root) {
     later: () => { due = true; },
     due: () => due && !seen(),
     // open with the host's pause held under it ({ get, set }); G on the controls card opens it again any time
-    openPaused(pause, cb) { if (!el.hidden) return; due = false; const was = pause.get(); pause.set(true); this.open(() => { pause.set(was); cb?.(); }); },
+    openPaused(pause, cb, options = {}) { if (!el.hidden) return; due = false; const was = pause.get(); pause.set(true); this.open(() => { pause.set(was); cb?.(); }, options); },
     opened: () => opened,
-    open(cb) { setup(); onClose = cb; el.hidden = false; opened++; t0 = performance.now(); show(0); raf = requestAnimationFrame(tick); },
+    open(cb, options = {}) { introduction=!!options.introduction;setup(); onClose = cb; el.hidden = false; opened++; t0 = performance.now(); show(0); raf = requestAnimationFrame(tick); },
     dispose() { cancelAnimationFrame(raf); renderer?.dispose(); el.remove(); },
   };
 }

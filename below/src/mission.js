@@ -6,6 +6,7 @@ import {rimRadius, bowlHeight, SINKHOLE_INNER, SINKHOLE_DEPTH} from './stalheart
 // instantly, 74.3 s turning at 2.5 rad/s and only flying once facing the way (a mouse pilot, the reasonable run), 101.9 s on the A/D keys alone (1.3 rad/s).
 // 100 s is the reasonable run plus about a third; 65 left it eight seconds on the perfect line and none on the reasonable one
 export const FUSE=100, FLARE_COUNT=15, EGG_COUNT=1600, HOLE_SCALE=24;
+export const FLARE_LIFE=90, FLARE_FADE=5;
 export const FLARE_SLOTS=FLARE_COUNT+1;   // the red flares and the green one left at the way out (flares.js BEACON, 2026-11-02 note 11): the shaders' flare arrays
 // THE FUSE HURRIES (owner, 2026-11-02, note 12: "If Isao is out with a lot of time to spare, the countdown accelerates"): extracted with more than `over`
 // seconds left, the fuse burns at `rate` times real time until `until` seconds remain, then real time to the blast (the spoken countdown, keyed on what
@@ -140,7 +141,7 @@ export const MAX_HP=12;
 export const START_CARD=Object.freeze({seconds:8});
 // its second line the flight keys (Stålheart round 6, note 5: the quadcopter scheme said on the card: fly where he faces, turn in place, rise and lower apart)
 export const FLIGHT_KEYS='W S FLY · A D TURN · SPACE SHIFT UP DOWN · MOUSE · LOOK AROUND';   // the mouse orbits the camera, never ISAO (round 8, note 4; round 7 note 9 had it do nothing)
-export function startCard(m){return ['MISSION · PLACE THE CHARGE BY THE QUEEN · GET BACK OUT',FLIGHT_KEYS,`F · FLARE   GREEN FLARE · THE WAY OUT   Q · LIDAR${m.lidarAvailable?'':' (NOT READY YET)'}`];}
+export function startCard(m){return ['MISSION · PLACE THE CHARGE BY THE QUEEN · GET BACK OUT',FLIGHT_KEYS,`F · FLARE (90 S)   GREEN FLARE · THE WAY OUT   Q · LIDAR${m.lidarAvailable?'':' (NOT READY YET)'}`];}
 export function createMission(){return {phase:'descent',integrity:MAX_HP,hits:0,lampState:'working',lidarAvailable:false,lidarProcessingAt:0,lidar:false,lidarMode:0,payload:true,armProgress:0,bombPosition:null,fuse:FUSE,time:0,nursery:false,shaftSeen:false,deadEndSeen:false,flares:FLARE_COUNT,extracted:false,rush:false,signalLost:false,detonated:false,outcome:null};}
 export function recordImpact(m){
   if(m.outcome||m.extracted||m.signalLost||m.integrity<=0)return [];

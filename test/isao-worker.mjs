@@ -38,7 +38,7 @@ const vals = Object.keys(world([]).fixed), gets = ['cellSide', 'dungeon', 'eco',
 const newLog = run((w) => { const host = { ...w.fixed }; for (const k of gets) host[k] = () => w.st[k]; host.setIsao = (v) => (w.st.isao = v); host.setAssistant = (v) => (w.st.assistant = v); return createIsaoWorker(host); });
 // THE ORIGINAL BLOCK's log on these fakes (src/td-tab.js before the refactor run's Task 8, run through new Function beside the module):
 // a structure printed, a repair done, an upgrade cancelled for a refund, then thirty frames flown by hand in the drone view
-assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '01abcb50a8d07f4c', 'the worker behaves as the controller block did');
+assert.equal(createHash('sha256').update(JSON.stringify(newLog)).digest('hex').slice(0, 16), '3d2b770b9bf1d712', 'orders and manual flight with radial quadcopter attitude');
 assert.ok(newLog.some((x) => x[0] === 'printed') && newLog.some((x) => x[0] === 'repaired') && newLog.some((x) => x[0] === 'biomass' && x[2] === 'refund'));
 print('Isao worker: orders claimed, flown to, printed and finished, a cancel refunded, the drone flown by hand, as the controller block did.');
 
@@ -58,4 +58,22 @@ print('Isao worker: orders claimed, flown to, printed and finished, a cancel ref
   const type = log[iPlace][1], iAdd = log.findIndex((x, i) => i > 0 && x[0] === 'scene.add' && x[1] === type);
   assert.ok(iAdd > iPlace, `the ghost is placed before the scene sees it (place at ${iPlace}, add at ${iAdd}; ${type})`);
   print('Isao worker: the print ghost is placed on the tick it is added, never drawn from the origin.');
+}
+// Clearance changes altitude before horizontal travel and retains the assigned job.
+{
+ const w=world([]),host={...w.fixed};for(const k of gets)host[k]=()=>w.st[k];
+ host.traffic={ceiling:(a,b)=>Math.max(a[0],b[0])>.03&&Math.min(a[0],b[0])<.09?.08:0};
+ w.st.cellSide=.01;host.params.wallHeight=.001;
+ const target=[Math.sin(.2),Math.cos(.2),0];w.st.graph.centers[1]=target;
+ const order={kind:'structure',ci:1,seconds:5,cost:0,step:{id:'test'}};
+ const drone=w.st.isao={obj:w.mkObj('isao'),dir:[0,1,0],loiter:target,state:'travel',order,t:0};
+ const worker=createIsaoWorker(host);let held=false,crossed=false;
+ for(let i=0;i<1000&&drone.dir[0]<.13;i++){
+   const old=drone.dir.slice(),rotation=drone.obj.quaternion.clone();worker.stepWorker(drone,.05);worker.placeWorker(drone);
+   const up=new THREE.Vector3(0,1,0).applyQuaternion(drone.obj.quaternion);assert.ok(up.dot(new THREE.Vector3().fromArray(drone.dir))>.99999,'propellers always above nozzle, including obstacle climb');
+   if(i>0)assert.ok(rotation.angleTo(drone.obj.quaternion)<.14,'yaw changes smoothly');
+   if(drone.avoiding){held=true;assert.deepEqual(drone.dir,old,'climb before advancing');}
+   if(drone.dir[0]>.03&&drone.dir[0]<.09){crossed=true;assert.ok(drone.obj.position.length()>=1.086-1e-8,'clear above the roof');}
+ }
+ assert.ok(held&&crossed,'worker anticipates and crosses the obstacle');assert.equal(drone.order,order,'same work order survives avoidance');
 }

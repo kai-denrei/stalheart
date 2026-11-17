@@ -1,14 +1,14 @@
 // THE FIRST HARVEST (owner, 2026-11-10: "test dispatching the industrial rover to gather the biomass"; spec
 // docs/superpowers/specs/2026-11-12-the-recon-dog-opening-design.md 1 beat 10, 2.D): on the dog's opening the depot prints at the beats' `harvest`
 // (src/content/base-programme.js OPENING_PROGRAMME). Once the rover is live Isao's flare goes on the richest ground (the rover's own order,
-// src/fx/rover-glue.js); the harvest is done when the rover is home from that first run (a load poured, or back with nothing).
+// src/fx/rover-glue.js); the introduction ends after six seconds; hauling continues independently.
 // THE FIRST WAVE'S OWN BODIES (the economy design 2.6, 2026-11-12: kills lie on the ground from the story's first kill, so the first harvest is the
 // Rotor fight's bodies, what the seepage left of them): the flare on the field's richest ground. Only when the wave left nothing (the field bare)
 // are DOG_SCOUT.harvest.kg laid in `piles` piles on the open ground just outside the gate first (the fallback of the seeded harvest it replaced).
 //   host: rover() (the glue's state: built, scene, trips, field, events), lay(cell, kg), flareAt(cell), richest() ({ cell, kg } | null), story()
 //   (gateCell, inside(ci)), graph(), dungeon()
 // THE RUN WATCHED (flow fixes, 2026-11-13, docs/FLOW.md 3): with `watch` hands (camera, startShot, endShot, shotId, leaveSeat, metres, root) the flare lets the
-// player out of the Rotor's seat into a live shot of the rover's run (DOG_SCOUT.harvest.watch), ended as the rover is home or by any key
+// player out of the Rotor's seat into a six-second live shot (DOG_SCOUT.harvest.watch), skippable by any key
 //   createFirstHarvest(host) -> { ready(), flare(), done(), state() }   (the beats' api.harvest(), src/domain/story-beats.js)
 import { DOG_SCOUT } from '../content/dog-scout.js';
 import { BLOCKED } from '../dungeon.js';
@@ -30,18 +30,18 @@ export function createFirstHarvest(h) {
   }
   // the rover's events since the flare: it is home from the first run when it poured a load or parked empty
   // the live shot of the rover's run: from beyond it (away from the base) and over it, looking at it; eased in from where the camera stands
-  let watching = false;
+  let watching = false, introduced = false;
   function watch() {
     const W = DOG_SCOUT.harvest.watch, w = h.watch, pt = () => h.rover()?.scene?.point ?? null;
     if (!W || !w || !pt() || w.shotId()) return false;
     const base = new THREE.Vector3(...h.graph().centers[h.dungeon().heart]), p = new THREE.Vector3(), up = new THREE.Vector3(), out = new THREE.Vector3(), at = new THREE.Vector3(), m4 = new THREE.Matrix4();
     w.leaveSeat();
-    w.startShot({ id: 'roverWatch', dur: DOG_SCOUT.harvest.maxS, skippable: true, from: w.camera ? { pos: w.camera.position, quat: w.camera.quaternion } : null, easeIn: W.ease, poseAt(u, o) {
+    w.startShot({ id: 'roverWatch', dur: W.seconds, skippable: true, from: w.camera ? { pos: w.camera.position, quat: w.camera.quaternion } : null, easeIn: W.ease, poseAt(u, o) {
       const q = pt(); if (!q) return; p.set(q[0], q[1], q[2]); const r = p.length(); up.copy(p).normalize(); const m = w.metres() * r;
       out.copy(p).sub(base); out.addScaledVector(up, -out.dot(up)); if (out.lengthSq() < 1e-14) out.set(0, 0, 1).cross(up); out.normalize();
       o.pos.copy(p).addScaledVector(out, W.back * m).addScaledVector(up, W.up * m); at.copy(p).addScaledVector(up, W.lookUp * m);
       m4.lookAt(o.pos, at, up); o.quat.setFromRotationMatrix(m4);
-    }, onEnd: () => { watching = false; } });
+    }, onEnd: () => { watching = false; introduced = true; } });
     if (w.shotId() !== 'roverWatch') return false;
     watching = true; showOrder(w.root, W.order, W.keys, 6000);
     return true;
@@ -60,7 +60,7 @@ export function createFirstHarvest(h) {
       h.flareAt(cells[0]); flared.watched = watch();
       return true;
     },
-    done: () => { const d = !!flared && ((h.rover()?.trips ?? 0) > trips0 || back()); if (d && watching && h.watch?.shotId() === 'roverWatch') { watching = false; h.watch.endShot(); } return d; },
-    state: () => ({ flared, trips: h.rover()?.trips ?? null, watching }),
+    done: () => { const d = !!flared && (introduced || !flared.watched || (h.rover()?.trips ?? 0) > trips0 || back()); if (d && watching && h.watch?.shotId() === 'roverWatch') { watching = false; h.watch.endShot(); } return d; },
+    state: () => ({ flared, trips: h.rover()?.trips ?? null, watching, introduced }),
   };
 }

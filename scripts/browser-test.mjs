@@ -105,7 +105,29 @@ try{
   if(m.method==='Network.responseReceived')requests.push({url:m.params.response.url,status:m.params.response.status});
  });
  for(const method of ['Runtime.enable','Page.enable','Network.enable'])await send(method);
- if(args.includes('--breach-game')) {
+ if(args.includes('--round21')) {
+ await (await import('./round21-acceptance.mjs')).round21({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--round20')||args.includes('--round20-resources')) {
+ await (await import('./round20-acceptance.mjs')).round20({go,until,evaluate,send,delay,finish,resourcesOnly:args.includes('--round20-resources')});
+ } else if(args.includes('--round19-opening')) {
+ const test=await import('./round19-acceptance.mjs');await test.round19({go,until,evaluate,send,delay,finish,openingOnly:true});await test.round19Sensors({go,until,evaluate,delay,finish});
+ } else if(args.includes('--round19')) {
+ await (await import('./round19-acceptance.mjs')).round19({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--round18')) {
+ await (await import('./round18-acceptance.mjs')).round18({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--landing-helmet')) {
+ await (await import('./round17-acceptance.mjs')).landingHelmet({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--round17-gunship')) {
+ await (await import('./round17-acceptance.mjs')).round17Gunship({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--round17')) {
+ await (await import('./round17-acceptance.mjs')).round17({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--round16')) {
+ await (await import('./round16-acceptance.mjs')).round16({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--round15-traffic')) {
+ await (await import('./round15-acceptance.mjs')).round15Traffic({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--round15')) {
+ await (await import('./round15-acceptance.mjs')).round15({go,until,evaluate,send,delay,finish});
+ } else if(args.includes('--breach-game')) {
  await go('game-breach-load','index.html?sw=0&acceptance=1&cine=0#td');
  await until('window.__stalheartTest?.state().breaches.length>0');
  await evaluate('window.__stalheartTest.breachScenario()');
@@ -932,7 +954,7 @@ try{
    if(fighting&&Math.floor(now())!==P.lastRow){P.lastRow=Math.floor(now());P.rows.push([P.lastRow,s.performance?.enemies??0,Math.round((S.gates||[]).reduce((m,g)=>Math.min(m,g.hp/g.max),1)*100),S.n]);}
    if(S.phase==='lost'||S.phase==='lost-shown'){ev('LOST');P.done=true;}
    const pt=window.__stalheartPilotTest;
-   if(!s.automated&&pt){pt.hold(true);if(performance.now()-P.aimAt>500){P.aimAt=performance.now();try{pt.aimEnemy();}catch{}}}
+   if(!s.automated&&pt){pt.hold(true);if(performance.now()-P.aimAt>500){P.aimAt=performance.now();try{pt.aimEnemy(true);}catch{}}}
    document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();
    if(s.screenOpen)document.querySelector('#synthetic-modal [data-continue]')?.click();
    if(S.debriefOpen){if(!P.contAt)P.contAt=performance.now()+2500;else if(performance.now()>P.contAt){P.contAt=0;T.sectorContinue();}}
@@ -1062,7 +1084,7 @@ try{
  await until('window.__stalheartTest.state().story.phase==="piloting"',30000);
  {const s=await evaluate('window.__stalheartTest.state()');assert.ok(s.glide.n>=1,`the Rotor's seat is glided into (${JSON.stringify(s.glide)})`);}await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy(true);return false;})()',600000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('first wave cleared');
  {const s=await evaluate('window.__stalheartTest.state()');const up=s.programme.printed.includes('stalheart');   // the hull is the Stålheart's: none while it prints, and no TANK on the strip
   assert.equal(s.hull.state==='held',!up,`no hull while the Stålheart prints, a hull once it stands (${JSON.stringify(s.hull)}, printed ${s.programme.printed})`);
@@ -1074,7 +1096,7 @@ try{
  await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',150000);await delay(600);await mark('Quiver optic');
  await evaluate('window.__stalheartPilotTest.hold(true)');
  // the player's hands in sector 0: re-aim every half second, and hop to the other mount when this one has had nothing in reach for 3 s
- const aimOn=(stop)=>`(()=>{const s=window.__stalheartTest.state();if(${stop})return true;const t=window.__stalheartPilotTest;if(!t||s.gunship.seat)return false;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();if(t.aimEnemy())window.__seen=Date.now();else if(Date.now()-(window.__seen||0)>3000){window.__seen=Date.now();const k=t.state().key==='rotor'?'quiver':'rotor';document.querySelector('#story-views [data-mount="'+k+'"]')?.click();setTimeout(()=>window.__stalheartPilotTest?.hold(true),300);}}return false;})()`;
+ const aimOn=(stop)=>`(()=>{const s=window.__stalheartTest.state();if(${stop})return true;const t=window.__stalheartPilotTest;if(!t||s.gunship.seat)return false;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();if(t.aimEnemy(true))window.__seen=Date.now();else if(Date.now()-(window.__seen||0)>3000){window.__seen=Date.now();const k=t.state().key==='rotor'?'quiver':'rotor';document.querySelector('#story-views [data-mount="'+k+'"]')?.click();setTimeout(()=>window.__stalheartPilotTest?.hold(true),300);}}return false;})()`;
  const seat=async(key)=>{await evaluate(`document.querySelector('#story-views [data-mount="${key}"]')?.click()`);await delay(400);await evaluate('window.__stalheartPilotTest?.hold(true)');};
  await until(aimOn('["construction","settled","study-talk","study","expedition"].includes(s.story.phase)'),200000);
  if((await evaluate('window.__stalheartTest.state().story.phase'))==='construction'){await mark('construction (sector 0)');
@@ -1929,7 +1951,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await until(`${A}?.phase==='landing'&&${A}.signature===true`,120000).catch(()=>why('the flown landing begins under its signature'));
   assert.equal(await evaluate(`${T}.landing('skip')`),'signature','the harness skips the signature');
   await until(`${LD}?.phase==='manual'`,45000).catch(()=>why('MANUAL'));
-  await evaluate(pilotAt(GRADE==='CLEAN'?30:-6));
+  await evaluate(GRADE==='CLEAN'?(await import('./round17-acceptance.mjs')).manualPilot:pilotAt(-6));
   await until(`(L=>!L||L.phase==='done')(${LD})||${A}.phase!=='landing'`,90000).catch(()=>why('the pilot to the contact'));await delay(400);
   const g=(await evaluate(A)).landing;console.log(`  grades: the flown landing: ${JSON.stringify(g)}`);
   assert.equal(g?.grade,GRADE,`the pilot lands ${GRADE} (${JSON.stringify(g)})`);
@@ -1948,7 +1970,8 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  {const s=await st();assert.equal(s.shot,'petPrint','the print\'s close-up');assert.equal(s.companions.print.printing.angle,0,'one angle');}
  await delay(1500);current='dog-print';await finish();
  await until(`${T}.state().story.phase==='scouting'`,120000).catch(async()=>assert.fail(`the K9 born, the scouting (${JSON.stringify((await st()).companions?.print)})`));await mark('scouting: the seat taken');
- const d0=await dog(),NP=DOG_SCOUT.points.count;console.log(`  dog: points ${JSON.stringify(d0.points)}, contact ${d0.contact}, life ${d0.life}`);
+ const d0=await dog(),NP=DOG_SCOUT.points.count;
+ assert.deepEqual(d0.specimens.map(s=>[s.kind,s.alive,s.damage]),[['amethyst',false,0],['harmless Cutis',true,0]],'the survey finds a real crystal cluster and harmless live Cutis');console.log(`  dog: points ${JSON.stringify(d0.points)}, contact ${d0.contact}, life ${d0.life}`);
  assert.equal(d0.active,true,'the seat is the player\'s');assert.equal(d0.points.length,NP,`${NP} survey points`);assert.equal((await st()).shot,'dogScout','the chase camera\'s shot');
  assert.equal(await evaluate(`document.querySelectorAll('.dog-scout-hud > div').length`),NP+2,'a marker a point, the home marker and the line');
  // ONE MOVE (note 1): from the touchdown's held shot to the chase settled behind the dog, no frame cuts
@@ -1999,7 +2022,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.seatState().seatKey==='rotor'`,120000).catch(async()=>assert.fail(`the Rotor's seat (${JSON.stringify((await st()).story)})`));await mark('the Rotor\'s seat');
  await delay(1500);current='dog-rotor-seat';await finish();
  await until('!!window.__stalheartPilotTest',30000);await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000).catch(async()=>assert.fail(`the first wave cleared (${JSON.stringify((await st()).story)} alive ${(await st()).enemiesAlive})`));
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy(true);return false;})()',600000).catch(async()=>assert.fail(`the first wave cleared (${JSON.stringify((await st()).story)} alive ${(await st()).enemiesAlive})`));
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('the first wave cleared');
  {const r=await evaluate(`${T}.rover.state()`),s=await st();console.log(`  dog: at the clear the field ${r.field} kg on ${r.piles} piles, ${r.seeped??r.rotted} kg seeped, ledger.field ${Math.round(s.ledger.field)} kg laid; bank ${s.biomass}`);budget.push(['wave cleared (bank)',s.biomass],['wave cleared (laid)',Math.round(s.ledger.field)]);}
  await until(`${T}.state().programme.printed.includes('depot')`,180000).catch(async()=>assert.fail(`the depot at the harvest (${JSON.stringify((await st()).programme)})`));await mark('the depot stands');
@@ -2027,7 +2050,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await until(`${T}.state().programme.active==='stalheart'`,120000).catch(async()=>assert.fail(`the Stålheart's print after the card (${JSON.stringify((await st()).programme)})`));await mark('the Stålheart\'s print begins');
  await until(`${T}.state().story.phase==='quiver-piloting'`,120000).catch(async()=>assert.fail(`the Quiver's hard cores (${JSON.stringify((await st()).story)})`));await mark('the Quiver\'s seat');
  await evaluate('window.__stalheartPilotTest?.hold(true)');
- await until(`(()=>{const s=window.__stalheartTest.state();if(['construction','settled'].includes(s.story.phase))return true;const t=window.__stalheartPilotTest;if(t&&!s.gunship.seat){if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();t.aimEnemy();}}return false;})()`,240000).catch(async()=>assert.fail(`sector 0 (${JSON.stringify((await st()).story)})`));
+ await until(`(()=>{const s=window.__stalheartTest.state();if(['construction','settled'].includes(s.story.phase))return true;const t=window.__stalheartPilotTest;if(t&&!s.gunship.seat){if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();t.aimEnemy(true);}}return false;})()`,240000).catch(async()=>assert.fail(`sector 0 (${JSON.stringify((await st()).story)})`));
  await evaluate('window.__stalheartPilotTest?.hold(false)');
  {const s=await st();await mark(`after the Quiver: ${s.story.phase}, ${s.towers} sentries`);assert.equal(s.story.phase,'construction','sector 0 under the Stålheart\'s print');assert.equal(s.gunship.station,true,'GS01 on station');assert.equal(s.programme.active,'stalheart','still printing');}
  await delay(1000);current='dog-sector-0';await finish();
@@ -2088,7 +2111,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   // the debrief: read, then the real CONTINUE
   if(s.sector?.debrief){if(once('db'+s.sector.n))await snap(`debrief-${s.sector.n}`);if(wait('dbr',3000)){delete since.dbr;const ok=await evaluate(`(()=>{const b=document.querySelector('.sdb-acts [data-act=continue]');if(b){b.click();return true;}return false;})()`);if(!ok)await evaluate(`${T}.sectorContinue('continue')`);await hand(`debrief ${s.sector.n} CONTINUE (${ok?'button':'harness'})`);}await delay(400);continue;}
   // a seat: aimed and held
-  if(s.seat==='rotor'||s.seat==='quiver'){if(once('seat-'+s.seat))await hand(`in the ${s.seat}'s seat`);await evaluate(`(()=>{const t=window.__stalheartPilotTest;if(!t)return;t.hold(true);if(!t.state().overheated)t.aimEnemy();})()`);}
+  if(s.seat==='rotor'||s.seat==='quiver'){if(once('seat-'+s.seat))await hand(`in the ${s.seat}'s seat`);await evaluate(`(()=>{const t=window.__stalheartPilotTest;if(!t)return;t.hold(true);if(!t.state().overheated)t.aimEnemy(true);})()`);}
   else await evaluate('window.__stalheartPilotTest?.hold?.(false)').catch(()=>{});
   // sector 0's gunship seat: NUKE THE ENTRANCE
   if(s.seat==='gunship'&&s.beat==='construction'){seatSince??=Date.now();if(once('gs0'))await snap('sector-0-gunship');
@@ -2242,7 +2265,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   if(L.phase==='manual'){const sink=L.sink,stop=sink*sink/(2*(12-3.2)),want=Math.max(-6,Math.min(6,-L.along*0.3)),e=want-L.vx;
    const tiltWant=Math.max(-0.35,Math.min(0.35,e*0.08)),tr=Math.max(-1,Math.min(1,(tiltWant-L.tilt)*6));
    T.landing('input',{throttle:stop+${margin}>=L.altitude?1:(Math.abs(e)>1.5&&sink>10?0.5:0),tiltRate:tr,legs:true});}
-  requestAnimationFrame(f);})();})()`,PILOT=pilotAt(30),LATE_PILOT=pilotAt(-6);   // 12 = LANDING_GAME.vehicle.thrust, 3.2 = sim.gravity: the stopping distance at full burn; the margin the burn starts early by (the late pilot starts it 6 m after it should: a WRECK, ~10 m/s, under the crash line)
+  requestAnimationFrame(f);})();})()`,PILOT=(await import('./round17-acceptance.mjs')).manualPilot,LATE_PILOT=pilotAt(-6);   // 12 = LANDING_GAME.vehicle.thrust, 3.2 = sim.gravity: the stopping distance at full burn; the margin the burn starts early by (the late pilot starts it 6 m after it should: a WRECK, ~10 m/s, under the crash line)
  // REAL KEYS through CDP (2026-11-07, the final review: the harness's skip stood in for Esc): a press is keyDown + keyUp; Space carries its text
  const KEY={w:{key:'w',code:'KeyW'},d:{key:'d',code:'KeyD'},a:{key:'a',code:'KeyA'},esc:{key:'Escape',code:'Escape'},space:{key:' ',code:'Space',text:' '}};
  const keyDown=(k)=>send('Input.dispatchKeyEvent',{type:'keyDown',...KEY[k]}),keyUp=(k)=>send('Input.dispatchKeyEvent',{type:'keyUp',...KEY[k]});
@@ -2347,7 +2370,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
    assert.ok(a>=0,`${name}: the held shot began`);assert.deepEqual(c.cuts,[],`${name}: no cut from the touchdown to the arrival's end`);}
   assert.equal(await evaluate('!!document.querySelector("#landing-hud")'),false,`${name}: the panel removed at the end`);return {s:e,said:await briefs()};};
  // the phases the clean flight passed through, once a frame in the page (2026-11-07, the final review: the flare was not asserted, so an
- // unaided clean flight would have passed): FLARE must be seen before the contact
+ // round 17: control now remains manual through contact; no automatic flare
  const PHASES=`(()=>{const T=window.__stalheartTest,P=window.__landingPhases=[];(function f(){const L=T.state().arrival?.landing;if(L&&P.at(-1)!==L.phase)P.push(L.phase);if(!L||L.phase!=='done')requestAnimationFrame(f);})();})()`;
  // THE SIDE VIEW's frame on the pilot's flight (near the pad): the first frame at or under 100, 50 and 20 m, the feet, the hull's top and the pad's
  // centre in frame (NDC within +-1), the disk with them
@@ -2358,7 +2381,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
   await evaluate(PHASES);await evaluate(VIEWS);await evaluate(PILOT);await evaluate(CAM_LOG);
   const a=await toContact('the pilot to the contact'),g=a.landing;
   {const P=await evaluate('window.__landingPhases');console.log(`  clean: phases ${P.join(' > ')}`);const f=P.indexOf('flare'),end=P.findIndex(p=>p==='touched'||p==='done');
-   assert.ok(f>=0&&(end<0||f<end),`the auto-lander's FLARE before the touch (${P.join(' > ')})`);}
+   assert.equal(f,-1,`manual control through contact (${P.join(' > ')})`);}
   {const V=await evaluate('window.__landingViews'),inF=(p)=>Array.isArray(p)&&Math.abs(p[0])<1&&Math.abs(p[1])<1;
    for(const h of [100,50,20]){const v=V[h];console.log(`  clean: side view at ~${h} m: ${JSON.stringify(v)}`);assert.ok(v&&v.view,`a frame at ${h} m (${JSON.stringify(V)})`);
     for(const k of ['feet','top','pad'])assert.ok(inF(v.view[k]),`the ${k} in frame at ${v.alt} m (${JSON.stringify(v.view)})`);assert.ok(diskOk(v.disk),`the disk on the line of sight at ${v.alt} m (${JSON.stringify(v.disk)})`);}}console.log(`  clean: ${JSON.stringify(g)}, panel "${await evaluate(`document.querySelector('#landing-hud')?.innerText.replace(/\\s+/g,' ')`)}", ${((Date.now()-t0)/1000).toFixed(0)} s`);
@@ -3496,7 +3519,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await delay(1500);current='round6-rotor-vignette';await finish();
  // the Rotor to the Quiver: back out of the Rotor, the Quiver lit, into its optic (the QUIVER chapter's hand-over)
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy(true);return false;})()',480000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');   /* the roll-out may have taken the seat as the wave cleared (the Pearl set's first wave clears late: src/fx/hull-issue.js firstWave) */
  await until(`${T}.state().shot==='takeControl'`,120000).catch(async()=>assert.fail(`the hand-over to the Quiver (${(await st()).shot})`));
  await delay(1300);current='round6-quiver-handover-out';await finish();
@@ -3557,7 +3580,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  current='round7-rotor-contact';await finish();
  // the Rotor to the Quiver, called out
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy(true);return false;})()',480000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');   /* the roll-out may have taken the seat as the wave cleared (the Pearl set's first wave clears late: src/fx/hull-issue.js firstWave) */
  await until(`${T}.state().shot==='takeControl' && /QUIVER MANUAL OVERRIDE!/.test(document.querySelector("#td-callouts")?.textContent??"")`,120000).catch(async()=>assert.fail(`the hand-over called out (${(await st()).shot}, ${await evaluate('document.querySelector("#td-callouts")?.textContent')})`));
  await delay(2500);assert.equal(await evaluate('document.body.classList.contains("seat-gliding")'),true,'mid-flight the Quiver\'s HUD stays hidden (2026-10-03)');assert.equal(await evaluate('(e=>!e||e.style.display==="none"||getComputedStyle(e).opacity==="0")(document.querySelector("#story-monitor"))'),true,'and its spotting monitor');current='round7-quiver-transfer';await finish();
@@ -4176,7 +4199,7 @@ const ids=C(await st()).units.map(u=>u.id),seen=Object.fromEntries(ids.map(i=>[i
  await delay(1500);
  {const d=await qd();console.log(`  round23: nearest hard core ${d0} cells from the Quiver as it rises, ${d} after 1.5 s`);current='round23-quiver';await finish();
   if(!args.includes('--tank-finish'))assert(d0>=8&&d0<=16,`the hard cores rise on the horizon: a long shot, not a wait (${d0} cells; 2026-10-05: on the ring, 6, they were too close)`);}
- await until(`(()=>{const s=${T}.state();if(s.story.phase!=="quiver-piloting")return true;const t=${P};if(t){t.aimEnemy();t.hold(true);}return false;})()`,90000).catch(async()=>assert.fail(`the Quiver kills both (${JSON.stringify((await st()).story)})`));
+ await until(`(()=>{const s=${T}.state();if(s.story.phase!=="quiver-piloting")return true;const t=${P};if(t){t.aimEnemy(true);t.hold(true);}return false;})()`,90000).catch(async()=>assert.fail(`the Quiver kills both (${JSON.stringify((await st()).story)})`));
  await until(`${T}.state().gunship.seat===true`,5000).catch(async()=>assert.fail(`the second kill hands to the gunship's seat (${JSON.stringify((await st()).gunship)})`));
  {const s=await st();console.log(`  round23: phase ${s.story.phase}, gun ${s.gunship.gun}, order ${await evaluate('document.querySelector("#td-order")?.textContent')}`);
   assert.equal(s.story.phase,'construction');assert.equal(s.gunship.gun,'heavy','the MK-9 is up');assert.match(await evaluate('document.querySelector("#td-order")?.textContent||""'),/NUKE THE ENTRANCE!press 1-2-3/,'the order and its keys');}
@@ -7142,18 +7165,18 @@ const killReal=(Date.now()-t0)/1000;
  // read on the sector clock; canyon_pass comes after the seat, and his card stands over the seat (it was hidden there)
  if(again&&!process.env.CANYON_SEATED){const V='(async()=>{const m=await import("./src/fx/isao-voice.js");return m.isaoSay.asked.map(e=>e.id);})()',marks={},w0=Date.now();let card=false;
   while(Date.now()-w0<90000){const s=await st(),ids=await evaluate(V),c=s.sector.clock,mk=(k,v)=>{if(v&&marks[k]==null)marks[k]=c;};
-   mk('announce',ids.includes('sector_canyon_again')||ids.includes('canyon_again'));mk('canyonAgain',ids.includes('canyon_again'));mk('seat',s.laser.seated&&s.laser.special);mk('passBrief',ids.includes('canyon_pass'));mk('firstQueued',s.queued>0);if(marks.firstQueued!=null)mk('allUp',s.queued===0);
+   mk('announce',ids.includes('sector_canyon_again')||ids.includes('canyon_again'));mk('canyonAgain',ids.includes('canyon_again'));if(marks.seat==null&&s.laser.seated&&s.laser.special)marks.seatBodies=s.sector.canyon.seatedBodies;mk('seat',s.laser.seated&&s.laser.special);mk('passBrief',ids.includes('canyon_pass'));mk('firstQueued',s.queued>0);if(marks.firstQueued!=null)mk('allUp',s.queued===0);
    if(marks.seat!=null&&!card)card=await evaluate('(b=>!!b&&!b.classList.contains("hidden")&&getComputedStyle(b).display!=="none"&&b.getBoundingClientRect().width>0)(document.querySelector("#td-brief"))');
    if(marks.passBrief!=null&&card&&(marks.allUp!=null||c-marks.seat>20))break;await delay(150);}
   const s=await st();console.log(`CANYON AGAIN seat: ${JSON.stringify(marks)} (sector clock); seat - announce ${marks.seat!=null&&marks.announce!=null?(marks.seat-marks.announce).toFixed(2):'-'} s; the column up ${marks.allUp!=null?(marks.allUp-marks.seat).toFixed(2):'-'} s after the seat; Isao's card shown over the seat ${card}; queued ${s.queued}, alive ${s.performance.enemies}, overhead ${s.laser.overhead}`);
-  assert(marks.announce!=null&&marks.seat!=null&&marks.seat-marks.announce<=4,`seated within 4 s of the announce (${JSON.stringify(marks)})`);
+  assert(marks.announce!=null&&marks.seat!=null&&marks.seatBodies>=300&&marks.seat-marks.announce<=16,`seated on hundreds within the bounded queue wait (${JSON.stringify(marks)})`);
   assert(marks.passBrief!=null&&marks.passBrief>=marks.seat,`canyon_pass shown after the seat (${JSON.stringify(marks)})`);
   assert(card,'Isao\'s card shows over the seat');}
  await until(`${T}.state().performance.enemies>=250`,60000).catch(async()=>assert.fail(`the swarm rises (${(await st()).performance.enemies} alive)`));
  await until(`${T}.state().laser.seated && ${T}.state().laser.special`,60000).catch(async()=>assert.fail(`SOL-82's canyon pass and its seat (${JSON.stringify((await st()).laser)})`));
  {const s=await st(),L=(await import('../src/content/sectors.js')).CANYON;assert.equal(s.laser.radius,L.pass.radius,'the canyon\'s wide beam');assert(s.laser.energy>=L.pass.energy-0.5,`the canyon's long burn (${s.laser.energy})`);
   assert(s.glide.n>glides0,'the camera glided into the seat');}
- await delay(3500);current='skip-tutorial-'+tag+'-seat';await finish();
+ await evaluate(`document.querySelector('#controls-card [data-close]')?.click()`);await delay(3500);current='skip-tutorial-'+tag+'-seat';await finish();
  {const before=(await st()).laser.burned.bodies,t0=Date.now();let frames=null;
   await evaluate(`window.__fr=[];(function f(t){window.__fr.push(t);if(window.__fr.length<600)requestAnimationFrame(f);})(performance.now())`);
   /* as a player would: the trigger held and the beam walked down the canyon from the deep end toward its mouth */
@@ -7495,13 +7518,13 @@ const killReal=(Date.now()-t0)/1000;
  // has handed the camera back and the sight is on screen again.
  await evaluate('window.__stalheartPilotTest.view("pov")');await delay(500);
  await evaluate('window.__stalheartPilotTest.aimSky()');await until('window.__stalheartPilotTest.lock().tgt===null',10000);await delay(400);current='quiver-scope-searching';await finish();
- await until('(()=>{const l=window.__stalheartPilotTest.lock();if(l.tgt!==null&&l.meter>0.04&&!l.locked)return true;if(!window.__aimAt||Date.now()-window.__aimAt>900){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',90000);current='quiver-scope-tracking';await finish();
- await until('(()=>{const l=window.__stalheartPilotTest.lock();if(l.locked)return true;if(!window.__aimAt||Date.now()-window.__aimAt>900){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',90000);current='quiver-scope-locked';await finish();
+ await until('(()=>{const l=window.__stalheartPilotTest.lock();if(l.tgt!==null&&l.meter>0.04&&!l.locked)return true;if(!window.__aimAt||Date.now()-window.__aimAt>900){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy(true);}return false;})()',90000);current='quiver-scope-tracking';await finish();
+ await until('(()=>{const l=window.__stalheartPilotTest.lock();if(l.locked)return true;if(!window.__aimAt||Date.now()-window.__aimAt>900){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy(true);}return false;})()',90000);current='quiver-scope-locked';await finish();
  for(const view of ['pov','third']){
   await evaluate(`window.__stalheartPilotTest.view(${JSON.stringify(view)})`);await delay(400);
   await evaluate(`(()=>{const q=window.__qf={samples:[],done:false},T=window.__stalheartPilotTest;const f=()=>{const r=T.round();if(r)q.samples.push(r);else if(q.samples.length){q.done=true;return;}requestAnimationFrame(f);};requestAnimationFrame(f);})()`);
   await evaluate('window.__stalheartPilotTest.hold(true)');
-  await until('(()=>{if(window.__qf.samples.length)return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',120000);
+  await until('(()=>{if(window.__qf.samples.length)return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy(true);}return false;})()',120000);
   await evaluate('window.__stalheartPilotTest.hold(false)');
   if(view==='pov'){await until('(()=>{const s=window.__qf.samples.at(-1);return !!s&&s.u>0.72;})()',20000).catch(()=>{});current='quiver-scope-away';await finish();}   /* the sight with a round in flight, after the framing hands the camera back */
   for(let i=0;i<6;i++){await delay(450);const s=await evaluate('window.__qf.samples.at(-1)');current=`quiver-frame-${view}-${i}-${(s?.phase??'landed').toLowerCase()}`;await finish();}
@@ -7596,17 +7619,17 @@ const killReal=(Date.now()-t0)/1000;
  current='story-world-fodder';await finish();
  // THE SKY MODEL (2026-10-30): a watched breach keeps its pile at the crater, 14 cells from the Rotor, and the lemons hop at a radius a second (~2 m/s hunting), so the first
  // comes into the Rotor's 4.6 cells about a minute after the seat (the blobs took seconds; the normal landing's quiet breach has the head start, STORY_FODDER.headStart)
- await until('window.__stalheartPilotTest.aimEnemy()!==null',90000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'an amoeba is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
+ await until('window.__stalheartPilotTest.aimEnemy(true)!==null',90000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy(true)');assert(victim!==null,'an amoeba is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
  await evaluate('window.__stalheartPilotTest.hold(true)');
  // the fodder keeps walking, so re-aim each poll until this one drops (the heat peak is banked per frame by the hook above)
- await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
+ await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy(true);return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
  // A DELIBERATE BURST, WHILE THE SEAT IS CERTAINLY THE ROTOR (2026-09-18). The heat assertion below used to read whatever the
  // ten kills above happened to cost in rounds, which is not a burst: once the opening put the seat in the player's hands with the
  // swarm still bunched mid-lane, ten kills took half the rounds and the peak halved with them (0.073 -> 0.037) without a single
  // barrel behaving differently. Two seconds of held fire is the burst the assertion names, and the per-frame hook banks its peak.
  const shots=await evaluate('window.__stalheartPilotTest.state().shots');assert(shots>=2,'the Rotor streamed rounds');assert((await evaluate('window.__stalheartTest.state().brassLive'))>0,'spent cases fell from the Rotor in sentry control (docs/AMMUNITION.md)');current='story-world-rotor-kill';await finish();
  await evaluate('window.__stalheartPilotTest.hold(true)');
- for(let i=0;i<10;i++){await evaluate('window.__stalheartPilotTest&&window.__stalheartPilotTest.state().key==="rotor"&&window.__stalheartPilotTest.aimEnemy()');await delay(200);}
+ for(let i=0;i<10;i++){await evaluate('window.__stalheartPilotTest&&window.__stalheartPilotTest.state().key==="rotor"&&window.__stalheartPilotTest.aimEnemy(true)');await delay(200);}
  await evaluate('window.__stalheartPilotTest&&window.__stalheartPilotTest.hold(false)');
  // THE TRACE LANDS WHERE THE ROUND LANDS (owner, 2026-09-25: "it goes straight whereas the planet is curved, so the trace does not
  // impact at the same point"). A piloted round's line is solved against the ground and the walls before it leaves; its tracer's
@@ -7616,7 +7639,7 @@ const killReal=(Date.now()-t0)/1000;
 
  // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy(true);return false;})()',120000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const said=await evaluate('window.__stalheartTest.state().story.said');assert(said.includes('alien_comms')&&said.includes('harvest_biomass'),'both lines said');
  // THE HEAT CHECK READS THE ROTOR'S OWN PEAK, NOT A FRESH BURST (owner, 2026-09-14): confirmed live that a piloted Rotor can clear the whole wave during the waits above and the game hands control to the Quiver 0.6s later (STORY_QUIVER.delay) — read here, `state().key` may already be 'quiver', heat 0, held reset by the hand-over's own attach(). A burst fired at THIS point fires the wrong mount, so the per-frame hook installed at the seat banked the Rotor's own heat while it was still the Rotor, and the peak it reached is what is asserted on
  const heatPeak=await evaluate('window.__rotorHeatMax||0'),heatFrames=await evaluate('window.__rotorHeatFrames||0');console.log(`rotor heat peak ${heatPeak.toFixed(4)} over ${heatFrames} frames in the seat`);assert(heatFrames>0,'the heat hook sampled the Rotor seat');assert(heatPeak>0.05,`the barrels carry heat after a burst (${heatPeak})`);
@@ -7624,7 +7647,7 @@ const killReal=(Date.now()-t0)/1000;
  // THE FIRST WAVE DOWN IS THE NEXT UNLOCK: keep firing until the twenty are spent and none stand, then Isao's line and the view strip
  if(!(await evaluate('window.__stalheartTest.state().story.said')).includes('wave_cleared'))assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');   // a piloted Rotor can clear the whole wave during the kills above (2026-09-14), and phase can move past 'cleared' to 'quiver-piloting' the same tick it is set, so said is checked instead of the exact phase
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy(true);return false;})()',480000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));/* (2026-10-03) the site guards, amoeba among them, stand at the landers from the start: the wave's amoeba are gone when said wave_cleared, which is asserted above */   // the performance block is a periodic sample. NOT a count of zero any more: the Quiver now stands before the wave is down and its first hard core rises within a third of a second of `cleared` (STORY_QUIVER.delay 0.3, 2026-09-18), so the field is never empty here. The fifty white amoeba being gone is the same claim, made of the wave this step is about
  await until('!!document.querySelector("#story-views")',5000);await delay(600);current='story-world-cleared';await finish();
  // the view strip is exercised after the Quiver: the hand-over now follows the cleared wave almost at once (owner, 2026-09-13)
@@ -7638,7 +7661,7 @@ const killReal=(Date.now()-t0)/1000;
  await until('window.__stalheartPilotTest.lock().locked',8000).catch(()=>{});current='story-world-quiver-optic';await finish();   /* the sight in the game's own run: whatever phase the seat is in when the hand-over lands */
  const killsBefore=(await evaluate('window.__stalheartTest.state()')).kills;await evaluate('window.__stalheartPilotTest.hold(true)');
  // re-aim every half second, not every poll: each re-aim re-slews the launcher, and a lock needs the reticle held still on the target
- try{await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="settled")return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',150000);}
+ try{await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="settled")return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy(true);}return false;})()',150000);}
  catch(e){console.log('QUIVER DUMP',JSON.stringify(await evaluate('(()=>{const s=window.__stalheartTest.state(),p=window.__stalheartPilotTest?.state();return {story:s.story,kills:s.kills,enemies:s.performance.enemies,towers:s.towerCells,engagement:s.engagement,pilot:p&&{key:p.key,ci:p.ci,posts:p.posts,held:p.held,shots:p.shots,view:p.view},reach:window.__stalheartPilotTest?.reach(),monitor:s.monitorShown,shot:s.shot};})()')));throw e;}
  await evaluate('window.__stalheartPilotTest.hold(false)');const settled=await evaluate('window.__stalheartTest.state()');assert.equal(settled.kills-killsBefore,2,'two hard cores, two rounds');assert(settled.monitorShown>0,'the seeker feed showed during a flight');assert(settled.explosions.spawned['quiver.talon']>=2,'each TALON hit bursts on its target');
  await delay(500);current='story-world-quiver-settled';await finish();

@@ -113,14 +113,13 @@ export const STRUCTURES = Object.freeze([
   // along the island's east edge (4 x 4 m plots, 4 m apart; their SOCKET_FILL faces -X, toward the rover's dock 8 m west, the author's dock),
   // three standing with the depot and the fourth the build board's card (stage 9, the `pearl` step); their fill is driven from the bank by
   // src/fx/bio-pearls.js (assets/models/yushi045/runtime.js), so they are not batched. The SAI-92 bay in the middle of the island with the unit
-  // landed on its SOCKET_LANDING (0, 0.215, 0), facing +Z: it stands this round (mining is to come). The rover's pad is the west half (not a
+  // landing on SOCKET_LANDING (0, 0.215, 0); the moving SAI-93 is owned by mineral-mining, with no static unit under it. The rover's pad is the west half (not a
   // structure: src/content/rover.js ROVER.pad). None of them stops the hull: small pieces stay passable (2026-10-03)
   { id: 'pearl-a', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [16, 0, -6] },
   { id: 'pearl-b', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [16, 0, -2] },
   { id: 'pearl-c', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [16, 0, 2] },
   { id: 'pearl-d', asset: 'assets/models/yushi045/yushi045_container_d0_lod1.glb', far: 'assets/models/yushi045/yushi045_container_d0_lod2.glb', island: 'depot', stage: 9, scale: 1, offset: [16, 0, 6] },
   { id: 'sai92-bay', asset: 'assets/models/sai92/sai92_bay_d0_lod1.glb', far: 'assets/models/sai92/sai92_bay_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [-1, 0, 0], batch: true },
-  { id: 'sai92', asset: 'assets/models/sai92/sai92_unit_d0_lod1.glb', far: 'assets/models/sai92/sai92_unit_d0_lod2.glb', island: 'depot', stage: 8, scale: 1, offset: [-1, 0.215, 0], batch: true },
   // EARLIER LANDINGS, out past the clearing on open ground (anchor 'open' snaps to the nearest open cell): two HUGIN boosters standing
   // on their tripods and one wreck on its side. The flight GLBs sit on their mass reference, feet at -6.3 m, hence the offset; the wreck
   // is tilted onto its side and lifted by its hull radius. Draft placement, to be moved once the tank trip beat is written.
@@ -206,4 +205,4 @@ export function baseLayoutMode(search) {
 // charging pad open between its panels
 // THE DOME CITY'S DOMES AND BRIDGES too (round 8 note 6; src/content/dome-city.js DOME_SOLIDS): a dome's shell meets the ground all round, a bridge
 // stops the hull at its columns and lets it under its 7.5 m deck between them. Ids the classic base has not got simply never match
-export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'chips', 'launcher', 'solar', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d', ...DOME_SOLIDS]);   // the solar array too (owner, 2026-10-07): its panels block, its charging pad between them is open (the footprint is the geometry's now, src/domain/footprint.js)
+export const SOLID_STRUCTURES = Object.freeze(['bays', 'garage', 'bio-a', 'bio-b', 'bio-c', 'ammo-a', 'ammo-b', 'ammo-c', 'wreck', 'wreck-b', 'sh02', 'sh02-salvage', 'stalheart', 'pearl-a', 'pearl-b', 'pearl-c', 'pearl-d', 'sai92-bay', 'foundry', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'chips', 'launcher', 'solar', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d', ...DOME_SOLIDS]);   // the solar array too (owner, 2026-10-07): its panels block, its charging pad between them is open (the footprint is the geometry's now, src/domain/footprint.js)

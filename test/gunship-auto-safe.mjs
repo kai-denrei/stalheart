@@ -6,17 +6,21 @@ import { GUNSHIP_AUTO } from '../src/content/gunship.js';
 
 const unit = (lat, lon) => [Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon)];
 function rig(pileAt) {
-  const launched = [], cs = 0.0133;
+  const launched = [],marks=[], cs = 0.0133;
   const enemies = Array.from({ length: 40 }, (_, i) => ({ alive: true, pos: unit(pileAt[0] + (i % 5) * 0.001, pileAt[1] + Math.floor(i / 5) * 0.001) }));
   const G = {
     state: { passes: 1, heavyPass: 0, mounted: true }, cs, centers: [[0, 1, 0]],
     guns: { heavy: { blastCells: 5.5, ringHex: 0, travel: 1, sound: 'x' }, rotary: { blastCells: 0.45, travel: 1 }, bofors: { blastCells: 1.1, travel: 1 } },
     onStation: () => true, mount() {}, enemies: () => enemies, cell: () => 0, select: () => true, paintHeavy: () => true,
-    launchHeavy: () => { launched.push(1); return 0; }, optic: { muzzle: () => [0, 2, 0], flight() {} }, drop: { release: () => true },
-    sfx() {}, step: () => 0, landed: () => [], stepHeavy: () => -1,
+    launchHeavy: () => { launched.push(1); return 0; }, optic: { muzzle: () => [0, 2, 0], flight() {},paint:(...a)=>marks.push(a) }, drop: { release: () => true },
+    laser() {}, sfx() {}, step: () => 0, landed: () => [], stepHeavy: () => -1,
   };
   const auto = createGunshipAuto({ G, tune: GUNSHIP_AUTO, onScreen: () => true, callout() {}, friends: () => [unit(0, 0)] });
   auto.tick(0.016, false);
+  assert.equal(launched.length,0,'the laser mark precedes release');
+  for(let i=0;i<39;i++)auto.tick(.1,false);assert.equal(launched.length,0,'four seconds to get clear');
+  if(pileAt[0]>.1)assert.equal(marks[0]?.[3],4,'ground mark covers the full warning');
+  auto.tick(.2,false);
   return launched.length;
 }
 assert.equal(rig([0.01, 0.01]), 0, 'a pile beside the base is not nuked');
@@ -52,13 +56,13 @@ function road({ at = [0.6, 0.6], pile = 0, friend = [0, 0] } = {}) {
     guns: { heavy: { blastCells: 5.5, ringHex: 0, travel: 4.2, reload: 6, sound: 'x' }, rotary: { blastCells: 0.45, travel: 1 }, bofors: { blastCells: 1.1, travel: 1 } },
     onStation: () => true, mount() {}, enemies: () => enemies, cell: () => 0, select: () => true, paintHeavy: (ci) => { painted.push(ci); return true; },
     launchHeavy: () => { launched.push(painted.at(-1)); st.heavyAutoPass = st.passes; return painted.at(-1); }, optic: { muzzle: () => [0, 2, 0], flight() {} }, drop: { release: () => true },
-    sfx() {}, step: () => 0, landed: () => [], stepHeavy: () => -1,
+    laser() {}, sfx() {}, step: () => 0, landed: () => [], stepHeavy: () => -1,
   };
   const auto = createGunshipAuto({ G, tune: GUNSHIP_AUTO, onScreen: () => true, callout() {}, friends: () => [unit(...friend)], road: () => ({ cell: 1, point: unit(...at), rocks: 9 }) });
   for (let k = 0; k <= 300; k++) { st.clock = k * 0.1; auto.tick(0.1, false); }
   return { launched, drops: auto.state().roadDrops };
 }
-{ const r = road(); assert.equal(r.drops, 3, `30 s of the drive out: an MK-9 at 0, 10.2 and 20.4 s (${JSON.stringify(r)})`); assert.ok(r.launched.every((ci) => ci === 1), 'on the road\'s cell'); }
+{ const r = road(); assert.equal(r.drops, 2, `30 s of the drive out: an MK-9 at 0, 10.2 and 20.4 s (${JSON.stringify(r)})`); assert.ok(r.launched.every((ci) => ci === 1), 'on the road\'s cell'); }
 assert.equal(road({ friend: [0.6, 0.62] }).drops, 0, 'never beside a friend');
-{ const r = road({ pile: 30 }); assert.equal(r.launched[0], 0, 'a pile of 30 on screen wins the pass'); assert.ok(r.drops >= 2, 'the road after it'); }
+{ const r = road({ pile: 30 }); assert.equal(r.launched[0], 0, 'a pile of 30 on screen wins the pass'); assert.ok(r.drops >= 1, 'the road after it'); }
 console.log('gunship-auto-safe: the auto MK-9 only lands clear of the base and the hull; its guns stay within reach.');

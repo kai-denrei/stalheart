@@ -100,5 +100,5 @@ export const GUNSHIP_SEAT_HINT = Object.freeze({
 // at seemingly nothing ... perhaps at enemies on the other side of the planet?": the densest pile was the far landers' guards)
 // `roadWeight` (2026-10-23, THE NUKES ON THE ROAD, src/fx/gunship-auto.js `road`): THE ARENA's road target counts as a pile of this many bodies: a pile smaller than it
 // (and than nukePile) leaves the MK-9 to the road
-export const GUNSHIP_AUTO = Object.freeze({ reachDeg: 25, afterManned: 2, burst: 2.6, rest: 1.4, nukePile: 25, nukeView: 0.75, nukeSafeCells: 3, gunSafeCells: 1.5, nukeFacing: 0.8, roadWeight: 25, callout: 'TACTICAL NUKE LAUNCHED',
+export const GUNSHIP_AUTO = Object.freeze({ reachDeg: 25, afterManned: 2, burst: 2.6, rest: 1.4, nukePile: 25, nukeView: 0.75, nukeSafeCells: 3, gunSafeCells: 1.5, nukeFacing: 0.8, roadWeight: 25, nukeWarnS: 4, warning: 'TACTICAL NUKE · CLEAR THE LASER MARK', callout: 'TACTICAL NUKE LAUNCHED',
   nukeCalls: Object.freeze(['gunship_nuke_call', 'gunship_nuke_hello']), aliveBudget: 3500, swell: 2, brief: 'gunship_calibrated', autoBrief: 'gunship_auto' });

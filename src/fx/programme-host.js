@@ -1,3 +1,4 @@
+import { COLONY_GANTRY } from '../content/dome-city.js';
 // ISAO KEEPS BUILDING (owner, 2026-09-16): the controller's side of Isao's build programme, moved out of the controller's storyApi
 // unchanged; the controller merges these members back into storyApi. The rules are src/domain/build-programme.js (the steps in
 // order, their perks, the assembly line's rebuild) and src/domain/repair-orders.js (the gate first, then the walls, between waves
@@ -53,9 +54,9 @@ export function createProgrammeHost(c) {
     const next = sector < HUNGRY_BUILD.fromSector ? null : nextHungry(pg.steps, { done: pg.done, bought: pg.bought, active: pg.active, placed: (st) => s.print.cellOf(st) >= 0, prefer: HUNGRY_BUILD.kidouFirst && ready ? (st) => !!st.gantry : null,
       holds: (st) => whenHolds({ ...(st.when ?? {}), idle: false, home: false }, coming), price: (st) => priceOfStep(st, { structures: BUILD_BOARD.structures, kinds: COLONY.kinds, index: ix }) });
     const bank = c.bank?.() ?? 0, k = next ? hungerOf(bank, next.price, HUNGRY_BUILD.cap) : 0, who = next ? whoShows(next.step, { ready }) : null;
-    s.gantry?.hunger?.(who === 'kidou' ? next.step : null, k, { progress: (st, kk) => s.print.partial?.(st, kk), rising: HUNGRY_BUILD.rising });
+    s.gantry?.hunger?.(who === 'kidou' ? next.step : null, k, { progress: (st, kk) => s.print.partial?.(st, kk), rising: HUNGRY_BUILD.rising, head: next ? s.print.progressOf(next.step) : 0 });
     const hp = s.hungryPrint, pid = who === 'print' ? next.step.id : null;
-    if (hp && hp.step.id !== pid) { if (!pg.done.has(hp.step.id) && !pg.bought.has(hp.step.id) && pg.active !== hp.step.id) s.print.partial?.(hp.step, 0); s.hungryPrint = null; }
+    if (hp && hp.step.id !== pid) { if (!pg.done.has(hp.step.id) && !pg.bought.has(hp.step.id) && pg.active !== hp.step.id) s.print.partial?.(hp.step, hp.k); s.hungryPrint = null; }
     if (pid && Math.abs((s.hungryPrint?.k ?? -1) - k) > 1e-3) { s.print.partial?.(next.step, k); s.hungryPrint = { step: next.step, k }; }
     s.hunger = next ? { step: next.step.id, price: next.price, bank: Math.round(bank), k: +k.toFixed(3), who } : null;   // the harness's programme.hunger
     // ONE LINE WHEN THE NEXT JOB CHANGES AND THE BANK IS SHORT: its name and the biomass it still needs
@@ -111,11 +112,11 @@ export function createProgrammeHost(c) {
       programmeBegin(pg, step);
       // A DOME IS THE GANTRY'S (2026-11-12 night): it drives out and prints to its tool's reach; Isao's beam takes the mast from there (an order begun
       // where the gantry stopped, `head`), or the step stands when the tool reached the top
-      if (step.gantry && kidouPrints(step, programmeHas(pg, 'stalheart')) && gantry?.start(step, { progress: (st, k) => c.story().print.progress(st, k), hand: (st, k) => {
+      if (step.gantry && kidouPrints(step, programmeHas(pg, 'stalheart')) && gantry?.start(step, { head: s.print.progressOf(step), progress: (st, k) => c.story().print.progress(st, k), hand: (st, k) => {
         if (k >= 1) { api.printed(st); return; }
-        orders.push({ kind: 'structure', ci, cost: 0, seconds: st.seconds, head: k, step: st, bed: c.story().print.bed(st) }); spawnIsao(); updateHud();
+        orders.push({ kind: 'structure', ci, cost: 0, seconds: st.seconds / COLONY_GANTRY.printRate, head: k, step: st, bed: c.story().print.bed(st) }); spawnIsao(); updateHud();
       } })) { if (!c.pilotMode() && !c.briefQ()) showBrief(step.brief); updateHud(); return; }
-      orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, head: c.story().chapter?.head[step.id] ?? (s.hungryPrint?.step.id === step.id ? s.hungryPrint.k : 0), step, bed: c.story().print.bed(step) });   // head: a tutorial chapter's start finds this print under way; a hungry partial is printed on from where it stood
+      orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, head: c.story().chapter?.head[step.id] ?? s.print.progressOf(step), step, bed: c.story().print.bed(step) });   // head: a tutorial chapter's start finds this print under way; a hungry partial is printed on from where it stood
       spawnIsao();
       if (!step.closeup && !c.pilotMode() && !c.briefQ()) showBrief(step.brief);   // his line as he starts, never over a manned seat or another line; a close-up step's over its cut (src/fx/antenna-print.js, round 4)
       updateHud();
@@ -153,7 +154,7 @@ export function createProgrammeHost(c) {
       if (perk === 'armory' && step.cell && c.story().colonyPads?.[step.cell]) { c.story().armoryPad?.ring?.dispose?.(); c.story().armoryPad = { ...c.story().colonyPads[step.cell], standing: true }; }
       if (perk === 'uplink') c.reinforce()?.called();   // FEIDS-26 REINFORCEMENTS (owner, 2026-10-23): the radar's uplink up, Isao calls the colony (src/fx/reinforcements-host.js)
       // the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it
-      if (step.walls) { for (const ci of c.story().wallCells) { c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }
+      if (step.walls) { for (const ci of c.story().wallCells) { (c.dungeon().mended ??= new Set()).add(ci); c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }
       if (perk === 'station' && c.story().arrayPad) c.story().arrayPad.standing = true;   // the solar array's pad charges once the complex stands
       if (perk === 'hulls' && c.story().bayBerths) { c.setBerths(c.story().berths = c.story().bayBerths); adoptBays(c.storyBase()); }   // the bays become the berths
       // THE ARC-01 STANDS: SOL-88 goes up on its sled (src/fx/arc-launch.js), and when the insertion stage is lit SOL fires on its own
